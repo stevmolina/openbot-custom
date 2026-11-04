@@ -31,6 +31,7 @@ import {
   ComposerEditor,
   type ComposerPasteResult,
   type ComposerSelection,
+  type QuoteRequest,
 } from "@openbot/ui/features/conversation/ComposerEditor";
 import { ComposerNotice } from "@openbot/ui/features/conversation/ComposerNotice";
 import { ComposerSendControl } from "@openbot/ui/features/conversation/ComposerSendControl";
@@ -175,6 +176,12 @@ export interface AgentThreadViewProps {
   scrollRef?: ((element: HTMLElement) => void) | undefined;
   /** The user's send shortcut. Enter when absent. */
   sendShortcut?: SendShortcut | undefined;
+  /** A selected passage to put in this thread's box. The box inserts it when `applyQuote` is set. */
+  quoteRequest?: QuoteRequest | undefined;
+  /** This thread's box takes the quote. Another box, or the agent's own chat, has it otherwise. */
+  applyQuote?: boolean;
+  /** Opens the passage that a quote chip points to. */
+  onOpenQuote?: ((messageId: string, text: string) => void) | undefined;
   /** The message this thread's box quotes. The next send stays in the thread. */
   replyTo?: AgentMessage | undefined;
   /** Removes the quote from the thread's box. */
@@ -492,6 +499,7 @@ export function AgentThreadView(props: AgentThreadViewProps) {
                       reactions={message().reactions}
                       onRemoveReaction={props.onReact ? () => props.onReact?.(message(), null) : undefined}
                       onSelectAgent={() => undefined}
+                      onOpenQuote={props.onOpenQuote}
                       onOpenLink={props.onOpenLink}
                       onPreview={props.onPreview}
                       onAttachmentAction={props.onAttachmentAction}
@@ -625,6 +633,9 @@ export function AgentThreadView(props: AgentThreadViewProps) {
               ariaLabel={placeholder()}
               focusRequest={props.focusRequest}
               skillPickerRequest={skillPickerRequest()}
+              quoteRequest={props.quoteRequest}
+              applyQuote={props.applyQuote}
+              onOpenQuote={props.onOpenQuote}
               dictation={{ text: props.voice?.liveText ?? "", final: voicePhase() === "transcribing" }}
               disabled={sending() || voicePhase() === "transcribing"}
               sendShortcut={props.sendShortcut}

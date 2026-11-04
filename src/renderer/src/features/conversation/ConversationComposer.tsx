@@ -88,6 +88,7 @@ export function ConversationComposer() {
     previewAttachment,
     props,
     quoteRequest,
+    quoteDestination,
     openQuote,
     queuePanelVisible,
     releaseCutAttachments,
@@ -687,6 +688,7 @@ export function ConversationComposer() {
               focusRequest={composerFocusRequest()}
               skillPickerRequest={skillPickerRequest()}
               quoteRequest={quoteRequest()}
+              applyQuote={quoteDestination().kind === "main"}
               onOpenQuote={openQuote}
               onValueChange={(text) => {
                 updateCurrentDraft({ text });

@@ -44,6 +44,7 @@ import type {
   ConversationTarget,
   SidePanelPane,
 } from "./conversation-types";
+import { destinationForQuote, type QuoteDestination } from "./quote-destination";
 import {
   clearQuotedTextHighlight,
   highlightQuotedText,
@@ -1021,6 +1022,8 @@ export function createConversationViewScope(props: ConversationProps) {
   let lastPanelAgentId: string | undefined;
   let lastHandledMessageFocusNonce: number | undefined;
   const [quoteRequest, setQuoteRequest] = createSignal<QuoteRequest | undefined>(undefined);
+  /** Which box takes the latest quote. The agent's own chat, the open thread, or a side-panel thread. */
+  const [quoteDestination, setQuoteDestination] = createSignal<QuoteDestination>({ kind: "main" });
   let lastRuntimeSettingsSignature: string | undefined;
   async function saveAgentPatch(
     updates: Omit<UpdateAgentInput, "agentId">,
@@ -1285,6 +1288,7 @@ export function createConversationViewScope(props: ConversationProps) {
   function quoteSelection(messageId: string, text: string) {
     // A passage past the message limit would make the composer drop it with the text after it.
     const quoted = limitedQuoteText(text);
+    setQuoteDestination(destinationForQuote(props.threads, messageId));
     setQuoteRequest((current) => ({ id: (current?.id ?? 0) + 1, messageId, text: quoted }));
   }
 
@@ -1332,19 +1336,26 @@ export function createConversationViewScope(props: ConversationProps) {
   }
 
   function showQuotedText(messageId: string, text: string): boolean {
-    const blocks = scrollElement ? messageTextBlocks(scrollElement, messageId) : [];
-    const firstBlock = blocks[0];
+    const panel = conversationPanelElement();
+    // A side thread covers the agent's own chat. The passage that is on screen is the one to mark.
+    const blocks = (panel ? messageTextBlocks(panel, messageId) : []).filter(
+      (block) => block.closest(".conversation-covered") === null,
+    );
+    const visible = blocks.length > 0 ? blocks : scrollElement ? messageTextBlocks(scrollElement, messageId) : [];
+    const firstBlock = visible[0];
     if (!firstBlock) return false;
-    stickToLatest = false;
-    unreadOpening.holding = false;
-    const range = highlightQuotedText(blocks, text);
+    const range = highlightQuotedText(visible, text);
     (range?.startContainer.parentElement ?? firstBlock).scrollIntoView({
       behavior: "auto",
       block: "center",
       inline: "nearest",
     });
-    updateScrollFade();
-    updateUnreadDividerVisibility();
+    if (scrollElement?.contains(firstBlock)) {
+      stickToLatest = false;
+      unreadOpening.holding = false;
+      updateScrollFade();
+      updateUnreadDividerVisibility();
+    }
     return true;
   }
 
@@ -2119,6 +2130,7 @@ export function createConversationViewScope(props: ConversationProps) {
     sendSelectionInstruction,
     sendCardMessage,
     quoteRequest,
+    quoteDestination,
     quoteSelection,
     openQuote,
     setActiveRightPanel,
@@ -2182,3 +2194,5 @@ export function useConversationViewScope(): ConversationViewScope {
   if (!scope) throw new Error("Conversation view scope is unavailable outside ConversationView.");
   return scope;
 }
+
+export type { QuoteDestination };

@@ -87,6 +87,11 @@ interface ComposerEditorProps {
   skillPickerRequest?: number;
   /** A new id puts a quote chip for the text at the caret, or at the end when the caret is unknown. */
   quoteRequest?: QuoteRequest | undefined;
+  /**
+   * When false, a new quote belongs to another box, such as a side thread. This one leaves it alone.
+   * Absent, the box takes the quote, as the agent's own chat does.
+   */
+  applyQuote?: boolean;
   /** Opens the passage that a quote chip in the draft points to. */
   onOpenQuote?: ((messageId: string, text: string) => void) | undefined;
   /** The last skill list request failed, so an empty picker says so instead of "no skills". */
@@ -321,6 +326,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
       focusRequest: props.focusRequest ?? 0,
       skillPickerRequest: props.skillPickerRequest ?? 0,
       quoteRequest: props.quoteRequest,
+      applyQuote: props.applyQuote !== false,
       disabled: props.disabled,
     }),
     ({
@@ -333,6 +339,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
       focusRequest,
       skillPickerRequest,
       quoteRequest,
+      applyQuote,
       disabled,
     }) => {
       // An owner can set its counter back to 0 after this editor read it, for example when the chat that it
@@ -401,8 +408,9 @@ export function ComposerEditor(props: ComposerEditorProps) {
         lastSkillPickerRequest = skillPickerRequest;
         openSkillPicker();
       }
-      // A locked composer keeps the quote until it opens again.
-      if (quoteRequest && quoteRequest.id > lastQuoteRequest && !disabled) {
+      // A locked composer keeps the quote until it opens again. A box that is not the quote's
+      // destination leaves the id unseen, so a later quote for this box still lands here.
+      if (quoteRequest && quoteRequest.id > lastQuoteRequest && !disabled && applyQuote) {
         lastQuoteRequest = quoteRequest.id;
         insertQuote(quoteRequest.messageId, quoteRequest.text);
       }
