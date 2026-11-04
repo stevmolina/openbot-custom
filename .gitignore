@@ -67,3 +67,4 @@ keys
 
 # Persistent local development identity and migration recovery.
 .openbot/
+dist-custom/
