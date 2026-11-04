@@ -9,8 +9,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Threads by state in the sidebar. On top, browser-style tabs: any thread of any agent or copy. */
-export const LanesWithOpenTabs: Story = {
-  name: "C3. Status lanes and open tabs",
-  render: () => <LanesWithOpenTabsVariant />,
+/** Threads by state, then every bot once as a quiet list with its role. Tabs from anywhere on top. */
+export const AgentsList: Story = {
+  name: "D1. Quiet agents as a list",
+  render: () => <LanesWithOpenTabsVariant agents="list" />,
+};
+/** The same, with the quiet bots as a grid of faces. */
+export const AgentsGrid: Story = {
+  name: "D2. Quiet agents as a grid",
+  render: () => <LanesWithOpenTabsVariant agents="grid" />,
 };

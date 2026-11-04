@@ -279,7 +279,6 @@ const LANES: { title: string; states: ThreadState[] }[] = [
   { title: "Needs you", states: ["approval", "question"] },
   { title: "Working", states: ["working"] },
   { title: "Done", states: ["done"] },
-  { title: "Settled", states: ["settled"] },
 ];
 
 /** C. Threads by state across every agent. The agent and copy are the second line. */
@@ -289,7 +288,7 @@ function StatusLanes(props: { selection: Selection }) {
     <For each={LANES}>
       {(lane) => {
         const rows = all.filter((row) => lane.states.includes(row.thread.state));
-        const [open, setOpen] = createSignal(lane.title !== "Settled");
+        const [open, setOpen] = createSignal(true);
         return (
           <Show when={rows.length > 0}>
             <section class="atp-group" aria-label={lane.title}>
@@ -328,6 +327,63 @@ function StatusLanes(props: { selection: Selection }) {
         );
       }}
     </For>
+  );
+}
+
+/**
+ * The quiet bots: one entry per bot, its main agent only. Copies and old threads stay out, because
+ * they show in the lists above only while they need you or work. A click opens the main chat.
+ */
+function AgentsSection(props: { selection: Selection; layout: "list" | "grid" }) {
+  const main = (family: PrototypeFamily) => {
+    const instance = family.instances[0];
+    const thread = instance?.threads.find((candidate) => candidate.title === "Main chat") ?? instance?.threads[0];
+    return instance && thread ? { instance, thread } : undefined;
+  };
+  const [open, setOpen] = createSignal(true);
+  return (
+    <section class="atp-group atp-agents" aria-label="Agents">
+      <button
+        type="button"
+        class="atp-lane-head"
+        aria-expanded={open() ? "true" : "false"}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span class="sidebar-section-name">Agents</span>
+        <span class="atp-count">{FAMILIES.length}</span>
+        <span class="atp-chevron" aria-hidden="true">
+          <Show when={open()} fallback={<ChevronRight />}>
+            <ChevronDown />
+          </Show>
+        </span>
+      </button>
+      <Show when={open()}>
+        <div class={props.layout === "grid" ? "atp-agent-grid" : "atp-agent-list"}>
+          <For each={FAMILIES}>
+            {(family) => (
+              <Show when={main(family)}>
+                {(entry) => (
+                  <button
+                    type="button"
+                    class={["atp-agent", { "atp-selected": props.selection.selected() === entry().thread.id }]}
+                    aria-label={`${family.name}, ${family.role}. Open the main chat`}
+                    onClick={() => props.selection.select(entry().thread, entry().instance.agentId)}
+                  >
+                    <span class="atp-agent-avatar">
+                      <AgentAvatar seed={family.seed} hue={family.hue} motion="idle" />
+                    </span>
+                    <span class="atp-agent-name">{family.name}</span>
+                    <Show when={props.layout === "list"}>
+                      <span class="atp-agent-role">{family.role}</span>
+                    </Show>
+                  </button>
+                )}
+              </Show>
+            )}
+          </For>
+        </div>
+      </Show>
+    </section>
   );
 }
 
@@ -444,10 +500,15 @@ function OpenTabsHeader(props: { selection: Selection }) {
 }
 
 /** The chosen direction: status lanes in the sidebar and open tabs from anywhere on top. */
-export function LanesWithOpenTabsVariant() {
+export function LanesWithOpenTabsVariant(props: { agents: "list" | "grid" }) {
   return (
     <SidebarPrototypeShell header={(selection) => <OpenTabsHeader selection={selection} />}>
-      {(selection) => <StatusLanes selection={selection} />}
+      {(selection) => (
+        <>
+          <StatusLanes selection={selection} />
+          <AgentsSection selection={selection} layout={props.agents} />
+        </>
+      )}
     </SidebarPrototypeShell>
   );
 }
