@@ -1,3 +1,4 @@
+import { chatVisualReply } from "@openbot/contracts/chat-visual";
 import { canPreviewAttachment } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { classifyFailure } from "@openbot/telemetry";
@@ -12,9 +13,11 @@ import { actionToast } from "../../action-toast";
 import { useShowAgentSteps } from "../../agent-steps-preference";
 import { toAgentMessages } from "../../app-message-projection";
 import { usePlatform } from "../../platform";
+import { chatVisualPageUrl } from "./chat-visual-url";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
 import { useConversationViewScope } from "./conversation-scope";
 import type { SideThread } from "./conversation-types";
+import { ThreadVisualReply } from "./ThreadVisualReply";
 import { threadReadAloud } from "./thread-read-aloud";
 import { createTurnSteps } from "./turn-steps";
 
@@ -140,6 +143,23 @@ export function ConversationSideThread(props: { threadId: string }) {
             agent={current().agent}
             agents={view.agents}
             messages={messages}
+            visualReply={(message) => {
+              const visual = chatVisualReply(message);
+              if (!visual) return undefined;
+              const src = chatVisualPageUrl(visual.attachment.previewUrl);
+              const load = view.runtime?.visualPage;
+              if (!src && !load) return undefined;
+              return (
+                <ThreadVisualReply
+                  message={message}
+                  visual={visual}
+                  src={src}
+                  load={load}
+                  onOpenLink={(url) => void openExternalMessageUrl(url)}
+                  macWindowControls={view.platform === "darwin"}
+                />
+              );
+            }}
             skills={installedSkills()}
             skillsLoadFailed={installedSkillsLoadFailed()}
             mcpServers={mcpServers()}
