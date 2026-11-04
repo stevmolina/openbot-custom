@@ -48,12 +48,12 @@
 }
 
 .ui-button.sidebar-lane-row {
-  min-height: 50px;
+  min-height: 54px;
   padding: var(--openbot-space-1) var(--openbot-space-2);
 }
 
 .ui-button.sidebar-lane-agent {
-  min-height: 42px;
+  min-height: 50px;
   padding: 0 var(--openbot-space-2);
 }
 
@@ -74,15 +74,15 @@
 .sidebar-lane-avatar.agent-row-avatar {
   position: relative;
   display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   place-items: center;
 }
 
 .sidebar-lane-avatar .agent-avatar {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
 }
 
 /* The badge of the agent rows, a little smaller, on the corner of the smaller face. */
@@ -139,15 +139,15 @@
 
 .sidebar-lane-agent-avatar.agent-row-avatar {
   display: grid;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   place-items: center;
 }
 
 .sidebar-lane-agent-avatar .agent-avatar {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
 }
 
 .sidebar-lane-agent-name {
