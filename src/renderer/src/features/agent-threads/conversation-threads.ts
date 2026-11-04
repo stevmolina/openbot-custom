@@ -64,7 +64,7 @@ export interface ConversationThreadsInput {
   allTabs?: AllAgentTabsInput | undefined;
 }
 
-export interface AllAgentTabsInput {
+interface AllAgentTabsInput {
   agents: readonly AgentProfile[];
   /** The state of a thread of any agent, as its tab shows it. */
   status: (agentId: string, threadId: string) => ThreadStatus;
