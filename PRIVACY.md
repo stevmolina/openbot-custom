@@ -1675,3 +1675,7 @@ Registry install records remain on the host, separate from conversations and cre
 An authorized remote administrator can install, update, cancel, or remove a registry runtime on
 the host through the encrypted Team connection. Removal does not delete agent configuration,
 credentials, or conversations. The existing cloud service does not store those files.
+
+### Remote coding tasks in the custom app
+
+When you request a remote coding task, its task agent uses the connected Agent Computer service. Repository code, task instructions and check output can be processed on that remote machine and by its signed-in coding CLI provider. The local OpenBot task conversation remains on this host. Sign in on the remote machine; OpenBot does not copy host credentials for this workflow. The task agent is instructed to pause its machine when finished. Task Stop alone does not stop remote background processes.

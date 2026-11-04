@@ -33,6 +33,8 @@ import type { MailboxStore } from "../mailbox-store";
 import type { DynamicToolCallParams } from "../protocol";
 import { storedSync } from "../stored-state-effects";
 
+import { RUN_CODING_TASK_TOOL, remoteCodingBrief, runCodingTaskToolSchema } from "./remote-coding-task";
+
 const logger = createOpenBotLogger("agent-tasks");
 
 /** The most open tasks that an agent can have when it starts one more itself. The user can have up to `INPUT_LIMITS.agentTasks`. */
@@ -441,8 +443,21 @@ export class AgentTasks implements TaskLanes {
     params: DynamicToolCallParams,
     caller: AgentTaskCaller,
   ): Effect.fn.Return<OpenBotToolResponse | null> {
-    if (params.tool !== START_TASK_TOOL) return null;
-    const parsed = startTaskToolSchema.safeParse(params.arguments);
+    if (params.tool !== START_TASK_TOOL && params.tool !== RUN_CODING_TASK_TOOL) return null;
+    const coding = params.tool === RUN_CODING_TASK_TOOL ? runCodingTaskToolSchema.safeParse(params.arguments) : null;
+    if (coding && !coding.success) return openBotToolFailure(sourceText("error.backend.taskToolInvalid"));
+    const context = `coding-${createHash("sha256")
+      .update(JSON.stringify([caller.agentId, params.turnId, params.callId]))
+      .digest("hex")
+      .slice(0, 20)}`;
+    const parsed = startTaskToolSchema.safeParse(
+      coding?.success
+        ? {
+            title: coding.data.title,
+            brief: remoteCodingBrief(coding.data.repository, coding.data.task, context),
+          }
+        : params.arguments,
+    );
     if (!parsed.success) return openBotToolFailure(sourceText("error.backend.taskToolInvalid"));
     const idempotencyKey = `start-task:${createHash("sha256")
       .update(JSON.stringify([caller.agentId, params.turnId, params.callId]))
