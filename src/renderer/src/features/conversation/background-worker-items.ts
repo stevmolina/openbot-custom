@@ -2,7 +2,7 @@ import type { BackgroundWorker } from "@openbot/ui/features/conversation/Backgro
 import type { agentAwaitingReplies } from "../../awaiting-replies";
 
 type Reply = ReturnType<typeof agentAwaitingReplies>[number];
-type Subagent = { id: string; title: string; status: string; startedAt: string };
+type Subagent = { id: string; title: string; status: string; startedAt: string; background?: true | undefined };
 type Task = { id: string; title: string; createdAt: string; state: string };
 
 /** One list of the workers that run for a conversation or a side thread: provider subagents, background tasks, and teammates that were asked or work. */
@@ -18,20 +18,14 @@ export function backgroundWorkerItems(input: {
   onOpenAgent: (id: string) => void;
 }): BackgroundWorker[] {
   return [
-    ...input.messages
-      .filter((message) => input.activeTurnId && message.turnId === input.activeTurnId)
-      .flatMap((message) =>
-        (message.subagents ?? [])
-          .filter((worker) => worker.status === "running")
-          .map((worker) => ({
-            id: `subagent:${worker.id}`,
-            agent: input.agent,
-            title: worker.title,
-            since: worker.startedAt,
-            state: "running" as const,
-            onOpen: () => input.onOpenSubagent(worker.id),
-          })),
-      ),
+    ...runningSubagents(input.messages, input.activeTurnId).map((worker) => ({
+      id: `subagent:${worker.id}`,
+      agent: input.agent,
+      title: worker.title,
+      since: worker.startedAt,
+      state: "running" as const,
+      onOpen: () => input.onOpenSubagent(worker.id),
+    })),
     ...input.tasks
       .filter((task) => task.id !== input.excludeTaskId)
       .map((task) => ({
@@ -55,4 +49,24 @@ export function backgroundWorkerItems(input: {
         },
       })),
   ];
+}
+
+/**
+ * The subagents that still run. A foreground subagent counts only in the active turn, because the
+ * backend stops it when its turn ends. A background subagent outlives its turn, so it counts from
+ * any message until the backend marks it ended (task notification, process exit, or boot recovery).
+ */
+function runningSubagents(
+  messages: readonly { turnId?: string | undefined; subagents?: readonly Subagent[] | undefined }[],
+  activeTurnId: string | null | undefined,
+): Subagent[] {
+  const latest = new Map<string, Subagent>();
+  for (const message of messages) {
+    const active = Boolean(activeTurnId) && message.turnId === activeTurnId;
+    for (const worker of message.subagents ?? []) {
+      latest.delete(worker.id);
+      if (worker.status === "running" && (worker.background || active)) latest.set(worker.id, worker);
+    }
+  }
+  return [...latest.values()];
 }
