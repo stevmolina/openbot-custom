@@ -155,7 +155,6 @@ for (const family of FAMILIES) {
   }
 }
 
-const PRECEDENCE: ThreadState[] = ["approval", "question", "working", "done", "settled"];
 const STATE_LABEL: Record<ThreadState, string> = {
   approval: "Needs approval",
   question: "Has a question",
@@ -163,14 +162,6 @@ const STATE_LABEL: Record<ThreadState, string> = {
   done: "Done, not read",
   settled: "Settled",
 };
-
-/** The most urgent state among threads: what a closed group shows. */
-function topState(threads: readonly PrototypeThread[]): ThreadState {
-  for (const state of PRECEDENCE) if (threads.some((thread) => thread.state === state)) return state;
-  return "settled";
-}
-
-const isActive = (thread: PrototypeThread) => thread.state !== "settled";
 
 /** The status mark, with the classes of the real sidebar badge. A settled thread has none. */
 function StateMark(props: { state: ThreadState }) {
@@ -236,13 +227,6 @@ const ROWS: ThreadRef[] = FAMILIES.flatMap((family) =>
 );
 
 const rowOf = (id: string) => ROWS.find((row) => row.thread.id === id);
-
-/** The thread on screen. The prototype always has one, so the first row is only a fallback. */
-function currentRow(id: string): ThreadRef {
-  const row = rowOf(id) ?? ROWS[0];
-  if (!row) throw new Error("The prototype has no threads.");
-  return row;
-}
 
 /** One thread. `context` is a second line, such as the agent and copy, for the status lanes. */
 function ThreadRow(props: {
@@ -394,178 +378,46 @@ function SidebarPrototypeShell(props: {
   );
 }
 
-/** The threads that have a tab: the active ones, and the one on screen. */
-const tabbed = (instance: PrototypeInstance, selected: string) =>
-  instance.threads.filter((thread) => isActive(thread) || thread.id === selected);
-
-/** One tab, in the shape of the real thread tab: the status mark, then the title. */
-function Tab(props: {
-  row: ThreadRef;
-  selection: Selection;
-  copyLabel?: boolean;
-  avatar?: boolean;
-  onClose?: () => void;
-}) {
+/**
+ * One tab: the agent's face with the thread state on its corner, the title, and the copy as a gray
+ * word. A tab of an agent with one copy has no word.
+ */
+function Tab(props: { row: ThreadRef; selection: Selection; onClose: () => void }) {
   const selected = () => props.selection.selected() === props.row.thread.id;
+  const copy = () => props.row.instance.instance;
   return (
-    <span class={["atp-tab", { "atp-tab-selected": selected() }]}>
+    <span
+      class={["atp-tab", { "atp-tab-selected": selected(), "atp-tab-settled": props.row.thread.state === "settled" }]}
+    >
       <button
         type="button"
         class="atp-tab-button"
         aria-pressed={selected() ? "true" : "false"}
-        aria-label={`${props.row.thread.title}, ${props.row.family.name}${props.row.instance.instance ? ` ${props.row.instance.instance}` : ""}. ${STATE_LABEL[props.row.thread.state]}`}
+        aria-label={`${props.row.thread.title}, ${props.row.family.name}${copy() ? ` ${copy()}` : ""}. ${STATE_LABEL[props.row.thread.state]}`}
         onClick={() => props.selection.select(props.row.thread, props.row.instance.agentId)}
       >
-        <Show when={props.avatar}>
-          <span class="atp-tab-avatar">
-            <AgentAvatar seed={props.row.family.seed} hue={props.row.family.hue} motion="idle" />
-          </span>
-        </Show>
-        <StateMark state={props.row.thread.state} />
+        <span class="atp-tab-avatar">
+          <AgentAvatar seed={props.row.family.seed} hue={props.row.family.hue} motion="idle" />
+          <Show when={props.row.thread.state !== "settled"}>
+            <StateMark state={props.row.thread.state} />
+          </Show>
+        </span>
         <span class="atp-tab-title">{props.row.thread.title}</span>
-        <Show when={props.copyLabel && props.row.instance.instance}>
-          {(label) => <span class="atp-tab-copy">{label()}</span>}
-        </Show>
+        <Show when={copy()}>{(label) => <span class="atp-tab-copy">{label()}</span>}</Show>
       </button>
-      <Show when={props.onClose}>
-        {(close) => (
-          <button type="button" class="atp-tab-close" aria-label={`Close ${props.row.thread.title}`} onClick={close()}>
-            ×
-          </button>
-        )}
-      </Show>
+      <button
+        type="button"
+        class="atp-tab-close"
+        aria-label={`Close ${props.row.thread.title}`}
+        onClick={props.onClose}
+      >
+        ×
+      </button>
     </span>
   );
 }
 
-/** The agent of the thread on screen: its face and name, as the real header starts. */
-function AgentHeading(props: { family: PrototypeFamily }) {
-  return (
-    <span class="atp-heading">
-      <span class="atp-heading-avatar">
-        <AgentAvatar seed={props.family.seed} hue={props.family.hue} motion="idle" />
-      </span>
-      <strong>{props.family.name}</strong>
-    </span>
-  );
-}
-
-/** C1. Every copy of the agent on screen, side by side. Each copy is a labeled group of tabs. */
-function TabGroupsHeader(props: { selection: Selection }) {
-  const current = () => currentRow(props.selection.selected());
-  const [folded, setFolded] = createSignal<Record<string, boolean>>({});
-  const isFolded = (instance: PrototypeInstance) =>
-    folded()[instance.agentId] ??
-    !instance.threads.some((thread) => isActive(thread) || thread.id === props.selection.selected());
-  return (
-    <>
-      <AgentHeading family={current().family} />
-      <span class="atp-tabs">
-        <For each={current().family.instances}>
-          {(instance) => (
-            <span class="atp-tab-group" data-folded={isFolded(instance) ? "" : undefined}>
-              <Show when={instance.instance}>
-                {(label) => (
-                  <button
-                    type="button"
-                    class="atp-group-chip"
-                    aria-expanded={isFolded(instance) ? "false" : "true"}
-                    aria-label={`${current().family.name} ${label()}. ${STATE_LABEL[topState(instance.threads)]}`}
-                    onClick={() => setFolded((value) => ({ ...value, [instance.agentId]: !isFolded(instance) }))}
-                  >
-                    <Show when={isFolded(instance) && topState(instance.threads) !== "settled"}>
-                      <StateMark state={topState(instance.threads)} />
-                    </Show>
-                    {label()}
-                    <Show when={isFolded(instance)}>
-                      <span class="atp-group-chip-count">{instance.threads.length}</span>
-                    </Show>
-                  </button>
-                )}
-              </Show>
-              <Show when={!isFolded(instance)}>
-                <For
-                  each={
-                    folded()[instance.agentId] === false
-                      ? instance.threads
-                      : tabbed(instance, props.selection.selected())
-                  }
-                >
-                  {(thread) => <Tab row={{ family: current().family, instance, thread }} selection={props.selection} />}
-                </For>
-              </Show>
-            </span>
-          )}
-        </For>
-      </span>
-    </>
-  );
-}
-
-/** C2. The tabs of one copy, and a switcher to the other copies beside the agent name. */
-function CopySwitcherHeader(props: { selection: Selection }) {
-  const current = () => currentRow(props.selection.selected());
-  const [open, setOpen] = createSignal(false);
-  const others = () => current().family.instances.filter((instance) => instance !== current().instance);
-  const otherState = () => topState(others().flatMap((instance) => instance.threads));
-  const switchTo = (instance: PrototypeInstance) => {
-    setOpen(false);
-    const thread = instance.threads.find(isActive) ?? instance.threads[0];
-    if (thread) props.selection.select(thread, instance.agentId);
-  };
-  return (
-    <>
-      <AgentHeading family={current().family} />
-      <Show when={current().instance.instance}>
-        {(label) => (
-          <span class="atp-switcher">
-            <button
-              type="button"
-              class="atp-group-chip atp-switcher-button"
-              aria-expanded={open() ? "true" : "false"}
-              aria-label={`Copy ${label()}. Switch copy`}
-              onClick={() => setOpen((value) => !value)}
-            >
-              {label()}
-              <ChevronDown />
-              <Show when={otherState() !== "settled" && otherState() !== "done"}>
-                <span class="atp-switcher-dot" aria-hidden="true" />
-              </Show>
-            </button>
-            <Show when={open()}>
-              <div class="atp-switcher-menu">
-                <For each={current().family.instances}>
-                  {(instance) => (
-                    <button
-                      type="button"
-                      class={["atp-switcher-item", { "atp-selected": instance === current().instance }]}
-                      onClick={() => switchTo(instance)}
-                    >
-                      <StateMark state={topState(instance.threads)} />
-                      <span class="atp-tab-title">
-                        {current().family.name} · {instance.instance}
-                      </span>
-                      <span class="atp-time">{instance.threads.filter(isActive).length} active</span>
-                    </button>
-                  )}
-                </For>
-              </div>
-            </Show>
-          </span>
-        )}
-      </Show>
-      <span class="atp-tabs">
-        <For each={tabbed(current().instance, props.selection.selected())}>
-          {(thread) => (
-            <Tab row={{ family: current().family, instance: current().instance, thread }} selection={props.selection} />
-          )}
-        </For>
-      </span>
-    </>
-  );
-}
-
-/** C3. Tabs as in a browser: any thread of any agent or copy, in the order the user opened them. */
+/** Tabs as in a browser: any thread of any agent or copy, in the order the user opened them. */
 function OpenTabsHeader(props: { selection: Selection }) {
   const [open, setOpen] = createSignal<string[]>(["web-sidebar", "web-login", "api-rate", "research-pricing"]);
   const opened = () => {
@@ -581,8 +433,6 @@ function OpenTabsHeader(props: { selection: Selection }) {
               <Tab
                 row={row()}
                 selection={props.selection}
-                avatar
-                copyLabel
                 onClose={() => setOpen(opened().filter((other) => other !== id))}
               />
             )}
@@ -593,32 +443,11 @@ function OpenTabsHeader(props: { selection: Selection }) {
   );
 }
 
-const lanes = (selection: Selection) => <StatusLanes selection={selection} />;
-
-export function StatusLanesVariant() {
-  return <SidebarPrototypeShell>{lanes}</SidebarPrototypeShell>;
-}
-
-export function TabGroupsVariant() {
-  return (
-    <SidebarPrototypeShell header={(selection) => <TabGroupsHeader selection={selection} />}>
-      {lanes}
-    </SidebarPrototypeShell>
-  );
-}
-
-export function CopySwitcherVariant() {
-  return (
-    <SidebarPrototypeShell header={(selection) => <CopySwitcherHeader selection={selection} />}>
-      {lanes}
-    </SidebarPrototypeShell>
-  );
-}
-
-export function OpenTabsVariant() {
+/** The chosen direction: status lanes in the sidebar and open tabs from anywhere on top. */
+export function LanesWithOpenTabsVariant() {
   return (
     <SidebarPrototypeShell header={(selection) => <OpenTabsHeader selection={selection} />}>
-      {lanes}
+      {(selection) => <StatusLanes selection={selection} />}
     </SidebarPrototypeShell>
   );
 }

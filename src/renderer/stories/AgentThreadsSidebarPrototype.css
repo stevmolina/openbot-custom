@@ -484,3 +484,36 @@
   border-width: 0;
   box-shadow: none;
 }
+
+/* C3, minimal: the state sits on the corner of the face, and the copy is a gray word. */
+.agent-threads-sidebar-prototype .atp-tab-avatar {
+  position: relative;
+}
+
+.agent-threads-sidebar-prototype .atp-tab-avatar .atp-mark.agent-row-agent-status {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  border: 2px solid var(--openbot-bg-sidebar);
+  transform: scale(0.62);
+}
+
+.agent-threads-sidebar-prototype .atp-tab-selected .atp-tab-avatar .atp-mark.agent-row-agent-status {
+  border-color: var(--openbot-bg-surface);
+}
+
+.agent-threads-sidebar-prototype .atp-tab-copy {
+  border: 0;
+  padding: 0;
+  color: var(--openbot-text-muted, var(--openbot-text-secondary));
+  font-size: var(--openbot-text-sm);
+}
+
+.agent-threads-sidebar-prototype .atp-tab-settled:not(.atp-tab-selected) .atp-tab-title {
+  color: var(--openbot-text-muted, var(--openbot-text-secondary));
+}
+
+.agent-threads-sidebar-prototype .atp-tab-button {
+  gap: 8px;
+  padding: 0 4px 0 8px;
+}
