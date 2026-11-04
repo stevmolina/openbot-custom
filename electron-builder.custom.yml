@@ -5,9 +5,9 @@
 #   bun run verify:remote-desktop-runtime && bun run prepare:cua-driver && bun run build &&
 #   bunx electron-builder --dir --mac --arm64 --config electron-builder.custom.yml
 # It differs from `electron-builder.yml` in these ways: no `openbot:` link handler, no update feed,
-# no signing or notarization, output in `dist-custom`, the name "OpenBot Custom", and a green icon
+# no signing or notarization, output in `dist-custom`, the name "OpenBot Custom", and a blue icon
 # so it is easy to tell from the official lavender app.
-# The green icon: `build/custom/icon-custom.icns` for Finder and the Dock, and the green logo-color
+# The blue icon: `build/custom/icon-custom.icns` for Finder and the Dock, and the blue logo-color
 # files in place of the release icons that the app shows in the Dock while it runs. There is no
 # icon catalog (`Assets.car`), because the committed one is lavender; macOS then uses the `.icns`.
 # The build is signed ad hoc (`identity: null`), so it must not ask for Apple-restricted
@@ -58,7 +58,7 @@ extraResources:
     to: cli
   - from: resources/agent-runtime
     to: agent-runtime
-  - from: build/logo-colors/icon-green.png
+  - from: build/logo-colors/icon-blue.png
     to: icons/icon-production.png
   - from: build/icon-dev.png
     to: icons/icon-dev.png
@@ -93,7 +93,7 @@ mac:
   hardenedRuntime: false
   icon: build/custom/icon-custom.icns
   extraResources:
-    - from: build/logo-colors/icon-green-macos-safe-area.png
+    - from: build/logo-colors/icon-blue-macos-safe-area.png
       to: icons/icon-production-macos-safe-area.png
     - from: build/icon-dev-macos-safe-area.png
       to: icons/icon-dev-macos-safe-area.png
