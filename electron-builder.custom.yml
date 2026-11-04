@@ -1,5 +1,9 @@
 # The OpenBot Custom build: Steven's fork, installed next to the official OpenBot.
-# Build with `bunx electron-builder --dir --mac --arm64 --config electron-builder.custom.yml`.
+# Build it like `bun run package` (package.json), with this config: prepare the voice, remote
+# desktop and Computer Use runtimes, build, then package.
+#   bun run voice:prepare-runtime && bun run prepare:remote-desktop-runtime &&
+#   bun run verify:remote-desktop-runtime && bun run prepare:cua-driver && bun run build &&
+#   bunx electron-builder --dir --mac --arm64 --config electron-builder.custom.yml
 # It differs from `electron-builder.yml` in these ways: no `openbot:` link handler, no update feed,
 # no signing or notarization, output in `dist-custom`, the name "OpenBot Custom", and a green icon
 # so it is easy to tell from the official lavender app.
