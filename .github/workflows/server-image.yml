@@ -1,0 +1,81 @@
+name: Server image
+
+# Builds the Custom self-hosted server image (docker/Dockerfile) from the x64 AppImage of one commit,
+# for the personal VPS servers. It publishes nothing: the image is a workflow artifact that an
+# operator downloads and loads with `docker load`. Official releases still use release.yml.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Build x64 server image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Install provider control artifacts
+        run: |
+          bun scripts/install-codex-runtime.ts linux x64
+          bun scripts/install-claude-runtime.ts linux x64
+          bun scripts/install-grok-runtime.ts linux x64
+
+      - name: Build AppImage
+        run: bun run dist:linux
+
+      - name: Build the image
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          appImages=(dist/*.AppImage)
+          if [ "${#appImages[@]}" -ne 1 ]; then
+            echo "Expected one AppImage." >&2
+            exit 1
+          fi
+          mkdir image
+          mv "${appImages[0]}" image/OpenBot.AppImage
+          version=$(jq -r .version package.json)
+          short=${GITHUB_SHA::9}
+          docker build --file docker/Dockerfile --platform linux/amd64 \
+            --build-arg "VERSION=$version-custom" --build-arg "REVISION=$short" \
+            --tag "openbot-custom:$short" image
+          docker save "openbot-custom:$short" | gzip -1 > "openbot-custom-$short.tar.gz"
+          echo "IMAGE_FILE=openbot-custom-$short.tar.gz" >> "$GITHUB_ENV"
+
+      # The image starts with the sandbox on and its control socket answers.
+      - name: Start and stop the image
+        run: |
+          set -euo pipefail
+          short=${GITHUB_SHA::9}
+          trap 'docker logs openbot' ERR
+          docker run --detach --name openbot --shm-size 1g \
+            --security-opt seccomp=docker/seccomp.json --security-opt no-new-privileges:true "openbot-custom:$short"
+          for _ in $(seq 1 120); do
+            if docker exec openbot test -S /run/openbot/control.sock && docker exec openbot openbot status; then
+              docker stop --time 60 openbot
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "The control socket did not answer." >&2
+          exit 1
+
+      - name: Upload the image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: server-image
+          path: ${{ env.IMAGE_FILE }}
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
