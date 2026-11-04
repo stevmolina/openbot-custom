@@ -10,12 +10,15 @@ The context is deterministic per tool call. Retrying the call returns the same
 OpenBot task through the existing task idempotency key. Existing queue limits,
 boot recovery, conversation storage and provider handoffs apply.
 
-This is agent orchestration, not a remote process supervisor. Machine lifecycle,
-checkpoints and CLI execution are instructions carried out by the task agent.
-The task Stop button interrupts the agent turn. It cannot guarantee that a remote
-background process stops. Ask the task to stop its remote job and verify the PID
-before stopping the orchestration. A future direct lifecycle adapter is needed
-for automatic cancellation and guaranteed deadline checkpointing.
+The app owns a persisted CodingJobs controller and an authenticated MCP adapter.
+A remote Node supervisor owns the CLI process group and atomic checkpoints.
+Task Stop requests termination and confirms the remote checkpoint before pausing
+the machine. A failed remote operation remains a failure, never a confirmed Stop.
+The supervisor checkpoints and suspends the verified process before the session
+deadline. Resume retains its PID and process identity instead of launching a second
+CLI. Host recovery checkpoints active jobs before allowing continuation.
+The controller serializes machine controls and reserves the shared machine for one
+job. It uses the configured Composio connection and never copies credentials.
 
 Codex and GitHub must be signed in on Agent Computer. Missing sign-in blocks live
 execution, not creating the task. No API key or GitHub token is copied from the
@@ -26,7 +29,12 @@ focused check commands and their exit codes, and a local PR draft.
 
 Run `bun scripts/remote-coding-task-smoke.ts` to check the public tool catalog,
 input rejection, brief persistence contract and real tool dispatch into a task.
-This does not prove remote Codex execution. For that check, invoke the tool in an
+Also run `bun scripts/coding-job-lifecycle-smoke.ts` and
+`bun scripts/coding-jobs-controller-smoke.ts`. These run real local supervisor
+processes and controller shell commands with fixture CLIs, covering duplicate
+launch prevention, deadline pause, same-process resume, crash recovery, Stop and
+refused Stop. Reports are saved under `.openbot-build/`.
+These checks do not prove remote Codex execution. For that check, invoke the tool in an
 isolated app profile with an authenticated computer connection. Confirm the task
 appears, follow its live view, complete sign-in, inspect its diff and checks, ask
 it to stop, and confirm the remote process stopped and the machine paused.

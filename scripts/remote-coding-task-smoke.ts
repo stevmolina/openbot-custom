@@ -87,7 +87,7 @@ try {
   assert.ok(brief);
   assert.ok(brief.includes("Repository: example/project"));
   assert.ok(brief.includes("checkpoint.json"));
-  assert.ok(brief.includes("does not itself kill remote processes"));
+  assert.ok(brief.includes("stops the verified remote process group"));
   assert.ok(brief.includes("Fix the approved bug"));
   assert.equal(new AgentThreadStore(database).task(task.id)?.title, "Fix a bug");
   checks.push("catalog dispatch creates a persisted visible task and queues its complete recovery brief");

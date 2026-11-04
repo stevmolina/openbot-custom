@@ -219,6 +219,8 @@ import type { AgentProvider } from "./agent-client";
 import type { AgentTables } from "./agent-data/agent-tables";
 import type { AgentStore } from "./agent-store";
 import { type AgentTaskBranchFailed, AgentTasks } from "./agent-tasks/agent-tasks";
+import { CodingComputer } from "./agent-tasks/coding-computer";
+import { CodingJobs } from "./agent-tasks/coding-jobs";
 import { type AgentThreadRecord, AgentThreadStore } from "./agent-threads/agent-thread-store";
 import { AgentWaitStore } from "./agent-waits/agent-wait-store";
 import { AgentWaits } from "./agent-waits/agent-waits";
@@ -451,6 +453,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
   /** Agent and channel routines of every trigger kind, with their webhook routes. */
   readonly routineRecords: RoutineRecords;
   readonly #mcp: McpGateway;
+  readonly #codingJobs: CodingJobs;
   readonly #providers: ProviderRuntime;
   readonly #providerUseChanges = Semaphore.makeUnsafe(1);
   readonly #endpoints: CustomEndpoints;
@@ -567,7 +570,12 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       (event) => this.#emit(event),
       () => this.listAgents(),
     );
+    this.#codingJobs = new CodingJobs(new CodingComputer(this.#mcp), (agentId, taskId) => {
+      this.#tasks.failed(taskId, sourceText("error.backend.taskStartFailed"));
+      this.#tasks.changed(agentId);
+    });
     this.#tasks = new AgentTasks({
+      codingJobs: this.#codingJobs,
       store: new AgentThreadStore(store.database),
       mailbox,
       conversation: this.#conversation,
@@ -3531,6 +3539,13 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
           (failure) => new AgentLifecycleFailed({ operation: "reconcile provider sessions", cause: failure.cause }),
         ),
       );
+    yield* this.#codingJobs
+      .recover(this.listAgents())
+      .pipe(
+        Effect.mapError(
+          (failure) => new AgentLifecycleFailed({ operation: "recover remote coding jobs", cause: failure.cause }),
+        ),
+      );
     yield* lifecycleStep("recover agent state", () => {
       this.#boot.recoverPersistedTurns();
       this.#hostedSites.restore();
@@ -4077,6 +4092,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
     this.#hostedSites.dispose();
     this.#compaction.dispose();
     this.#deltas.dispose();
+    this.#codingJobs.dispose();
     this.#conversation.dispose();
     this.#threads.dispose();
     this.#memories.clearPending();
@@ -4406,6 +4422,14 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       this.#tasks.markStopped(task.taskId, turnId);
       yield* this.#interruptTurn(task.agentId, turnId, task.threadId);
     }
+    const owner = this.#conversation.requireKnownAgent(task.agentId);
+    yield* this.#codingJobs
+      .control(owner.id, owner.workspacePath, task.taskId, "stop")
+      .pipe(
+        Effect.mapError(
+          (failure) => new AgentLifecycleFailed({ operation: "stop remote coding job", cause: failure.cause }),
+        ),
+      );
     this.#tasks.changed(task.agentId);
   }).bind(this);
 
@@ -4707,6 +4731,14 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
     const task = taskId
       ? yield* lifecycleStep("find message task", () => this.#tasks.requireOpen(agent.id, taskId))
       : null;
+    if (task)
+      yield* this.#codingJobs
+        .resumePaused(agent.id, agent.workspacePath, task.taskId)
+        .pipe(
+          Effect.mapError(
+            (failure) => new AgentLifecycleFailed({ operation: "resume remote coding job", cause: failure.cause }),
+          ),
+        );
     const receipt = yield* this.#mailbox
       .enqueue({
         sender: { kind: "user" },
