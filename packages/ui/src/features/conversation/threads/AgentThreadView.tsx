@@ -109,6 +109,8 @@ export interface AgentThreadViewProps {
   agent: AgentProfile;
   agents: AgentProfile[];
   messages: readonly AgentMessage[];
+  /** An inline visual page supplied by the host. Undefined keeps the ordinary message row. */
+  visualReply?: ((message: AgentMessage) => JSX.Element) | undefined;
   /** The agent's skills, for the `$` picker and the skill tags in messages. */
   skills?: InstalledSkill[] | undefined;
   /** The last skill list request failed, so an empty picker says so instead of "no skills". */
@@ -453,28 +455,35 @@ export function AgentThreadView(props: AgentThreadViewProps) {
                     />
                   )}
                 </Show>
-                <ChatMessageRow
-                  message={message()}
-                  author={author(message())}
-                  agents={props.agents}
-                  skills={props.skills}
-                  referencedMessage={quotedMessage(message())}
-                  onOpenReference={
-                    message().replyToMessageId ? () => openQuoted(message().replyToMessageId ?? "") : undefined
+                <Show
+                  when={props.visualReply?.(message())}
+                  fallback={
+                    <ChatMessageRow
+                      message={message()}
+                      author={author(message())}
+                      agents={props.agents}
+                      skills={props.skills}
+                      referencedMessage={quotedMessage(message())}
+                      onOpenReference={
+                        message().replyToMessageId ? () => openQuoted(message().replyToMessageId ?? "") : undefined
+                      }
+                      reactions={message().reactions}
+                      onRemoveReaction={props.onReact ? () => props.onReact?.(message(), null) : undefined}
+                      onSelectAgent={() => undefined}
+                      onOpenLink={props.onOpenLink}
+                      onPreview={props.onPreview}
+                      onAttachmentAction={props.onAttachmentAction}
+                      mediaSource={props.mediaSource}
+                      onDownload={(attachment) => props.onAttachmentAction(attachment, "download")}
+                      macWindowControls={props.macWindowControls}
+                      actions={messageActions(message())}
+                      menu={messageMenu(message())}
+                      data-chat-search-message={message().id}
+                    />
                   }
-                  reactions={message().reactions}
-                  onRemoveReaction={props.onReact ? () => props.onReact?.(message(), null) : undefined}
-                  onSelectAgent={() => undefined}
-                  onOpenLink={props.onOpenLink}
-                  onPreview={props.onPreview}
-                  onAttachmentAction={props.onAttachmentAction}
-                  mediaSource={props.mediaSource}
-                  onDownload={(attachment) => props.onAttachmentAction(attachment, "download")}
-                  macWindowControls={props.macWindowControls}
-                  actions={messageActions(message())}
-                  menu={messageMenu(message())}
-                  data-chat-search-message={message().id}
-                />
+                >
+                  {(visual) => <>{visual()}</>}
+                </Show>
                 <Show when={branchDividerAfter(message().id)}>{(source) => <BranchDivider source={source()} />}</Show>
               </div>
             )}
