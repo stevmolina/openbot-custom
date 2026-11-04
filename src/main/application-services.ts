@@ -1,8 +1,10 @@
+import { execFile } from "node:child_process";
 import { isManagedRuntimeProvider } from "@openbot/contracts/agent-providers";
 import { ANALYTICS_GENERATIONS, openPanelTransport, ReportQueue } from "@openbot/telemetry";
 import { fileReportStorage } from "@openbot/telemetry/node";
 import { Effect, Fiber } from "effect";
 import { toAgentRemovalFailed } from "../backend/agent/agent-removal";
+import { perAgentScreensEnabled } from "../backend/agent/agent-screens";
 import { toHostedSiteOperationFailed } from "../backend/agent/hosted-site-coordinator";
 import { AgentApiKeys } from "../backend/agent-api-keys";
 import { AgentDatabaseSupervisor } from "../backend/agent-data/agent-database-supervisor";
@@ -433,6 +435,7 @@ const TEARDOWN_ORDER = {
   serverMemory: 16,
   serverMode: 17,
   computerUseHighlight: 18,
+  agentScreens: 18.5,
   computerUsePermissionHelp: 19,
   dynamicIsland: 20,
   machineAlerts: 21,
@@ -2071,16 +2074,32 @@ export async function createApplicationServices({
   // granted the permissions has a running daemon from here on, and nothing else would start it.
   // The fiber ends with an exit rather than a failure, because agent initialization waits for it
   // whether it worked or not.
+  // Per-agent screens start their own driver on first use. The shared daemon would attach to
+  // OpenBot's display, and every agent would be handed that one socket.
   const computerUseWarmUp = Effect.runFork(
-    cuaDriver.warmUp().pipe(
-      Effect.tap(() =>
-        Effect.sync(() => {
-          if (drawsComputerUseHighlight && cuaDriver.mcpServerForProviders()) computerUseHighlight.start();
-        }),
-      ),
-      Effect.exit,
-    ),
+    Effect.gen(function* () {
+      if (perAgentScreensEnabled()) {
+        service.setComputerUseCapability("ready");
+        return;
+      }
+      yield* cuaDriver.warmUp().pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            if (drawsComputerUseHighlight && cuaDriver.mcpServerForProviders()) computerUseHighlight.start();
+          }),
+        ),
+      );
+    }).pipe(Effect.exit),
   );
+  const screenBin = process.env.OPENBOT_AGENT_SCREEN_BIN;
+  if (perAgentScreensEnabled() && screenBin) {
+    const screenReap = setInterval(() => {
+      execFile(screenBin, ["reap"], { timeout: 10_000 }, () => undefined);
+    }, 30_000);
+    teardown.push(TEARDOWN_ORDER.agentScreens, "agent screens", () => {
+      clearInterval(screenReap);
+    });
+  }
   /*
    * Where the decision put the download: onboarding, which is the screen this start is about to
    * show. A user who finished onboarding before OpenBot downloaded a runtime at all is asked for

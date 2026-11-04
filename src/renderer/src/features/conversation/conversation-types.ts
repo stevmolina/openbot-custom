@@ -428,8 +428,11 @@ export interface ConversationThreads {
   approval: AgentApproval | undefined;
   /** The thread takes files. Only this computer sends them: `agent-tasks-v1` carries text only. */
   acceptsFiles: boolean;
-  /** `attachmentDraftIds` are the files that the text names. */
-  onSend: (text: string, attachmentDraftIds: string[]) => Promise<boolean>;
+  /**
+   * `attachmentDraftIds` are the files that the text names. `replyToMessageId` quotes a message of
+   * this thread, and the reply stays in the thread.
+   */
+  onSend: (text: string, attachmentDraftIds: string[], replyToMessageId?: string | null) => Promise<boolean>;
   onStop: () => void;
   /** The person sees the open side thread through this message. */
   onRead: (messageId: string) => void;
@@ -481,7 +484,7 @@ export interface SideThread {
   task: AgentTask;
   conversation: ConversationSnapshot | undefined;
   approval: AgentApproval | undefined;
-  onSend: (text: string, attachmentDraftIds: string[]) => Promise<boolean>;
+  onSend: (text: string, attachmentDraftIds: string[], replyToMessageId?: string | null) => Promise<boolean>;
   onStop: () => void;
   onRead: (messageId: string) => void;
   onRespondApproval: (decision: "accept" | "decline", options?: PromptAnswerOptions) => Promise<boolean>;

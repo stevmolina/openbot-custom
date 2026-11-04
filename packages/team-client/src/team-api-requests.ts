@@ -247,8 +247,15 @@ export const sendAgentTaskMessage = Effect.fn("TeamClient.sendAgentTaskMessage")
     text,
     attachmentDraftIds,
     clientMessageId,
-  }: AgentTaskInput & { text: string; attachmentDraftIds?: string[]; clientMessageId?: string },
+    replyToMessageId,
+  }: AgentTaskInput & {
+    text: string;
+    attachmentDraftIds?: string[];
+    clientMessageId?: string;
+    replyToMessageId?: string | null;
+  },
 ): Effect.fn.Return<QueuedMessageReceipt, TeamRequestError> {
+  const quoted = typeof replyToMessageId === "string" ? replyToMessageId : undefined;
   return yield* teamCall(() =>
     attachmentDraftIds?.length
       ? request("POST", AGENT_THREAD_FILES_ROUTES.send, decodeTaskReceipt, {
@@ -257,12 +264,14 @@ export const sendAgentTaskMessage = Effect.fn("TeamClient.sendAgentTaskMessage")
           text,
           attachmentDraftIds,
           ...(clientMessageId === undefined ? {} : { clientMessageId }),
+          ...(quoted === undefined ? {} : { replyToMessageId: quoted }),
         })
       : request("POST", AGENT_TASKS_ROUTES.send, decodeTaskReceipt, {
           agentId,
           taskId,
           text,
           ...(clientMessageId === undefined ? {} : { clientMessageId }),
+          ...(quoted === undefined ? {} : { replyToMessageId: quoted }),
         }),
   );
 });

@@ -1,0 +1,206 @@
+#!/bin/bash
+# One virtual screen per agent, started when that agent uses it and stopped after it sits idle.
+#
+# `assign` reserves a display number and prints it. `ensure` starts Xvfb and the computer-use
+# driver on that display. `mcp` is the Computer Use command a provider runs: it ensures the screen,
+# then replaces itself with the driver's MCP proxy. `reap` stops screens that nobody has used for
+# OPENBOT_SCREEN_IDLE_SECONDS (default 180). The display number is kept, so the next use opens the
+# same screen and the provider session fingerprint does not change.
+set -euo pipefail
+
+STATE=${OPENBOT_AGENT_SCREEN_STATE:-${HOME:-/tmp}/.config/openbot-container/agent-screens}
+RUNTIME=${OPENBOT_AGENT_SCREEN_RUNTIME:-${XDG_RUNTIME_DIR:-/tmp}/openbot-agent-screens}
+IDLE=${OPENBOT_SCREEN_IDLE_SECONDS:-180}
+
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
+agent_id() {
+  case ${1:-} in
+    "" | *[!A-Za-z0-9_-]*) fail "The agent id is not a single token." ;;
+  esac
+  printf '%s\n' "$1"
+}
+
+driver_bin() {
+  local here candidate arch
+  here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+  case $(uname -m) in
+    x86_64) arch=x64 ;;
+    aarch64 | arm64) arch=arm64 ;;
+    *) arch=$(uname -m) ;;
+  esac
+  candidate=$here/../cua-driver/linux/$arch/cua-driver
+  if [ -x "$candidate" ]; then
+    printf '%s\n' "$candidate"
+    return
+  fi
+  command -v cua-driver
+}
+
+lock() {
+  mkdir -p "$STATE"
+  local i=0
+  while ! mkdir "$STATE/lock" 2>/dev/null; do
+    i=$((i + 1))
+    [ "$i" -lt 100 ] || fail "The screen lock stayed busy."
+    sleep 0.05
+  done
+  trap 'rmdir "$STATE/lock" 2>/dev/null || true' EXIT
+}
+
+unlock() {
+  rmdir "$STATE/lock" 2>/dev/null || true
+}
+
+display_taken() {
+  local number=$1 file
+  [ -e "/tmp/.X${number}-lock" ] && return 0
+  for file in "$STATE"/*/display; do
+    [ -f "$file" ] || continue
+    [ "$(cat "$file")" = ":$number" ] && return 0
+  done
+  return 1
+}
+
+assign_display() {
+  local agent dir number
+  agent=$(agent_id "$1")
+  dir=$STATE/$agent
+  mkdir -p "$dir"
+  if [ -s "$dir/display" ]; then
+    cat "$dir/display"
+    return
+  fi
+  number=2
+  while display_taken "$number"; do
+    number=$((number + 1))
+    [ "$number" -lt 200 ] || fail "No free virtual display."
+  done
+  printf ':%s\n' "$number" >"$dir/display"
+  printf ':%s\n' "$number"
+}
+
+wait_for_display() {
+  local display=$1 i
+  for i in $(seq 1 50); do
+    xdpyinfo -display "$display" >/dev/null 2>&1 && return 0
+    sleep 0.1
+  done
+  fail "The virtual display $display did not start."
+}
+
+socket_ready() {
+  local socket=$1 i
+  for i in $(seq 1 50); do
+    [ -S "$socket" ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+start_xvfb() {
+  local display=$1 dir=$2 size
+  size=${OPENBOT_DISPLAY_SIZE:-1280x800}
+  nohup Xvfb "$display" -screen 0 "${size}x24" -nolisten tcp >/dev/null 2>&1 &
+  echo $! >"$dir/xvfb.pid"
+  wait_for_display "$display"
+}
+
+start_driver() {
+  local display=$1 dir=$2 socket=$3 driver
+  driver=$(driver_bin)
+  [ -n "$driver" ] || fail "The computer-use driver is not installed."
+  mkdir -p "$(dirname -- "$socket")"
+  DISPLAY=$display CUA_DRIVER_RS_TELEMETRY_ENABLED=0 CUA_DRIVER_RS_UPDATE_CHECK=0 CUA_DRIVER_EMBEDDED=1 \
+    nohup "$driver" serve --socket "$socket" --no-overlay >/dev/null 2>&1 &
+  echo $! >"$dir/driver.pid"
+  socket_ready "$socket" || fail "The computer-use driver did not open $socket."
+}
+
+ensure_screen() {
+  local agent dir display socket
+  agent=$(agent_id "$1")
+  lock
+  display=$(assign_display "$agent")
+  unlock
+  dir=$STATE/$agent
+  socket=$RUNTIME/$agent/driver.sock
+  if ! xdpyinfo -display "$display" >/dev/null 2>&1; then
+    start_xvfb "$display" "$dir"
+  fi
+  if [ ! -S "$socket" ]; then
+    start_driver "$display" "$dir" "$socket"
+  fi
+  date +%s >"$dir/last-used"
+  printf '%s\n' "$display"
+}
+
+stop_runtime() {
+  local dir=$1 pid
+  for pid in driver xvfb; do
+    if [ -s "$dir/$pid.pid" ]; then
+      kill "$(cat "$dir/$pid.pid")" 2>/dev/null || true
+      rm -f "$dir/$pid.pid"
+    fi
+  done
+  rm -f "$dir/last-used"
+  local agent
+  agent=$(basename -- "$dir")
+  rm -f "$RUNTIME/$agent/driver.sock"
+}
+
+reap_screens() {
+  local now dir used
+  now=$(date +%s)
+  for dir in "$STATE"/*; do
+    [ -d "$dir" ] || continue
+    [ -f "$dir/hold" ] && continue
+    [ -s "$dir/last-used" ] || continue
+    used=$(cat "$dir/last-used")
+    if [ $((now - used)) -ge "$IDLE" ]; then
+      stop_runtime "$dir"
+    fi
+  done
+}
+
+viewer_display() {
+  local dir display used best best_used
+  best=""
+  best_used=0
+  for dir in "$STATE"/*; do
+    [ -s "$dir/display" ] && [ -s "$dir/last-used" ] || continue
+    display=$(cat "$dir/display")
+    xdpyinfo -display "$display" >/dev/null 2>&1 || continue
+    used=$(cat "$dir/last-used")
+    if [ "$used" -ge "$best_used" ]; then
+      best=$display
+      best_used=$used
+    fi
+  done
+  [ -n "$best" ] && printf '%s\n' "$best"
+}
+
+command=${1:-}
+case $command in
+  assign)
+    lock
+    assign_display "${2:-}"
+    unlock
+    ;;
+  ensure) ensure_screen "${2:-}" ;;
+  mcp)
+    agent=$(agent_id "${2:-}")
+    ensure_screen "$agent" >/dev/null
+    exec "$(driver_bin)" mcp --socket "$RUNTIME/$agent/driver.sock"
+    ;;
+  stop)
+    agent=$(agent_id "${2:-}")
+    [ -d "$STATE/$agent" ] && stop_runtime "$STATE/$agent"
+    ;;
+  reap) reap_screens ;;
+  viewer) viewer_display || true ;;
+  *) fail "Use assign, ensure, mcp, stop, reap, or viewer." ;;
+esac

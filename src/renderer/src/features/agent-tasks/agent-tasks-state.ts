@@ -299,6 +299,7 @@ export function createAgentTasks(options: AgentTasksOptions) {
     taskId: string,
     text: string,
     attachmentDraftIds: string[] = [],
+    replyToMessageId?: string | null,
   ): Promise<boolean> {
     const receipt = await runAction(
       () =>
@@ -307,6 +308,7 @@ export function createAgentTasks(options: AgentTasksOptions) {
           taskId,
           text,
           ...(attachmentDraftIds.length ? { attachmentDraftIds } : {}),
+          ...(replyToMessageId ? { replyToMessageId } : {}),
           clientMessageId: crypto.randomUUID(),
         }),
       "conversation.threads.error.send",

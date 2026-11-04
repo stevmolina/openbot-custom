@@ -1933,6 +1933,7 @@ export function createConversationViewScope(props: ConversationProps) {
     setThreadScrollElement,
     threadComposer,
     threadFocusRequest,
+    setThreadFocusRequest,
     branchThread,
     threadVoiceLiveText,
     threadVoiceOwned,

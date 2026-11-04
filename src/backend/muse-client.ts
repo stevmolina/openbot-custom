@@ -515,6 +515,7 @@ export class MuseAgentClient extends EventEmitter<ClientEvents> implements Agent
         agentMcpServers(
           this.#options.profileGeneration ? [] : (this.#options.mcpServers?.() ?? []),
           computerUseParam(params),
+          mcpAgentParam(params),
         ),
         this.#options.mcpToolRuntimes?.(),
         this.#options.mcpEndpoint,

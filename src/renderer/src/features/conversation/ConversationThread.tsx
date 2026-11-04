@@ -20,6 +20,7 @@ import { ConversationQuestionPrompt } from "./ConversationQuestionPrompt";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
 import { useConversationViewScope } from "./conversation-scope";
 import type { ConversationThreads } from "./conversation-types";
+import { threadReadAloud } from "./thread-read-aloud";
 import { createTurnSteps } from "./turn-steps";
 
 /** A thread takes files only from this computer, which reads every supported type. */
@@ -46,6 +47,7 @@ export function ConversationThread() {
     mcpServers,
     threadComposer,
     threadFocusRequest,
+    setThreadFocusRequest,
     threadVoiceLiveText,
     threadVoiceOwned,
     startThreadVoiceRecording,
@@ -67,6 +69,7 @@ export function ConversationThread() {
     setThreadScrollElement,
     copyMessage,
     copiedMessageId,
+    reactToMessage,
     branchThread,
   } = useConversationViewScope();
   const { t, errorMessage } = useText();
@@ -124,6 +127,13 @@ export function ConversationThread() {
   const draft = () => {
     const key = threadComposer.openDraftKey();
     return key ? threadComposer.draft(key) : undefined;
+  };
+  /** The message the open thread quotes. It has to be a message of this thread. */
+  const replyTarget = () => {
+    const id = draft()?.replyToMessageId;
+    const conversation = props.threads?.conversation;
+    if (!id || !conversation) return undefined;
+    return toAgentMessages(conversation.messages, props.agent?.id).find((message) => message.id === id);
   };
   const rowImages = () => {
     const key = threadComposer.openDraftKey();
@@ -280,6 +290,16 @@ export function ConversationThread() {
             activeSteps={turnSteps.activeSteps()}
             stepsOpenByDefault={showAgentSteps()}
             sendShortcut={deviceSendShortcut(props.platform)}
+            replyTo={replyTarget()}
+            onCancelReply={() => threadComposer.setReply(threadComposer.openDraftKey(), null)}
+            onReply={(message) => {
+              threadComposer.setReply(threadComposer.openDraftKey(), message.id);
+              setThreadFocusRequest((value) => value + 1);
+            }}
+            onReact={(message, emoji) => void reactToMessage(message, emoji)}
+            readAloud={(message) =>
+              threadReadAloud(props.runtime !== undefined, props.server?.id ?? "local", props.agent?.id, message)
+            }
             onCopyMessage={(message) => void copyMessage(message)}
             copiedMessageId={copiedMessageId()}
             onBranch={branch(current().threads)}

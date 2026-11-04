@@ -13,6 +13,7 @@ import {
 import { type DynamicRecord, isDynamicRecord } from "@openbot/contracts/runtime-values";
 import { sourceText } from "@openbot/i18n/source";
 import { Deferred, Effect, Schema } from "effect";
+import { agentScreenMcpServer, withAgentScreen } from "./agent/agent-screens";
 import { isWindowsRunnable, runInLoginShell } from "./cli";
 import { causeHelpers } from "./effect-boundary";
 import type { McpOperationError } from "./mcp-effects";
@@ -169,8 +170,15 @@ function unusableDrop(server: UnusableMcpServer): McpServerDrop {
  * The configurations one agent is given: all of them, or all but Computer Use when the user turned
  * it off for that agent.
  */
-export function agentMcpServers(configs: readonly McpServerConfig[], computerUse: boolean): readonly McpServerConfig[] {
-  return computerUse ? configs : configs.filter((config) => config.id !== COMPUTER_USE_MCP_SERVER_ID);
+export function agentMcpServers(
+  configs: readonly McpServerConfig[],
+  computerUse: boolean,
+  agentId: string | null = null,
+): readonly McpServerConfig[] {
+  const given = computerUse ? configs : configs.filter((config) => config.id !== COMPUTER_USE_MCP_SERVER_ID);
+  // A Linux server with no shared agent display gives this agent a screen of its own. The shared
+  // entry, when the one driver is running, would point every agent at that one screen.
+  return withAgentScreen(given, agentId, computerUse);
 }
 
 /**
@@ -209,6 +217,8 @@ export const usableMcpServer = Effect.fnUntraced(function* (
   endpoint?: McpEndpointSource,
   agentId: string | null = null,
 ): Effect.fn.Return<UsableMcpServer, McpShapeFailed> {
+  const screen = agentId ? agentScreenMcpServer(agentId) : null;
+  if (screen && config.id === COMPUTER_USE_MCP_SERVER_ID) config = screen;
   // An http server starts no process, so it needs neither a command nor a `PATH`. It is the only
   // kind that can carry a sign-in, because a token travels in a header.
   if (config.transport !== "stdio") {

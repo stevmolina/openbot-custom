@@ -18,7 +18,7 @@ import {
 } from "@openbot/contracts/ipc";
 import { sourceText } from "@openbot/i18n/source";
 import { createOpenBotLogger } from "@openbot/logging";
-import { Deferred, Effect, Schema, Semaphore } from "effect";
+import { Deferred, Effect, Result, Schema, Semaphore } from "effect";
 import { z } from "zod";
 import type { ConversationRuntime } from "../agent/conversation-runtime";
 import type { TaskLanes } from "../agent/drain-scheduler";
@@ -32,6 +32,9 @@ import {
 import type { MailboxStore } from "../mailbox-store";
 import type { DynamicToolCallParams } from "../protocol";
 import { storedSync } from "../stored-state-effects";
+
+import type { CodingJobs } from "./coding-jobs";
+import { RUN_CODING_TASK_TOOL, remoteCodingBrief, runCodingTaskToolSchema } from "./remote-coding-task";
 
 const logger = createOpenBotLogger("agent-tasks");
 
@@ -55,11 +58,9 @@ export interface AgentTasksHooks {
   queued(agentId: string): void;
 }
 
-/** Where `start_task` was called, as the tool router knows it. */
+/** The agent that starts a task, from its own chat or any execution thread. */
 export interface AgentTaskCaller {
   agentId: string;
-  /** A channel, messaging or task turn: only the agent's own chat starts a task. */
-  inExecutionThread: boolean;
 }
 
 /** Why a branch was not made. The cause holds the localized message for the person. */
@@ -79,6 +80,7 @@ export interface AgentTasksOptions {
   mailbox: MailboxStore;
   conversation: ConversationRuntime;
   hooks: AgentTasksHooks;
+  codingJobs?: CodingJobs;
 }
 
 /**
@@ -89,6 +91,7 @@ export interface AgentTasksOptions {
  * It never imports the agent service facade.
  */
 export class AgentTasks implements TaskLanes {
+  readonly #codingJobs: CodingJobs | undefined;
   readonly #store: AgentThreadStore;
   readonly #mailbox: MailboxStore;
   readonly #conversation: ConversationRuntime;
@@ -103,6 +106,7 @@ export class AgentTasks implements TaskLanes {
   readonly #branches = Semaphore.makeUnsafe(1);
 
   constructor(options: AgentTasksOptions) {
+    this.#codingJobs = options.codingJobs;
     this.#store = options.store;
     this.#mailbox = options.mailbox;
     this.#conversation = options.conversation;
@@ -116,6 +120,14 @@ export class AgentTasks implements TaskLanes {
 
   openTaskIds(agentId: string): readonly string[] {
     return this.#store.openTaskIds(agentId);
+  }
+
+  /** Every task thread of this agent, open or closed. */
+  taskThreadIds(agentId: string): string[] {
+    return this.#store.taskIdsForAgent(agentId).flatMap((taskId) => {
+      const task = this.#store.task(taskId);
+      return task ? [task.threadId] : [];
+    });
   }
 
   limit(agentId: string): number {
@@ -435,17 +447,35 @@ export class AgentTasks implements TaskLanes {
     params: DynamicToolCallParams,
     caller: AgentTaskCaller,
   ): Effect.fn.Return<OpenBotToolResponse | null> {
-    if (params.tool !== START_TASK_TOOL) return null;
-    const parsed = startTaskToolSchema.safeParse(params.arguments);
+    if (params.tool !== START_TASK_TOOL && params.tool !== RUN_CODING_TASK_TOOL) return null;
+    const coding = params.tool === RUN_CODING_TASK_TOOL ? runCodingTaskToolSchema.safeParse(params.arguments) : null;
+    if (coding && !coding.success) return openBotToolFailure(sourceText("error.backend.taskToolInvalid"));
+    const context = "openbot-coding-jobs";
+    const parsed = startTaskToolSchema.safeParse(
+      coding?.success
+        ? {
+            title: coding.data.title,
+            brief: remoteCodingBrief(coding.data.repository, coding.data.task, context),
+          }
+        : params.arguments,
+    );
     if (!parsed.success) return openBotToolFailure(sourceText("error.backend.taskToolInvalid"));
-    if (caller.inExecutionThread) return openBotToolFailure(sourceText("error.backend.taskOwnChatOnly"));
     const idempotencyKey = `start-task:${createHash("sha256")
       .update(JSON.stringify([caller.agentId, params.turnId, params.callId]))
       .digest("hex")}`;
     const started = this.#mailbox.deliveryForKey(idempotencyKey);
     const startedTaskId = started ? this.#mailbox.taskIdForDelivery(started.delivery.id) : null;
     const startedTask = startedTaskId ? this.#store.task(startedTaskId) : null;
-    if (startedTask) return startedTaskResult(startedTask);
+    if (startedTask) {
+      const agent = this.#hooks.agent(caller.agentId);
+      if (coding?.success && this.#codingJobs && agent) {
+        const resumed = yield* this.#codingJobs
+          .resumePaused(agent.id, agent.workspacePath, startedTask.taskId)
+          .pipe(Effect.result);
+        if (Result.isFailure(resumed)) return openBotToolFailure(sourceText("error.backend.taskStartFailed"));
+      }
+      return startedTaskResult(startedTask);
+    }
     const open = this.#store.openTaskIds(caller.agentId).length;
     if (open >= AGENT_STARTED_OPEN_TASKS)
       return openBotToolFailure(sourceText("error.backend.taskOpenLimit", { count: AGENT_STARTED_OPEN_TASKS }));
@@ -455,7 +485,9 @@ export class AgentTasks implements TaskLanes {
         sender: { kind: "agent", agentId: caller.agentId },
         taskId: task.taskId,
         recipientAgentIds: [caller.agentId],
-        text: parsed.data.brief,
+        text: coding?.success
+          ? `${parsed.data.brief}\n\nJob directory: ~/openbot-coding-jobs/${encodeURIComponent(task.taskId)}`
+          : parsed.data.brief,
         replyToMessageId: null,
         idempotencyKey,
       })
@@ -471,6 +503,17 @@ export class AgentTasks implements TaskLanes {
     if (!queued) {
       this.discard(task);
       return openBotToolFailure(sourceText("error.backend.taskStartFailed"));
+    }
+    if (coding?.success && this.#codingJobs) {
+      const agent = this.#hooks.agent(caller.agentId);
+      if (!agent) return openBotToolFailure(sourceText("error.backend.taskStartFailed"));
+      const started = yield* this.#codingJobs
+        .start(agent.id, agent.workspacePath, task.taskId, coding.data.repository, coding.data.task)
+        .pipe(Effect.result);
+      if (Result.isFailure(started)) {
+        this.failed(task.taskId, sourceText("error.backend.taskStartFailed"));
+        return openBotToolFailure(sourceText("error.backend.taskStartFailed"));
+      }
     }
     this.changed(caller.agentId);
     this.#hooks.queued(caller.agentId);

@@ -34,6 +34,7 @@ import {
 import { LOCAL_SKILL_TOOL_DEFINITIONS } from "./agent/skill-tools";
 import { CREATE_WEBHOOK_ROUTINE_TOOL, UPDATE_WEBHOOK_ROUTINE_TOOL } from "./agent/webhook-routine-tool";
 import { START_TASK_TOOL, startTaskToolSchema } from "./agent-tasks/agent-tasks";
+import { RUN_CODING_TASK_TOOL, runCodingTaskToolSchema } from "./agent-tasks/remote-coding-task";
 import {
   AWAIT_EVENT_TOOL,
   awaitEventToolSchema,
@@ -557,9 +558,15 @@ export const OPENBOT_TOOL_DEFINITIONS: readonly OpenBotToolDefinition[] = [
     shape: listWaitsToolSchema.shape,
   },
   {
+    name: RUN_CODING_TASK_TOOL,
+    description:
+      "Run an approved GitHub coding job on Agent Computer in a separate persisted task. Give repository as owner/repo, a title and the full task. Starts an agent orchestration task that uses the connected computer tools and Codex. Progress and results stay in that task. Sign-in may be required. Task Stop interrupts orchestration; remote background commands require explicit stop and verification in the task. Does not grant permission to publish or merge.",
+    shape: runCodingTaskToolSchema.shape,
+  },
+  {
     name: START_TASK_TOOL,
     description:
-      "Start a task: a separate conversation of yours that runs beside this chat, with its own context, progress and stop. Use it only for long, independent work that the user asked for and that need not block this chat. The brief is the task's first message: write everything the task needs, because it does not see this chat. The task result stays in the task; you do not receive it. Only your own chat can start a task.",
+      "Start a task: a separate conversation of yours that runs beside this chat, with its own context, progress and stop. Use it only for long, independent work that the user asked for and that need not block this chat. The brief is the task's first message: write everything the task needs, because it does not see this chat. The task result stays in the task; you do not receive it. You can start a task from your own chat, another task, a channel or a messaging conversation. All tasks share the agent's task limits.",
     shape: startTaskToolSchema.shape,
   },
   ...MEMORY_RECALL_TOOL_DEFINITIONS,

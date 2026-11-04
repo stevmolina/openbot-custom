@@ -125,8 +125,11 @@ const start = exact(
   fields({ agentId: identifier, text }, { clientMessageId: identifier }),
 );
 const send = exact(
-  ["agentId", "taskId", "text", "clientMessageId"],
-  fields({ agentId: identifier, taskId: identifier, text }, { clientMessageId: identifier }),
+  ["agentId", "taskId", "text", "clientMessageId", "replyToMessageId"],
+  fields(
+    { agentId: identifier, taskId: identifier, text },
+    { clientMessageId: identifier, replyToMessageId: identifier },
+  ),
 );
 
 export const AGENT_TASKS_CODECS: ReadonlyMap<string, OptionalRouteCodec> = new Map([

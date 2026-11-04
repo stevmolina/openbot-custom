@@ -119,6 +119,7 @@ export async function routeAgentThreadFiles(
     text: stringField(body, "text", true, INPUT_LIMITS.messageText),
     attachmentDraftIds: stringArray(body, "attachmentDraftIds"),
     ...(isString(body.clientMessageId) ? { clientMessageId: body.clientMessageId } : {}),
+    ...(isString(body.replyToMessageId) ? { replyToMessageId: body.replyToMessageId } : {}),
   };
   if (url.pathname === AGENT_THREAD_FILES_ROUTES.start)
     return json(200, await runCauseEffect(tasks.startTask(message, memberSender(member))));

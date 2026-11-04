@@ -47,22 +47,23 @@ rm -f "$XDG_RUNTIME_DIR/control.sock"
 # An assignment first, so `set -e` stops the start when a daemon fails. `eval "$(…)"` ignores it.
 session=$(dbus-launch --sh-syntax)
 eval "$session"
-# OpenBot shows its windows on :0. The agents work on :1: main gives it to Computer Use, to remote
-# desktop and to the agent processes, so an agent's screenshot does not show the OpenBot window.
-# The locks of the last run stay in the container too.
-rm -f /tmp/.X0-lock /tmp/.X11-unix/X0 /tmp/.X1-lock /tmp/.X11-unix/X1
-# The subshells exit at once, so tini adopts Xvfb. As a child of OpenBot, Xvfb would get the high OOM
+# OpenBot shows its windows on :0. Each agent gets a screen of its own when it uses the computer,
+# started by openbot-agent-screen, so an idle agent does not keep a display. The lock of the last
+# run stays in the container too.
+rm -f /tmp/.X0-lock /tmp/.X11-unix/X0
+# The subshell exits at once, so tini adopts Xvfb. As a child of OpenBot, Xvfb would get the high OOM
 # value of the agent processes, and OpenBot stops when the kernel kills its display.
 (Xvfb :0 -screen 0 1280x800x24 -nolisten tcp >/dev/null 2>&1 &)
-(Xvfb :1 -screen 0 "$(display_size "${OPENBOT_DISPLAY_SIZE:-}")x24" -nolisten tcp >/dev/null 2>&1 &)
-export DISPLAY=:0 OPENBOT_AGENT_DISPLAY=:1
-for display in :0 :1; do
-  for _ in $(seq 1 100); do
-    xdpyinfo -display "$display" >/dev/null 2>&1 && break
-    sleep 0.1
-  done
-  xdpyinfo -display "$display" >/dev/null 2>&1 || fail "The virtual display $display did not start."
+export DISPLAY=:0
+export OPENBOT_DISPLAY_SIZE="$(display_size "${OPENBOT_DISPLAY_SIZE:-}")"
+export OPENBOT_AGENT_SCREEN_BIN=/opt/OpenBot/app/resources/hosting/openbot-agent-screen
+export OPENBOT_AGENT_SCREEN_STATE="$HOME/.config/openbot-container/agent-screens"
+unset OPENBOT_AGENT_DISPLAY
+for _ in $(seq 1 100); do
+  xdpyinfo -display :0 >/dev/null 2>&1 && break
+  sleep 0.1
 done
+xdpyinfo -display :0 >/dev/null 2>&1 || fail "The virtual display :0 did not start."
 
 # Each data volume makes its own keyring password on its first start. The password only lets the
 # daemon open the keyring without a person; the file is 0600. A keyring with no password file is not

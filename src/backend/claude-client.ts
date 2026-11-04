@@ -25,6 +25,7 @@ import { type DynamicRecord, isDynamicRecord, isNumber, isOneOf, isString } from
 import { sourceText } from "@openbot/i18n/source";
 import { createOpenBotLogger } from "@openbot/logging";
 import { Deferred, Effect, Exit, Fiber, Scope } from "effect";
+import { agentScreenDisplay } from "./agent/agent-screens";
 import {
   isTurnContextBlock,
   type MemoryContext,
@@ -858,7 +859,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
       ? null
       : claudeMcpServers(
           yield* usableMcpServers(
-            agentMcpServers(this.#mcpServers(), config.computerUse),
+            agentMcpServers(this.#mcpServers(), config.computerUse, config.agentId),
             this.#mcpToolRuntimes?.(),
             this.#mcpEndpoint,
             config.agentId,
@@ -890,6 +891,11 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     if (handoff) this.#reportMcpDrops?.(this.provider, handoff.dropped);
     const mcpServers = handoff ? { ...handoff.servers, ...this.#createOpenBotServers(threadId) } : {};
     const nodeOptions = this.#agentEnvironment?.().NODE_OPTIONS;
+    const display = config.agentId ? agentScreenDisplay(config.agentId) : null;
+    const bashEnv = {
+      ...(nodeOptions ? { NODE_OPTIONS: nodeOptions } : {}),
+      ...(display ? { DISPLAY: display } : {}),
+    };
     const claudeQuery = yield* providerSync(() =>
       this.#createQuery({
         prompt: input,
@@ -935,7 +941,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
           // The SDK deletes NODE_OPTIONS from the environment of the CLI. On a server the agent
           // environment has the CPU limit module there (`agentProcessEnvironment`), so it goes into
           // the flag settings, whose `env` the CLI gives to the Bash tool and its hooks.
-          ...(nodeOptions ? { settings: { env: { NODE_OPTIONS: nodeOptions } } } : {}),
+          ...(Object.keys(bashEnv).length > 0 ? { settings: { env: bashEnv } } : {}),
           ...(config.workspaceOnly
             ? {
                 sandbox: claudeWorkspaceSandbox(config.additionalDirectories, config.excludedFolders),
@@ -951,6 +957,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
             // tools when Finder starts OpenBot. An `env.PATH` in the Claude settings still wins.
             ...(launchPath ? { PATH: launchPath } : {}),
             ...this.#environment(this.#onApiKey),
+            ...(display ? { DISPLAY: display } : {}),
             CLAUDE_AGENT_SDK_CLIENT_APP: "openbot/0.1.0",
             // Without a terminal, the CLI gives the newer models no TodoWrite or task tools, so the
             // agent has no plan for OpenBot to show as a task list.

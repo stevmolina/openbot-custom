@@ -5,9 +5,11 @@ import type {
   AttachmentSummary,
   DraftAttachment,
   InstalledSkill,
+  MessageReaction,
 } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { isAgentTaskActive } from "@openbot/team-client/agent-tasks";
+import { Button, MessageSquareText } from "@openbot/ui";
 import { createScrollFades } from "@openbot/ui/components/createScrollFades";
 import type { AgentMessage, AgentProfile, ComposerMcpServer } from "@openbot/ui/data";
 import { AgentActivityIndicator, nextAgentActivityLabel } from "@openbot/ui/features/conversation/AgentActivity";
@@ -32,8 +34,10 @@ import {
 import { ComposerNotice } from "@openbot/ui/features/conversation/ComposerNotice";
 import { ComposerSendControl } from "@openbot/ui/features/conversation/ComposerSendControl";
 import { ContextUsageMeter, type ContextUsageView } from "@openbot/ui/features/conversation/ContextUsage";
+import { CloseIcon } from "@openbot/ui/features/conversation/ConversationIcons";
 import { ApprovalCard } from "@openbot/ui/features/conversation/ConversationPrompts";
 import { MessageActions, MessageMenu } from "@openbot/ui/features/conversation/MessageRendering";
+import { ReplyQuote } from "@openbot/ui/features/conversation/ReplyQuote";
 import type { SendShortcut } from "@openbot/ui/features/conversation/send-shortcut";
 import { ComposerVoiceControls, type VoicePhase } from "@openbot/ui/features/conversation/VoiceRecordingMorph";
 import { type TextValue, useText } from "@openbot/ui/text";
@@ -167,6 +171,16 @@ export interface AgentThreadViewProps {
   scrollRef?: ((element: HTMLElement) => void) | undefined;
   /** The user's send shortcut. Enter when absent. */
   sendShortcut?: SendShortcut | undefined;
+  /** The message this thread's box quotes. The next send stays in the thread. */
+  replyTo?: AgentMessage | undefined;
+  /** Removes the quote from the thread's box. */
+  onCancelReply?: (() => void) | undefined;
+  /** Quotes a message of this thread. */
+  onReply?: ((message: AgentMessage) => void) | undefined;
+  /** Sets or clears the person's reaction on a message of this thread. */
+  onReact?: ((message: AgentMessage, emoji: MessageReaction | null) => void) | undefined;
+  /** Reads an agent reply aloud. Absent where this computer cannot. */
+  readAloud?: ((message: AgentMessage) => { reading: boolean; onToggle: () => void } | undefined) | undefined;
   /** Copies a message. Without it, the messages have no action row and no right-click menu. */
   onCopyMessage?: ((message: AgentMessage) => void) | undefined;
   /** The message that the copy action copied a moment ago. */
@@ -193,6 +207,8 @@ export function AgentThreadView(props: AgentThreadViewProps) {
   const attention = children(() => props.attention);
   const [sending, setSending] = createSignal(false);
   const [addMenuOpen, setAddMenuOpen] = createSignal(false);
+  const [reactionMessageId, setReactionMessageId] = createSignal<string | null>(null);
+  const [expandedEmojiId, setExpandedEmojiId] = createSignal<string | null>(null);
   const [skillPickerRequest, setSkillPickerRequest] = createSignal(0);
   let scroller: HTMLElement | undefined;
   let atEnd = true;
@@ -303,22 +319,55 @@ export function AgentThreadView(props: AgentThreadViewProps) {
       avatarSeed: senderId,
     };
   };
-  /** The action row of a message: Copy, and Branch on the last answer of a finished turn. */
+  /** Scrolls to a quoted message and flashes its row. */
+  function openQuoted(messageId: string): void {
+    const message = scroller?.querySelector<HTMLElement>(`[data-chat-search-message="${CSS.escape(messageId)}"]`);
+    const row = message?.closest<HTMLElement>(".virtual-chat-row");
+    if (!row) return;
+    atEnd = false;
+    row.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
+    delete row.dataset.replyFlash;
+    void row.offsetWidth;
+    row.dataset.replyFlash = "";
+    const end = (event: AnimationEvent) => {
+      if (event.target !== row || event.animationName !== "reply-flash") return;
+      row.removeEventListener("animationend", end);
+      delete row.dataset.replyFlash;
+    };
+    row.addEventListener("animationend", end);
+  }
+  function quotedMessage(message: AgentMessage): AgentMessage | undefined {
+    const replyToMessageId = message.replyToMessageId;
+    if (!replyToMessageId) return undefined;
+    return props.messages.find((candidate) => candidate.id === replyToMessageId);
+  }
+  /** The action row of a message: the same actions as the agent's own chat, plus Branch. */
   function messageActions(message: AgentMessage): JSX.Element | undefined {
     const onCopy = props.onCopyMessage;
     if (!onCopy || message.streaming) return undefined;
+    const onReply = props.onReply;
+    const onReact = props.onReact;
     return (
       <MessageActions
         message={message}
         authorName={author(message).name}
-        reactions={false}
-        pickerOpen={false}
-        expandedEmoji={false}
+        reactions={onReact !== undefined}
+        pickerOpen={reactionMessageId() === message.id}
+        expandedEmoji={expandedEmojiId() === message.id}
         copied={props.copiedMessageId === message.id}
-        onTogglePicker={() => undefined}
-        onExpandEmoji={() => undefined}
-        onReact={() => undefined}
+        onTogglePicker={() => {
+          setExpandedEmojiId(null);
+          setReactionMessageId((current) => (current === message.id ? null : message.id));
+        }}
+        onExpandEmoji={() => setExpandedEmojiId(message.id)}
+        onReact={(emoji) => {
+          setReactionMessageId(null);
+          setExpandedEmojiId(null);
+          onReact?.(message, emoji);
+        }}
+        onReply={onReply ? () => onReply(message) : undefined}
         onCopy={() => onCopy(message)}
+        readAloud={props.readAloud?.(message)}
         onBranch={branchAction(message)}
         branchDisabled={branchBusy()}
       />
@@ -328,13 +377,17 @@ export function AgentThreadView(props: AgentThreadViewProps) {
   function messageMenu(message: AgentMessage): (() => JSX.Element) | undefined {
     const onCopy = props.onCopyMessage;
     if (!onCopy || message.streaming) return undefined;
+    const onReply = props.onReply;
+    const onReact = props.onReact;
     return () => (
       <MessageMenu
         message={message}
         authorName={author(message).name}
-        reactions={false}
-        onReact={() => undefined}
+        reactions={onReact !== undefined}
+        onReact={(emoji) => onReact?.(message, emoji)}
+        onReply={onReply ? () => onReply(message) : undefined}
         onCopy={() => onCopy(message)}
+        readAloud={props.readAloud?.(message)}
         onBranch={branchAction(message)}
         branchDisabled={branchBusy()}
       />
@@ -365,8 +418,13 @@ export function AgentThreadView(props: AgentThreadViewProps) {
       busy={sending()}
     />
   );
+  const reply = () => props.replyTo;
   return (
     <>
+      <div class="agent-thread-title">
+        <MessageSquareText aria-hidden="true" />
+        <span>{title()}</span>
+      </div>
       <section
         ref={(element: HTMLElement) => {
           scroller = element;
@@ -400,6 +458,12 @@ export function AgentThreadView(props: AgentThreadViewProps) {
                   author={author(message())}
                   agents={props.agents}
                   skills={props.skills}
+                  referencedMessage={quotedMessage(message())}
+                  onOpenReference={
+                    message().replyToMessageId ? () => openQuoted(message().replyToMessageId ?? "") : undefined
+                  }
+                  reactions={message().reactions}
+                  onRemoveReaction={props.onReact ? () => props.onReact?.(message(), null) : undefined}
                   onSelectAgent={() => undefined}
                   onOpenLink={props.onOpenLink}
                   onPreview={props.onPreview}
@@ -490,6 +554,30 @@ export function AgentThreadView(props: AgentThreadViewProps) {
                 removeDisabled={sending() || voicePhase() === "transcribing"}
                 onRemove={(attachment) => remove()(attachment)}
               />
+            )}
+          </Show>
+          <Show when={reply()}>
+            {(message) => (
+              <div class="composer-reply-preview">
+                <div>
+                  <span>{t(message().author === "you" ? "composer.reply.toYou" : "composer.reply.toAgent")}</span>
+                  <ReplyQuote
+                    body={message().body || t("composer.reply.attachment")}
+                    agents={props.agents}
+                    skills={props.skills}
+                    attachments={message().attachments}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  aria-label={t("composer.reply.cancel")}
+                  disabled={voicePhase() === "transcribing"}
+                  onClick={() => props.onCancelReply?.()}
+                >
+                  <CloseIcon />
+                </Button>
+              </div>
             )}
           </Show>
           <div class="composer-input-label">

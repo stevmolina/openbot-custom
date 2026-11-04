@@ -46,6 +46,7 @@ import {
 import { decodeRecordResponse, decodeThreadResponse, getString, type ResponseDecoder } from "../protocol";
 import { TimeoutError, withTimeout } from "../with-timeout";
 import type { AgentMemories } from "./agent-memories";
+import { agentScreenDisplay } from "./agent-screens";
 import { readCodexMcpConfig } from "./codex-mcp-config";
 import type { ContextCompaction } from "./context-compaction";
 import type { ConversationRuntime } from "./conversation-runtime";
@@ -606,7 +607,7 @@ export class ThreadLifecycle {
     // this session was started with, including the names swept out of the provider's own file.
     const own = yield* this.codexOwnServersEffect(client, mcpServers, toolRuntimes);
     // The same single reading, so the manifest records the variables this session was started with.
-    const environment = this.#agentEnvironment();
+    const environment = this.#agentScreenEnvironment(agent);
     // The same single reading, so the manifest records the section-mates these instructions name.
     const section = this.#sectionTeammates(agent.id);
     // Read before the configuration, which starts the same listener: both see one port.
@@ -1031,7 +1032,13 @@ export class ThreadLifecycle {
 
   /** The enabled servers this agent is given. Without Computer Use the fingerprint changes, so Codex replaces the session. */
   #agentMcpServers(agent: AgentSummary): readonly McpServerConfig[] {
-    return agentMcpServers(this.#mcpServers(), agentComputerUseEnabled(agent));
+    return agentMcpServers(this.#mcpServers(), agentComputerUseEnabled(agent), agent.id);
+  }
+
+  /** The process environment, plus this agent's own display when screens are not shared. */
+  #agentScreenEnvironment(agent: AgentSummary): Readonly<Record<string, string>> {
+    const display = agentScreenDisplay(agent.id);
+    return { ...this.#agentEnvironment(), ...(display ? { DISPLAY: display } : {}) };
   }
 
   /**
@@ -1077,7 +1084,7 @@ export class ThreadLifecycle {
     const toolRuntimes = this.#toolRuntimes();
     const own = yield* this.codexOwnServersEffect(client, configs, toolRuntimes);
     const proxy = yield* this.#proxyFingerprint(configs);
-    const environment = this.#agentEnvironment();
+    const environment = this.#agentScreenEnvironment(agent);
     const section = this.#sectionTeammates(agent.id);
     const approvals = this.#toolApprovals(configs, own);
     const instructionsFile = yield* this.#instructionsFile(agent, client);
@@ -1241,7 +1248,7 @@ export class ThreadLifecycle {
         configs,
         yield* this.codexOwnServersEffect(client, configs, toolRuntimes),
         toolRuntimes,
-        this.#agentEnvironment(),
+        this.#agentScreenEnvironment(agent),
       )),
     };
   }).bind(this);

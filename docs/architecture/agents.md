@@ -340,7 +340,8 @@ each branch under its source. The branch has no provider session, so its first t
 its own transcript, with a note that workspace files were not rolled back. A branch counts toward the
 open-thread limit.
 
-The agent starts a side thread with the `start_task` OpenBot tool, up to 8 open tasks. On desktop and
+The agent starts a side thread with the `start_task` OpenBot tool from its own chat, another task,
+a channel or a messaging conversation. These callers share the limit of 8 unfinished tasks. On desktop and
 the web, it opens as a tab of the agent and does not take focus. An agent has at most 50
 open tasks (`INPUT_LIMITS.agentTasks`, the size of the task list), so each open task stays visible. A message to a
 running task waits in the task, or steers the turn when the agent's busy-message mode is "steer"

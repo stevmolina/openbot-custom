@@ -695,6 +695,7 @@ export function agentIpcHandlers({
                 text: input.text,
                 ...files,
                 ...(input.clientMessageId === undefined ? {} : { clientMessageId: input.clientMessageId }),
+                ...(input.replyToMessageId ? { replyToMessageId: input.replyToMessageId } : {}),
               },
             );
           }

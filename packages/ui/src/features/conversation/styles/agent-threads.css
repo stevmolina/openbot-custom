@@ -171,9 +171,9 @@
 .agent-threads-tab.ui-sliding-tabs-trigger {
   display: inline-flex;
   /* A width, not only a flex basis: the tab row takes its width from the widths of its tabs. */
-  width: 140px;
+  width: 220px;
   min-width: 96px;
-  max-width: 140px;
+  max-width: 220px;
   flex: 0 1 auto;
   align-items: center;
   gap: var(--openbot-space-1-5);
@@ -644,6 +644,33 @@
 .agent-threads-tab-mark[data-kind="failed"] .agent-threads-state-icon {
   background: var(--openbot-danger-soft);
   color: var(--openbot-danger-text);
+}
+
+/* The open thread: a small icon and its name, above the messages. */
+.agent-thread-title {
+  display: flex;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  min-width: 0;
+  padding: var(--openbot-space-3) var(--openbot-space-4) 0;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-md);
+  font-weight: var(--openbot-weight-medium);
+  line-height: var(--openbot-leading-md);
+}
+
+.agent-thread-title > svg {
+  flex: none;
+  width: var(--openbot-icon-sm);
+  height: var(--openbot-icon-sm);
+  color: var(--openbot-text-secondary);
+}
+
+.agent-thread-title > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-thread-origin {

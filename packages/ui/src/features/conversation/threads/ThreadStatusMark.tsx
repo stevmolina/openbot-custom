@@ -1,5 +1,5 @@
 import type { AppTextKey } from "@openbot/i18n";
-import { Clock3, Split, X } from "@openbot/ui";
+import { Clock3, MessageSquareText, X } from "@openbot/ui";
 import { TypingDots } from "@openbot/ui/components/TypingDots";
 import { SidebarWaitIcon } from "@openbot/ui/features/sidebar/SidebarAgentIndicator";
 import type { SidebarWaitReason } from "@openbot/ui/features/sidebar/sidebar-types";
@@ -89,11 +89,11 @@ function StatusIcon(props: { status: ThreadStatus }) {
 
 /**
  * The icon slot of a thread tab, in the chat header and in the side panel: the badge of the thread's
- * state, or the thread icon while the thread is idle.
+ * state, or a small thread icon while the thread is idle.
  */
 export function ThreadTabIcon(props: { status: ThreadStatus }) {
   return (
-    <Show when={props.status.kind !== "idle"} fallback={<Split aria-hidden="true" />}>
+    <Show when={props.status.kind !== "idle"} fallback={<MessageSquareText aria-hidden="true" />}>
       <StatusBadge status={props.status} />
     </Show>
   );

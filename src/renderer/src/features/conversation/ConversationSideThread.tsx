@@ -15,6 +15,7 @@ import { usePlatform } from "../../platform";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
 import { useConversationViewScope } from "./conversation-scope";
 import type { SideThread } from "./conversation-types";
+import { threadReadAloud } from "./thread-read-aloud";
 import { createTurnSteps } from "./turn-steps";
 
 /**
@@ -35,6 +36,7 @@ export function ConversationSideThread(props: { threadId: string }) {
     movePanelThreadToChat,
     copyMessage,
     copiedMessageId,
+    reactToMessage,
     branchThread,
   } = useConversationViewScope();
   const { t, errorMessage } = useText();
@@ -84,6 +86,12 @@ export function ConversationSideThread(props: { threadId: string }) {
   const draft = () => {
     const key = draftKey();
     return key ? threadComposer.draft(key) : undefined;
+  };
+  const replyTarget = () => {
+    const id = draft()?.replyToMessageId;
+    const conversation = thread()?.conversation;
+    if (!id || !conversation) return undefined;
+    return toAgentMessages(conversation.messages, view.agent?.id).find((message) => message.id === id);
   };
   /** Sends the draft of this thread. Without its key, a send would take the draft of the chat's thread. */
   function sendSide(side: SideThread, text: string): Promise<boolean> {
@@ -165,6 +173,13 @@ export function ConversationSideThread(props: { threadId: string }) {
             factsAbove={turnSteps.factsAbove}
             activeSteps={turnSteps.activeSteps()}
             stepsOpenByDefault={showAgentSteps()}
+            replyTo={replyTarget()}
+            onCancelReply={() => threadComposer.setReply(draftKey(), null)}
+            onReply={(message) => threadComposer.setReply(draftKey(), message.id)}
+            onReact={(message, emoji) => void reactToMessage(message, emoji)}
+            readAloud={(message) =>
+              threadReadAloud(view.runtime !== undefined, view.server?.id ?? "local", view.agent?.id, message)
+            }
             onCopyMessage={(message) => void copyMessage(message)}
             copiedMessageId={copiedMessageId()}
             onBranch={branch()}
