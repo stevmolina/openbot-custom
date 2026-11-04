@@ -72,6 +72,76 @@ export function writeThreadTabs(tabs: ThreadTabsByServer, storage: ThreadTabsSto
   }
 }
 
+/**
+ * One tab of the tabs of all agents: an agent's own chat (`main`), its new thread (`draft`) or one of
+ * its side threads. The tabs of all agents show in the chat header in the order the user opened them,
+ * as in a browser.
+ */
+export interface OpenThreadTab {
+  agentId: string;
+  threadId: string;
+}
+
+/** Server id → tabs of all agents, in tab order. */
+export type OpenTabsByServer = Record<string, OpenThreadTab[]>;
+
+/** Version 1 kept a tab list per agent in `openbot:thread-tabs:v1`, which still holds the side panel tabs. */
+const OPEN_TABS_STORAGE_KEY = "openbot:open-tabs:v1";
+
+const openTabSchema = z.object({ agentId: id, threadId: id });
+const openTabsSchema = z.record(id, z.array(openTabSchema.nullable().catch(null)).catch([]));
+
+function uniqueTabs(tabs: readonly (OpenThreadTab | null)[]): OpenThreadTab[] {
+  const seen = new Set<string>();
+  const result: OpenThreadTab[] = [];
+  for (const tab of tabs) {
+    if (!tab) continue;
+    const key = `${tab.agentId}/${tab.threadId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ agentId: tab.agentId, threadId: tab.threadId });
+  }
+  return result.slice(0, MAX_STORED_TABS);
+}
+
+/**
+ * Reads the tabs of all agents. Before the first write, the side thread tabs of each agent from
+ * version 1 are the tabs, agent after agent, so no open tab is lost.
+ */
+export function readOpenTabs(storage: ThreadTabsStorage = window.localStorage): OpenTabsByServer {
+  try {
+    const raw = storage.getItem(OPEN_TABS_STORAGE_KEY);
+    if (raw === null) {
+      const result: OpenTabsByServer = {};
+      for (const [serverId, agents] of Object.entries(readThreadTabs(storage))) {
+        const tabs = uniqueTabs(
+          Object.entries(agents).flatMap(([agentId, agent]) => agent.open.map((threadId) => ({ agentId, threadId }))),
+        );
+        if (tabs.length > 0) result[serverId] = tabs;
+      }
+      return result;
+    }
+    const parsed = openTabsSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) return {};
+    const result: OpenTabsByServer = {};
+    for (const [serverId, tabs] of Object.entries(parsed.data)) {
+      const unique = uniqueTabs(tabs);
+      if (unique.length > 0) result[serverId] = unique;
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+export function writeOpenTabs(tabs: OpenTabsByServer, storage: ThreadTabsStorage = window.localStorage): void {
+  try {
+    storage.setItem(OPEN_TABS_STORAGE_KEY, JSON.stringify(tabs));
+  } catch {
+    // A UI preference must not block navigation when browser storage is unavailable.
+  }
+}
+
 /** A side thread that is archived and waits for the end of its Undo time before the delete. */
 export interface PendingThreadDelete {
   serverId: string;

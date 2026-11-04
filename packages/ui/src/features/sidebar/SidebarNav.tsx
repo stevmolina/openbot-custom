@@ -12,6 +12,7 @@ import { SidebarEmptyState } from "./SidebarEmptyState";
 import { SidebarHiddenGroup } from "./SidebarHiddenGroup";
 import { SidebarPinnedGroup } from "./SidebarPinnedGroup";
 import { SidebarSectionList } from "./SidebarSectionList";
+import { SidebarThreadLanes } from "./SidebarThreadLanes";
 import { SidebarWaitingGroup } from "./SidebarWaitingGroup";
 import { useSidebarScope } from "./sidebar-scope";
 
@@ -60,8 +61,17 @@ export function SidebarNav() {
           <SidebarEmptyState />
         </Show>
         <SidebarPinnedGroup />
-        <SidebarWaitingGroup />
-        <SidebarSectionList />
+        <Show
+          when={props.threadLanes}
+          fallback={
+            <>
+              <SidebarWaitingGroup />
+              <SidebarSectionList />
+            </>
+          }
+        >
+          {(lanes) => <SidebarThreadLanes lanes={lanes()} />}
+        </Show>
         <SidebarHiddenGroup />
         <Show when={props.showingArchivedChannels}>
           <section class="sidebar-chat-group sidebar-section" aria-label={t("sidebar.deletedChannels.title")}>
@@ -79,7 +89,7 @@ export function SidebarNav() {
         when={
           props.createSupported !== false ||
           props.onCreateChannel ||
-          layoutMutable() ||
+          (layoutMutable() && !props.threadLanes) ||
           props.onMarkAllRead ||
           props.onToggleArchivedChannels
         }
@@ -100,7 +110,8 @@ export function SidebarNav() {
                   <span>{t("sidebar.new.channel")}</span>
                 </ContextMenu.Item>
               </Show>
-              <Show when={layoutMutable()}>
+              {/* The thread lanes show no folders, so a new folder would not show. */}
+              <Show when={layoutMutable() && !props.threadLanes}>
                 <ContextMenu.Item onSelectAfterClose={() => startCreateSection()}>
                   <FolderPlus class="agent-context-icon size-4" aria-hidden="true" />
                   <span>{t("sidebar.new.section")}</span>

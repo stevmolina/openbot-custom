@@ -134,6 +134,18 @@ function routineState(phase: SidebarRoutinePhase, count: number): SidebarAgentSt
   return { kind: "routine", phase, count };
 }
 
+/**
+ * The wait of one thread, from its prompt or takeover and its approval. The thread lanes read it for
+ * each side thread; an agent's own chat goes through `computeSidebarAgentStates`.
+ */
+export function sidebarThreadWait(
+  prompt: SidebarAttention | undefined,
+  approval: SidebarApproval | undefined,
+): SidebarChannelWait | undefined {
+  const wait = waitingState(prompt, approval);
+  return wait?.kind === "waiting" ? wait : undefined;
+}
+
 /** When a prompt and an approval are both pending, the prompt names the wait. */
 function waitingState(
   prompt: SidebarAttention | undefined,

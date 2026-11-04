@@ -33,6 +33,18 @@ export type SidebarView = "agents" | "routines";
  */
 export const SIDEBAR_HIDDEN_GROUP_OPEN_ID = "hidden-agents:open";
 
+/**
+ * The lists of the thread lanes are not sections of the layout either. Their ids in
+ * `collapsedSectionIds` record that the user collapsed them. The colon keeps them apart from the
+ * section ids that the layout makes.
+ */
+export const SIDEBAR_LANE_IDS = {
+  waiting: "lanes:waiting",
+  working: "lanes:working",
+  agents: "lanes:agents",
+  channels: "lanes:channels",
+} as const;
+
 export interface SidebarProps {
   /** The switch over the list is shown only when the caller handles `onViewChange`. */
   view?: SidebarView | undefined;
@@ -133,6 +145,11 @@ export interface SidebarProps {
   onOpenMarketplace: () => void;
   /** The agents are still on their way, so an empty list says that it connects rather than that it is empty. */
   agentsConnecting?: boolean | undefined;
+  /**
+   * The thread lanes: "Needs you" and "Working" list each thread of each agent, and "Agents" lists each
+   * agent once. Without it, the list shows the sections of the layout, as before.
+   */
+  threadLanes?: SidebarThreadLanes | undefined;
   emptyAction?:
     | {
         label: string;
@@ -181,3 +198,25 @@ export type ResolvedPinnedItem = { ref: SidebarPinnedItem; chat: SidebarChatItem
 export type SidebarChatItem =
   | { kind: "agent"; id: string; agent: AgentProfile }
   | { kind: "channel"; id: string; channel: ChannelSummary };
+
+/** A thread that needs the user or works. A thread with any other state is not in the lanes. */
+export interface SidebarThreadEntry {
+  agentId: string;
+  /** `main` for the agent's own chat, else the id of the side thread. */
+  threadId: string;
+  /** The title of the side thread. Null for the agent's own chat. */
+  title: string | null;
+  state: Extract<SidebarAgentState, { kind: "waiting" | "working" }>;
+  /** The last change of the thread, as an ISO time. Null when unknown. */
+  updatedAt: string | null;
+}
+
+export interface SidebarThreadLanes {
+  threads: readonly SidebarThreadEntry[];
+  /** The thread on screen, from `threadTabKey`. Null while no agent chat is on screen. */
+  activeKey: string | null;
+  /** The agents whose own chat has a reply that the user did not read. */
+  unreadAgentIds: ReadonlySet<string>;
+  /** Shows the agent's chat with the thread open. */
+  onOpenThread: (agentId: string, threadId: string) => void;
+}

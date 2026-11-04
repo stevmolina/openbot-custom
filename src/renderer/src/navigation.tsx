@@ -98,6 +98,14 @@ const Navigation = createSimpleContext({
       return true;
     }
 
+    /**
+     * Shows an agent's chat with one of its threads open: its own chat (`main`) or a side thread. The
+     * thread gets a tab at the end of the tabs, as a link does in a browser.
+     */
+    function openAgentThread(agentId: string, threadId: string): void {
+      if (selectAgent(agentId)) agentThreads.open(agentId, threadId);
+    }
+
     async function selectDirectMember(memberId: string): Promise<void> {
       if (agentSetupOpen() && creatingAgent()) return;
       if (!peopleEnabled || !currentTeamMember() || !directPeople().some((member) => member.id === memberId)) return;
@@ -289,6 +297,7 @@ const Navigation = createSimpleContext({
 
     return {
       selectAgent,
+      openAgentThread,
       selectDirectMember,
       openAgentMessage,
       messageFocusRequest,

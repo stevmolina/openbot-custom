@@ -1,6 +1,7 @@
 import { type ChatWindowTarget, canAdministerServer } from "@openbot/contracts/ipc";
 import { AGENT_HIDDEN_CAPABILITY } from "@openbot/contracts/team-protocol/current";
 import { computeAgentAvatarMoods } from "@openbot/ui/features/agents/agent-avatar-mood";
+import { threadTabKey } from "@openbot/ui/features/conversation/threads/thread-types";
 import { Sidebar } from "@openbot/ui/features/sidebar/Sidebar";
 import { SidebarCommunityCard } from "@openbot/ui/features/sidebar/SidebarCommunityCard";
 import { SidebarMachineCard } from "@openbot/ui/features/sidebar/SidebarMachineCard";
@@ -19,6 +20,7 @@ import { usePlatform } from "../../platform";
 import { useTurns } from "../../turns";
 import { useAgentTasks } from "../agent-tasks/agent-tasks-context";
 import { useAgentThreads } from "../agent-threads/agent-threads-context";
+import { createThreadActivity } from "../agent-threads/thread-activity";
 import { useAgentActions } from "../agents/agent-actions";
 import { attentionByAgent } from "../agents/agent-runtime-snapshot";
 import { agentThreadAttention } from "../agents/agent-thread-attention";
@@ -97,9 +99,30 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
   const { unreadReplies, recentReplies, markAllAgentMessagesRead } = useConversation();
   const { directPeople, teamPresence } = usePresence();
   const { activeDirectMember, activeDirectMemberId, directThreads } = useDirectMessages();
-  const { selectAgent, selectDirectMember, setGlobalSearchVisibility, chatHistory } = useNavigation();
+  const { selectAgent, openAgentThread, selectDirectMember, setGlobalSearchVisibility, chatHistory } = useNavigation();
   const agentTasks = useAgentTasks();
   const agentThreads = useAgentThreads();
+  const threadActivity = createThreadActivity();
+  /**
+   * The lanes list the threads of every agent, so each agent's thread list loads once per server.
+   * Events keep a loaded list current.
+   */
+  const requestedThreadLists = new Set<string>();
+  createEffect(
+    () =>
+      agentTasks.available()
+        ? agentList()
+            .map((agent) => `${activeServerId()}/${agent.id}`)
+            .filter((key) => !requestedThreadLists.has(key))
+        : [],
+    (keys) => {
+      for (const key of keys) {
+        requestedThreadLists.add(key);
+        const agentId = key.slice(key.indexOf("/") + 1);
+        if (!agentTasks.snapshot(agentId)) void agentTasks.loadTasks(agentId);
+      }
+    },
+  );
   /**
    * Opens the agent's chat with a new thread. A host without threads has no such item, and neither has a
    * chat window: another agent opens in a window of its own, which does not get the new thread.
@@ -342,6 +365,17 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
       onDuplicateAgent={duplicateAgent}
       onDeleteAgent={deleteAgent}
       userHiddenAgents={userHiddenAgents()}
+      threadLanes={{
+        threads: threadActivity.entries(),
+        activeKey: (() => {
+          const agent = activeAgent();
+          return agent && !activeDirectMember() && !channels.state.selectedId
+            ? threadTabKey(agent.id, agentThreads.activeId(agent.id))
+            : null;
+        })(),
+        unreadAgentIds: threadActivity.unreadAgentIds(),
+        onOpenThread: openAgentThread,
+      }}
       onHideAgent={hideAllowed() ? (agentId) => void setAgentHiddenByUser(agentId, true) : undefined}
       onRestoreAgent={hideAllowed() ? (agentId) => void setAgentHiddenByUser(agentId, false) : undefined}
       onNewAgentThread={newAgentThread()}

@@ -34,6 +34,7 @@ import { useAuth } from "../account/account-context";
 import { useAgentTasks } from "../agent-tasks/agent-tasks-context";
 import { useAgentThreads } from "../agent-threads/agent-threads-context";
 import { conversationThreads } from "../agent-threads/conversation-threads";
+import { createThreadActivity } from "../agent-threads/thread-activity";
 import { attentionKey } from "../agents/agent-runtime-snapshot";
 import { agentThreadAttention } from "../agents/agent-thread-attention";
 import { useAgents } from "../agents/agents-context";
@@ -183,7 +184,7 @@ export function WorkspaceConversation(props: { account: () => CentralAuthUser })
   // the provider's rate-limit endpoint for a card the user may never see.
   const auth = useAuth();
   const { teamPresence, currentTeamMember } = usePresence();
-  const { selectAgent, openAgentMessage, messageFocusRequest, globalSearchOpen } = useNavigation();
+  const { selectAgent, openAgentThread, openAgentMessage, messageFocusRequest, globalSearchOpen } = useNavigation();
 
   // The waits of the agents that this agent asked, by the same rules as the sidebar's "Needs you".
   const agentWaits = createMemo(() =>
@@ -349,6 +350,7 @@ export function WorkspaceConversation(props: { account: () => CentralAuthUser })
   const { t } = useText();
   const agentTasks = useAgentTasks();
   const agentThreads = useAgentThreads();
+  const threadActivity = createThreadActivity();
   /** The active agent's threads. A host without side threads shows only the agent's own chat. */
   const threads = createMemo((): ConversationThreads | undefined => {
     const agent = activeAgent();
@@ -368,6 +370,14 @@ export function WorkspaceConversation(props: { account: () => CentralAuthUser })
       contextStates: threadContextStates,
       onCompactContext: compactTaskContext(),
       onOpenMainMessage: (messageId) => void openAgentMessage(agent.id, messageId),
+      // A chat window shows one agent, so it keeps the tabs of that agent.
+      allTabs: platform.chatWindow
+        ? undefined
+        : {
+            agents: agentList(),
+            status: threadActivity.threadStatus,
+            open: openAgentThread,
+          },
     });
   });
   /** The thread that the conversation shows: the open side thread, or the agent's own chat. */

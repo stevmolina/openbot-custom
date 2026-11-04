@@ -297,6 +297,44 @@
   opacity: 1;
 }
 
+/* A tab of the tabs of all agents, as in a browser: the agent's face with the thread's state on its
+   corner, the title, the copy word in muted text, and the close control at the end, shown on hover. */
+.agent-threads-tab-avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--openbot-icon-lg);
+  height: var(--openbot-icon-lg);
+}
+
+.agent-threads-tab-avatar .agent-avatar {
+  width: 18px;
+  height: 18px;
+}
+
+.agent-threads-tab-avatar .agent-row-agent-status {
+  right: -6px;
+  bottom: -5px;
+  border-color: var(--openbot-bg-canvas);
+  box-shadow: none;
+  transform: scale(0.62);
+}
+
+.agent-threads-tab[aria-selected="true"] .agent-threads-tab-avatar .agent-row-agent-status {
+  border-color: var(--openbot-bg-control-active);
+}
+
+.agent-threads-tab-copy {
+  flex: none;
+  color: var(--openbot-text-muted);
+  white-space: nowrap;
+}
+
+.agent-threads-tab-close-end {
+  margin-left: auto;
+}
+
 /* As tall as a tab and with its corners, so a hover fill on "+" matches the tab fill. */
 .agent-threads-icon-button.ui-button {
   width: var(--openbot-control-sm);
