@@ -18,7 +18,7 @@ import { usePlatform } from "../../platform";
 import { backgroundWorkerItems } from "./background-worker-items";
 import { chatVisualPageUrl } from "./chat-visual-url";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
-import { useConversationViewScope } from "./conversation-scope";
+import { type QuoteDestination, useConversationViewScope } from "./conversation-scope";
 import type { SideThread } from "./conversation-types";
 import { ThreadVisualReply } from "./ThreadVisualReply";
 import { threadReadAloud } from "./thread-read-aloud";
@@ -29,6 +29,10 @@ import { createTurnSteps } from "./turn-steps";
  * files, and the question and takeover cards of the thread, stay in the chat. A thread that waits
  * for an answer shows a card that moves it to the chat.
  */
+function sideQuote(destination: QuoteDestination, threadId: string): boolean {
+  return destination.kind === "side" && destination.threadId === threadId;
+}
+
 export function ConversationSideThread(props: { threadId: string }) {
   const {
     props: view,
@@ -42,6 +46,9 @@ export function ConversationSideThread(props: { threadId: string }) {
     movePanelThreadToChat,
     copyMessage,
     copiedMessageId,
+    quoteRequest,
+    quoteDestination,
+    openQuote,
     reactToMessage,
     branchThread,
     awaitingReplies,
@@ -221,6 +228,9 @@ export function ConversationSideThread(props: { threadId: string }) {
             factsAbove={turnSteps.factsAbove}
             activeSteps={turnSteps.activeSteps()}
             stepsOpenByDefault={showAgentSteps()}
+            quoteRequest={quoteRequest()}
+            applyQuote={sideQuote(quoteDestination(), props.threadId)}
+            onOpenQuote={openQuote}
             replyTo={replyTarget()}
             onCancelReply={() => threadComposer.setReply(draftKey(), null)}
             onReply={(message) => threadComposer.setReply(draftKey(), message.id)}

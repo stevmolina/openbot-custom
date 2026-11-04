@@ -77,6 +77,9 @@ export function ConversationThread() {
     setThreadScrollElement,
     copyMessage,
     copiedMessageId,
+    quoteRequest,
+    quoteDestination,
+    openQuote,
     reactToMessage,
     branchThread,
   } = useConversationViewScope();
@@ -337,6 +340,9 @@ export function ConversationThread() {
             activeSteps={turnSteps.activeSteps()}
             stepsOpenByDefault={showAgentSteps()}
             sendShortcut={deviceSendShortcut(props.platform)}
+            quoteRequest={quoteRequest()}
+            applyQuote={quoteDestination().kind === "open"}
+            onOpenQuote={openQuote}
             replyTo={replyTarget()}
             onCancelReply={() => threadComposer.setReply(threadComposer.openDraftKey(), null)}
             onReply={(message) => {
