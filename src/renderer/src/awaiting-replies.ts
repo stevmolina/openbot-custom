@@ -63,7 +63,12 @@ export function agentAwaitingReplies(input: AgentAwaitingInput): AwaitingReplyIt
       const state = deliveryState(delivery.status);
       if (!state || (state === "failed" && index < lastUserIndex)) continue;
       const wait = state === "failed" ? undefined : input.waits?.[delivery.recipientAgentId];
-      rows.push({ ...rowFor(delivery.recipientAgentId, state, id), ...(wait ? { wait } : {}) });
+      rows.push({
+        ...rowFor(delivery.recipientAgentId, state, id),
+        taskTitle: previewText(message.body),
+        since: message.createdAt,
+        ...(wait ? { wait } : {}),
+      });
     }
     // The answers wait until every teammate of this request is done, so none is read next yet.
     const exchangeRows = rows.slice(firstRow);
