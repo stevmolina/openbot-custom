@@ -14,6 +14,9 @@ export interface AwaitingReplyItem {
   /** The agent that owes the reply. A remote or removed agent has no profile. */
   agent?: AgentProfile | undefined;
   name: string;
+  /** Original request title and timestamp for the live worker row. */
+  taskTitle?: string;
+  since?: string;
   state: AwaitingReplyState;
   /** A line under the name, such as the start of a reply that waits in the queue. */
   preview?: string;

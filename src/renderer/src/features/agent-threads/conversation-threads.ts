@@ -127,6 +127,7 @@ export function conversationThreads(input: ConversationThreadsInput): Conversati
   };
   const focus = tabs.messageFocus();
   return {
+    background: list.filter((task) => task.state === "running" || task.state === "queued"),
     header: {
       ...lists,
       activeId,

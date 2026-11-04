@@ -47,3 +47,5 @@
 @import "./styles/browser-previews.css";
 @import "./styles/browser-dock.css";
 @import "./styles/browser-full-view.css";
+
+@import "./styles/background-workers.css";
