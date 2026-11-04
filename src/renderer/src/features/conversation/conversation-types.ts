@@ -413,6 +413,8 @@ export type { SidePanelPane } from "@openbot/ui/features/conversation/SidePanel"
  * main thread. Each action applies to the open thread.
  */
 export interface ConversationThreads {
+  /** Active tasks, including background tasks without an open tab. */
+  background?: readonly AgentTask[];
   header: ThreadHeaderProps;
   /** The side threads with a tab in the side panel. */
   side: SideThreads;

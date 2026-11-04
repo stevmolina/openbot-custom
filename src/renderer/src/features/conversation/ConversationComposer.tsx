@@ -19,6 +19,7 @@ import {
 import { sourceText } from "@openbot/i18n/source";
 import { Button, Input } from "@openbot/ui";
 import { AwaitingReplies } from "@openbot/ui/features/conversation/AwaitingReplies";
+import { type BackgroundWorker, BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
 import { ComposerAddMenu } from "@openbot/ui/features/conversation/ComposerAddMenu";
 import { ComposerAttachmentRow } from "@openbot/ui/features/conversation/ComposerAttachmentRow";
 import { ComposerEditor } from "@openbot/ui/features/conversation/ComposerEditor";
@@ -166,7 +167,9 @@ export function ConversationComposer() {
     const target = currentConversationTarget(props);
     return target && `${target.serverId}:${target.agentId}`;
   };
-  const awaitingVisible = () => awaitingReplies().length > 0 && !pickerOpen();
+  const awaitingCardItems = () =>
+    awaitingReplies().filter((item) => !(item.state === "working" && !item.wait && item.agent));
+  const awaitingVisible = () => awaitingCardItems().length > 0 && !pickerOpen();
   const waitItems = createMemo(() => openWaitItems(props.waits ?? [], props.queue));
   const waitsVisible = () => waitItems().length > 0 && Boolean(props.onCancelWait) && !pickerOpen();
   const slotOpen = () => queueVisible() || awaitingVisible() || waitsVisible();
@@ -374,6 +377,28 @@ export function ConversationComposer() {
       onSend={submitComposer}
     />
   );
+  const backgroundWorkers = createMemo((): BackgroundWorker[] => [
+    ...(props.threads?.background ?? []).map((task) => ({
+      id: task.id,
+      agent: props.agent,
+      title: task.title,
+      since: task.createdAt,
+      state: task.state === "queued" ? ("queued" as const) : ("running" as const),
+      onOpen: () => props.threads?.header.onOpen(task.id),
+    })),
+    ...awaitingReplies()
+      .filter((item) => item.state === "working" && !item.wait && item.agent)
+      .map((item) => ({
+        id: item.id,
+        agent: item.agent,
+        title: item.taskTitle?.trim() || item.preview?.trim() || item.name,
+        since: item.since ?? "",
+        state: "running" as const,
+        onOpen: () => {
+          if (item.agent) props.onSelectAgent(item.agent.id);
+        },
+      })),
+  ]);
   return (
     <Show
       when={!channel?.readOnly()}
@@ -396,6 +421,7 @@ export function ConversationComposer() {
             />
           )}
         </Show>
+        <BackgroundWorkers items={backgroundWorkers()} />
         {/* One card for everything above the input: see composer-stack.css. */}
         <div class="composer-stack">
           <div
@@ -407,7 +433,7 @@ export function ConversationComposer() {
             <div class="agent-queue-slot-inner">
               <Show when={awaitingVisible()}>
                 <AwaitingReplies
-                  items={awaitingReplies()}
+                  items={awaitingCardItems()}
                   title={channel ? t("chat.awaiting.subtasks") : undefined}
                   onDismiss={dismissAwaitingReplies}
                   onOpenAgent={props.onSelectAgent}

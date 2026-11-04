@@ -127,6 +127,7 @@
     "./features/conversation/TaskList": "./src/features/conversation/TaskList.tsx",
     "./features/conversation/Subagents": "./src/features/conversation/Subagents.tsx",
     "./features/conversation/TraceWaterfall": "./src/features/conversation/TraceWaterfall.tsx",
+    "./features/conversation/BackgroundWorkers": "./src/features/conversation/BackgroundWorkers.tsx",
     "./features/conversation/AwaitingReplies": "./src/features/conversation/AwaitingReplies.tsx",
     "./features/conversation/OpenWaits": "./src/features/conversation/OpenWaits.tsx",
     "./features/conversation/CodeBlock": "./src/features/conversation/CodeBlock.tsx",
