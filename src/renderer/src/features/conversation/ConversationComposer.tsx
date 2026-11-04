@@ -385,7 +385,6 @@ export function ConversationComposer() {
     backgroundWorkerItems({
       agent: props.agent,
       messages: props.messages,
-      activeTurnId: props.activeTurnId,
       tasks: props.threads?.background ?? [],
       replies: awaitingReplies(),
       onOpenSubagent: toggleSubagentPanel,

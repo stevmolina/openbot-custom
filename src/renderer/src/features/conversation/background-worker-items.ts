@@ -9,7 +9,6 @@ type Task = { id: string; title: string; createdAt: string; state: string };
 export function backgroundWorkerItems(input: {
   agent: BackgroundWorker["agent"];
   messages: readonly { turnId?: string | undefined; subagents?: readonly Subagent[] | undefined }[];
-  activeTurnId: string | null | undefined;
   tasks: readonly Task[];
   excludeTaskId?: string | undefined;
   replies: Iterable<Reply>;
@@ -18,7 +17,7 @@ export function backgroundWorkerItems(input: {
   onOpenAgent: (id: string) => void;
 }): BackgroundWorker[] {
   return [
-    ...runningSubagents(input.messages, input.activeTurnId).map((worker) => ({
+    ...runningSubagents(input.messages).map((worker) => ({
       id: `subagent:${worker.id}`,
       agent: input.agent,
       title: worker.title,
@@ -52,21 +51,19 @@ export function backgroundWorkerItems(input: {
 }
 
 /**
- * The subagents that still run. A foreground subagent counts only in the active turn, because the
- * backend stops it when its turn ends. A background subagent outlives its turn, so it counts from
- * any message until the backend marks it ended (task notification, process exit, or boot recovery).
+ * The background subagents that still run. A background subagent outlives its turn, so it counts
+ * from any message until the backend marks it ended (task notification, process exit, or boot
+ * recovery). A foreground subagent already shows in the turn's own activity; listing it here made
+ * the composer jump on each turn that used one.
  */
 function runningSubagents(
   messages: readonly { turnId?: string | undefined; subagents?: readonly Subagent[] | undefined }[],
-  activeTurnId: string | null | undefined,
 ): Subagent[] {
   const latest = new Map<string, Subagent>();
-  for (const message of messages) {
-    const active = Boolean(activeTurnId) && message.turnId === activeTurnId;
+  for (const message of messages)
     for (const worker of message.subagents ?? []) {
       latest.delete(worker.id);
-      if (worker.status === "running" && (worker.background || active)) latest.set(worker.id, worker);
+      if (worker.status === "running" && worker.background) latest.set(worker.id, worker);
     }
-  }
   return [...latest.values()];
 }

@@ -1,5 +1,5 @@
-import { BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
-import { createSignal } from "solid-js";
+import { type BackgroundWorker, BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
+import { createSignal, onCleanup } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import { STORY_AGENTS } from "./fixtures";
 
@@ -36,6 +36,43 @@ export const ReferenceRow: Story = {
           }
         />
         <output>{open() ? "Worker details opened" : ""}</output>
+      </>
+    );
+  },
+};
+
+/** A reply that streams: the parent rebuilds the item list on each token, every 50 ms. Rows must stay mounted. */
+export const Streaming: Story = {
+  render: () => {
+    const [tick, setTick] = createSignal(0);
+    const since = new Date(Date.now() - 89_000).toISOString();
+    const timer = window.setInterval(() => setTick((value) => value + 1), 50);
+    onCleanup(() => window.clearInterval(timer));
+    const rows = (): BackgroundWorker[] => {
+      tick();
+      return [
+        {
+          id: "worker",
+          agent: STORY_AGENTS[0],
+          title: "Add background worker visibility",
+          since,
+          state: "running",
+          onOpen: () => undefined,
+        },
+        {
+          id: "queued",
+          agent: STORY_AGENTS[1],
+          title: "Check broken links",
+          since,
+          state: "queued",
+          onOpen: () => undefined,
+        },
+      ];
+    };
+    return (
+      <>
+        <BackgroundWorkers items={rows()} />
+        <output data-tick={tick()} />
       </>
     );
   },
