@@ -1,3 +1,4 @@
+import { usePlatform } from "../../platform";
 import { createSimpleContext } from "../../simple-context";
 import { useAgentTasks } from "../agent-tasks/agent-tasks-context";
 import { useAgents } from "../agents/agents-context";
@@ -10,7 +11,13 @@ const AgentThreads = createSimpleContext({
   init: () => {
     const { activeServerId } = useServers();
     const { activeAgentId } = useAgents();
-    return createAgentThreadTabs({ serverId: activeServerId, activeAgentId, tasks: useAgentTasks(), allAgents: true });
+    // A chat window shows one agent and keeps its tabs, so it does not write the tabs of all agents.
+    return createAgentThreadTabs({
+      serverId: activeServerId,
+      activeAgentId,
+      tasks: useAgentTasks(),
+      allAgents: !usePlatform().chatWindow,
+    });
   },
 });
 

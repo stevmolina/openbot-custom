@@ -32,6 +32,8 @@ import { useSidebarScope } from "./sidebar-scope";
 import { type SidebarThreadLanes as Lanes, SIDEBAR_LANE_IDS, type SidebarThreadEntry } from "./sidebar-types";
 
 /** The relative times of the "Working" rows move on once a minute. */
+const entryKey = (entry: SidebarThreadEntry) => threadTabKey(entry.agentId, entry.threadId);
+
 const CLOCK_TICK_MS = 60_000;
 
 export function SidebarThreadLanes(laneProps: { lanes: Lanes }) {
@@ -82,18 +84,19 @@ export function SidebarThreadLanes(laneProps: { lanes: Lanes }) {
         count={waiting().length + waitingChannels().length}
         tone="waiting"
       >
-        <For each={waiting()}>
+        {/* Keyed by thread, so a new list after a task event keeps each row, its focus and its tooltip. */}
+        <For each={waiting()} keyed={entryKey}>
           {(entry) => (
-            <SidebarThreadRow entry={entry} agentById={agentById()} copyWords={copyWords()} lanes={laneProps.lanes} />
+            <SidebarThreadRow entry={entry()} agentById={agentById()} copyWords={copyWords()} lanes={laneProps.lanes} />
           )}
         </For>
         <For each={waitingChannels()}>{(channel) => <SidebarChannelRow channel={channel} waiting />}</For>
       </SidebarLane>
       <SidebarLane id={SIDEBAR_LANE_IDS.working} title={t("sidebar.lanes.working")} count={working().length}>
-        <For each={working()}>
+        <For each={working()} keyed={entryKey}>
           {(entry) => (
             <SidebarThreadRow
-              entry={entry}
+              entry={entry()}
               agentById={agentById()}
               copyWords={copyWords()}
               lanes={laneProps.lanes}
@@ -103,7 +106,9 @@ export function SidebarThreadLanes(laneProps: { lanes: Lanes }) {
         </For>
       </SidebarLane>
       <SidebarLane id={SIDEBAR_LANE_IDS.agents} title={t("sidebar.lanes.agents")} count={families().length}>
-        <For each={families()}>{(family) => <SidebarAgentLaneRow family={family} lanes={laneProps.lanes} />}</For>
+        <For each={families()} keyed={(family) => family.main.id}>
+          {(family) => <SidebarAgentLaneRow family={family()} lanes={laneProps.lanes} />}
+        </For>
       </SidebarLane>
       <SidebarLane id={SIDEBAR_LANE_IDS.channels} title={t("sidebar.lanes.channels")} count={channels().length}>
         <For each={channels()}>{(channel) => <SidebarChannelRow channel={channel} />}</For>

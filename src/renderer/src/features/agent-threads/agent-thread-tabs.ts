@@ -52,12 +52,12 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
   const { serverId, activeAgentId, tasks } = options;
   const allAgents = options.allAgents === true;
   const scopeIsCurrent = createScopeGuard();
-  const [tabsByServer, setTabsByServer] = createSignal<ThreadTabsByServer>(readThreadTabs());
-  const [openTabsByServer, setOpenTabsByServer] = createSignal<OpenTabsByServer>(allAgents ? readOpenTabs() : {});
+  const [tabsByServer, setTabsByServer] = createFreshSignal<ThreadTabsByServer>(readThreadTabs());
+  const [openTabsByServer, setOpenTabsByServer] = createFreshSignal<OpenTabsByServer>(allAgents ? readOpenTabs() : {});
   /** Agents with a new thread tab. A new thread that has no message is not kept after a restart. */
-  const [drafts, setDrafts] = createSignal<ReadonlySet<string>>(new Set());
+  const [drafts, setDrafts] = createFreshSignal<ReadonlySet<string>>(new Set());
   /** Threads that wait for the end of their Undo time before the delete. */
-  const [hidden, setHidden] = createSignal<ReadonlySet<string>>(new Set());
+  const [hidden, setHidden] = createFreshSignal<ReadonlySet<string>>(new Set());
   /** Agent-started threads that already had their tab added, so a closed tab stays closed. */
   const seen = new Set<string>();
   /** The message that a side thread scrolls to when it shows, after a click on "Branched from". */
@@ -108,7 +108,7 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     else delete agents[agentId];
     const next = { ...stored, [server]: agents };
     if (Object.keys(agents).length === 0) delete next[server];
-    setTabsByServer(next);
+    setTabsByServer(() => next);
     writeThreadTabs(next);
     syncOpenTabs(agentId, tabs?.open ?? []);
     // The scroll to a message belongs to the tab that opened at it. Another tab ends it, so the thread
@@ -126,7 +126,7 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     const server = serverId();
     const next = { ...readOpenTabs(), [server]: [...tabs] };
     if (tabs.length === 0) delete next[server];
-    setOpenTabsByServer(next);
+    setOpenTabsByServer(() => next);
     writeOpenTabs(next);
   }
 
@@ -666,6 +666,27 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     messageFocus,
     forgetAgent,
   };
+}
+
+/**
+ * A signal whose read gives the last write at once. A write in an event handler reaches a plain signal
+ * only after the flush, and a tab action reads the tabs again in the same handler: a stale read there
+ * would write a closed tab back.
+ */
+function createFreshSignal<T>(initial: T): [() => T, (next: (current: T) => T) => void] {
+  let latest = initial;
+  // The value lives in `latest`; the signal only tells readers that it changed.
+  const [version, setVersion] = createSignal(0);
+  return [
+    () => {
+      version();
+      return latest;
+    },
+    (next) => {
+      latest = next(latest);
+      setVersion((current) => current + 1);
+    },
+  ];
 }
 
 /** A message that a side thread scrolls to once. A new request has a new nonce. */

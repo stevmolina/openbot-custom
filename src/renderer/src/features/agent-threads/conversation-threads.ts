@@ -283,6 +283,8 @@ function allAgentHeader(
     onClose: (id) => {
       const key = threadTabKey(resolve(id).agentId, resolve(id).threadId);
       const index = keys.indexOf(key);
+      // The last tab stays: the chat on screen always has its tab.
+      if (keys.length <= 1 && key === activeKey) return;
       const next = keys[index - 1] ?? keys[index + 1];
       const target = resolve(key);
       tabs.closeOpenTab(target.agentId, target.threadId);
