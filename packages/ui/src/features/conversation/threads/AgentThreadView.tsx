@@ -123,6 +123,7 @@ export interface AgentThreadViewProps {
   /** The files that the draft names. */
   draftAttachments?: DraftAttachment[] | undefined;
   /** The images of the draft that show in the thumbnail row. A send takes them with the text. */
+  aboveComposer?: JSX.Element;
   rowAttachments?: readonly DraftAttachment[] | undefined;
   /** The pasted images that still import, with their local previews. */
   pendingImages?: readonly ComposerPendingImage[] | undefined;
@@ -558,6 +559,7 @@ export function AgentThreadView(props: AgentThreadViewProps) {
         </div>
       </section>
       <div class="composer-wrap">
+        {props.aboveComposer}
         <Show when={failed()}>
           {(task) => (
             <ComposerNotice

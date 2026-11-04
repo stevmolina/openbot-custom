@@ -5,6 +5,7 @@ import type { AppTextKey } from "@openbot/i18n";
 import { classifyFailure } from "@openbot/telemetry";
 import { Input } from "@openbot/ui";
 import type { AgentMessage } from "@openbot/ui/data";
+import { BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
 import { ChatSearch } from "@openbot/ui/features/conversation/ChatSearch";
 import { contextUsageView } from "@openbot/ui/features/conversation/ContextUsage";
 import { AgentThreadView, type AgentThreadVoice } from "@openbot/ui/features/conversation/threads/AgentThreadView";
@@ -14,8 +15,10 @@ import { createEffect, createMemo, createProjection, createSignal, Show, untrack
 import { actionToast } from "../../action-toast";
 import { useShowAgentSteps } from "../../agent-steps-preference";
 import { toAgentMessages } from "../../app-message-projection";
+import { agentAwaitingReplies } from "../../awaiting-replies";
 import { usePlatform } from "../../platform";
 import { deviceSendShortcut } from "../../send-shortcut-preference";
+import { backgroundWorkerItems } from "./background-worker-items";
 import { ConversationBrowserTakeover } from "./ConversationBrowserTakeover";
 import { ConversationQuestionPrompt } from "./ConversationQuestionPrompt";
 import { chatVisualPageUrl } from "./chat-visual-url";
@@ -41,6 +44,8 @@ const THREAD_ATTACHMENT_ACCEPT = supportedAttachmentExtensions({
 export function ConversationThread() {
   const {
     props,
+    awaitingReplies,
+    toggleSubagentPanel,
     openExternalMessageUrl,
     previewAttachment,
     attachmentAction,
@@ -218,6 +223,28 @@ export function ConversationThread() {
       </>
     );
   };
+  const backgroundWorkers = createMemo(() => {
+    const replies = new Map(awaitingReplies().map((item) => [item.id, item]));
+    for (const item of agentAwaitingReplies({
+      messages,
+      queue: props.queue?.agentId === props.agent?.id ? props.queue : undefined,
+      agents: props.agents,
+      self: props.agent,
+      waits: props.agentWaits,
+    }))
+      replies.set(item.id, item);
+    return backgroundWorkerItems({
+      agent: props.agent,
+      messages,
+      activeTurnId: props.threads?.open?.activeTurnId,
+      tasks: props.threads?.background ?? [],
+      excludeTaskId: props.threads?.open?.id,
+      replies: replies.values(),
+      onOpenSubagent: toggleSubagentPanel,
+      onOpenTask: (id) => props.threads?.header.onOpen(id),
+      onOpenAgent: props.onSelectAgent,
+    });
+  });
   return (
     <Show when={view()}>
       {(current) => (
@@ -246,6 +273,7 @@ export function ConversationThread() {
             />
           </Show>
           <AgentThreadView
+            aboveComposer={<BackgroundWorkers items={backgroundWorkers()} />}
             scrollRef={setThreadScrollElement}
             task={current().threads.open ?? null}
             limit={current().threads.limit}

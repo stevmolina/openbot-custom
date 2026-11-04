@@ -207,8 +207,9 @@ export function ConversationPanels(panelProps: { onOpenUsage?: ((trigger: HTMLBu
   const panelSubagent = createMemo(() => {
     const subagentId = panelSubagentId();
     if (!subagentId) return undefined;
-    for (let index = props.messages.length - 1; index >= 0; index -= 1) {
-      const found = props.messages[index]?.subagents?.find((subagent) => subagent.id === subagentId);
+    const messages = [...props.messages, ...(props.threads?.conversation?.messages ?? [])];
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const found = messages[index]?.subagents?.find((subagent) => subagent.id === subagentId);
       if (found) return found;
     }
     return undefined;
