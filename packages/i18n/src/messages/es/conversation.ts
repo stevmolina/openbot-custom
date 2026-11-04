@@ -84,6 +84,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "{name} inició este hilo.",
   "conversation.threads.branch.from": "Ramificado de {title}",
   "conversation.threads.branch.fromDeleted": "Ramificado de un hilo eliminado",
+  "conversation.threads.view.emptyTitle": "¿En qué te gustaría trabajar?",
+  "conversation.threads.view.emptySubtitle": "Una nueva conversación con {name}.",
   "conversation.threads.view.newPlaceholder": "Nuevo hilo con {name}",
   "conversation.threads.view.placeholder": "Escribe a {name} en {title}",
   "conversation.threads.view.queued": "Mensajes en espera en este hilo",

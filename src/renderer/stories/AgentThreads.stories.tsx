@@ -6,7 +6,7 @@ import { createAppDom, openChat, PrototypeApp } from "./prototype-support";
 import "./agent-threads-story.css";
 
 /** The real app on Chief, with the open tabs that this device stored. */
-function AgentThreadsApp(props: { open: string[]; active: string | null }) {
+function AgentThreadsApp(props: { open: string[]; active: string | null; startNew?: boolean }) {
   localStorage.setItem(
     TABS_KEY,
     JSON.stringify({ [LOCAL_SERVER_ID]: { [AGENT_ID]: { open: props.open, active: props.active } } }),
@@ -15,8 +15,19 @@ function AgentThreadsApp(props: { open: string[]; active: string | null }) {
   onSettled(() => {
     const root = app.dom.root;
     if (!root) return;
+    let openedChat = false;
     const observer = new MutationObserver(() => {
-      if (openChat(root, AGENT_ID)) observer.disconnect();
+      if (!openedChat) openedChat = openChat(root, AGENT_ID);
+      if (!openedChat) return;
+      if (!props.startNew) {
+        observer.disconnect();
+        return;
+      }
+      const button = root.querySelector<HTMLButtonElement>(".agent-threads-icon-button");
+      if (button) {
+        button.click();
+        observer.disconnect();
+      }
     });
     observer.observe(root, { subtree: true, childList: true });
     return () => observer.disconnect();
@@ -67,3 +78,8 @@ export const BranchOfDeletedThread: Story = {
 
 /** No side thread is open: the header shows only "New thread" and the menu. */
 export const NoTabs: Story = { render: () => <AgentThreadsApp open={[]} active={null} /> };
+
+/** A new side thread before its first message: the centered agent avatar and prompt. */
+export const NewThread: Story = {
+  render: () => <AgentThreadsApp open={["pricing"]} active={null} startNew />,
+};

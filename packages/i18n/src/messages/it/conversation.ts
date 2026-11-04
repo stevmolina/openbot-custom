@@ -84,6 +84,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "{name} ha avviato questo thread.",
   "conversation.threads.branch.from": "Ramificato da {title}",
   "conversation.threads.branch.fromDeleted": "Ramificato da un thread eliminato",
+  "conversation.threads.view.emptyTitle": "Su cosa vorresti lavorare?",
+  "conversation.threads.view.emptySubtitle": "Una nuova conversazione con {name}.",
   "conversation.threads.view.newPlaceholder": "Nuovo thread con {name}",
   "conversation.threads.view.placeholder": "Scrivi a {name} in {title}",
   "conversation.threads.view.queued": "Messaggi in attesa in questo thread",

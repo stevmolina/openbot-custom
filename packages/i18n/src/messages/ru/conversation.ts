@@ -86,6 +86,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "{name} начал эту ветку.",
   "conversation.threads.branch.from": "Ответвление от: {title}",
   "conversation.threads.branch.fromDeleted": "Ответвление от удалённой ветки",
+  "conversation.threads.view.emptyTitle": "Над чем бы вы хотели поработать?",
+  "conversation.threads.view.emptySubtitle": "Новый разговор с {name}.",
   "conversation.threads.view.newPlaceholder": "Новая ветка с {name}",
   "conversation.threads.view.placeholder": "Написать {name} в ветке {title}",
   "conversation.threads.view.queued": "Сообщения, ожидающие в этой ветке",

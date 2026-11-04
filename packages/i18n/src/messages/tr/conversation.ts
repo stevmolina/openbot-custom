@@ -84,6 +84,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "{name} bu mesaj dizisini başlattı.",
   "conversation.threads.branch.from": "Dallandırıldığı yer: {title}",
   "conversation.threads.branch.fromDeleted": "Silinmiş bir mesaj dizisinden dallandırıldı",
+  "conversation.threads.view.emptyTitle": "Ne üzerinde çalışmak istersin?",
+  "conversation.threads.view.emptySubtitle": "{name} ile yeni bir sohbet.",
   "conversation.threads.view.newPlaceholder": "{name} ile yeni mesaj dizisi",
   "conversation.threads.view.placeholder": "{title} içinde {name} adlı ajana mesaj yaz",
   "conversation.threads.view.queued": "Bu mesaj dizisinde bekleyen mesajlar",

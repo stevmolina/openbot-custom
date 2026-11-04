@@ -646,6 +646,43 @@
   color: var(--openbot-danger-text);
 }
 
+/* A new side thread before its first message: the agent avatar and a prompt in the middle of the pane. */
+.agent-thread-empty {
+  box-sizing: border-box;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--openbot-space-1-5);
+  padding: var(--openbot-space-8) var(--openbot-space-4);
+  text-align: center;
+}
+
+.agent-thread-empty-avatar.agent-avatar {
+  width: calc(var(--openbot-control-xl) * 1.2);
+  height: calc(var(--openbot-control-xl) * 1.2);
+  margin-bottom: var(--openbot-space-2);
+}
+
+.agent-thread-empty-title {
+  margin: 0;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-2xl);
+  font-weight: var(--openbot-weight-semibold);
+  letter-spacing: var(--openbot-tracking-tight);
+  line-height: var(--openbot-leading-2xl);
+}
+
+.agent-thread-empty-subtitle {
+  max-width: 22rem;
+  margin: 0;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-md);
+  line-height: var(--openbot-leading-md);
+  text-wrap: balance;
+}
+
 /* The open thread: a small icon and its name, above the messages. */
 .agent-thread-title {
   display: flex;

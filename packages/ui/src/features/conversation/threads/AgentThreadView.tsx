@@ -12,6 +12,7 @@ import { isAgentTaskActive } from "@openbot/team-client/agent-tasks";
 import { Button, MessageSquareText } from "@openbot/ui";
 import { createScrollFades } from "@openbot/ui/components/createScrollFades";
 import type { AgentMessage, AgentProfile, ComposerMcpServer } from "@openbot/ui/data";
+import { AgentAvatar } from "@openbot/ui/features/agents/AgentAvatar";
 import { AgentActivityIndicator, nextAgentActivityLabel } from "@openbot/ui/features/conversation/AgentActivity";
 import {
   type AgentStep,
@@ -421,12 +422,23 @@ export function AgentThreadView(props: AgentThreadViewProps) {
     />
   );
   const reply = () => props.replyTo;
+  const visibleMessages = createMemo(() => props.messages.filter(shownInThread));
+  const empty = () =>
+    visibleMessages().length === 0 &&
+    props.task?.origin !== "agent" &&
+    !running() &&
+    !props.approval &&
+    attention.toArray().length === 0 &&
+    !hold() &&
+    !queued();
   return (
     <>
-      <div class="agent-thread-title">
-        <MessageSquareText aria-hidden="true" />
-        <span>{title()}</span>
-      </div>
+      <Show when={props.task}>
+        <div class="agent-thread-title">
+          <MessageSquareText aria-hidden="true" />
+          <span>{title()}</span>
+        </div>
+      </Show>
       <section
         ref={(element: HTMLElement) => {
           scroller = element;
@@ -437,13 +449,22 @@ export function AgentThreadView(props: AgentThreadViewProps) {
         aria-label={t("conversation.threads.view.label", { title: title() })}
         onScroll={fades.measure}
       >
+        <Show when={empty()}>
+          <div class="agent-thread-empty">
+            <AgentAvatar agent={props.agent} mood="idle" motion="always" class="agent-thread-empty-avatar" />
+            <h2 class="agent-thread-empty-title">{t("conversation.threads.view.emptyTitle")}</h2>
+            <p class="agent-thread-empty-subtitle">
+              {t("conversation.threads.view.emptySubtitle", { name: props.agent.name })}
+            </p>
+          </div>
+        </Show>
         <div class="virtual-chat-list virtual-chat-list-static" ref={fades.watch}>
           <Show when={props.task?.origin === "agent"}>
             <p class="agent-thread-origin">
               {t("conversation.threads.view.startedByAgent", { name: props.agent.name })}
             </p>
           </Show>
-          <For each={props.messages.filter(shownInThread)} keyed={(message) => message.id}>
+          <For each={visibleMessages()} keyed={(message) => message.id}>
             {(message) => (
               <div class="virtual-chat-row">
                 <Show when={props.stepsAbove?.(message().id)}>

@@ -81,6 +81,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "该话题由 {name} 发起。",
   "conversation.threads.branch.from": "分支自 {title}",
   "conversation.threads.branch.fromDeleted": "分支自已删除的话题",
+  "conversation.threads.view.emptyTitle": "你想处理什么工作？",
+  "conversation.threads.view.emptySubtitle": "与 {name} 的一段新对话。",
   "conversation.threads.view.newPlaceholder": "与 {name} 的新话题",
   "conversation.threads.view.placeholder": "在 {title} 中给 {name} 发消息",
   "conversation.threads.view.queued": "该话题中等待的消息",

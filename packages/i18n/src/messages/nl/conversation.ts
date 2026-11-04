@@ -84,6 +84,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "{name} heeft deze thread gestart.",
   "conversation.threads.branch.from": "Afgetakt van {title}",
   "conversation.threads.branch.fromDeleted": "Afgetakt van een verwijderde thread",
+  "conversation.threads.view.emptyTitle": "Waar wil je aan werken?",
+  "conversation.threads.view.emptySubtitle": "Een nieuw gesprek met {name}.",
   "conversation.threads.view.newPlaceholder": "Nieuwe thread met {name}",
   "conversation.threads.view.placeholder": "Bericht aan {name} in {title}",
   "conversation.threads.view.queued": "Berichten die in deze thread wachten",

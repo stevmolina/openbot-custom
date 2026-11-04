@@ -83,6 +83,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "{name}이(가) 이 스레드를 시작했어요.",
   "conversation.threads.branch.from": "{title}에서 분기됨",
   "conversation.threads.branch.fromDeleted": "삭제된 스레드에서 분기됨",
+  "conversation.threads.view.emptyTitle": "어떤 작업을 함께 할까요?",
+  "conversation.threads.view.emptySubtitle": "{name}와(과) 시작하는 새 대화.",
   "conversation.threads.view.newPlaceholder": "{name}와(과) 새 스레드",
   "conversation.threads.view.placeholder": "{title}에서 {name}에게 메시지 보내기",
   "conversation.threads.view.queued": "이 스레드에서 대기 중인 메시지",
