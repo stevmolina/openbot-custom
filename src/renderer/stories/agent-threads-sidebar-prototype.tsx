@@ -278,7 +278,6 @@ function ThreadRow(props: {
 const LANES: { title: string; states: ThreadState[] }[] = [
   { title: "Needs you", states: ["approval", "question"] },
   { title: "Working", states: ["working"] },
-  { title: "Done", states: ["done"] },
 ];
 
 /** C. Threads by state across every agent. The agent and copy are the second line. */
@@ -340,6 +339,10 @@ function AgentsSection(props: { selection: Selection; layout: "list" | "grid" })
     const thread = instance?.threads.find((candidate) => candidate.title === "Main chat") ?? instance?.threads[0];
     return instance && thread ? { instance, thread } : undefined;
   };
+  /** A finished thread with a reply the user has not read, in any copy of the bot. */
+  const [seen, setSeen] = createSignal<readonly string[]>([]);
+  const unread = (family: PrototypeFamily) =>
+    ROWS.find((row) => row.family === family && row.thread.state === "done" && !seen().includes(row.thread.id));
   const [open, setOpen] = createSignal(true);
   return (
     <section class="atp-group atp-agents" aria-label="Agents">
@@ -362,22 +365,39 @@ function AgentsSection(props: { selection: Selection; layout: "list" | "grid" })
           <For each={FAMILIES}>
             {(family) => (
               <Show when={main(family)}>
-                {(entry) => (
-                  <button
-                    type="button"
-                    class={["atp-agent", { "atp-selected": props.selection.selected() === entry().thread.id }]}
-                    aria-label={`${family.name}, ${family.role}. Open the main chat`}
-                    onClick={() => props.selection.select(entry().thread, entry().instance.agentId)}
-                  >
-                    <span class="atp-agent-avatar">
-                      <AgentAvatar seed={family.seed} hue={family.hue} motion="idle" />
-                    </span>
-                    <span class="atp-agent-name">{family.name}</span>
-                    <Show when={props.layout === "list"}>
-                      <span class="atp-agent-role">{family.role}</span>
-                    </Show>
-                  </button>
-                )}
+                {(entry) => {
+                  // A click opens the new reply when there is one, else the main chat.
+                  const target = () => unread(family) ?? { instance: entry().instance, thread: entry().thread };
+                  return (
+                    <button
+                      type="button"
+                      class={[
+                        "atp-agent",
+                        {
+                          "atp-selected": props.selection.selected() === target().thread.id,
+                          "atp-agent-unread": unread(family) !== undefined,
+                        },
+                      ]}
+                      aria-label={`${family.name}, ${family.role}${unread(family) ? ". New reply" : ""}`}
+                      onClick={() => {
+                        const { thread, instance } = target();
+                        setSeen((ids) => [...ids, thread.id]);
+                        props.selection.select(thread, instance.agentId);
+                      }}
+                    >
+                      <span class="atp-agent-avatar">
+                        <AgentAvatar seed={family.seed} hue={family.hue} motion="idle" />
+                      </span>
+                      <span class="atp-agent-name">{family.name}</span>
+                      <Show when={props.layout === "list"}>
+                        <span class="atp-agent-role">{family.role}</span>
+                      </Show>
+                      <Show when={unread(family)}>
+                        <span class="atp-unread-dot" aria-hidden="true" />
+                      </Show>
+                    </button>
+                  );
+                }}
               </Show>
             )}
           </For>
