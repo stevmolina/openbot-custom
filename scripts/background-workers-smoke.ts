@@ -37,6 +37,21 @@ try {
   checks.push(
     "Real app shows background tasks even without open tabs, queued state, and navigates to task conversation",
   );
+  await page.goto(`${base}/iframe.html?id=conversation-agent-threads--side-thread&viewMode=story`);
+  const threadComposer = (title: string) => page.locator(".composer-wrap").filter({ hasText: `in ${title}` });
+  const sideWorker = threadComposer("Pricing page copy").getByRole("button", { name: /Competitor scan.*Running/ });
+  await sideWorker.waitFor();
+  await page.screenshot({ path: resolve(out, "side-thread.png") });
+  await sideWorker.click();
+  await page.getByText("Reading three pricing pages", { exact: true }).first().waitFor();
+  await threadComposer("Competitor scan").waitFor();
+  assert.equal(
+    await threadComposer("Competitor scan")
+      .getByRole("button", { name: /Competitor scan.*Running/ })
+      .count(),
+    0,
+  );
+  checks.push("Open side thread shows other background workers above its composer, navigates, and excludes itself");
   assert.deepEqual(errors, []);
   const report = { passed: true, checks, errors };
   writeFileSync(resolve(out, "report.json"), JSON.stringify(report, null, 2));

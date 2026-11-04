@@ -19,7 +19,7 @@ import {
 import { sourceText } from "@openbot/i18n/source";
 import { Button, Input } from "@openbot/ui";
 import { AwaitingReplies } from "@openbot/ui/features/conversation/AwaitingReplies";
-import { type BackgroundWorker, BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
+import { BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
 import { ComposerAddMenu } from "@openbot/ui/features/conversation/ComposerAddMenu";
 import { ComposerAttachmentRow } from "@openbot/ui/features/conversation/ComposerAttachmentRow";
 import { ComposerEditor } from "@openbot/ui/features/conversation/ComposerEditor";
@@ -47,6 +47,7 @@ import { reportErrorBanner, reportNotification } from "../../error-reports";
 import { deviceSendShortcut, sendShortcutAriaKey, sendShortcutHintKey } from "../../send-shortcut-preference";
 import { speechReading } from "../speech/speech-playback";
 import { stopSpokenReply } from "../speech/speech-replies";
+import { backgroundWorkerItems } from "./background-worker-items";
 import { copyComposerSelection, readComposerCopy } from "./composer-clipboard";
 import { useConversationViewScope } from "./conversation-scope";
 import { currentConversationTarget } from "./stores/composer-store";
@@ -64,6 +65,7 @@ export function ConversationComposer() {
     attachmentAction,
     attachmentBusy,
     awaitingReplies,
+    toggleSubagentPanel,
     dismissAwaitingReplies,
     composerFocusRequest,
     composerHasContent,
@@ -168,7 +170,9 @@ export function ConversationComposer() {
     return target && `${target.serverId}:${target.agentId}`;
   };
   const awaitingCardItems = () =>
-    awaitingReplies().filter((item) => !(item.state === "working" && !item.wait && item.agent));
+    awaitingReplies().filter(
+      (item) => !((item.state === "working" || item.state === "asked") && !item.wait && item.agent),
+    );
   const awaitingVisible = () => awaitingCardItems().length > 0 && !pickerOpen();
   const waitItems = createMemo(() => openWaitItems(props.waits ?? [], props.queue));
   const waitsVisible = () => waitItems().length > 0 && Boolean(props.onCancelWait) && !pickerOpen();
@@ -377,28 +381,18 @@ export function ConversationComposer() {
       onSend={submitComposer}
     />
   );
-  const backgroundWorkers = createMemo((): BackgroundWorker[] => [
-    ...(props.threads?.background ?? []).map((task) => ({
-      id: task.id,
+  const backgroundWorkers = createMemo(() =>
+    backgroundWorkerItems({
       agent: props.agent,
-      title: task.title,
-      since: task.createdAt,
-      state: task.state === "queued" ? ("queued" as const) : ("running" as const),
-      onOpen: () => props.threads?.header.onOpen(task.id),
-    })),
-    ...awaitingReplies()
-      .filter((item) => item.state === "working" && !item.wait && item.agent)
-      .map((item) => ({
-        id: item.id,
-        agent: item.agent,
-        title: item.taskTitle?.trim() || item.preview?.trim() || item.name,
-        since: item.since ?? "",
-        state: "running" as const,
-        onOpen: () => {
-          if (item.agent) props.onSelectAgent(item.agent.id);
-        },
-      })),
-  ]);
+      messages: props.messages,
+      activeTurnId: props.activeTurnId,
+      tasks: props.threads?.background ?? [],
+      replies: awaitingReplies(),
+      onOpenSubagent: toggleSubagentPanel,
+      onOpenTask: (id) => props.threads?.header.onOpen(id),
+      onOpenAgent: props.onSelectAgent,
+    }),
+  );
   return (
     <Show
       when={!channel?.readOnly()}
