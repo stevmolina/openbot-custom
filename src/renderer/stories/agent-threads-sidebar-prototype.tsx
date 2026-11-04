@@ -484,7 +484,13 @@ function TabGroupsHeader(props: { selection: Selection }) {
                 )}
               </Show>
               <Show when={!isFolded(instance)}>
-                <For each={tabbed(instance, props.selection.selected())}>
+                <For
+                  each={
+                    folded()[instance.agentId] === false
+                      ? instance.threads
+                      : tabbed(instance, props.selection.selected())
+                  }
+                >
                   {(thread) => <Tab row={{ family: current().family, instance, thread }} selection={props.selection} />}
                 </For>
               </Show>

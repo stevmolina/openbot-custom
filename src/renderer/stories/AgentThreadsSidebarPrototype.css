@@ -313,9 +313,7 @@
 }
 
 .agent-threads-sidebar-prototype .atp-tab-group + .atp-tab-group {
-  margin-left: 4px;
-  border-left: 1px solid var(--openbot-border);
-  padding-left: 6px;
+  margin-left: 10px;
 }
 
 .agent-threads-sidebar-prototype .atp-tab {
@@ -404,11 +402,15 @@
   gap: 4px;
   border: 0;
   border-radius: var(--openbot-radius-sm);
-  background: color-mix(in srgb, var(--openbot-success) 16%, transparent);
-  padding: 0 7px;
-  color: var(--openbot-success);
+  background: transparent;
+  padding: 0 6px;
+  color: var(--openbot-text-muted, var(--openbot-text-secondary));
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.agent-threads-sidebar-prototype .atp-group-chip:hover {
+  color: var(--openbot-text-primary);
 }
 
 .agent-threads-sidebar-prototype .atp-group-chip .atp-mark.agent-row-agent-status {
