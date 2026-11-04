@@ -6,6 +6,11 @@
 # The green icon: `build/custom/icon-custom.icns` for Finder and the Dock, and the green logo-color
 # files in place of the release icons that the app shows in the Dock while it runs. There is no
 # icon catalog (`Assets.car`), because the committed one is lavender; macOS then uses the `.icns`.
+# The build is signed ad hoc (`identity: null`), so it must not ask for Apple-restricted
+# entitlements (`associated-domains`, `team-identifier`) and must not use the hardened runtime:
+# macOS kills an ad hoc app with restricted entitlements at launch ("The signature on the file is
+# invalid"), and the hardened runtime refuses to load the separately signed Electron Framework
+# ("different Team IDs"). `build/custom/entitlements.custom.plist` is the release list without them.
 # Keep the rest of this file in step with `electron-builder.yml`.
 appId: app.openbot.desktop
 productName: OpenBot
@@ -81,7 +86,7 @@ mac:
   category: public.app-category.productivity
   minimumSystemVersion: "13.0"
   notarize: false
-  hardenedRuntime: true
+  hardenedRuntime: false
   icon: build/custom/icon-custom.icns
   extraResources:
     - from: build/logo-colors/icon-green-macos-safe-area.png
@@ -102,7 +107,7 @@ mac:
       to: cua-driver/darwin/${arch}
   signIgnore:
     - Contents/Resources/cua-driver/
-  entitlements: build/entitlements.mac.plist
+  entitlements: build/custom/entitlements.custom.plist
   entitlementsInherit: build/entitlements.mac.inherit.plist
   darkModeSupport: true
   extendInfo:
