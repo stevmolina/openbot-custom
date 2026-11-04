@@ -27,6 +27,11 @@ focused check commands and their exit codes, and a local PR draft.
 
 ## Verification
 
+**Live check.** On 2026-11-04, a Codex job ran on Agent Computer in context
+`openbot-coding-jobs`. It cloned this repository over authenticated HTTPS,
+edited this file, and pushed a branch. `uname -sm` returned `Linux x86_64`.
+`hostname` returned `e2b.local`.
+
 Run `bun scripts/remote-coding-task-smoke.ts` to check the public tool catalog,
 input rejection, brief persistence contract and real tool dispatch into a task.
 Also run `bun scripts/coding-job-lifecycle-smoke.ts` and
