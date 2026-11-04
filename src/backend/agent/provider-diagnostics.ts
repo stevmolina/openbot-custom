@@ -18,10 +18,15 @@
  * nor the server. The session opens without that server, and the user read the line as a "Provider
  * error" toast (#1199). The worker's sentence is matched as it stands, because no other part of a
  * provider writes it.
+ *
+ * A name is looked for outside the web addresses in the message. That sentence quotes the server's
+ * `resource_metadata` address, so a server configured here as `composio` matched every unsigned
+ * `connect.composio.dev` server in the Grok files, and each of them came back as a toast.
  */
 export function isMcpSubsystemDiagnostic(message: string, configuredNames: readonly string[] = []): boolean {
   if (/openbot/i.test(message)) return false;
-  if (configuredNames.some((name) => name && message.includes(name))) return false;
+  const withoutAddresses = message.replace(/\bhttps?:\/\/[^\s"'\\)]+/giu, " ");
+  if (configuredNames.some((name) => name && withoutAddresses.includes(name))) return false;
   return /\b(mcp|rmcp)\b|\bworker quit with (?:fatal|join error|reason):/i.test(message);
 }
 
