@@ -1,6 +1,11 @@
 import type { AgentTask } from "@openbot/contracts/ipc";
 import { TOAST_DURATION, toast } from "@openbot/ui";
-import { DRAFT_THREAD_ID, MAIN_THREAD_ID } from "@openbot/ui/features/conversation/threads/thread-types";
+import {
+  DRAFT_THREAD_ID,
+  MAIN_THREAD_ID,
+  parseThreadTabKey,
+  threadTabKey,
+} from "@openbot/ui/features/conversation/threads/thread-types";
 import { currentText } from "@openbot/ui/text";
 import { createEffect, createSignal, onCleanup, untrack } from "solid-js";
 import { createScopeGuard } from "../../scope-lifetime";
@@ -9,11 +14,15 @@ import {
   type AgentThreadTabs,
   addPendingThreadDelete,
   forgetPendingThreadDeletes,
+  type OpenTabsByServer,
+  type OpenThreadTab,
   type PendingThreadDelete,
+  readOpenTabs,
   readPendingThreadDeletes,
   readThreadTabs,
   type ThreadTabsByServer,
   takePendingThreadDelete,
+  writeOpenTabs,
   writeThreadTabs,
 } from "./thread-tabs-storage";
 
@@ -25,6 +34,11 @@ export interface AgentThreadTabsOptions {
   serverId: () => string;
   activeAgentId: () => string | undefined;
   tasks: AgentTasks;
+  /**
+   * Keeps one list of tabs for all agents, as the desktop chat header shows them. The list follows
+   * the tabs of each agent; the browser client, which shows the tabs of one agent, leaves it off.
+   */
+  allAgents?: boolean | undefined;
 }
 
 /**
@@ -36,8 +50,10 @@ export interface AgentThreadTabsOptions {
  */
 export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
   const { serverId, activeAgentId, tasks } = options;
+  const allAgents = options.allAgents === true;
   const scopeIsCurrent = createScopeGuard();
   const [tabsByServer, setTabsByServer] = createSignal<ThreadTabsByServer>(readThreadTabs());
+  const [openTabsByServer, setOpenTabsByServer] = createSignal<OpenTabsByServer>(allAgents ? readOpenTabs() : {});
   /** Agents with a new thread tab. A new thread that has no message is not kept after a restart. */
   const [drafts, setDrafts] = createSignal<ReadonlySet<string>>(new Set());
   /** Threads that wait for the end of their Undo time before the delete. */
@@ -94,10 +110,100 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     if (Object.keys(agents).length === 0) delete next[server];
     setTabsByServer(next);
     writeThreadTabs(next);
+    syncOpenTabs(agentId, tabs?.open ?? []);
     // The scroll to a message belongs to the tab that opened at it. Another tab ends it, so the thread
     // does not scroll there again when its view shows again.
     const focus = untrack(messageFocus);
     if (focus && focus.taskId !== tabs?.active) setMessageFocus(null);
+  }
+
+  /** The tabs of all agents on this server, as stored. A tab can name a thread that does not show. */
+  const storedOpenTabs = (): OpenThreadTab[] => openTabsByServer()[serverId()] ?? [];
+
+  /** Writes the tabs of all agents. Another window can write other servers, so the stored value is read first. */
+  function writeAllTabs(tabs: readonly OpenThreadTab[]): void {
+    if (!allAgents) return;
+    const server = serverId();
+    const next = { ...readOpenTabs(), [server]: [...tabs] };
+    if (tabs.length === 0) delete next[server];
+    setOpenTabsByServer(next);
+    writeOpenTabs(next);
+  }
+
+  /**
+   * Keeps the tabs of all agents in step with the tabs of one agent: a side thread or new thread that
+   * lost its tab leaves, and one that got a tab goes to the end. The agent's own chat stays.
+   */
+  function syncOpenTabs(agentId: string, open: readonly string[]): void {
+    if (!allAgents) return;
+    const current = untrack(storedOpenTabs);
+    const draft = untrack(() => hasDraft(agentId));
+    const kept = current.filter(
+      (tab) =>
+        tab.agentId !== agentId ||
+        tab.threadId === MAIN_THREAD_ID ||
+        (tab.threadId === DRAFT_THREAD_ID ? draft : open.includes(tab.threadId)),
+    );
+    const present = new Set(kept.flatMap((tab) => (tab.agentId === agentId ? [tab.threadId] : [])));
+    const added = [...open, ...(draft ? [DRAFT_THREAD_ID] : [])]
+      .filter((threadId) => !present.has(threadId))
+      .map((threadId) => ({ agentId, threadId }));
+    if (added.length === 0 && kept.length === current.length) return;
+    writeAllTabs([...kept, ...added]);
+  }
+
+  /** Adds a tab at the end of the tabs of all agents, unless it has one. */
+  function addOpenTab(agentId: string, threadId: string): void {
+    const current = untrack(storedOpenTabs);
+    if (current.some((tab) => tab.agentId === agentId && tab.threadId === threadId)) return;
+    writeAllTabs([...current, { agentId, threadId }]);
+  }
+
+  /** Closes a tab of the tabs of all agents. A side thread stays in its agent's thread list. */
+  function closeOpenTab(agentId: string, threadId: string): void {
+    if (threadId !== MAIN_THREAD_ID) {
+      close(agentId, threadId);
+      return;
+    }
+    writeAllTabs(untrack(storedOpenTabs).filter((tab) => tab.agentId !== agentId || tab.threadId !== MAIN_THREAD_ID));
+  }
+
+  /** Keeps only these tabs of the tabs of all agents, by `threadTabKey`. */
+  function retainOpenTabs(keys: ReadonlySet<string>): void {
+    const current = untrack(storedOpenTabs);
+    writeAllTabs(current.filter((tab) => keys.has(threadTabKey(tab.agentId, tab.threadId))));
+    const agentIds = new Set([
+      ...current.map((tab) => tab.agentId),
+      ...Object.keys(untrack(tabsByServer)[serverId()] ?? {}),
+      ...untrack(drafts),
+    ]);
+    for (const agentId of agentIds) {
+      const kept = (threadId: string) => keys.has(threadTabKey(agentId, threadId));
+      const open = keptIds(agentId).filter(kept);
+      const draft = hasDraft(agentId) && kept(DRAFT_THREAD_ID);
+      const active = activeId(agentId);
+      setOrder(
+        agentId,
+        [MAIN_THREAD_ID, ...open, ...(draft ? [DRAFT_THREAD_ID] : [])],
+        kept(active) ? active : MAIN_THREAD_ID,
+      );
+    }
+  }
+
+  /**
+   * Moves a tab to an index among the tabs that show, which `shownKeys` lists in order. A stored tab that
+   * does not show, such as one of a thread list that has not loaded, goes after them.
+   */
+  function moveOpenTab(shownKeys: readonly string[], key: string, index: number): void {
+    const order = shownKeys.filter((entry) => entry !== key);
+    order.splice(index, 0, key);
+    const shown = new Set(order);
+    const tabs = order.flatMap((entry) => {
+      const tab = parseThreadTabKey(entry);
+      return tab ? [tab] : [];
+    });
+    const rest = untrack(storedOpenTabs).filter((tab) => !shown.has(threadTabKey(tab.agentId, tab.threadId)));
+    writeAllTabs([...tabs, ...rest]);
   }
 
   function setDraft(agentId: string, shownDraft: boolean): void {
@@ -389,6 +495,14 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     if (!started || !scopeIsCurrent()) return false;
     seen.add(started.id);
     const stillOpen = activeId(agentId) === DRAFT_THREAD_ID;
+    // The thread takes the place of the new thread tab in the tabs of all agents.
+    writeAllTabs(
+      untrack(storedOpenTabs)
+        .filter((tab) => tab.agentId !== agentId || tab.threadId !== started.id)
+        .map((tab) =>
+          tab.agentId === agentId && tab.threadId === DRAFT_THREAD_ID ? { agentId, threadId: started.id } : tab,
+        ),
+    );
     setDraft(agentId, false);
     writeTabs(agentId, {
       open: [...keptIds(agentId).filter((entry) => entry !== started.id), started.id],
@@ -436,6 +550,7 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     forgetPendingThreadDeletes(serverId(), agentId);
     setDraft(agentId, false);
     writeTabs(agentId, null);
+    writeAllTabs(untrack(storedOpenTabs).filter((tab) => tab.agentId !== agentId));
   }
 
   // The open thread and the threads in the side panel read their conversations once, also when their
@@ -486,7 +601,43 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     },
   );
 
+  // The thread on screen always has a tab. Before the agent's thread list loads, the open side thread
+  // is not known yet, so the agent's own chat would get a tab it does not need.
+  createEffect(
+    () => {
+      const agentId = activeAgentId();
+      if (!allAgents || !agentId || (tasks.available() && !tasks.snapshot(agentId))) return null;
+      return threadTabKey(agentId, activeId(agentId));
+    },
+    (key) => {
+      const tab = key ? parseThreadTabKey(key) : null;
+      if (tab) addOpenTab(tab.agentId, tab.threadId);
+    },
+  );
+
+  // A tab of another agent shows its thread's title and state, so its thread list loads once.
+  const requestedLists = new Set<string>();
+  createEffect(
+    () =>
+      allAgents && tasks.available()
+        ? [...new Set(storedOpenTabs().map((tab) => tab.agentId))].filter(
+            (agentId) => !tasks.snapshot(agentId) && !requestedLists.has(`${serverId()}/${agentId}`),
+          )
+        : [],
+    (agentIds) => {
+      for (const agentId of agentIds) {
+        requestedLists.add(`${serverId()}/${agentId}`);
+        void tasks.loadTasks(agentId);
+      }
+    },
+  );
+
   return {
+    /** The tabs of all agents, as stored. The header shows the ones whose thread it knows. */
+    openTabs: storedOpenTabs,
+    closeOpenTab,
+    retainOpenTabs,
+    moveOpenTab,
     openIds,
     sideIds,
     hasDraft,

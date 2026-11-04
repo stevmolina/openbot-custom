@@ -13,11 +13,21 @@ import {
 } from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
 import { createSignal, For, flush, onSettled, Show } from "solid-js";
+import { AgentAvatar } from "../../agents/AgentAvatar";
+import { SidebarAgentIndicator } from "../../sidebar/SidebarAgentIndicator";
+import type { SidebarAgentState } from "../../sidebar/sidebar-types";
 import { ThreadStatusText, ThreadTabIcon, threadAttention } from "./ThreadStatusMark";
 import { ThreadTabGhost } from "./ThreadTabGhost";
 import { ThreadTitle } from "./ThreadTitle";
 import { setCarriedThreadTab, sidePanelTabRow, swallowNextClick } from "./thread-tab-drag";
-import { MAIN_THREAD_ID, type ThreadHeaderProps, type ThreadItem, threadBusy } from "./thread-types";
+import { MAIN_THREAD_ID, type ThreadHeaderProps, type ThreadItem, type ThreadStatus, threadBusy } from "./thread-types";
+
+/** The badge on the corner of an agent's face in a tab: only a thread that works or waits has one. */
+function agentTabBadge(status: ThreadStatus): SidebarAgentState | undefined {
+  if (status.kind === "working") return { kind: "working" };
+  if (status.kind === "waiting") return { kind: "waiting", reason: status.reason, detail: null };
+  return undefined;
+}
 
 /** The width of the soft edge where more tabs are out of view, as in the CSS. */
 const FADE = 24;
@@ -59,6 +69,14 @@ interface TabDrag {
   frame: number;
 }
 
+/** The tooltip of a tab: the thread title, and the agent's name in the tabs of all agents. */
+function tabTooltip(thread: ThreadItem): string {
+  const agent = thread.agent;
+  if (!agent) return thread.title;
+  const name = agent.copy ? `${agent.profile.name} · ${agent.copy}` : agent.profile.name;
+  return thread.kind === "main" ? name : `${thread.title} · ${name}`;
+}
+
 /** A side thread that the user can rename, when the host can rename threads. */
 function renamable(props: ThreadHeaderProps, thread: ThreadItem | undefined): boolean {
   return thread?.kind === "side" && props.onRename !== undefined;
@@ -88,6 +106,18 @@ function ThreadTab(props: {
   // rename can end on the slot, because the slot takes the pointer again when the rename ends.
   let closePressed = false;
   const closeLabel = () => t("conversation.threads.closeTab");
+  const closeHandlers = {
+    onPointerDown: (event: PointerEvent) => {
+      stop(event);
+      closePressed = !props.renaming;
+    },
+    onMouseDown: stop,
+    onClick: (event: MouseEvent) => {
+      stop(event);
+      if (closePressed) props.onClose();
+      closePressed = false;
+    },
+  };
   return (
     <SlidingTabs.Trigger
       value={props.thread.id}
@@ -96,7 +126,7 @@ function ThreadTab(props: {
       data-attention={threadAttention(props.thread.status)}
       data-menu-open={menuMark()}
       data-renaming={renameMark()}
-      title={props.thread.title}
+      title={tabTooltip(props.thread)}
       onDblClick={(event: MouseEvent) => {
         if (event.target instanceof Element && event.target.closest(".agent-threads-tab-close")) return;
         props.onRename();
@@ -118,28 +148,41 @@ function ThreadTab(props: {
         }
       }}
     >
-      {/* As in a side panel tab, the icon slot shows the thread's state and is also the close control. */}
-      <span
-        class="agent-threads-tab-close"
-        aria-hidden="true"
-        title={closeLabel()}
-        onPointerDown={(event) => {
-          stop(event);
-          closePressed = !props.renaming;
-        }}
-        onMouseDown={stop}
-        onClick={(event) => {
-          stop(event);
-          if (closePressed) props.onClose();
-          closePressed = false;
-        }}
+      <Show
+        when={props.thread.agent}
+        fallback={
+          <>
+            {/* As in a side panel tab, the icon slot shows the thread's state and is also the close control. */}
+            <span class="agent-threads-tab-close" aria-hidden="true" title={closeLabel()} {...closeHandlers}>
+              <span class="agent-threads-tab-icon">
+                <ThreadTabIcon status={props.thread.status} />
+              </span>
+              <X class="agent-threads-tab-x" />
+            </span>
+            <ThreadTitle class="agent-threads-tab-title" title={props.thread.title} />
+          </>
+        }
       >
-        <span class="agent-threads-tab-icon">
-          <ThreadTabIcon status={props.thread.status} />
-        </span>
-        <X class="agent-threads-tab-x" />
-      </span>
-      <ThreadTitle class="agent-threads-tab-title" title={props.thread.title} />
+        {(agent) => (
+          <>
+            {/* A tab of the tabs of all agents: the agent's face with the thread's state on its corner. */}
+            <span class="agent-threads-tab-avatar" aria-hidden="true">
+              <AgentAvatar agent={agent().profile} motion="idle" />
+              <SidebarAgentIndicator state={() => agentTabBadge(props.thread.status)} />
+            </span>
+            <ThreadTitle class="agent-threads-tab-title" title={props.thread.title} />
+            <Show when={agent().copy}>{(copy) => <span class="agent-threads-tab-copy">{copy()}</span>}</Show>
+            <span
+              class="agent-threads-tab-close agent-threads-tab-close-end"
+              aria-hidden="true"
+              title={closeLabel()}
+              {...closeHandlers}
+            >
+              <X class="agent-threads-tab-x" />
+            </span>
+          </>
+        )}
+      </Show>
       <ThreadStatusText status={props.thread.status} />
     </SlidingTabs.Trigger>
   );
@@ -360,6 +403,7 @@ export function ThreadTabs(props: ThreadHeaderProps) {
       const row = sidePanelTabRow(element);
       const away =
         thread?.kind === "side" &&
+        (thread.agent === undefined || thread.agent.onScreen) &&
         props.onMoveToSide !== undefined &&
         row !== null &&
         current.x >= row.getBoundingClientRect().left;
@@ -569,7 +613,10 @@ export function ThreadTabs(props: ThreadHeaderProps) {
   };
   const canRename = () => renamable(props, target());
   const canDelete = () => isSide() && props.onDelete !== undefined;
-  const canMoveToSide = () => isSide() && props.onMoveToSide !== undefined;
+  const canMoveToSide = () =>
+    isSide() &&
+    props.onMoveToSide !== undefined &&
+    (target()?.agent === undefined || target()?.agent?.onScreen === true);
   const isMenuTarget = (id: string) => menuOpen() && menuTarget() === id;
   const openChosen = (id: string) => {
     if (choosing) props.onOpen(id);

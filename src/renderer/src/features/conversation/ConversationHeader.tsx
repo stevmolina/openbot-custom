@@ -11,7 +11,7 @@ import { reasoningLabel } from "@openbot/ui/components/ProviderModelPicker";
 import { providerAccountName } from "@openbot/ui/components/provider-accounts";
 import { ConversationHeader as SharedConversationHeader } from "@openbot/ui/features/conversation/ConversationHeader";
 import { ThreadHeader } from "@openbot/ui/features/conversation/threads/ThreadHeader";
-import { MAIN_THREAD_ID } from "@openbot/ui/features/conversation/threads/thread-types";
+import { MAIN_THREAD_ID, parseThreadTabKey } from "@openbot/ui/features/conversation/threads/thread-types";
 import { Show } from "solid-js";
 import { useConversationViewScope } from "./conversation-scope";
 
@@ -58,6 +58,14 @@ export function ConversationHeader() {
   };
   /** With thread tabs, the agent's name is the tab of the agent's own chat. */
   const titleSelected = () => (props.threads ? !sideThreadOpen() : undefined);
+  /** The tabs of all agents name each agent, so the agent's name does not show before them. */
+  const allAgentTabs = () => props.threads?.header.allAgents === true;
+  /** A tab of the tabs of all agents goes to the side panel only from the agent on screen. */
+  const moveTabToPanel = (id: string) => {
+    const tab = parseThreadTabKey(id);
+    if (!tab) moveThreadToPanel(id);
+    else if (tab.agentId === props.agent?.id) moveThreadToPanel(tab.threadId);
+  };
   const working = () => agentActivity() === "Working";
   const providerName = (provider: AgentProviderRef) =>
     isKnownAgentProvider(provider) ? providerDisplayName(provider) : String(provider);
@@ -107,6 +115,7 @@ export function ConversationHeader() {
       onOpenSettings={() => setActiveRightPanel("settings")}
       onOpenChat={openMainChat()}
       titleSelected={titleSelected()}
+      tabbed={allAgentTabs()}
       pendingModel={pendingModel()}
       modelPicker={{
         provider: settingsProvider(),
@@ -150,7 +159,7 @@ export function ConversationHeader() {
       }
       threads={
         <Show when={props.threads}>
-          {(threads) => <ThreadHeader {...threads().header} onMoveToSide={moveThreadToPanel} />}
+          {(threads) => <ThreadHeader {...threads().header} onMoveToSide={moveTabToPanel} />}
         </Show>
       }
       sidePanel={

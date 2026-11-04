@@ -1,0 +1,208 @@
+/* The thread lanes of the sidebar: "Needs you", "Working", "Agents" and "Channels". Each lane has the
+   heading of a section, with its count in muted text. The rows are lower than the agent rows of the
+   sections, because a lane lists threads, not chats. */
+
+.sidebar-lane + .sidebar-lane {
+  margin-top: var(--openbot-space-1-5);
+}
+
+.sidebar-lane-toggle {
+  justify-content: flex-start;
+}
+
+.sidebar-lane-toggle .sidebar-section-chevron {
+  margin-left: auto;
+}
+
+.sidebar-lane-count {
+  flex: 0 0 auto;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The count of "Needs you" is the one amber mark of a heading, as in the old group. */
+.sidebar-lane-waiting .sidebar-lane-count {
+  color: var(--openbot-warning-text);
+  font-weight: var(--openbot-weight-semibold);
+}
+
+.sidebar-lane-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--openbot-space-0-5);
+}
+
+.ui-button.sidebar-lane-row,
+.ui-button.sidebar-lane-agent {
+  display: flex;
+  width: 100%;
+  height: auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--openbot-space-2);
+  border-radius: var(--openbot-radius-md);
+  color: inherit;
+  font-weight: var(--openbot-weight-regular);
+  text-align: left;
+}
+
+.ui-button.sidebar-lane-row {
+  min-height: 44px;
+  padding: var(--openbot-space-1) var(--openbot-space-2);
+}
+
+.ui-button.sidebar-lane-agent {
+  min-height: 36px;
+  padding: 0 var(--openbot-space-2);
+}
+
+.ui-button.sidebar-lane-row:hover,
+.ui-button.sidebar-lane-agent:hover {
+  background: var(--openbot-hover);
+}
+
+.ui-button.sidebar-lane-row-active,
+.ui-button.sidebar-lane-row-active:hover {
+  background: var(--openbot-bg-control);
+}
+
+.sidebar-lane-row-active .agent-row-agent-status {
+  border-color: var(--openbot-bg-control);
+}
+
+.sidebar-lane-avatar.agent-row-avatar {
+  position: relative;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+}
+
+.sidebar-lane-avatar .agent-avatar {
+  width: 28px;
+  height: 28px;
+}
+
+/* The badge of the agent rows, a little smaller, on the corner of the smaller face. */
+.sidebar-lane-avatar .agent-row-agent-status {
+  right: -7px;
+  bottom: -5px;
+  transform: scale(0.8);
+}
+
+.sidebar-lane-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.sidebar-lane-title,
+.sidebar-lane-context,
+.sidebar-lane-agent-name,
+.sidebar-lane-agent-role {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-lane-title {
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-md);
+  line-height: 18px;
+}
+
+.sidebar-lane-context,
+.sidebar-lane-time,
+.sidebar-lane-agent-role {
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  line-height: 16px;
+}
+
+/* A lane row has the title on a line of its own, so the wait chip keeps its word at every width. */
+.sidebar-lane-row .agent-row-wait-chip {
+  padding: 1px 7px 1px 5px;
+}
+
+.sidebar-lane-row .agent-row-wait-chip-label {
+  display: inline;
+}
+
+.sidebar-lane-time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-lane-agent-avatar.agent-row-avatar {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+}
+
+.sidebar-lane-agent-avatar .agent-avatar {
+  width: 24px;
+  height: 24px;
+}
+
+.sidebar-lane-agent-name {
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-md);
+}
+
+.sidebar-lane-agent-role {
+  margin-left: auto;
+  padding-right: 15px;
+}
+
+/* An agent with a reply that the user did not read: its name is bright and a small dot ends the row. */
+.sidebar-lane-agent-unread .sidebar-lane-agent-name {
+  color: var(--openbot-text-primary);
+  font-weight: var(--openbot-weight-semibold);
+}
+
+.sidebar-lane-agent-unread .sidebar-lane-agent-role {
+  padding-right: 0;
+}
+
+.sidebar-lane-unread-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-text-primary);
+}
+
+.sidebar-lane-agent-name + .sidebar-lane-unread-dot {
+  margin-left: auto;
+}
+
+/* The compact sidebar shows the faces only, as it does for the agent rows. */
+.sidebar-compact .ui-button.sidebar-lane-row,
+.sidebar-compact .ui-button.sidebar-lane-agent {
+  justify-content: center;
+  padding: var(--openbot-space-1);
+}
+
+.sidebar-compact .sidebar-lane-copy,
+.sidebar-compact .sidebar-lane-time,
+.sidebar-compact .sidebar-lane-agent-name,
+.sidebar-compact .sidebar-lane-agent-role,
+.sidebar-compact .sidebar-lane-row .agent-row-wait-chip {
+  display: none;
+}
+
+.sidebar-compact .sidebar-lane-unread-dot {
+  position: absolute;
+  top: var(--openbot-space-1);
+  right: var(--openbot-space-1);
+}
+
+.sidebar-compact .ui-button.sidebar-lane-agent {
+  position: relative;
+}

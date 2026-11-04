@@ -1,3 +1,4 @@
+import type { AgentProfile } from "@openbot/ui/data";
 import type { SidebarWaitReason } from "@openbot/ui/features/sidebar/sidebar-types";
 
 /** What the agent does in a thread, as a sidebar row shows it for the agent. */
@@ -15,7 +16,8 @@ export type ThreadStatus =
  */
 export interface ThreadItem {
   id: string;
-  kind: "side" | "draft";
+  /** `main` is the agent's own chat. It is a tab only in the tabs of all agents. */
+  kind: "main" | "side" | "draft";
   title: string;
   updatedAt: string;
   status: ThreadStatus;
@@ -24,6 +26,17 @@ export interface ThreadItem {
    * at the top level and in the tabs.
    */
   stem?: ThreadStem | undefined;
+  /** The agent of the thread, in the tabs of all agents. Absent in the tabs of one agent. */
+  agent?: ThreadItemAgent | undefined;
+}
+
+/** The face and the copy word of the agent of a tab. */
+export interface ThreadItemAgent {
+  profile: AgentProfile;
+  /** The role title of a copy of an agent: two or more agents have its name and face. Null otherwise. */
+  copy: string | null;
+  /** The agent's chat is on screen, so its side panel can take the thread. */
+  onScreen: boolean;
 }
 
 /**
@@ -69,9 +82,28 @@ export interface ThreadHeaderProps {
   onDelete?: ((id: string) => void) | undefined;
   /** Opens a side thread in the side panel. Missing when the chat has no side panel. */
   onMoveToSide?: ((id: string) => void) | undefined;
+  /**
+   * The tabs are the tabs of all agents: each one names its agent, the agent's own chat has a tab, and
+   * the agent's name does not show before them.
+   */
+  allAgents?: boolean | undefined;
 }
 
 /** The id of the agent's own chat in the thread lists. A side thread has the id of its task. */
 export const MAIN_THREAD_ID = "main";
 /** The id of the new thread tab, before its first message starts the thread. */
 export const DRAFT_THREAD_ID = "draft";
+
+/**
+ * The id of a tab in the tabs of all agents: the agent and its thread. Agent ids have no slash: they
+ * name folders.
+ */
+export function threadTabKey(agentId: string, threadId: string): string {
+  return `${agentId}/${threadId}`;
+}
+
+/** The agent and thread of a key from `threadTabKey`. */
+export function parseThreadTabKey(key: string): { agentId: string; threadId: string } | null {
+  const at = key.indexOf("/");
+  return at <= 0 || at === key.length - 1 ? null : { agentId: key.slice(0, at), threadId: key.slice(at + 1) };
+}

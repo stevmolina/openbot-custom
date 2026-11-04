@@ -30,6 +30,8 @@ export interface ConversationHeaderProps {
    * chat, and is selected while that chat is open.
    */
   titleSelected?: boolean | undefined;
+  /** The thread tabs are the tabs of all agents, which show each agent's face, so the name does not show. */
+  tabbed?: boolean | undefined;
 }
 
 export interface ConversationHeaderPendingModel {
@@ -53,7 +55,7 @@ export function ConversationHeader(props: ConversationHeaderProps) {
   return (
     <header class="window-drag conversation-header">
       <div class="conversation-heading-group">
-        <Show when={props.agent} fallback={props.title}>
+        <Show when={!props.tabbed && props.agent} fallback={props.tabbed ? undefined : props.title}>
           {(agent) => (
             <Button
               variant="ghost"
@@ -72,7 +74,7 @@ export function ConversationHeader(props: ConversationHeaderProps) {
             </Button>
           )}
         </Show>
-        <Show when={props.agent && agentAccessLockLabel(props.agent, t)}>
+        <Show when={!props.tabbed && props.agent && agentAccessLockLabel(props.agent, t)}>
           {(label) => (
             <span class="conversation-access-lock" role="img" aria-label={label()} title={label()}>
               <Lock aria-hidden="true" />

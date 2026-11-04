@@ -6,7 +6,11 @@ import { SidebarMachineCard } from "@openbot/ui/features/sidebar/SidebarMachineC
 import { SidebarMobileAppCard } from "@openbot/ui/features/sidebar/SidebarMobileAppCard";
 import { SidebarStorageCard } from "@openbot/ui/features/sidebar/SidebarStorageCard";
 import { normalizeSidebarPinnedItems, type SidebarPinnedItem } from "@openbot/ui/features/sidebar/sidebar-pins";
-import { SIDEBAR_HIDDEN_GROUP_OPEN_ID, type SidebarAgentState } from "@openbot/ui/features/sidebar/sidebar-types";
+import {
+  SIDEBAR_HIDDEN_GROUP_OPEN_ID,
+  type SidebarAgentState,
+  type SidebarThreadLanes,
+} from "@openbot/ui/features/sidebar/sidebar-types";
 import { createSignal, untrack } from "solid-js";
 import { fn } from "storybook/test";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
@@ -739,4 +743,70 @@ export const DeletedChats: Story = {
     showingArchivedChannels: true,
     deletedChannels: storyChannels.map((channel) => ({ ...channel, id: `deleted-${channel.id}`, archived: true })),
   },
+};
+
+/** Two copies of one coder: the same name and face, told apart by their role titles. */
+const coderBase = requireFixture(sidebarAgents[0], "Coder agent");
+const laneAgents = [
+  ...sidebarAgents,
+  ...["web", "api"].map((copy) => ({
+    ...coderBase,
+    id: `coder-${copy}`,
+    name: "Coder",
+    title: copy,
+    threadId: `coder-${copy}-thread`,
+    avatarSeed: "coder",
+    avatarHue: 150 as const,
+    avatarUrl: null,
+  })),
+];
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+const threadLanes: SidebarThreadLanes = {
+  threads: [
+    {
+      agentId: "coder-web",
+      threadId: "web-login",
+      title: "Fix login redirect",
+      state: { kind: "waiting", reason: "approval", detail: "git push origin fix/login" },
+      updatedAt: minutesAgo(1),
+    },
+    {
+      agentId: "research",
+      threadId: "main",
+      title: null,
+      state: { kind: "waiting", reason: "question", detail: "Which markets should I compare?" },
+      updatedAt: minutesAgo(6),
+    },
+    {
+      agentId: "coder-api",
+      threadId: "api-rate",
+      title: "Rate limit bug",
+      state: { kind: "working" },
+      updatedAt: minutesAgo(4),
+    },
+    { agentId: "chief", threadId: "main", title: null, state: { kind: "working" }, updatedAt: minutesAgo(12) },
+  ],
+  activeKey: "coder-api/api-rate",
+  unreadAgentIds: new Set(["sales"]),
+  onOpenThread: fn(),
+};
+
+/**
+ * The thread lanes: each thread that needs the user or works, of any agent or copy, then each agent
+ * once. A copy shows only in the lanes. "Sales" has a new reply.
+ */
+export const ThreadLanes: Story = {
+  args: {
+    agents: laneAgents,
+    agentStates: {},
+    pinnedItems: [],
+    activeAgentId: "coder-api",
+    threadLanes,
+  },
+  decorators: [(Story) => <div style={{ width: "280px", height: "100vh" }}>{Story()}</div>],
+};
+
+/** The compact sidebar shows the faces of the lanes only. */
+export const ThreadLanesCompact: Story = {
+  args: { ...ThreadLanes.args, compact: true },
 };
