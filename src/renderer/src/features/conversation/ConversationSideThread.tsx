@@ -3,16 +3,19 @@ import { canPreviewAttachment } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { classifyFailure } from "@openbot/telemetry";
 import type { AgentMessage } from "@openbot/ui/data";
+import { BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
 import { contextUsageView } from "@openbot/ui/features/conversation/ContextUsage";
 import { AgentThreadView } from "@openbot/ui/features/conversation/threads/AgentThreadView";
 import type { AgentThreadBranchSource } from "@openbot/ui/features/conversation/threads/BranchDivider";
 import { TaskAnswerCard } from "@openbot/ui/features/tasks/TaskPanel";
 import { useText } from "@openbot/ui/text";
-import { createEffect, createProjection, Show } from "solid-js";
+import { createEffect, createMemo, createProjection, Show } from "solid-js";
 import { actionToast } from "../../action-toast";
 import { useShowAgentSteps } from "../../agent-steps-preference";
 import { toAgentMessages } from "../../app-message-projection";
+import { agentAwaitingReplies } from "../../awaiting-replies";
 import { usePlatform } from "../../platform";
+import { backgroundWorkerItems } from "./background-worker-items";
 import { chatVisualPageUrl } from "./chat-visual-url";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
 import { useConversationViewScope } from "./conversation-scope";
@@ -41,6 +44,8 @@ export function ConversationSideThread(props: { threadId: string }) {
     copiedMessageId,
     reactToMessage,
     branchThread,
+    awaitingReplies,
+    toggleSubagentPanel,
   } = useConversationViewScope();
   const { t, errorMessage } = useText();
   const failureToast = (fallback: AppTextKey) => ({
@@ -68,6 +73,28 @@ export function ConversationSideThread(props: { threadId: string }) {
     messages: () => messages,
     lines: () => undefined,
     activeTurnId: () => thread()?.task.activeTurnId,
+  });
+  /** The same worker rows as the chat, without this thread itself. Rows are keyed by id. */
+  const backgroundWorkers = createMemo(() => {
+    const replies = new Map(awaitingReplies().map((item) => [item.id, item]));
+    for (const item of agentAwaitingReplies({
+      messages,
+      queue: view.queue?.agentId === view.agent?.id ? view.queue : undefined,
+      agents: view.agents,
+      self: view.agent,
+      waits: view.agentWaits,
+    }))
+      replies.set(item.id, item);
+    return backgroundWorkerItems({
+      agent: view.agent,
+      messages,
+      tasks: view.threads?.background ?? [],
+      excludeTaskId: props.threadId,
+      replies: replies.values(),
+      onOpenSubagent: toggleSubagentPanel,
+      onOpenTask: (id) => view.threads?.header.onOpen(id),
+      onOpenAgent: view.onSelectAgent,
+    });
   });
   const showAgentSteps = useShowAgentSteps();
   const { appFocused } = usePlatform();
@@ -138,6 +165,7 @@ export function ConversationSideThread(props: { threadId: string }) {
       <Show when={shown()}>
         {(current) => (
           <AgentThreadView
+            aboveComposer={<BackgroundWorkers items={backgroundWorkers()} />}
             task={current().thread.task}
             limit={view.threads?.limit ?? 1}
             agent={current().agent}
