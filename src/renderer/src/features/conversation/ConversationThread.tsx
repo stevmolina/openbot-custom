@@ -236,7 +236,6 @@ export function ConversationThread() {
     return backgroundWorkerItems({
       agent: props.agent,
       messages,
-      activeTurnId: props.threads?.open?.activeTurnId,
       tasks: props.threads?.background ?? [],
       excludeTaskId: props.threads?.open?.id,
       replies: replies.values(),

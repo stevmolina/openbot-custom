@@ -3,7 +3,6 @@ import { backgroundWorkerItems } from "./background-worker-items";
 
 const base = {
   agent: undefined,
-  activeTurnId: null,
   messages: [],
   tasks: [],
   replies: [],
@@ -18,8 +17,8 @@ const sub = (status: string, background?: true) => ({
   startedAt: "2026-11-04T17:00:00.000Z",
   ...(background ? { background } : {}),
 });
-const titles = (messages: Parameters<typeof backgroundWorkerItems>[0]["messages"], activeTurnId: string | null) =>
-  backgroundWorkerItems({ ...base, messages, activeTurnId }).map((item) => `${item.title}:${item.state}`);
+const titles = (messages: Parameters<typeof backgroundWorkerItems>[0]["messages"], _activeTurnId: string | null) =>
+  backgroundWorkerItems({ ...base, messages }).map((item) => `${item.title}:${item.state}`);
 
 describe("backgroundWorkerItems subagents", () => {
   it("keeps a background subagent after its turn ended", () => {
@@ -41,9 +40,7 @@ describe("backgroundWorkerItems subagents", () => {
       ),
     ).toEqual([]);
   });
-  it("shows a foreground subagent only in the active turn", () => {
-    const messages = [{ turnId: "turn-1", subagents: [sub("running")] }];
-    expect(titles(messages, "turn-1")).toEqual(["Audit worker rows:running"]);
-    expect(titles(messages, null)).toEqual([]);
+  it("leaves foreground subagents to the turn's own activity", () => {
+    expect(titles([{ turnId: "turn-1", subagents: [sub("running")] }], "turn-1")).toEqual([]);
   });
 });

@@ -14,7 +14,11 @@ export interface BackgroundWorker {
   onOpen: () => void;
 }
 
-/** Live work owned by the conversation. Only the agent avatar identifies a worker. */
+/**
+ * Live work owned by the conversation. Only the agent avatar identifies a worker. Rows are keyed
+ * by id: the parent rebuilds the list on each streamed token, and a row must update in place
+ * instead of remounting, which restarted the avatar animation and flickered.
+ */
 export function BackgroundWorkers(props: { items: readonly BackgroundWorker[] }) {
   const { t, format } = useText();
   const [now, setNow] = createSignal(Date.now());
@@ -36,20 +40,20 @@ export function BackgroundWorkers(props: { items: readonly BackgroundWorker[] })
   return (
     <Show when={props.items.length > 0}>
       <div class="background-workers">
-        <For each={props.items}>
+        <For each={props.items} keyed={(item) => item.id}>
           {(item) => (
-            <Button variant="ghost" class="background-worker-row" onClick={item.onOpen}>
+            <Button variant="ghost" class="background-worker-row" onClick={() => item().onOpen()}>
               <span class="background-worker-avatar">
-                <AgentAvatar agent={item.agent} mood="working" />
+                <AgentAvatar agent={item().agent} mood="working" />
                 <span class="background-worker-dot" />
               </span>
               <span class="background-worker-copy">
-                <span class="background-worker-title">{item.title}</span>
+                <span class="background-worker-title">{item().title}</span>
                 <span class="background-worker-status">
-                  {t(item.state === "running" ? "chat.workers.running" : "chat.workers.queued")}
+                  {t(item().state === "running" ? "chat.workers.running" : "chat.workers.queued")}
                 </span>
               </span>
-              <span class="background-worker-elapsed">{elapsed(item.since)}</span>
+              <span class="background-worker-elapsed">{elapsed(item().since)}</span>
               <ChevronRight class="background-worker-chevron" aria-hidden="true" />
             </Button>
           )}
