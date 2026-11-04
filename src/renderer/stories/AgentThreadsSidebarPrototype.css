@@ -1,0 +1,258 @@
+/* Prototype only: the new list replaces the real agent list in the real sidebar. */
+.agent-threads-sidebar-prototype aside.sidebar > .agent-list:not(.atp-list) {
+  display: none;
+}
+
+.agent-threads-sidebar-prototype aside.sidebar > .agent-list:not(.atp-list) ~ :not(.atp-list) {
+  order: 2;
+}
+
+.agent-threads-sidebar-prototype .atp-list {
+  order: 1;
+  gap: 0;
+}
+
+.agent-threads-sidebar-prototype .atp-group + .atp-group {
+  margin-top: 6px;
+}
+
+.agent-threads-sidebar-prototype .atp-group-head,
+.agent-threads-sidebar-prototype .atp-instance-head,
+.agent-threads-sidebar-prototype .atp-lane-head,
+.agent-threads-sidebar-prototype .atp-thread,
+.agent-threads-sidebar-prototype .atp-more {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--openbot-radius-md);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--openbot-duration-hover) ease;
+}
+
+.agent-threads-sidebar-prototype .atp-group-head:hover,
+.agent-threads-sidebar-prototype .atp-instance-head:hover,
+.agent-threads-sidebar-prototype .atp-thread:hover,
+.agent-threads-sidebar-prototype .atp-more:hover {
+  background: var(--openbot-hover);
+}
+
+.agent-threads-sidebar-prototype .atp-group-head {
+  height: 40px;
+  padding: 4px 8px 4px 2px;
+}
+
+.agent-threads-sidebar-prototype .atp-chevron {
+  display: grid;
+  width: 14px;
+  flex: 0 0 14px;
+  place-items: center;
+  color: var(--openbot-text-tertiary, var(--openbot-text-secondary));
+}
+
+.agent-threads-sidebar-prototype .atp-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+
+.agent-threads-sidebar-prototype .atp-group-avatar,
+.agent-threads-sidebar-prototype .atp-thread-avatar {
+  position: relative;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+}
+
+.agent-threads-sidebar-prototype .atp-group-avatar .agent-row-agent-status,
+.agent-threads-sidebar-prototype .atp-thread-avatar .agent-row-agent-status {
+  position: absolute;
+  right: -7px;
+  bottom: -5px;
+  transform: scale(0.8);
+}
+
+.agent-threads-sidebar-prototype .atp-group-name {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.agent-threads-sidebar-prototype .atp-group-name strong {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.agent-threads-sidebar-prototype .atp-badge {
+  flex: 0 0 auto;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-sm);
+  padding: 0 5px;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  line-height: 16px;
+}
+
+.agent-threads-sidebar-prototype .atp-time,
+.agent-threads-sidebar-prototype .atp-count {
+  flex: 0 0 auto;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+}
+
+.agent-threads-sidebar-prototype .atp-instance-head {
+  height: 28px;
+  padding: 0 8px 0 24px;
+}
+
+.agent-threads-sidebar-prototype .atp-instance-name {
+  flex: 1;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  font-weight: 600;
+}
+
+.agent-threads-sidebar-prototype .atp-thread {
+  min-height: 30px;
+  padding: 4px 8px;
+}
+
+.agent-threads-sidebar-prototype .atp-thread:has(.atp-thread-context) {
+  min-height: 44px;
+}
+
+.agent-threads-sidebar-prototype .atp-depth-1 {
+  padding-left: 30px;
+}
+
+.agent-threads-sidebar-prototype .atp-depth-2 {
+  padding-left: 46px;
+}
+
+.agent-threads-sidebar-prototype .atp-lane-head + .atp-thread,
+.agent-threads-sidebar-prototype .atp-lane-head ~ .atp-thread {
+  padding-left: 8px;
+}
+
+.agent-threads-sidebar-prototype .atp-selected,
+.agent-threads-sidebar-prototype .atp-selected:hover {
+  background: var(--openbot-bg-surface);
+}
+
+.agent-threads-sidebar-prototype .atp-thread > .atp-mark.agent-row-agent-status {
+  position: static;
+  flex: 0 0 auto;
+  border-width: 0;
+  box-shadow: none;
+}
+
+.agent-threads-sidebar-prototype .atp-thread > .atp-mark {
+  width: 16px;
+  min-width: 16px;
+}
+
+.agent-threads-sidebar-prototype .atp-thread > .agent-row-agent-status-working {
+  width: 20px;
+  min-width: 20px;
+}
+
+.agent-threads-sidebar-prototype .atp-mark-settled {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  place-items: center;
+}
+
+.agent-threads-sidebar-prototype .atp-mark-settled::before {
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--openbot-text-secondary);
+  border-radius: var(--openbot-radius-pill);
+  content: "";
+  opacity: 0.6;
+}
+
+.agent-threads-sidebar-prototype .atp-thread-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.agent-threads-sidebar-prototype .atp-thread-title {
+  overflow: hidden;
+  color: var(--openbot-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-threads-sidebar-prototype .atp-thread-title.atp-strong {
+  color: var(--openbot-text-primary);
+}
+
+.agent-threads-sidebar-prototype .atp-thread-context {
+  overflow: hidden;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-threads-sidebar-prototype .atp-chip {
+  flex: 0 0 auto;
+  border-radius: var(--openbot-radius-pill);
+  background: color-mix(in srgb, var(--openbot-warning) 18%, transparent);
+  padding: 1px 7px;
+  color: var(--openbot-warning);
+  font-size: var(--openbot-text-sm);
+  font-weight: 600;
+}
+
+.agent-threads-sidebar-prototype .atp-more {
+  height: 26px;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+}
+
+.agent-threads-sidebar-prototype .atp-lane-head {
+  height: 32px;
+  padding: 0 8px;
+}
+
+.agent-threads-sidebar-prototype .atp-lane-head .sidebar-section-name {
+  color: var(--openbot-text-secondary);
+}
+
+.agent-threads-sidebar-prototype .atp-lane-head .atp-chevron {
+  margin-left: auto;
+}
+
+.agent-threads-sidebar-prototype .atp-list {
+  font-size: var(--openbot-text-md);
+}
+
+.agent-threads-sidebar-prototype .atp-group-avatar .agent-avatar,
+.agent-threads-sidebar-prototype .atp-thread-avatar .agent-avatar {
+  width: 26px;
+  height: 26px;
+}
+
+.agent-threads-sidebar-prototype .atp-thread > .atp-mark,
+.agent-threads-sidebar-prototype .atp-thread > .atp-mark-settled {
+  margin: 0 2px;
+}
+
+/* The app fills the story frame, as it fills the window. */
+.agent-threads-sidebar-prototype {
+  height: 100vh;
+}
