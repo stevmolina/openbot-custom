@@ -256,3 +256,229 @@
 .agent-threads-sidebar-prototype {
   height: 100vh;
 }
+
+/* The new tab row replaces the real agent title and tabs. */
+.agent-threads-sidebar-prototype .conversation-header:has(.atp-header) > .conversation-heading-group {
+  display: none;
+}
+
+.agent-threads-sidebar-prototype .atp-header {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  order: -1;
+  align-items: center;
+  gap: var(--openbot-space-1-5);
+  font-size: var(--openbot-text-sm);
+}
+
+.agent-threads-sidebar-prototype .atp-heading {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  font-size: var(--openbot-text-md);
+}
+
+.agent-threads-sidebar-prototype .atp-heading strong {
+  font-weight: 600;
+}
+
+.agent-threads-sidebar-prototype .atp-heading-avatar .agent-avatar,
+.agent-threads-sidebar-prototype .atp-tab-avatar .agent-avatar {
+  width: 18px;
+  height: 18px;
+}
+
+.agent-threads-sidebar-prototype .atp-tab-avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.agent-threads-sidebar-prototype .atp-tabs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.agent-threads-sidebar-prototype .atp-tab-group {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.agent-threads-sidebar-prototype .atp-tab-group + .atp-tab-group {
+  margin-left: 4px;
+  border-left: 1px solid var(--openbot-border);
+  padding-left: 6px;
+}
+
+.agent-threads-sidebar-prototype .atp-tab {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 220px;
+  height: 28px;
+  flex: 0 1 auto;
+  align-items: center;
+  border-radius: var(--openbot-radius-md);
+  color: var(--openbot-text-secondary);
+}
+
+.agent-threads-sidebar-prototype .atp-tab:hover {
+  background: var(--openbot-bg-control-hover);
+  color: var(--openbot-text-primary);
+}
+
+.agent-threads-sidebar-prototype .atp-tab-selected,
+.agent-threads-sidebar-prototype .atp-tab-selected:hover {
+  background: var(--openbot-bg-surface);
+  color: var(--openbot-text-primary);
+}
+
+.agent-threads-sidebar-prototype .atp-tab-button {
+  display: inline-flex;
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  align-items: center;
+  gap: var(--openbot-space-1-5);
+  border: 0;
+  background: transparent;
+  padding: 0 var(--openbot-space-2) 0 var(--openbot-space-1-5);
+  color: inherit;
+  font: inherit;
+}
+
+.agent-threads-sidebar-prototype .atp-tab-button .atp-mark.agent-row-agent-status {
+  position: static;
+  border-width: 0;
+  box-shadow: none;
+  transform: scale(0.85);
+}
+
+.agent-threads-sidebar-prototype .atp-tab-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-threads-sidebar-prototype .atp-tab-copy {
+  flex: 0 0 auto;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-sm);
+  padding: 0 4px;
+  color: var(--openbot-text-secondary);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.agent-threads-sidebar-prototype .atp-tab-close {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--openbot-radius-pill);
+  background: transparent;
+  color: var(--openbot-text-secondary);
+  opacity: 0;
+}
+
+.agent-threads-sidebar-prototype .atp-tab:hover .atp-tab-close,
+.agent-threads-sidebar-prototype .atp-tab-close:focus-visible {
+  opacity: 1;
+}
+
+.agent-threads-sidebar-prototype .atp-group-chip {
+  display: inline-flex;
+  height: 22px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--openbot-radius-sm);
+  background: color-mix(in srgb, var(--openbot-success) 16%, transparent);
+  padding: 0 7px;
+  color: var(--openbot-success);
+  font: inherit;
+  font-weight: 600;
+}
+
+.agent-threads-sidebar-prototype .atp-group-chip .atp-mark.agent-row-agent-status {
+  position: static;
+  border-width: 0;
+  box-shadow: none;
+  transform: scale(0.75);
+}
+
+.agent-threads-sidebar-prototype .atp-group-chip-count {
+  color: var(--openbot-text-secondary);
+  font-weight: 400;
+}
+
+.agent-threads-sidebar-prototype .atp-switcher {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.agent-threads-sidebar-prototype .atp-switcher-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.agent-threads-sidebar-prototype .atp-switcher-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-warning);
+}
+
+.agent-threads-sidebar-prototype .atp-switcher-menu {
+  position: absolute;
+  z-index: 30;
+  top: 28px;
+  left: 0;
+  display: flex;
+  width: 240px;
+  flex-direction: column;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-md);
+  background: var(--openbot-bg-surface);
+  padding: 4px;
+  box-shadow: 0 8px 24px var(--openbot-shadow-popover-ambient);
+}
+
+.agent-threads-sidebar-prototype .atp-switcher-item {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--openbot-radius-sm);
+  background: transparent;
+  padding: 0 8px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.agent-threads-sidebar-prototype .atp-switcher-item .atp-tab-title {
+  flex: 1;
+}
+
+.agent-threads-sidebar-prototype .atp-switcher-item:hover {
+  background: var(--openbot-hover);
+}
+
+.agent-threads-sidebar-prototype .atp-switcher-item .atp-mark.agent-row-agent-status {
+  position: static;
+  border-width: 0;
+  box-shadow: none;
+}

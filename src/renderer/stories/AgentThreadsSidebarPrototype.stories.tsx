@@ -1,5 +1,10 @@
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
-import { CopyPerProjectVariant, NestedCopiesVariant, StatusLanesVariant } from "./agent-threads-sidebar-prototype";
+import {
+  CopySwitcherVariant,
+  OpenTabsVariant,
+  StatusLanesVariant,
+  TabGroupsVariant,
+} from "./agent-threads-sidebar-prototype";
 
 const meta = {
   title: "Prototypes/Agent threads sidebar",
@@ -9,9 +14,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Agent, then each copy, then its threads. Copies of one agent stay in one group. */
-export const NestedCopies: Story = { name: "A. Nested copies", render: () => <NestedCopiesVariant /> };
-/** Each copy is its own project with a badge. Copies sit next to each other. */
-export const CopyPerProject: Story = { name: "B. Copy per project", render: () => <CopyPerProjectVariant /> };
-/** Threads grouped by state across all agents. */
+/** The chosen sidebar: threads grouped by state across all agents, with today's tabs. */
 export const StatusLanes: Story = { name: "C. Status lanes", render: () => <StatusLanesVariant /> };
+/** Every copy of the agent on screen side by side in the tabs, each copy a labeled group. */
+export const TabGroups: Story = { name: "C1. Tabs grouped by copy", render: () => <TabGroupsVariant /> };
+/** The tabs of one copy, with a switcher to the other copies. */
+export const CopySwitcher: Story = { name: "C2. Copy switcher", render: () => <CopySwitcherVariant /> };
+/** Browser-style tabs: any thread of any agent or copy. */
+export const OpenTabs: Story = { name: "C3. Open tabs from anywhere", render: () => <OpenTabsVariant /> };

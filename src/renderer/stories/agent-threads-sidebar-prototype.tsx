@@ -170,7 +170,6 @@ function topState(threads: readonly PrototypeThread[]): ThreadState {
   return "settled";
 }
 
-const familyThreads = (family: PrototypeFamily) => family.instances.flatMap((instance) => instance.threads);
 const isActive = (thread: PrototypeThread) => thread.state !== "settled";
 
 /** The status mark, with the classes of the real sidebar badge. A settled thread has none. */
@@ -226,6 +225,25 @@ interface Selection {
   select: (thread: PrototypeThread, agentId: string) => void;
 }
 
+interface ThreadRef {
+  family: PrototypeFamily;
+  instance: PrototypeInstance;
+  thread: PrototypeThread;
+}
+
+const ROWS: ThreadRef[] = FAMILIES.flatMap((family) =>
+  family.instances.flatMap((instance) => instance.threads.map((thread) => ({ family, instance, thread }))),
+);
+
+const rowOf = (id: string) => ROWS.find((row) => row.thread.id === id);
+
+/** The thread on screen. The prototype always has one, so the first row is only a fallback. */
+function currentRow(id: string): ThreadRef {
+  const row = rowOf(id) ?? ROWS[0];
+  if (!row) throw new Error("The prototype has no threads.");
+  return row;
+}
+
 /** One thread. `context` is a second line, such as the agent and copy, for the status lanes. */
 function ThreadRow(props: {
   thread: PrototypeThread;
@@ -273,160 +291,6 @@ function ThreadRow(props: {
   );
 }
 
-/** The active threads, then a "+ N settled" toggle for the rest. */
-function ThreadList(props: { instance: PrototypeInstance; selection: Selection; depth: 1 | 2 }) {
-  const [showSettled, setShowSettled] = createSignal(false);
-  const active = () => props.instance.threads.filter(isActive);
-  const settled = () => props.instance.threads.filter((thread) => !isActive(thread));
-  const visible = () => (showSettled() ? props.instance.threads : active());
-  return (
-    <div class="atp-threads">
-      <For each={visible()}>
-        {(thread) => (
-          <ThreadRow thread={thread} agentId={props.instance.agentId} selection={props.selection} depth={props.depth} />
-        )}
-      </For>
-      <Show when={settled().length > 0}>
-        <button
-          type="button"
-          class={["atp-more", `atp-depth-${props.depth}`]}
-          aria-expanded={showSettled() ? "true" : "false"}
-          onClick={() => setShowSettled((value) => !value)}
-        >
-          {showSettled() ? "Hide settled" : `+ ${settled().length} settled`}
-        </button>
-      </Show>
-    </div>
-  );
-}
-
-/** The head row of a group: avatar, name, optional copy badge, and the top state while closed. */
-function GroupHead(props: {
-  name: string;
-  badge?: string | null;
-  meta?: string;
-  seed: string;
-  hue: ClientAgentSummary["avatarHue"];
-  open: boolean;
-  state: ThreadState;
-  activeCount: number;
-  onToggle: () => void;
-  compact?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      class={["atp-group-head", { "atp-group-head-compact": props.compact }]}
-      aria-expanded={props.open ? "true" : "false"}
-      aria-label={`${props.name}${props.badge ? ` ${props.badge}` : ""}. ${STATE_LABEL[props.state]}`}
-      onClick={props.onToggle}
-    >
-      <span class="atp-chevron" aria-hidden="true">
-        <Show when={props.open} fallback={<ChevronRight />}>
-          <ChevronDown />
-        </Show>
-      </span>
-      <span class="atp-group-avatar">
-        <AgentAvatar seed={props.seed} hue={props.hue} motion="idle" />
-        <Show when={!props.open && props.state !== "settled"}>
-          <StateMark state={props.state} />
-        </Show>
-      </span>
-      <span class="atp-group-name">
-        <strong>{props.name}</strong>
-        <Show when={props.badge}>{(badge) => <span class="atp-badge">{badge()}</span>}</Show>
-      </span>
-      <span class="atp-time">{props.meta ?? (props.activeCount > 0 ? `${props.activeCount} active` : "")}</span>
-    </button>
-  );
-}
-
-/** A. Agent, then copy, then thread. One agent with three copies is one group. */
-function NestedFamily(props: { family: PrototypeFamily; selection: Selection }) {
-  const threads = () => familyThreads(props.family);
-  const [open, setOpen] = createSignal(threads().some(isActive));
-  const multi = () => props.family.instances.length > 1;
-  return (
-    <section class="atp-group" aria-label={props.family.name}>
-      <GroupHead
-        name={props.family.name}
-        meta={multi() ? `${props.family.instances.length} copies` : undefined}
-        seed={props.family.seed}
-        hue={props.family.hue}
-        open={open()}
-        state={topState(threads())}
-        activeCount={threads().filter(isActive).length}
-        onToggle={() => setOpen((value) => !value)}
-      />
-      <Show when={open()}>
-        <Show
-          when={multi()}
-          fallback={
-            <For each={props.family.instances}>
-              {(instance) => <ThreadList instance={instance} selection={props.selection} depth={1} />}
-            </For>
-          }
-        >
-          <For each={props.family.instances}>
-            {(instance) => <NestedInstance instance={instance} selection={props.selection} />}
-          </For>
-        </Show>
-      </Show>
-    </section>
-  );
-}
-
-function NestedInstance(props: { instance: PrototypeInstance; selection: Selection }) {
-  const [open, setOpen] = createSignal(props.instance.threads.some(isActive));
-  const state = () => topState(props.instance.threads);
-  return (
-    <div class="atp-instance">
-      <button
-        type="button"
-        class="atp-instance-head"
-        aria-expanded={open() ? "true" : "false"}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span class="atp-chevron" aria-hidden="true">
-          <Show when={open()} fallback={<ChevronRight />}>
-            <ChevronDown />
-          </Show>
-        </span>
-        <span class="atp-instance-name">{props.instance.instance}</span>
-        <Show when={!open()}>
-          <StateMark state={state()} />
-        </Show>
-        <span class="atp-time">{open() ? "" : `${props.instance.threads.length} threads`}</span>
-      </button>
-      <Show when={open()}>
-        <ThreadList instance={props.instance} selection={props.selection} depth={2} />
-      </Show>
-    </div>
-  );
-}
-
-/** B. Each copy is its own project, side by side, with the copy name as a badge. */
-function FlatInstance(props: { family: PrototypeFamily; instance: PrototypeInstance; selection: Selection }) {
-  const [open, setOpen] = createSignal(props.instance.threads.some(isActive));
-  return (
-    <section class="atp-group" aria-label={`${props.family.name} ${props.instance.instance ?? ""}`}>
-      <GroupHead
-        name={props.family.name}
-        badge={props.instance.instance}
-        seed={props.family.seed}
-        hue={props.family.hue}
-        open={open()}
-        state={topState(props.instance.threads)}
-        activeCount={props.instance.threads.filter(isActive).length}
-        onToggle={() => setOpen((value) => !value)}
-      />
-      <Show when={open()}>
-        <ThreadList instance={props.instance} selection={props.selection} depth={1} />
-      </Show>
-    </section>
-  );
-}
-
 const LANES: { title: string; states: ThreadState[] }[] = [
   { title: "Needs you", states: ["approval", "question"] },
   { title: "Working", states: ["working"] },
@@ -436,9 +300,7 @@ const LANES: { title: string; states: ThreadState[] }[] = [
 
 /** C. Threads by state across every agent. The agent and copy are the second line. */
 function StatusLanes(props: { selection: Selection }) {
-  const all = FAMILIES.flatMap((family) =>
-    family.instances.flatMap((instance) => instance.threads.map((thread) => ({ family, instance, thread }))),
-  );
+  const all = ROWS;
   return (
     <For each={LANES}>
       {(lane) => {
@@ -486,7 +348,10 @@ function StatusLanes(props: { selection: Selection }) {
 }
 
 /** The real app with the new list in place of the agent list. */
-function SidebarPrototypeShell(props: { children: (selection: Selection) => JSX.Element }) {
+function SidebarPrototypeShell(props: {
+  children: (selection: Selection) => JSX.Element;
+  header?: (selection: Selection) => JSX.Element;
+}) {
   const app = createAppDom();
   const [selected, setSelected] = createSignal("web-sidebar");
   const selection: Selection = {
@@ -513,6 +378,13 @@ function SidebarPrototypeShell(props: { children: (selection: Selection) => JSX.
           });
         }}
       />
+      <Show when={props.header}>
+        {(header) => (
+          <AppSlot app={app} slot="header">
+            <div class="atp-header">{header()(selection)}</div>
+          </AppSlot>
+        )}
+      </Show>
       <AppSlot app={app} slot="sidebar">
         <nav class="agent-list atp-list" aria-label="Agents and threads">
           <div class="agent-list-content">{props.children(selection)}</div>
@@ -522,30 +394,225 @@ function SidebarPrototypeShell(props: { children: (selection: Selection) => JSX.
   );
 }
 
-export function NestedCopiesVariant() {
+/** The threads that have a tab: the active ones, and the one on screen. */
+const tabbed = (instance: PrototypeInstance, selected: string) =>
+  instance.threads.filter((thread) => isActive(thread) || thread.id === selected);
+
+/** One tab, in the shape of the real thread tab: the status mark, then the title. */
+function Tab(props: {
+  row: ThreadRef;
+  selection: Selection;
+  copyLabel?: boolean;
+  avatar?: boolean;
+  onClose?: () => void;
+}) {
+  const selected = () => props.selection.selected() === props.row.thread.id;
   return (
-    <SidebarPrototypeShell>
-      {(selection) => <For each={FAMILIES}>{(family) => <NestedFamily family={family} selection={selection} />}</For>}
-    </SidebarPrototypeShell>
+    <span class={["atp-tab", { "atp-tab-selected": selected() }]}>
+      <button
+        type="button"
+        class="atp-tab-button"
+        aria-pressed={selected() ? "true" : "false"}
+        aria-label={`${props.row.thread.title}, ${props.row.family.name}${props.row.instance.instance ? ` ${props.row.instance.instance}` : ""}. ${STATE_LABEL[props.row.thread.state]}`}
+        onClick={() => props.selection.select(props.row.thread, props.row.instance.agentId)}
+      >
+        <Show when={props.avatar}>
+          <span class="atp-tab-avatar">
+            <AgentAvatar seed={props.row.family.seed} hue={props.row.family.hue} motion="idle" />
+          </span>
+        </Show>
+        <StateMark state={props.row.thread.state} />
+        <span class="atp-tab-title">{props.row.thread.title}</span>
+        <Show when={props.copyLabel && props.row.instance.instance}>
+          {(label) => <span class="atp-tab-copy">{label()}</span>}
+        </Show>
+      </button>
+      <Show when={props.onClose}>
+        {(close) => (
+          <button type="button" class="atp-tab-close" aria-label={`Close ${props.row.thread.title}`} onClick={close()}>
+            ×
+          </button>
+        )}
+      </Show>
+    </span>
   );
 }
 
-export function CopyPerProjectVariant() {
+/** The agent of the thread on screen: its face and name, as the real header starts. */
+function AgentHeading(props: { family: PrototypeFamily }) {
   return (
-    <SidebarPrototypeShell>
-      {(selection) => (
-        <For each={FAMILIES}>
-          {(family) => (
-            <For each={family.instances}>
-              {(instance) => <FlatInstance family={family} instance={instance} selection={selection} />}
-            </For>
+    <span class="atp-heading">
+      <span class="atp-heading-avatar">
+        <AgentAvatar seed={props.family.seed} hue={props.family.hue} motion="idle" />
+      </span>
+      <strong>{props.family.name}</strong>
+    </span>
+  );
+}
+
+/** C1. Every copy of the agent on screen, side by side. Each copy is a labeled group of tabs. */
+function TabGroupsHeader(props: { selection: Selection }) {
+  const current = () => currentRow(props.selection.selected());
+  const [folded, setFolded] = createSignal<Record<string, boolean>>({});
+  const isFolded = (instance: PrototypeInstance) =>
+    folded()[instance.agentId] ??
+    !instance.threads.some((thread) => isActive(thread) || thread.id === props.selection.selected());
+  return (
+    <>
+      <AgentHeading family={current().family} />
+      <span class="atp-tabs">
+        <For each={current().family.instances}>
+          {(instance) => (
+            <span class="atp-tab-group" data-folded={isFolded(instance) ? "" : undefined}>
+              <Show when={instance.instance}>
+                {(label) => (
+                  <button
+                    type="button"
+                    class="atp-group-chip"
+                    aria-expanded={isFolded(instance) ? "false" : "true"}
+                    aria-label={`${current().family.name} ${label()}. ${STATE_LABEL[topState(instance.threads)]}`}
+                    onClick={() => setFolded((value) => ({ ...value, [instance.agentId]: !isFolded(instance) }))}
+                  >
+                    <Show when={isFolded(instance) && topState(instance.threads) !== "settled"}>
+                      <StateMark state={topState(instance.threads)} />
+                    </Show>
+                    {label()}
+                    <Show when={isFolded(instance)}>
+                      <span class="atp-group-chip-count">{instance.threads.length}</span>
+                    </Show>
+                  </button>
+                )}
+              </Show>
+              <Show when={!isFolded(instance)}>
+                <For each={tabbed(instance, props.selection.selected())}>
+                  {(thread) => <Tab row={{ family: current().family, instance, thread }} selection={props.selection} />}
+                </For>
+              </Show>
+            </span>
           )}
         </For>
-      )}
+      </span>
+    </>
+  );
+}
+
+/** C2. The tabs of one copy, and a switcher to the other copies beside the agent name. */
+function CopySwitcherHeader(props: { selection: Selection }) {
+  const current = () => currentRow(props.selection.selected());
+  const [open, setOpen] = createSignal(false);
+  const others = () => current().family.instances.filter((instance) => instance !== current().instance);
+  const otherState = () => topState(others().flatMap((instance) => instance.threads));
+  const switchTo = (instance: PrototypeInstance) => {
+    setOpen(false);
+    const thread = instance.threads.find(isActive) ?? instance.threads[0];
+    if (thread) props.selection.select(thread, instance.agentId);
+  };
+  return (
+    <>
+      <AgentHeading family={current().family} />
+      <Show when={current().instance.instance}>
+        {(label) => (
+          <span class="atp-switcher">
+            <button
+              type="button"
+              class="atp-group-chip atp-switcher-button"
+              aria-expanded={open() ? "true" : "false"}
+              aria-label={`Copy ${label()}. Switch copy`}
+              onClick={() => setOpen((value) => !value)}
+            >
+              {label()}
+              <ChevronDown />
+              <Show when={otherState() !== "settled" && otherState() !== "done"}>
+                <span class="atp-switcher-dot" aria-hidden="true" />
+              </Show>
+            </button>
+            <Show when={open()}>
+              <div class="atp-switcher-menu">
+                <For each={current().family.instances}>
+                  {(instance) => (
+                    <button
+                      type="button"
+                      class={["atp-switcher-item", { "atp-selected": instance === current().instance }]}
+                      onClick={() => switchTo(instance)}
+                    >
+                      <StateMark state={topState(instance.threads)} />
+                      <span class="atp-tab-title">
+                        {current().family.name} · {instance.instance}
+                      </span>
+                      <span class="atp-time">{instance.threads.filter(isActive).length} active</span>
+                    </button>
+                  )}
+                </For>
+              </div>
+            </Show>
+          </span>
+        )}
+      </Show>
+      <span class="atp-tabs">
+        <For each={tabbed(current().instance, props.selection.selected())}>
+          {(thread) => (
+            <Tab row={{ family: current().family, instance: current().instance, thread }} selection={props.selection} />
+          )}
+        </For>
+      </span>
+    </>
+  );
+}
+
+/** C3. Tabs as in a browser: any thread of any agent or copy, in the order the user opened them. */
+function OpenTabsHeader(props: { selection: Selection }) {
+  const [open, setOpen] = createSignal<string[]>(["web-sidebar", "web-login", "api-rate", "research-pricing"]);
+  const opened = () => {
+    const id = props.selection.selected();
+    return open().includes(id) ? open() : [...open(), id];
+  };
+  return (
+    <span class="atp-tabs">
+      <For each={opened()}>
+        {(id) => (
+          <Show when={rowOf(id)}>
+            {(row) => (
+              <Tab
+                row={row()}
+                selection={props.selection}
+                avatar
+                copyLabel
+                onClose={() => setOpen(opened().filter((other) => other !== id))}
+              />
+            )}
+          </Show>
+        )}
+      </For>
+    </span>
+  );
+}
+
+const lanes = (selection: Selection) => <StatusLanes selection={selection} />;
+
+export function StatusLanesVariant() {
+  return <SidebarPrototypeShell>{lanes}</SidebarPrototypeShell>;
+}
+
+export function TabGroupsVariant() {
+  return (
+    <SidebarPrototypeShell header={(selection) => <TabGroupsHeader selection={selection} />}>
+      {lanes}
     </SidebarPrototypeShell>
   );
 }
 
-export function StatusLanesVariant() {
-  return <SidebarPrototypeShell>{(selection) => <StatusLanes selection={selection} />}</SidebarPrototypeShell>;
+export function CopySwitcherVariant() {
+  return (
+    <SidebarPrototypeShell header={(selection) => <CopySwitcherHeader selection={selection} />}>
+      {lanes}
+    </SidebarPrototypeShell>
+  );
+}
+
+export function OpenTabsVariant() {
+  return (
+    <SidebarPrototypeShell header={(selection) => <OpenTabsHeader selection={selection} />}>
+      {lanes}
+    </SidebarPrototypeShell>
+  );
 }
