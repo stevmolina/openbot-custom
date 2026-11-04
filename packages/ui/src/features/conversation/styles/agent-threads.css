@@ -304,13 +304,13 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: var(--openbot-icon-lg);
-  height: var(--openbot-icon-lg);
+  width: 20px;
+  height: 20px;
 }
 
 .agent-threads-tab-avatar .agent-avatar {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .agent-threads-tab-avatar .agent-row-agent-status {
