@@ -86,6 +86,8 @@ export const messages = {
   "conversation.threads.view.startedByAgent": "{name} rozpoczął ten wątek.",
   "conversation.threads.branch.from": "Odgałęzienie z: {title}",
   "conversation.threads.branch.fromDeleted": "Odgałęzienie z usuniętego wątku",
+  "conversation.threads.view.emptyTitle": "Nad czym chcesz popracować?",
+  "conversation.threads.view.emptySubtitle": "Nowa rozmowa z: {name}.",
   "conversation.threads.view.newPlaceholder": "Nowy wątek z: {name}",
   "conversation.threads.view.placeholder": "Napisz do: {name} w wątku {title}",
   "conversation.threads.view.queued": "Wiadomości czekające w tym wątku",
