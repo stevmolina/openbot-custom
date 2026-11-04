@@ -1,4 +1,5 @@
 import { supportedAttachmentExtensions } from "@openbot/contracts/attachment-files";
+import { chatVisualReply } from "@openbot/contracts/chat-visual";
 import { canPreviewAttachment } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { classifyFailure } from "@openbot/telemetry";
@@ -17,9 +18,11 @@ import { usePlatform } from "../../platform";
 import { deviceSendShortcut } from "../../send-shortcut-preference";
 import { ConversationBrowserTakeover } from "./ConversationBrowserTakeover";
 import { ConversationQuestionPrompt } from "./ConversationQuestionPrompt";
+import { chatVisualPageUrl } from "./chat-visual-url";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
 import { useConversationViewScope } from "./conversation-scope";
 import type { ConversationThreads } from "./conversation-types";
+import { ThreadVisualReply } from "./ThreadVisualReply";
 import { threadReadAloud } from "./thread-read-aloud";
 import { createTurnSteps } from "./turn-steps";
 
@@ -249,6 +252,23 @@ export function ConversationThread() {
             agent={current().agent}
             agents={props.agents}
             messages={messages}
+            visualReply={(message) => {
+              const visual = chatVisualReply(message);
+              if (!visual) return undefined;
+              const src = chatVisualPageUrl(visual.attachment.previewUrl);
+              const load = props.runtime?.visualPage;
+              if (!src && !load) return undefined;
+              return (
+                <ThreadVisualReply
+                  message={message}
+                  visual={visual}
+                  src={src}
+                  load={load}
+                  onOpenLink={(url) => void openExternalMessageUrl(url)}
+                  macWindowControls={props.platform === "darwin"}
+                />
+              );
+            }}
             skills={installedSkills()}
             skillsLoadFailed={installedSkillsLoadFailed()}
             mcpServers={mcpServers()}
