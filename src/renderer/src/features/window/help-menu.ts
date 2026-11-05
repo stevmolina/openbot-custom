@@ -1,4 +1,4 @@
-import { HelpMenu, type HelpMenuNews } from "@openbot/ui/features/updates/HelpMenu";
+import type { HelpMenuNews, HelpMenuProps } from "@openbot/ui/features/updates/HelpMenu";
 import { whatsNewEntry } from "@openbot/ui/features/updates/whats-new";
 import { createSignal } from "solid-js";
 import { desktopAnalytics } from "../../analytics";
@@ -8,20 +8,22 @@ import { loadWhatsNewReleases } from "../updates/whats-new-releases";
 /** The newest releases that the Help menu lists, one line each. */
 const HELP_NEWS_COUNT = 3;
 
+export type HelpDestination = "changelog" | "guides" | "discord" | "feedback";
+
 /**
- * The Help menu of the rail, on desktop and on the web. The first time it opens, it reads the release
- * notes in the app and lists the first note of each of the newest releases, up to `version`. The web
- * has no version: it always runs the newest release.
+ * The Help menu of the sidebar's More menu, on desktop and on the web. The first time it opens, it
+ * reads the release notes in the app and lists the first note of each of the newest releases, up to
+ * `version`. The web has no version: it always runs the newest release.
  */
-export function RailHelpMenu(props: {
-  version: string | null;
+export function createHelpMenu(options: {
+  version: () => string | null;
   onOpenWhatsNew: () => void;
-  onOpenLink: (destination: "changelog" | "guides" | "discord" | "feedback") => void;
-}) {
+  onOpenLink: (destination: HelpDestination) => void;
+}): Omit<HelpMenuProps, "triggerClass"> {
   const [news, setNews] = createSignal<readonly HelpMenuNews[]>([]);
-  const openLink = (destination: "changelog" | "guides" | "discord" | "feedback") => {
+  const openLink = (destination: HelpDestination) => {
     desktopAnalytics.track("help_link_opened", { destination });
-    props.onOpenLink(destination);
+    options.onOpenLink(destination);
   };
   let loading = false;
 
@@ -29,7 +31,7 @@ export function RailHelpMenu(props: {
     if (loading || news().length > 0) return;
     loading = true;
     try {
-      const version = props.version;
+      const version = options.version();
       const releases = await loadWhatsNewReleases(AbortSignal.timeout(10_000));
       setNews(
         releases
@@ -48,16 +50,15 @@ export function RailHelpMenu(props: {
     }
   }
 
-  return (
-    <HelpMenu
-      news={news()}
-      triggerClass="window-rail-button"
-      onOpen={() => void loadNews()}
-      onOpenWhatsNew={props.onOpenWhatsNew}
-      onOpenChangelog={() => openLink("changelog")}
-      onOpenGuides={() => openLink("guides")}
-      onOpenDiscord={() => openLink("discord")}
-      onSendFeedback={() => openLink("feedback")}
-    />
-  );
+  return {
+    get news() {
+      return news();
+    },
+    onOpen: () => void loadNews(),
+    onOpenWhatsNew: () => options.onOpenWhatsNew(),
+    onOpenChangelog: () => openLink("changelog"),
+    onOpenGuides: () => openLink("guides"),
+    onOpenDiscord: () => openLink("discord"),
+    onSendFeedback: () => openLink("feedback"),
+  };
 }

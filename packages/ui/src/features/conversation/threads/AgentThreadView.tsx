@@ -545,9 +545,10 @@ export function AgentThreadView(props: AgentThreadViewProps) {
     />
   );
   const visibleMessages = createMemo(() => props.messages.filter(shownInThread));
+  /* Only a new thread before its first send: a saved thread whose messages still load shows no prompt. */
   const empty = () =>
+    !props.task &&
     visibleMessages().length === 0 &&
-    props.task?.origin !== "agent" &&
     !running() &&
     !props.approval &&
     attention.toArray().length === 0 &&

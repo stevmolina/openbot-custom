@@ -35,6 +35,8 @@ import { useServers } from "../servers/servers-context";
 import { useSettings } from "../settings/settings-context";
 import { usePresence } from "../team/team-context";
 import { SidebarUpdateIsland } from "../updates/SidebarUpdateIsland";
+import { useWindowPage } from "../window/window-page-context";
+import { useWorkspaceSidebarPages } from "../window/workspace-sidebar-pages";
 import { createCommunityCardVisibility } from "./community-card";
 import { useCustomSidebarThreadLanes } from "./custom-sidebar-thread-lanes";
 import { createMachineCard } from "./machine-card";
@@ -108,6 +110,8 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
     activeServerId,
     shownAgent: () => (activeDirectMember() || channels.state.selectedId ? undefined : activeAgent()),
   });
+  const pages = useWorkspaceSidebarPages();
+  const windowPage = useWindowPage();
   /**
    * Opens the agent's chat with a new thread. A host without threads has no such item, and neither has a
    * chat window: another agent opens in a window of its own, which does not get the new thread.
@@ -350,6 +354,8 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         onSelectPerson={(memberId) => void selectDirectMember(memberId)}
         onPreloadDirectConversation={props.peopleEnabled ? () => void DirectConversation.preload() : undefined}
         onCreateAgent={() => {
+          // New shows on every page now, so the agent form opens on the agents page.
+          windowPage.showAgents();
           channels.close();
           openAgentSetup();
         }}
@@ -370,6 +376,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         }
         windowAgentIds={windowAgentIds()}
         compact={layout.leftPanelCompact()}
+        pages={pages()}
         onExpand={layout.expandSidebar}
         onOpenSearch={() => setGlobalSearchVisibility(true)}
         footer={

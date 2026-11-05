@@ -32,7 +32,7 @@ function releaseDate(value: string): Date {
 
 /** The Help menu: the newest release notes, the changelog, the guides, the Discord community and feedback. */
 export function HelpMenu(props: HelpMenuProps) {
-  const { t, format } = useText();
+  const { t } = useText();
   const [open, setOpen] = createSignal(false);
   return (
     <DropdownMenu.Root
@@ -50,42 +50,55 @@ export function HelpMenu(props: HelpMenuProps) {
       </MotionTooltip>
       <DropdownMenu.Portal>
         <DropdownMenu.Content class="agent-context-menu help-menu" aria-label={t("app.help.label")}>
-          <Show when={props.news.length > 0}>
-            <div class="ui-menu-label" aria-hidden="true">
-              {t("app.help.whatsNew")}
-            </div>
-            <For each={props.news}>
-              {(item) => (
-                <DropdownMenu.Item class="help-menu-news" onSelect={() => props.onOpenWhatsNew()}>
-                  <span class="help-menu-news-headline" title={item.headline}>
-                    {item.headline}
-                  </span>
-                  <span class="ui-menu-trailing">
-                    {format.date(releaseDate(item.date), { month: "short", day: "numeric" })}
-                  </span>
-                </DropdownMenu.Item>
-              )}
-            </For>
-          </Show>
-          <DropdownMenu.Item onSelect={() => props.onOpenChangelog()}>
-            <Gift class="agent-context-icon size-4" aria-hidden="true" />
-            <span>{t("app.help.changelog")}</span>
-          </DropdownMenu.Item>
-          <DropdownMenu.Separator />
-          <DropdownMenu.Item onSelect={() => props.onOpenGuides()}>
-            <BookOpen class="agent-context-icon size-4" aria-hidden="true" />
-            <span>{t("app.help.guides")}</span>
-          </DropdownMenu.Item>
-          <DropdownMenu.Item onSelect={() => props.onOpenDiscord()}>
-            <DiscordMark class="agent-context-icon size-4" />
-            <span>{t("app.help.discord")}</span>
-          </DropdownMenu.Item>
-          <DropdownMenu.Item onSelect={() => props.onSendFeedback()}>
-            <Megaphone class="agent-context-icon size-4" aria-hidden="true" />
-            <span>{t("account.menu.sendFeedback")}</span>
-          </DropdownMenu.Item>
+          <HelpMenuItems {...props} />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+  );
+}
+
+/**
+ * The items of the Help menu, for a menu that the caller opens: the menu of its own button, or the
+ * Help submenu of the sidebar's More menu.
+ */
+export function HelpMenuItems(props: Omit<HelpMenuProps, "triggerClass" | "onOpen">) {
+  const { t, format } = useText();
+  return (
+    <>
+      <Show when={props.news.length > 0}>
+        <div class="ui-menu-label" aria-hidden="true">
+          {t("app.help.whatsNew")}
+        </div>
+        <For each={props.news}>
+          {(item) => (
+            <DropdownMenu.Item class="help-menu-news" onSelect={() => props.onOpenWhatsNew()}>
+              <span class="help-menu-news-headline" title={item.headline}>
+                {item.headline}
+              </span>
+              <span class="ui-menu-trailing">
+                {format.date(releaseDate(item.date), { month: "short", day: "numeric" })}
+              </span>
+            </DropdownMenu.Item>
+          )}
+        </For>
+      </Show>
+      <DropdownMenu.Item onSelect={() => props.onOpenChangelog()}>
+        <Gift class="agent-context-icon size-4" aria-hidden="true" />
+        <span>{t("app.help.changelog")}</span>
+      </DropdownMenu.Item>
+      <DropdownMenu.Separator />
+      <DropdownMenu.Item onSelect={() => props.onOpenGuides()}>
+        <BookOpen class="agent-context-icon size-4" aria-hidden="true" />
+        <span>{t("app.help.guides")}</span>
+      </DropdownMenu.Item>
+      <DropdownMenu.Item onSelect={() => props.onOpenDiscord()}>
+        <DiscordMark class="agent-context-icon size-4" />
+        <span>{t("app.help.discord")}</span>
+      </DropdownMenu.Item>
+      <DropdownMenu.Item onSelect={() => props.onSendFeedback()}>
+        <Megaphone class="agent-context-icon size-4" aria-hidden="true" />
+        <span>{t("account.menu.sendFeedback")}</span>
+      </DropdownMenu.Item>
+    </>
   );
 }

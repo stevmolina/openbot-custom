@@ -713,7 +713,7 @@ Before creating the first tag or any later release:
     `D:\OpenBot\OpenBot` and that the second account cannot write there;
 13. on Ubuntu 24.04 x64 with the AppArmor profile from `build/linux/openbot.apparmor` installed,
     confirm the AppImage starts with the sandbox on, that `xdg-open 'openbot://join?...'` focuses the
-    running application, that a provider downloads in-app, that the page rail is drawn, and that the
+    running application, that a provider downloads in-app, that the chat sidebar is drawn, and that the
     microphone control is absent;
 14. confirm `CHANGELOG.md` and `.github/release-announcement.json` describe the version and the
     working tree is clean;

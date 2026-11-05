@@ -288,6 +288,7 @@ function allAgentHeader(
         title: task.title,
         updatedAt: task.updatedAt,
         status: all.status(tab.agentId, tab.threadId),
+        unread: tasks.unreadCount(task),
       },
     ];
   });

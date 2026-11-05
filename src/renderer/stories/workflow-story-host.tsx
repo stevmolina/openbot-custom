@@ -17,9 +17,8 @@ import {
 } from "@openbot/contracts/ipc";
 import { accountUsageProviderRows } from "@openbot/ui/features/account/account-usage-view";
 import { Sidebar } from "@openbot/ui/features/sidebar/Sidebar";
+import type { SidebarPage } from "@openbot/ui/features/sidebar/sidebar-pages";
 import type { SidebarView } from "@openbot/ui/features/sidebar/sidebar-types";
-import { HelpMenu } from "@openbot/ui/features/updates/HelpMenu";
-import { PageRail, type PageRailPage } from "@openbot/ui/features/window/PageRail";
 import { WorkflowCanvas } from "@openbot/ui/features/workflows/WorkflowCanvas";
 import { WORKFLOW_FEATURES_V1, type WorkflowFeatures } from "@openbot/ui/features/workflows/workflow-model";
 import type { WorkflowPresence } from "@openbot/ui/features/workflows/workflow-presence";
@@ -32,6 +31,7 @@ import type { WorkflowHost } from "../src/features/workflows/workflows-port";
 import { createMockGitHubConnector } from "../src/preview/mock-github-connector";
 import { mockWorkflows } from "../src/preview/mock-workflows";
 import { STORY_AGENTS } from "./fixtures";
+import { storySidebarPages } from "./sidebar-pages-story";
 import { STORY_CATALOGS, type StoryWorkflow } from "./workflow-story-data";
 
 /** Every node kind, trigger and output, for the stories whose workflows use them all. */
@@ -189,45 +189,21 @@ export function WorkflowStory(props: {
 const usageRows = accountUsageProviderRows(null);
 
 /**
- * The workflow canvas in the desktop window: the page rail and the server menu are the real app
- * components. The canvas is a page that covers the agent list, as the schedule, usage and Marketplace
- * pages do. Its bar goes in the window's top row after the server menu, and the canvas fills the card.
+ * The workflow canvas in the desktop window: the chat sidebar is the real app component. The canvas
+ * is a page beside the sidebar, as the schedule, usage and Marketplace pages are. Its bar goes in the
+ * top row of the card, and the canvas fills the card.
  */
 export function WorkflowInAppStory(props: { workflows: readonly StoryWorkflow[]; features?: WorkflowFeatures }) {
   const story = createWorkflowsController(storyWorkflowHost(untrack(() => props.workflows)));
   const features = () => props.features ?? WORKFLOW_FEATURES_V1;
-  const [page, setPage] = createSignal<PageRailPage | null>("routines");
+  const [page, setPage] = createSignal<SidebarPage | null>("workflows");
   const [view, setView] = createSignal<SidebarView>("routines");
   return (
     <div class="app-window wfn-app">
-      <PageRail
-        hidden={false}
-        current={page()}
-        pinned={["routines", "workflows", "usage"]}
-        onPinChange={fn()}
-        usageRows={usageRows}
-        onAgents={() => setPage("agents")}
-        onRoutines={() => setPage("routines")}
-        onSchedule={() => setPage("schedule")}
-        onUsage={() => setPage("usage")}
-        onMarketplace={fn()}
-        onSettings={() => setPage("settings")}
-        help={
-          <HelpMenu
-            news={[]}
-            triggerClass="window-rail-button"
-            onOpenWhatsNew={fn()}
-            onOpenChangelog={fn()}
-            onOpenGuides={fn()}
-            onOpenDiscord={fn()}
-            onSendFeedback={fn()}
-          />
-        }
-      />
       <div
         class="app-frame app-frame-edge app-frame-platform-darwin"
         data-window-page-kind="titled"
-        style="--left-panel-width: 280px"
+        style="--left-panel-width: 300px"
       >
         <Sidebar
           serverName="Local"
@@ -263,6 +239,16 @@ export function WorkflowInAppStory(props: { workflows: readonly StoryWorkflow[];
           onCreateChannel={fn()}
           view={view()}
           onViewChange={setView}
+          pages={storySidebarPages({
+            current: page(),
+            usageRows,
+            onChats: () => setPage("chats"),
+            onRoutines: () => setPage("routines"),
+            onWorkflows: () => setPage("workflows"),
+            onSchedule: () => setPage("schedule"),
+            onUsage: () => setPage("usage"),
+            onSettings: () => setPage("settings"),
+          })}
         />
         <div class="window-page wfn-app-pane">
           <Show when={story.detail()}>

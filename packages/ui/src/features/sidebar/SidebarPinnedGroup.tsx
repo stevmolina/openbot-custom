@@ -36,8 +36,13 @@ export function SidebarPinnedGroup() {
   } = useSidebarScope();
   const { t, format } = useText();
   const chatName = (chat: SidebarChatItem) => (chat.kind === "agent" ? chat.agent.name : chat.channel.name);
+  /** A pinned chat shows as open only while the chats are on screen, not under another page. */
+  const chatsOnScreen = () => {
+    const current = props.pages?.current;
+    return current === undefined || current === "chats" || current === "routines";
+  };
   const chatIsActive = (chat: SidebarChatItem) =>
-    chat.kind === "agent" ? props.activeAgentId === chat.id : props.activeChannelId === chat.id;
+    chatsOnScreen() && (chat.kind === "agent" ? props.activeAgentId === chat.id : props.activeChannelId === chat.id);
   const selectChat = (chat: SidebarChatItem) => {
     if (chat.kind === "agent") props.onSelectAgent(chat.id);
     else props.onSelectChannel?.(chat.id);

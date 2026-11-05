@@ -13,6 +13,7 @@ import {
   Moon,
   PanelLeft,
   Plus,
+  Settings,
 } from "@openbot/ui";
 import { SwapLabel } from "@openbot/ui/components/SwapLabel";
 import { createEffect, createSignal, For, Show, untrack } from "solid-js";
@@ -58,6 +59,15 @@ export interface ServerMenuProps extends ServerActionCallbacks {
   hiddenLocal?: HiddenLocalServer | undefined;
   /** The compact sidebar hides the server name. The rail stays visible then. */
   compact?: boolean;
+  /**
+   * How the trigger shows: the server name, or the logo of the active server with the logo of another
+   * server small behind it, as the account switch of the chat sidebar. The switch always lists the
+   * servers, also in the rail view.
+   */
+  look?: "name" | "stack" | undefined;
+  placement?: "bottom-start" | "top-start" | "right-end" | undefined;
+  /** Opens the settings of the user. With it, the menu ends with a Settings item. */
+  onOpenAppSettings?: ((trigger: HTMLElement) => void) | undefined;
 }
 
 function isContextMenuKey(event: KeyboardEvent): boolean {
@@ -91,6 +101,9 @@ export function ServerMenu(props: ServerMenuProps) {
   let trigger: HTMLElement | undefined;
   const activeServer = () => props.servers.find((server) => server.active);
   const activeServers = () => props.servers.filter((server) => server.active);
+  const stack = () => props.look === "stack";
+  /** The server behind the active one in the stacked logo. */
+  const otherServer = () => props.servers.find((server) => !server.active);
   const activeSleep = () => {
     const server = activeServer();
     return server ? serverHostedSleep(server) : null;
@@ -133,13 +146,18 @@ export function ServerMenu(props: ServerMenuProps) {
 
   return (
     <>
-      <DropdownMenu.Root open={menuOpen()} onOpenChange={setMenuOpen} placement="bottom-start" gutter={6}>
+      <DropdownMenu.Root
+        open={menuOpen()}
+        onOpenChange={setMenuOpen}
+        placement={props.placement ?? "bottom-start"}
+        gutter={6}
+      >
         <DropdownMenu.Trigger
           ref={(element) => (trigger = element)}
           class={buttonVariants({
             variant: "ghost",
             size: "sm",
-            class: "sidebar-server-name no-drag",
+            class: stack() ? "sidebar-account-switch no-drag" : "sidebar-server-name no-drag",
           })}
           aria-label={[
             t("server.menu.open", { name: props.serverName }),
@@ -161,33 +179,65 @@ export function ServerMenu(props: ServerMenuProps) {
             openActions(bounds.left, bounds.bottom);
           }}
         >
-          {/* Keyed by server, so the logo of a newly selected server springs in. */}
-          <For each={activeServers()} keyed={(server) => server.id}>
-            {(server) => {
-              const id = untrack(() => server().id);
-              const entering = markId !== undefined && markId !== id;
-              markId = id;
-              return (
-                <span
-                  class="server-menu-mark sidebar-server-name-mark"
-                  data-entering={entering ? "" : undefined}
-                  aria-hidden="true"
-                >
-                  <ServerMark server={server()} />
-                </span>
-              );
-            }}
-          </For>
-          <SwapLabel class="sidebar-server-name-label" text={props.serverName} from={shownBefore?.name} dir="auto" />
-          <Show when={activeSleep()}>
-            {(sleep) => <Moon class="sidebar-server-name-sleep" data-state={sleep()} aria-hidden="true" />}
+          <Show
+            when={stack()}
+            fallback={
+              <>
+                {/* Keyed by server, so the logo of a newly selected server springs in. */}
+                <For each={activeServers()} keyed={(server) => server.id}>
+                  {(server) => {
+                    const id = untrack(() => server().id);
+                    const entering = markId !== undefined && markId !== id;
+                    markId = id;
+                    return (
+                      <span
+                        class="server-menu-mark sidebar-server-name-mark"
+                        data-entering={entering ? "" : undefined}
+                        aria-hidden="true"
+                      >
+                        <ServerMark server={server()} />
+                      </span>
+                    );
+                  }}
+                </For>
+                <SwapLabel
+                  class="sidebar-server-name-label"
+                  text={props.serverName}
+                  from={shownBefore?.name}
+                  dir="auto"
+                />
+                <Show when={activeSleep()}>
+                  {(sleep) => <Moon class="sidebar-server-name-sleep" data-state={sleep()} aria-hidden="true" />}
+                </Show>
+                <ChevronsUpDown class="sidebar-server-name-chevron" aria-hidden="true" />
+              </>
+            }
+          >
+            <span class="sidebar-account-stack" aria-hidden="true">
+              <Show when={otherServer()}>
+                {(server) => (
+                  <span class="sidebar-account-logo sidebar-account-logo-back">
+                    <ServerMark server={server()} />
+                  </span>
+                )}
+              </Show>
+              <For each={activeServers()} keyed={(server) => server.id}>
+                {(server) => (
+                  <span class="sidebar-account-logo sidebar-account-logo-front">
+                    <ServerMark server={server()} />
+                  </span>
+                )}
+              </For>
+            </span>
+            <Show when={activeSleep()}>
+              {(sleep) => <Moon class="sidebar-account-sleep" data-state={sleep()} aria-hidden="true" />}
+            </Show>
           </Show>
-          <ChevronsUpDown class="sidebar-server-name-chevron" aria-hidden="true" />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content class="agent-context-menu server-menu" aria-label={t("server.menu.label")}>
             <Show
-              when={props.view === "menu"}
+              when={props.view === "menu" || stack()}
               fallback={
                 <Show when={props.onOpenSettings ? activeServer() : undefined}>
                   {(server) => (
@@ -318,6 +368,17 @@ export function ServerMenu(props: ServerMenuProps) {
                   </>
                 )}
               </Show>
+            </Show>
+            <Show when={props.onOpenAppSettings}>
+              {(openAppSettings) => (
+                <>
+                  <DropdownMenu.Separator />
+                  <DropdownMenu.Item onSelectAfterClose={() => trigger && openAppSettings()(trigger)}>
+                    <Settings class="agent-context-icon size-4" aria-hidden="true" />
+                    <span>{t("app.rail.settings")}</span>
+                  </DropdownMenu.Item>
+                </>
+              )}
             </Show>
             <DropdownMenu.Separator />
             <DropdownMenu.Sub>

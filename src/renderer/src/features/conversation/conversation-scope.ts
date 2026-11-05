@@ -2127,7 +2127,6 @@ export function createConversationViewScope(props: ConversationProps) {
     threadComposer,
     threadQueue,
     threadFocusRequest,
-    setThreadFocusRequest,
     branchThread,
     threadVoiceLiveText,
     threadVoiceOwned,

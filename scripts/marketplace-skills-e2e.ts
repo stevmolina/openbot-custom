@@ -38,7 +38,8 @@ try {
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text().slice(0, 400));
   });
-  const rail = page.getByRole("navigation", { name: "Pages", exact: true });
+  // The pill of the chat sidebar. Marketplace is in its More menu.
+  const pill = page.getByRole("navigation", { name: "Pages", exact: true });
   const marketplace = page.getByRole("region", { name: "Marketplace", exact: true });
   const dialog = page.getByRole("dialog", { name: SKILL, exact: true });
   const toast = (text: string) =>
@@ -77,7 +78,8 @@ try {
       .click();
   };
   const openSkills = async () => {
-    await rail.getByRole("button", { name: "Marketplace", exact: true }).click();
+    await pill.getByRole("button", { name: "More", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Marketplace", exact: true }).click();
     await marketplace.waitFor();
     await tab("Skills");
     await marketplace.getByRole("tablist", { name: "Source" }).waitFor();
@@ -243,7 +245,7 @@ try {
   // 8. Remove all, then leave the Marketplace while the toast is open: the remove still commits.
   await marketplace.getByRole("button", { name: `Remove ${SKILL} from 1 agent`, exact: true }).click();
   await toast(`${SKILL} removed from 1 agent.`).waitFor();
-  await rail.getByRole("button", { name: "Agents", exact: true }).click();
+  await pill.getByRole("button", { name: "Chats", exact: true }).click();
   await marketplace.waitFor({ state: "detached" });
   await toast(`${SKILL} removed from 1 agent.`).waitFor({ state: "detached", timeout: TOAST_WAIT });
   await waitForHolders([]);

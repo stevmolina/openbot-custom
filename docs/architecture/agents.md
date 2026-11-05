@@ -216,7 +216,7 @@ on a joined host.
 ## Workflows
 
 A workflow is a graph of steps that the user draws on the canvas of the Workflows page (the
-`Waypoints` button of the page rail). It is not part of one agent: a graph can name several agents,
+`Waypoints` button of the sidebar pill). It is not part of one agent: a graph can name several agents,
 models, conditions, approvals and outputs. The host keeps the workflows. A joined desktop and the
 web client use them through the optional `workflows-v1` capability (see
 [Workflows](servers.md#workflows)). The agent event `workflows-changed` names the workflow that

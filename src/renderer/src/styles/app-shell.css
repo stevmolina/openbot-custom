@@ -903,7 +903,6 @@ textarea {
   justify-content: space-between;
   gap: var(--openbot-space-2);
   border-bottom: 1px solid var(--openbot-border);
-  /* The logo of the page rail (`page-rail.css`) has the same top padding, to stay on this center line. */
   padding-block: 2px 0;
   padding-inline: 10px 3px;
 }

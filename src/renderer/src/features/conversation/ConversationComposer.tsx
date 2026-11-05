@@ -396,6 +396,8 @@ export function ConversationComposer() {
       agent: props.agent,
       messages: props.messages,
       tasks: props.threads?.background ?? [],
+      // Upstream's subagent dock keeps the chat's running subagents in view.
+      subagents: false,
       replies: awaitingReplies(),
       onOpenSubagent: toggleSubagentPanel,
       onOpenTask: (id) => props.threads?.header.onOpen(id),

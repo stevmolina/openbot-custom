@@ -12,6 +12,7 @@ import type { JSX } from "@solidjs/web";
 import type { AvatarMood } from "../../bloub-avatar";
 import type { AgentProfile } from "../../data";
 import type { ServerMenuProps } from "../servers/ServerMenu";
+import type { SidebarPages } from "./sidebar-pages";
 import type { SidebarPinnedItem } from "./sidebar-pins";
 
 /**
@@ -138,6 +139,12 @@ export interface SidebarProps {
   /** The agents whose chat is open in a window of its own. Their rows show a window mark. */
   windowAgentIds?: ReadonlySet<string> | undefined;
   compact: boolean;
+  /**
+   * The pages, the provider usage and the account switch. With them, the sidebar is the chat sidebar:
+   * one list by last message, with the pages in a pill at the bottom, and a face dock when compact.
+   * Without them, it is the list of sections that the page rail went with.
+   */
+  pages?: SidebarPages | undefined;
   /** A card under the chat list, such as an announcement. The compact sidebar has no room for it. */
   footer?: JSX.Element;
   onExpand: () => void;

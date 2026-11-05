@@ -86,6 +86,8 @@ export const messages = {
   },
   "conversation.threads.view.label": "السلسلة {title}",
   "conversation.threads.view.startedByAgent": "بدأ {name} هذه السلسلة.",
+  "conversation.threads.view.emptyTitle": "على ماذا تريد أن تعمل؟",
+  "conversation.threads.view.emptySubtitle": "محادثة جديدة مع {name}.",
   "conversation.threads.branch.from": "متفرّعة من {title}",
   "conversation.threads.branch.fromDeleted": "متفرّعة من سلسلة محذوفة",
   "conversation.threads.view.newPlaceholder": "سلسلة جديدة مع {name}",

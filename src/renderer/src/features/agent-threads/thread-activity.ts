@@ -26,7 +26,7 @@ export type ThreadActivityState = SidebarThreadEntry["state"];
 export function createThreadActivity() {
   const { agentList } = useAgents();
   const turns = useTurns();
-  const { unreadReplies, recentReplies } = useConversation();
+  const { unreadReplies, agentUnreadReplies, recentReplies } = useConversation();
   const tasks = useAgentTasks();
   const tabs = useAgentThreads();
 
@@ -52,6 +52,8 @@ export function createThreadActivity() {
   function mainState(agentId: string): ThreadActivityState | null {
     const state = mainStates()[agentId];
     if (state?.kind === "waiting") return state;
+    // A background subagent that runs on after its turn keeps the agent's own chat at work.
+    if (turns.subagentTurns()[agentId]) return { kind: "working" };
     return isAgentWorking(agentId, turns.activeTurns(), turns.queues()) ? { kind: "working" } : null;
   }
 
@@ -102,10 +104,11 @@ export function createThreadActivity() {
     return result.sort((left, right) => (right.updatedAt ?? "").localeCompare(left.updatedAt ?? ""));
   });
 
-  /** The agents whose own chat has a reply that the user did not read. */
-  const unreadAgentIds = createMemo(
-    () => new Set(Object.keys(unreadReplies()).filter((agentId) => (unreadReplies()[agentId] ?? 0) > 0)),
-  );
+  /** The agents with a reply that the user did not read, in their own chat or a side thread. */
+  const unreadAgentIds = createMemo(() => {
+    const unread = agentUnreadReplies();
+    return new Set(Object.keys(unread).filter((agentId) => (unread[agentId] ?? 0) > 0));
+  });
 
   return { entries, threadStatus, unreadAgentIds };
 }
