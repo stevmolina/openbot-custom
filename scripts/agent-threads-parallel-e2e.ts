@@ -5,10 +5,10 @@
 // `bun scripts/agent-threads-parallel-e2e.ts --allow-mutations --agent=<agent id>`.
 //
 // The agent gets Workspace only access, so a write outside its workspace asks the user. The agent's own
-// chat asks first, then the side thread asks. Checks: each approval has its own thread; the agent is in
-// "Needs you"; the side thread's tab shows its approval, and Deny there leaves no file; after that the
-// agent is still in "Needs you" and its own chat still shows its approval; Deny there leaves no file and
-// takes the agent out of "Needs you". At the end it deletes the thread and the files and gives the agent
+// chat asks first, then the side thread asks. Checks: each approval has its own thread; the agent's
+// chat row shows the approval; the side thread's tab shows its approval, and Deny there leaves no file; after that the
+// agent's row still waits and its own chat still shows its approval; Deny there leaves no file and
+// the row stops waiting. At the end it deletes the thread and the files and gives the agent
 // its access back.
 // Writes .openbot-build/agent-threads-parallel-e2e/report.json and screenshots.
 import assert from "node:assert/strict";
@@ -62,7 +62,8 @@ const tab = (title: string) =>
     .getByRole("tab", { name: new RegExp(`^${literal(title)}`) })
     .first();
 const approvalCard = () => page.getByRole("region", { name: english("prompt.approval.label"), exact: true });
-const needsYou = () => page.getByRole("region", { name: new RegExp(`^${literal(english("sidebar.waiting.title"))}`) });
+/** The chat list. A chat that waits shows its wait in place of the last message. */
+const chatList = () => page.getByRole("navigation", { name: english("sidebar.nav.label"), exact: true });
 
 function writePrompt(): string {
   const file = join(homedir(), `openbot-thread-approval-${randomUUID()}.txt`);
@@ -102,9 +103,14 @@ assert.ok(
   `${before.provider} runs one turn at a time. Choose an agent on another provider.`,
 );
 const originalAccess = before.access ?? DEFAULT_AGENT_ACCESS;
+/** The agent's row says that it waits for an approval in place of its last message. */
 const agentInNeedsYou = () =>
-  needsYou()
-    .getByRole("button", { name: new RegExp(`^${literal(before.name)}[,.]`) })
+  chatList()
+    .getByRole("button", {
+      name: new RegExp(
+        `^${literal(before.name)}\\. (${literal(english("sidebar.waiting.action.approval"))}|${literal(english("sidebar.state.waitingApproval"))})`,
+      ),
+    })
     .count()
     .then((count) => count > 0);
 

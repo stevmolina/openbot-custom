@@ -37,6 +37,7 @@ import { useServers } from "../servers/servers-context";
 import { useSettings } from "../settings/settings-context";
 import { usePresence } from "../team/team-context";
 import { SidebarUpdateIsland } from "../updates/SidebarUpdateIsland";
+import { useWorkspaceSidebarPages } from "../window/workspace-sidebar-pages";
 import { createCommunityCardVisibility } from "./community-card";
 import { createMachineCard } from "./machine-card";
 import { useSidebar } from "./sidebar-context";
@@ -103,6 +104,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
   const agentTasks = useAgentTasks();
   const agentThreads = useAgentThreads();
   const threadActivity = createThreadActivity();
+  const pages = useWorkspaceSidebarPages();
   /**
    * The lanes list the threads of every agent, so each agent's thread list loads once per server.
    * Events keep a loaded list current.
@@ -386,6 +388,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
       }
       windowAgentIds={windowAgentIds()}
       compact={layout.leftPanelCompact()}
+      pages={pages()}
       onExpand={layout.expandSidebar}
       onOpenSearch={() => setGlobalSearchVisibility(true)}
       footer={

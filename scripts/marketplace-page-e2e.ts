@@ -27,8 +27,13 @@ const session = await connectToDevApp(instance.remoteDebuggingPort, logger, {
 });
 try {
   const page = session.page;
-  const rail = page.getByRole("navigation", { name: "Pages", exact: true });
-  const railButton = (name: string) => rail.getByRole("button", { name, exact: true });
+  // The pill of the chat sidebar: Chats and the pinned pages. Marketplace and Settings are in its More menu.
+  const pill = page.getByRole("navigation", { name: "Pages", exact: true });
+  const pillButton = (name: string) => pill.getByRole("button", { name, exact: true });
+  const openFromMore = async (name: string) => {
+    await pillButton("More").click();
+    await page.getByRole("menuitem", { name, exact: true }).click();
+  };
   const marketplace = page.getByRole("region", { name: "Marketplace", exact: true });
   const windowPage = () =>
     page.evaluate(() => document.querySelector("[data-window-page]")?.getAttribute("data-window-page"));
@@ -39,19 +44,19 @@ try {
     );
   const steps: string[] = [];
 
-  await railButton("Agents").click();
+  await pillButton("Chats").click();
   await waitForPage("agents");
 
-  // The rail opens the Marketplace as a page of the window, with the focus on the title of its side panel.
-  await railButton("Marketplace").click();
+  // More opens the Marketplace as a page of the window, with the focus on the title of its side panel.
+  await openFromMore("Marketplace");
   await marketplace.waitFor();
   await waitForPage("marketplace");
-  assert.equal(await railButton("Marketplace").getAttribute("aria-current"), "page");
+  assert.equal(await pillButton("More").getAttribute("aria-current"), "page");
   assert.equal(await page.getByRole("dialog").count(), 0, "The Marketplace opened as a dialog.");
   await page.waitForFunction(() => document.activeElement?.classList.contains("marketplace-nav-title") === true);
   mkdirSync(OUT, { recursive: true });
   await page.screenshot({ path: resolve(OUT, "marketplace.png") });
-  steps.push("rail opens the page");
+  steps.push("more opens the page");
 
   // A listing opens a view in the page. The kind in the path of the top row and Escape go back to the catalog.
   const back = marketplace
@@ -98,31 +103,31 @@ try {
   assert.equal(await windowPage(), "marketplace", "Escape with a search closed the page.");
   steps.push("escape keeps the search in a view and clears it on the catalog");
 
-  // Escape on the catalog closes the page, and the rail button that opened it gets the focus back.
+  // Escape on the catalog closes the page, and the More button that opened it gets the focus back.
   await page.keyboard.press("Escape");
   await waitForPage("agents");
   await marketplace.waitFor({ state: "detached" });
-  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Marketplace");
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "More");
   steps.push("escape closes the page and returns the focus");
 
-  // The rail leaves the page.
-  await railButton("Marketplace").click();
+  // Chats leaves the page.
+  await openFromMore("Marketplace");
   await marketplace.waitFor();
-  await railButton("Agents").click();
+  await pillButton("Chats").click();
   await waitForPage("agents");
   await marketplace.waitFor({ state: "detached" });
-  steps.push("rail Agents closes the page");
+  steps.push("chats closes the page");
 
   // Another page replaces it, and the Marketplace replaces that page.
-  await railButton("Marketplace").click();
+  await openFromMore("Marketplace");
   await marketplace.waitFor();
-  await railButton("Settings").click();
+  await openFromMore("Settings");
   await waitForPage("settings");
   await marketplace.waitFor({ state: "detached" });
-  await railButton("Marketplace").click();
+  await openFromMore("Marketplace");
   await waitForPage("marketplace");
   await marketplace.waitFor();
-  await railButton("Agents").click();
+  await pillButton("Chats").click();
   await waitForPage("agents");
   steps.push("settings and marketplace replace each other");
 

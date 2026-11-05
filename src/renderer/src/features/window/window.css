@@ -1,6 +1,5 @@
-/* The desktop window: the page rail at the left, and the frame as the card of the page that the rail
- * selects. The rail shares the darker surface of the frame edge, so the rail and the top row show as
- * one L around the card. */
+/* The desktop window: the frame, with the chat sidebar at its left and the card of the page beside it.
+ * The sidebar opens the pages, so it stays on every page. */
 .app-window {
   /* The frame is darker than the card, so the card comes forward. */
   --window-frame: var(--openbot-bg-frame);
@@ -15,26 +14,25 @@
   background: var(--window-frame);
 }
 
-/* A hidden rail stays out of the grid. The frame keeps the last column, which then takes the whole
- * window. */
-.app-window > .window-rail[hidden] {
-  display: none;
-}
-
 .app-window > .app-frame {
   grid-column: -2;
 }
 
-/* The frame below the edge layout keeps its own shape, so the rail would only take width. */
-@media (max-width: 720px) {
-  .app-window > .window-rail {
-    display: none;
-  }
+/* The macOS window buttons sit at the top left of the window. The open chat sidebar starts its top row
+ * after them; the dock puts its first button under them. The web frame has the macOS class but no
+ * buttons, and a server rail at the left holds the buttons itself. */
+.app-window
+  > .app-frame-platform-darwin:not(.web-app-frame, .app-frame-with-server-rail)
+  > .sidebar-chat:not(.sidebar-compact)
+  .sidebar-chat-top {
+  padding-left: 84px;
+}
 
-  /* The agent list stays beside the Tasks page here, so the page has no button to hide it. */
-  .app-frame .tasks-page-header > .side-panel-toggle {
-    display: none;
-  }
+.app-window
+  > .app-frame-platform-darwin:not(.web-app-frame, .app-frame-with-server-rail)
+  > .sidebar-chat.sidebar-compact
+  .sidebar-chat-top {
+  padding-top: var(--left-header-height);
 }
 
 /* A window with no macOS window buttons starts the server menu at the left edge of the search field
@@ -53,13 +51,12 @@
     position: relative;
   }
 
-  /* The rail holds the window buttons, so the server menu needs only the part of them that is past
-   * the rail. */
+  /* The window buttons sit over the server name of the sections list. */
   .app-window
     > .app-frame-platform-darwin:not(.app-frame-with-server-rail)
     > .sidebar:not(.sidebar-compact)
     .sidebar-topbar {
-    padding-left: var(--openbot-space-6);
+    padding-left: 84px;
   }
 
   /* One card holds the sidebar, the chat and the side panel, below the top row. The frame draws the
@@ -85,6 +82,26 @@
 
   .app-window > .app-frame-edge.app-frame-with-server-rail::before {
     left: var(--server-rail-width);
+  }
+
+  /* The chat sidebar sits beside the card, on its own surface from the top of the window, so the card
+   * starts at its edge. */
+  .app-window > .app-frame-edge:has(> .sidebar-chat)::before {
+    left: var(--left-panel-width);
+  }
+
+  .app-window > .app-frame-edge.app-frame-with-server-rail:has(> .sidebar-chat)::before {
+    left: calc(var(--server-rail-width) + var(--left-panel-width));
+  }
+
+  .app-window > .app-frame-edge > .sidebar.sidebar-chat {
+    --agent-avatar-outline: var(--openbot-bg-sidebar);
+
+    background: var(--openbot-bg-sidebar);
+  }
+
+  .app-window > .app-frame-edge > .sidebar.sidebar-chat::before {
+    content: none;
   }
 
   .app-window > .app-frame-edge > .server-rail {
@@ -435,36 +452,6 @@
     border-bottom-right-radius: calc(var(--openbot-radius-card) - 1px);
   }
 
-  /* The Tasks page opens with the agent list hidden. Its header button shows the list. Until then the
-   * page spans the sidebar, as the schedule page does. The server menu stays in the top row, and the
-   * page lets clicks through to it. */
-  .app-frame-edge.app-frame-sidebar-hidden > .sidebar > :not(.sidebar-topbar),
-  .app-frame-edge.app-frame-sidebar-hidden > .left-panel-resizer {
-    visibility: hidden;
-  }
-
-  .app-frame-edge.app-frame-sidebar-hidden > .sidebar .sidebar-new-button,
-  .app-frame-edge.app-frame-sidebar-hidden > .sidebar::before {
-    display: none;
-  }
-
-  /* Out of the grid flow, as the schedule page is: a grid cell would push the sidebar to a second row. */
-  .app-window > .app-frame-edge.app-frame-sidebar-hidden > .app-frame-panes {
-    position: absolute;
-    grid-row: 1 / -1;
-    grid-column: -4 / -1;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .app-window > .app-frame-edge.app-frame-sidebar-hidden > .app-frame-panes .tasks-page-header {
-    left: var(--left-panel-width);
-  }
-
-  .app-window > .app-frame-edge.app-frame-sidebar-hidden > .app-frame-panes :is(.tasks-page-scroll, .tasks-page-side) {
-    pointer-events: auto;
-  }
-
   /* The settings, schedule, usage and Marketplace pages cover the sidebar, so the week has room for
    * seven days. The server menu stays in the top row, so the user can select the server that the page
    * shows. The "settings" kind is both settings pages; the "titled" kind is schedule, usage and Marketplace. */
@@ -498,8 +485,17 @@
     left: calc(var(--server-rail-width) + 1px);
   }
 
-  .app-frame-edge:not([data-window-page-kind="agents"]) > .sidebar > :not(.sidebar-topbar),
-  .app-frame-edge:not([data-window-page-kind="agents"]) > .left-panel-resizer {
+  /* The chat sidebar opens the pages, so a page starts beside it and the sidebar stays. */
+  .app-frame-edge:has(> .sidebar-chat):not([data-window-page-kind="agents"]) > .window-page {
+    left: calc(var(--left-panel-width) + 1px);
+  }
+
+  .app-frame-edge.app-frame-with-server-rail:has(> .sidebar-chat):not([data-window-page-kind="agents"]) > .window-page {
+    left: calc(var(--server-rail-width) + var(--left-panel-width) + 1px);
+  }
+
+  .app-frame-edge:not([data-window-page-kind="agents"]) > .sidebar:not(.sidebar-chat) > :not(.sidebar-topbar),
+  .app-frame-edge:not([data-window-page-kind="agents"]):not(:has(> .sidebar-chat)) > .left-panel-resizer {
     visibility: hidden;
   }
 
@@ -514,7 +510,7 @@
   }
 
   .app-window
-    > .app-frame-edge[data-window-page-kind="titled"]
+    > .app-frame-edge[data-window-page-kind="titled"]:not(:has(> .sidebar-chat))
     > .window-page
     :is(.agent-usage-header, .routine-planner-title, .skills-marketplace-topbar) {
     margin-left: var(--left-panel-width);
@@ -577,7 +573,8 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  grid-template-columns: max(var(--left-panel-width, 280px), 220px) minmax(0, 1fr);
+  /* The chat sidebar stays beside the page, so the nav keeps a width of its own. */
+  grid-template-columns: 240px minmax(0, 1fr);
 }
 
 .settings-page-nav {

@@ -2,7 +2,7 @@
 // provider turn, so start the app with `bun run dev` (never `--shared`), and pass an agent whose provider
 // is signed in: `bun scripts/tasks-page-e2e.ts --allow-mutations --agent=<agent id>`.
 //
-// It opens the page from the page rail, starts the task from the page composer, and opens it from the
+// It opens the page from the sidebar pill, starts the task from the page composer, and opens it from the
 // Undo line. After the turn it checks that the task is in Needs you, that the panel shows the answer,
 // and that a follow-up from the panel runs a second turn. Then Archive moves the task to Archived,
 // Restore moves it back, Escape closes the panel, and Open in chat opens the task as a thread tab.
