@@ -477,13 +477,13 @@ export function createAgentThreadTabs(options: AgentThreadTabsOptions) {
     },
   );
 
-  /** Sends a message to a side thread. An archived thread is restored first. A quote stays in the thread. */
+  /** Sends a message to a side thread. An archived thread is restored first. */
   async function send(
     agentId: string,
     id: string,
     text: string,
     attachmentDraftIds: string[],
-    replyToMessageId?: string | null,
+    replyToMessageId: string | null = null,
   ): Promise<boolean> {
     if (task(agentId, id)?.state === "closed" && !(await tasks.reopenTask(agentId, id))) return false;
     return tasks.sendToTask(agentId, id, text, attachmentDraftIds, replyToMessageId);

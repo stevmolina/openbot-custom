@@ -55,7 +55,7 @@
 
 .web-consent-row .first-run-choice-improve-pop {
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
 }
 
 @media (max-width: 720px) {
@@ -198,7 +198,7 @@
   }
 
   .web-app-frame[data-web-mobile-pane="conversation"] .conversation-panel.browser-panel-active {
-    padding-right: 0;
+    padding-inline-end: 0;
   }
 
   .web-app-frame[data-web-mobile-pane="conversation"] .browser-panel {
@@ -219,7 +219,7 @@
 
   .web-app-frame[data-web-mobile-pane="conversation"]
     .side-panel-docked
-    > :is(.conversation-scroll, .composer-wrap, .unread-messages-banner, .chat-search) {
+    > :is(.conversation-scroll, .composer-wrap, .unread-messages-banner, .chat-search, .subagents-dock) {
     visibility: hidden;
   }
 

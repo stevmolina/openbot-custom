@@ -57,6 +57,8 @@ async function fixture() {
       emit: vi.fn(),
       agent: () => agent,
       hold: () => "task-limit",
+      turnActive: () => false,
+      archived: () => Effect.void,
       queued,
     },
   });

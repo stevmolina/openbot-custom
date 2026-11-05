@@ -11,13 +11,15 @@ export function backgroundWorkerItems(input: {
   messages: readonly { turnId?: string | undefined; subagents?: readonly Subagent[] | undefined }[];
   tasks: readonly Task[];
   excludeTaskId?: string | undefined;
+  /** False where the view already keeps its running subagents in view, as the main chat's subagent dock does. */
+  subagents?: boolean | undefined;
   replies: Iterable<Reply>;
   onOpenSubagent: (id: string) => void;
   onOpenTask: (id: string) => void;
   onOpenAgent: (id: string) => void;
 }): BackgroundWorker[] {
   return [
-    ...runningSubagents(input.messages).map((worker) => ({
+    ...(input.subagents === false ? [] : runningSubagents(input.messages)).map((worker) => ({
       id: `subagent:${worker.id}`,
       agent: input.agent,
       title: worker.title,

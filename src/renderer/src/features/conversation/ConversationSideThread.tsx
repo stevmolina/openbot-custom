@@ -1,58 +1,56 @@
-import { chatVisualReply } from "@openbot/contracts/chat-visual";
 import { canPreviewAttachment } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { classifyFailure } from "@openbot/telemetry";
 import type { AgentMessage } from "@openbot/ui/data";
-import { BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
 import { contextUsageView } from "@openbot/ui/features/conversation/ContextUsage";
 import { AgentThreadView } from "@openbot/ui/features/conversation/threads/AgentThreadView";
 import type { AgentThreadBranchSource } from "@openbot/ui/features/conversation/threads/BranchDivider";
 import { TaskAnswerCard } from "@openbot/ui/features/tasks/TaskPanel";
 import { useText } from "@openbot/ui/text";
-import { createEffect, createMemo, createProjection, Show } from "solid-js";
+import { createEffect, createProjection, Show } from "solid-js";
 import { actionToast } from "../../action-toast";
 import { useShowAgentSteps } from "../../agent-steps-preference";
 import { toAgentMessages } from "../../app-message-projection";
-import { agentAwaitingReplies } from "../../awaiting-replies";
 import { usePlatform } from "../../platform";
-import { backgroundWorkerItems } from "./background-worker-items";
-import { chatVisualPageUrl } from "./chat-visual-url";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
 import { type QuoteDestination, useConversationViewScope } from "./conversation-scope";
 import type { SideThread } from "./conversation-types";
-import { ThreadVisualReply } from "./ThreadVisualReply";
-import { threadReadAloud } from "./thread-read-aloud";
+import { useCustomThreadExtras } from "./custom-thread-extras";
+import { useThreadMcpSignInCard } from "./McpSignInChatCard";
 import { createTurnSteps } from "./turn-steps";
+
+/** Custom: a quote goes to the box of the side thread that the person quoted from. */
+function sideQuote(destination: QuoteDestination, threadId: string): boolean {
+  return destination.kind === "side" && destination.threadId === threadId;
+}
 
 /**
  * A side thread in the side panel, beside the agent's own chat. Its message box takes text only:
  * files, and the question and takeover cards of the thread, stay in the chat. A thread that waits
  * for an answer shows a card that moves it to the chat.
  */
-function sideQuote(destination: QuoteDestination, threadId: string): boolean {
-  return destination.kind === "side" && destination.threadId === threadId;
-}
-
 export function ConversationSideThread(props: { threadId: string }) {
   const {
     props: view,
     openExternalMessageUrl,
     previewAttachment,
     attachmentAction,
+    attachmentDownloads,
     installedSkills,
     installedSkillsLoadFailed,
     mcpServers,
+    taggableBrowserTabs,
+    taggableThreads,
+    openTaggedReference,
     threadComposer,
+    threadQueue,
     movePanelThreadToChat,
     copyMessage,
     copiedMessageId,
     quoteRequest,
     quoteDestination,
     openQuote,
-    reactToMessage,
     branchThread,
-    awaitingReplies,
-    toggleSubagentPanel,
   } = useConversationViewScope();
   const { t, errorMessage } = useText();
   const failureToast = (fallback: AppTextKey) => ({
@@ -81,28 +79,6 @@ export function ConversationSideThread(props: { threadId: string }) {
     lines: () => undefined,
     activeTurnId: () => thread()?.task.activeTurnId,
   });
-  /** The same worker rows as the chat, without this thread itself. Rows are keyed by id. */
-  const backgroundWorkers = createMemo(() => {
-    const replies = new Map(awaitingReplies().map((item) => [item.id, item]));
-    for (const item of agentAwaitingReplies({
-      messages,
-      queue: view.queue?.agentId === view.agent?.id ? view.queue : undefined,
-      agents: view.agents,
-      self: view.agent,
-      waits: view.agentWaits,
-    }))
-      replies.set(item.id, item);
-    return backgroundWorkerItems({
-      agent: view.agent,
-      messages,
-      tasks: view.threads?.background ?? [],
-      excludeTaskId: props.threadId,
-      replies: replies.values(),
-      onOpenSubagent: toggleSubagentPanel,
-      onOpenTask: (id) => view.threads?.header.onOpen(id),
-      onOpenAgent: view.onSelectAgent,
-    });
-  });
   const showAgentSteps = useShowAgentSteps();
   const { appFocused } = usePlatform();
   // The person reads the thread in the side panel while the window has focus.
@@ -124,16 +100,14 @@ export function ConversationSideThread(props: { threadId: string }) {
     const key = draftKey();
     return key ? threadComposer.draft(key) : undefined;
   };
-  const replyTarget = () => {
-    const id = draft()?.replyToMessageId;
-    const conversation = thread()?.conversation;
-    if (!id || !conversation) return undefined;
-    return toAgentMessages(conversation.messages, view.agent?.id).find((message) => message.id === id);
-  };
   /** Sends the draft of this thread. Without its key, a send would take the draft of the chat's thread. */
   function sendSide(side: SideThread, text: string): Promise<boolean> {
     const key = draftKey();
-    return key ? threadComposer.send(side, text, key) : Promise.resolve(false);
+    if (!key) return Promise.resolve(false);
+    // While a queued message is in the message box, Send saves it in its place.
+    return threadQueue.editOf(side.task.id)
+      ? threadComposer.importsEnded(key).then(() => threadQueue.save(key))
+      : threadComposer.send(side, text, key);
   }
   /** The thread waits for an answer to a question or a takeover, which the chat tab of the thread shows. */
   const waitsForAnswer = () => {
@@ -144,10 +118,29 @@ export function ConversationSideThread(props: { threadId: string }) {
     waitsForAnswer() ? (
       <TaskAnswerCard agentName={view.agent?.name ?? ""} onAnswer={() => movePanelThreadToChat(props.threadId)} />
     ) : undefined;
+  /** Continue on a sign-in card goes to this thread, as the person's next message there. */
+  const extras = useCustomThreadExtras({ messages, excludeTaskId: () => props.threadId });
+  const mcpSignInCard = useThreadMcpSignInCard((body) => thread()?.onSend(body, [], null) ?? Promise.resolve(false));
   /** Branches this thread through an answer. The branch opens as a chat tab. */
   const branch = () => {
     if (!view.threads?.onBranch) return undefined;
     return (messageId: string) => void branchThread(props.threadId, messageId);
+  };
+  /** Deletes a message of this thread. A host without `message-delete-v1` has no Delete item. */
+  const deleteMessage = () => {
+    const remove = view.threads?.onDeleteMessage;
+    const taskId = thread()?.task.id;
+    if (!remove || !taskId) return undefined;
+    return (messageId: string) => remove(taskId, messageId);
+  };
+  /** Replies to a message of this thread. */
+  const reply = () => {
+    if (!view.threads?.acceptsReplies) return undefined;
+    return (message: AgentMessage) => threadComposer.setReply(draftKey(), message.id);
+  };
+  const replyTo = () => {
+    const id = view.threads?.acceptsReplies ? draft()?.replyToMessageId : null;
+    return id ? messages.find((message) => message.id === id) : undefined;
   };
   /** Where this thread came from, when it is a branch. The agent's own chat shows the agent's name. */
   const branchSource = (side: SideThread, agentName: string): AgentThreadBranchSource | undefined => {
@@ -172,38 +165,23 @@ export function ConversationSideThread(props: { threadId: string }) {
       <Show when={shown()}>
         {(current) => (
           <AgentThreadView
-            aboveComposer={<BackgroundWorkers items={backgroundWorkers()} />}
             task={current().thread.task}
             limit={view.threads?.limit ?? 1}
             agent={current().agent}
             agents={view.agents}
             messages={messages}
-            visualReply={(message) => {
-              const visual = chatVisualReply(message);
-              if (!visual) return undefined;
-              const src = chatVisualPageUrl(visual.attachment.previewUrl);
-              const load = view.runtime?.visualPage;
-              if (!src && !load) return undefined;
-              return (
-                <ThreadVisualReply
-                  message={message}
-                  visual={visual}
-                  src={src}
-                  load={load}
-                  onOpenLink={(url) => void openExternalMessageUrl(url)}
-                  macWindowControls={view.platform === "darwin"}
-                />
-              );
-            }}
             skills={installedSkills()}
             skillsLoadFailed={installedSkillsLoadFailed()}
             mcpServers={mcpServers()}
+            browserTabs={taggableBrowserTabs()}
+            threads={taggableThreads()}
+            onOpenTag={openTaggedReference}
             draft={draft()?.text ?? ""}
             draftAttachments={draft()?.attachments}
             rowAttachments={rowImages()}
             pendingImages={threadComposer.pendingImages(draftKey())}
             onRemoveAttachment={(attachment) => threadComposer.removeAttachment(draftKey(), attachment.id)}
-            onPasteFiles={(files, selection) => threadComposer.pasteFiles(files, selection, draftKey())}
+            onPasteFiles={(files, selection, text) => threadComposer.pasteFiles(files, selection, draftKey(), text)}
             onDraftChange={(text) => threadComposer.setText(draftKey(), text)}
             onOpenDraftAttachment={(attachment) =>
               canPreviewAttachment(attachment)
@@ -211,6 +189,7 @@ export function ConversationSideThread(props: { threadId: string }) {
                 : attachmentAction(attachment, "open")
             }
             mediaSource={view.runtime?.attachmentMedia}
+            downloads={attachmentDownloads}
             onSend={(text) => sendSide(current().thread, text)}
             onStop={() => current().thread.onStop()}
             onOpenLink={(url) => void openExternalMessageUrl(url)}
@@ -224,6 +203,8 @@ export function ConversationSideThread(props: { threadId: string }) {
             onCompactContext={current().thread.onCompactContext}
             waitsForAnswer={waitsForAnswer()}
             attention={answerCard()}
+            messageCard={(message) => extras.visualCard(message) ?? mcpSignInCard(message)}
+            aboveComposer={extras.aboveComposer()}
             stepsAbove={turnSteps.stepsAbove}
             factsAbove={turnSteps.factsAbove}
             activeSteps={turnSteps.activeSteps()}
@@ -231,17 +212,18 @@ export function ConversationSideThread(props: { threadId: string }) {
             quoteRequest={quoteRequest()}
             applyQuote={sideQuote(quoteDestination(), props.threadId)}
             onOpenQuote={openQuote}
-            replyTo={replyTarget()}
-            onCancelReply={() => threadComposer.setReply(draftKey(), null)}
-            onReply={(message) => threadComposer.setReply(draftKey(), message.id)}
-            onReact={(message, emoji) => void reactToMessage(message, emoji)}
-            readAloud={(message) =>
-              threadReadAloud(view.runtime !== undefined, view.server?.id ?? "local", view.agent?.id, message)
-            }
+            onReact={extras.onReact}
+            readAloud={extras.readAloud}
             onCopyMessage={(message) => void copyMessage(message)}
             copiedMessageId={copiedMessageId()}
             onBranch={branch()}
+            onDeleteMessage={deleteMessage()}
+            canDeleteMessage={view.canDeleteMessage}
             branchSource={branchSource(current().thread, current().agent.name)}
+            onReply={reply()}
+            replyTo={replyTo()}
+            onCancelReply={() => threadComposer.setReply(draftKey(), null)}
+            queue={threadQueue.view(current().thread.task, draftKey())}
           />
         )}
       </Show>

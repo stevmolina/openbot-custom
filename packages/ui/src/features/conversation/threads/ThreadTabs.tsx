@@ -22,10 +22,11 @@ import { ThreadTitle } from "./ThreadTitle";
 import { setCarriedThreadTab, sidePanelTabRow, swallowNextClick } from "./thread-tab-drag";
 import { MAIN_THREAD_ID, type ThreadHeaderProps, type ThreadItem, type ThreadStatus, threadBusy } from "./thread-types";
 
-/** The badge on the corner of an agent's face in a tab: only a thread that works or waits has one. */
-function agentTabBadge(status: ThreadStatus): SidebarAgentState | undefined {
+/** The badge on the corner of an agent's face in a tab: a thread that works, waits, or has unread replies. */
+function agentTabBadge(status: ThreadStatus, unread: number | undefined): SidebarAgentState | undefined {
   if (status.kind === "working") return { kind: "working" };
   if (status.kind === "waiting") return { kind: "waiting", reason: status.reason, detail: null };
+  if (unread && unread > 0) return { kind: "unread", count: unread };
   return undefined;
 }
 
@@ -155,7 +156,7 @@ function ThreadTab(props: {
             {/* As in a side panel tab, the icon slot shows the thread's state and is also the close control. */}
             <span class="agent-threads-tab-close" aria-hidden="true" title={closeLabel()} {...closeHandlers}>
               <span class="agent-threads-tab-icon">
-                <ThreadTabIcon status={props.thread.status} />
+                <ThreadTabIcon status={props.thread.status} unread={props.thread.unread} />
               </span>
               <X class="agent-threads-tab-x" />
             </span>
@@ -168,7 +169,7 @@ function ThreadTab(props: {
             {/* A tab of the tabs of all agents: the agent's face with the thread's state on its corner. */}
             <span class="agent-threads-tab-avatar" aria-hidden="true">
               <AgentAvatar agent={agent().profile} motion="idle" />
-              <SidebarAgentIndicator state={() => agentTabBadge(props.thread.status)} />
+              <SidebarAgentIndicator state={() => agentTabBadge(props.thread.status, props.thread.unread)} />
             </span>
             <ThreadTitle class="agent-threads-tab-title" title={props.thread.title} />
             <Show when={agent().copy}>{(copy) => <span class="agent-threads-tab-copy">{copy()}</span>}</Show>
@@ -183,7 +184,7 @@ function ThreadTab(props: {
           </>
         )}
       </Show>
-      <ThreadStatusText status={props.thread.status} />
+      <ThreadStatusText status={props.thread.status} unread={props.thread.unread} />
     </SlidingTabs.Trigger>
   );
 }
@@ -739,6 +740,7 @@ export function ThreadTabs(props: ThreadHeaderProps) {
             }
             class="agent-threads-rename"
             size="sm"
+            dir="auto"
             aria-label={t("conversation.threads.name")}
             maxlength={INPUT_LIMITS.agentTaskTitle}
             defaultValue={edit().title}

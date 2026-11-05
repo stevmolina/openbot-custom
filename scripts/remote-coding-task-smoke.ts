@@ -57,6 +57,8 @@ try {
       emit: () => {},
       agent: () => agent,
       hold: () => "task-limit",
+      turnActive: () => false,
+      archived: () => Effect.void,
       queued: () => {
         queued += 1;
       },

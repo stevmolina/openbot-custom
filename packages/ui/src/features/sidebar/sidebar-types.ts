@@ -1,4 +1,5 @@
 import type {
+  AvatarColor,
   AvatarHue,
   ChannelSummary,
   DirectThreadSummary,
@@ -162,6 +163,7 @@ export interface SidebarProps {
         label: string;
         avatarSeed: string;
         avatarHue: AvatarHue | null;
+        avatarColor: AvatarColor | null;
         onSelect: () => void;
       }
     | undefined;
