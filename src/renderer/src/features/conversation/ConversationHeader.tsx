@@ -34,9 +34,9 @@ export function ConversationHeader() {
     actingBrowserControl,
     agentActivity,
     browserControlAgent,
-    changeFastMode,
     channel,
     fastMode,
+    fastModeChange,
     props,
     runningTurnRuntime,
     selectAndConfirmModel,
@@ -136,14 +136,12 @@ export function ConversationHeader() {
         disabledReason: t("conversation.header.modelsUnavailable"),
         accountChoice: true,
         providerAccountId: props.agent ? agentNextProviderAccountId(props.agent) : undefined,
-        onChange: (model, provider, accountId) => void selectAndConfirmModel(model, provider, accountId),
+        accountUsage: props.accountUsage,
+        onChange: (model, provider, accountId, effort) =>
+          void selectAndConfirmModel(model, provider, accountId, effort),
         onReasoningEffortChange: (effort) => void selectAndConfirmReasoning(effort),
-        // Codex only for now, and only on this computer: the Team API does not carry fast mode.
         fastMode: fastMode(),
-        onFastModeChange:
-          settingsProvider() === "codex" && props.server?.kind === "local"
-            ? (next) => void changeFastMode(next)
-            : undefined,
+        onFastModeChange: fastModeChange(),
       }}
       remoteControl={
         props.remoteDesktopEnabled !== false && props.server?.kind === "remote"

@@ -71,7 +71,7 @@ function ThreadStage(props: { web?: boolean; failed?: boolean }) {
       onOpenLink={() => undefined}
       onPreview={() => undefined}
       onAttachmentAction={() => undefined}
-      visualReply={(message) => {
+      messageCard={(message) => {
         const visual = chatVisualReply(message);
         if (!visual) return undefined;
         return (

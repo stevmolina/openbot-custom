@@ -155,7 +155,7 @@ function ThreadTab(props: {
             {/* As in a side panel tab, the icon slot shows the thread's state and is also the close control. */}
             <span class="agent-threads-tab-close" aria-hidden="true" title={closeLabel()} {...closeHandlers}>
               <span class="agent-threads-tab-icon">
-                <ThreadTabIcon status={props.thread.status} />
+                <ThreadTabIcon status={props.thread.status} unread={props.thread.unread} />
               </span>
               <X class="agent-threads-tab-x" />
             </span>
@@ -183,7 +183,7 @@ function ThreadTab(props: {
           </>
         )}
       </Show>
-      <ThreadStatusText status={props.thread.status} />
+      <ThreadStatusText status={props.thread.status} unread={props.thread.unread} />
     </SlidingTabs.Trigger>
   );
 }
@@ -739,6 +739,7 @@ export function ThreadTabs(props: ThreadHeaderProps) {
             }
             class="agent-threads-rename"
             size="sm"
+            dir="auto"
             aria-label={t("conversation.threads.name")}
             maxlength={INPUT_LIMITS.agentTaskTitle}
             defaultValue={edit().title}

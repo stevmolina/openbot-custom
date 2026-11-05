@@ -51,7 +51,6 @@ export async function routeAgentTasks(
               taskId,
               text: stringField(body, "text", false, INPUT_LIMITS.messageText),
               ...clientMessageId(body),
-              ...replyToMessageId(body),
             },
             memberSender(member),
           ),
@@ -82,9 +81,4 @@ function startTask(tasks: TeamApiAgentTasks, agentId: string, body: DynamicRecor
 /** The frozen codec has already checked that it is an identifier. */
 function clientMessageId(body: DynamicRecord): { clientMessageId?: string } {
   return isString(body.clientMessageId) ? { clientMessageId: body.clientMessageId } : {};
-}
-
-/** A quote of a message in the same thread. Absent when the message quotes nothing. */
-function replyToMessageId(body: DynamicRecord): { replyToMessageId?: string } {
-  return isString(body.replyToMessageId) ? { replyToMessageId: body.replyToMessageId } : {};
 }

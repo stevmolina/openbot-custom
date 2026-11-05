@@ -47,11 +47,11 @@ const start = exact(
   message(fields({ agentId: identifier, text, attachmentDraftIds: drafts }, { clientMessageId: identifier })),
 );
 const send = exact(
-  ["agentId", "taskId", "text", "attachmentDraftIds", "clientMessageId", "replyToMessageId"],
+  ["agentId", "taskId", "text", "attachmentDraftIds", "clientMessageId"],
   message(
     fields(
       { agentId: identifier, taskId: identifier, text, attachmentDraftIds: drafts },
-      { clientMessageId: identifier, replyToMessageId: identifier },
+      { clientMessageId: identifier },
     ),
   ),
 );
