@@ -222,7 +222,6 @@ export const messages = {
   "sidebar.chat.newMenu": "وكيل أو قناة جديدة",
   "sidebar.chat.unread": "غير مقروءة",
   "sidebar.usage.label": "مزودو الذكاء الاصطناعي",
-  "sidebar.usage.left": "متبقٍ {percent}%",
   "sidebar.pill.chats": "المحادثات",
   "sidebar.pill.pinPage": "تثبيت {name} في الشريط الجانبي",
   "sidebar.pill.moreNotice": "المزيد. {notice}",
