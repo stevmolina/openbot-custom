@@ -25,7 +25,7 @@
   > .app-frame-platform-darwin:not(.web-app-frame, .app-frame-with-server-rail)
   > .sidebar-chat:not(.sidebar-compact)
   .sidebar-chat-top {
-  padding-left: 84px;
+  padding-left: 96px;
 }
 
 .app-window
