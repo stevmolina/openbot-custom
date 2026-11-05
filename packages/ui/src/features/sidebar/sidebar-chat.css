@@ -4,6 +4,21 @@
 .sidebar.sidebar-chat {
   --sidebar-chat-face: 46px;
   --sidebar-chat-control: 34px;
+  /* The pill, and the usage tab that grows out of its top. The pill height sets the radius of its
+   * round ends, so the tab starts where they end. */
+  --sidebar-pill-button: 40px;
+  --sidebar-pill-padding: 5px;
+  --sidebar-pill-border: 1px;
+  --sidebar-pill-height: calc(
+    var(--sidebar-pill-button) +
+    2 *
+    (var(--sidebar-pill-padding) + var(--sidebar-pill-border))
+  );
+  --sidebar-pill-bg: color-mix(in srgb, var(--openbot-text-primary) 5%, var(--openbot-bg-sidebar));
+  --sidebar-usage-fillet: 12px;
+  /* How far the fillets reach into the round ends of the pill. More makes the tab wider. */
+  --sidebar-usage-tab-overlap: 4px;
+  --sidebar-usage-ring: 34px;
 
   position: relative;
   z-index: 2;
@@ -173,8 +188,11 @@
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: var(--openbot-space-1);
   padding: var(--openbot-space-1) var(--openbot-space-3) var(--openbot-space-3);
+}
+
+.sidebar-chat-dock-bottom {
+  gap: var(--openbot-space-1);
 }
 
 .sidebar-usage {
@@ -186,73 +204,171 @@
   padding: 0;
 }
 
-/* Two providers to a line, so a name and its percent keep their room. */
-.sidebar-usage.sidebar-usage-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+/* One row of rings in a tab that grows out of the top of the pill, like a browser tab. The tab has
+ * the fill and the edge of the pill. It covers the top edge of the pill below it, and two concave
+ * fillets turn its sides into that edge, so the tab and the pill read as one shape. */
+.sidebar-usage.sidebar-usage-tab {
+  position: relative;
+  z-index: 1;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2px;
+  margin: 0 calc(var(--sidebar-pill-height) / 2 + var(--sidebar-usage-fillet) - var(--sidebar-usage-tab-overlap))
+    calc(-1 * var(--sidebar-pill-border));
+  border: var(--sidebar-pill-border) solid var(--openbot-border);
+  border-bottom: 0;
+  border-radius: var(--openbot-radius-xl) var(--openbot-radius-xl) 0 0;
+  background: var(--sidebar-pill-bg);
+  padding: 7px 14px calc(4px + var(--sidebar-pill-border));
 }
 
-.sidebar-usage-row > .ui-motion-tooltip-trigger {
+/* A fillet fills the corner between a side of the tab and the pill. It has the fill of the pill
+ * outside a circle that touches the side of the tab, with the edge color on the rim of the circle.
+ * Without CSS math on lengths, the circle sits on the flat top of the pill: the round end drops less
+ * than half a pixel at a 4px reach. */
+.sidebar-usage.sidebar-usage-tab::before,
+.sidebar-usage.sidebar-usage-tab::after {
+  --sidebar-usage-rim: calc(var(--sidebar-usage-fillet) - var(--sidebar-pill-border));
+
+  position: absolute;
+  bottom: 0;
+  width: var(--sidebar-usage-fillet);
+  height: var(--sidebar-usage-fillet);
+  content: "";
+  pointer-events: none;
+}
+
+.sidebar-usage.sidebar-usage-tab::before {
+  right: 100%;
+  background:
+    radial-gradient(
+      circle at calc(100% - var(--sidebar-usage-fillet)) 0,
+      transparent calc(var(--sidebar-usage-rim) - 0.25px),
+      var(--openbot-border) calc(var(--sidebar-usage-rim) + 0.25px),
+      var(--openbot-border) calc(var(--sidebar-usage-fillet) - 0.25px),
+      transparent calc(var(--sidebar-usage-fillet) + 0.25px)
+    ),
+    radial-gradient(
+      circle at calc(100% - var(--sidebar-usage-fillet)) 0,
+      transparent calc(var(--sidebar-usage-rim) - 0.5px),
+      var(--sidebar-pill-bg) var(--sidebar-usage-rim)
+    );
+}
+
+.sidebar-usage.sidebar-usage-tab::after {
+  left: 100%;
+  background:
+    radial-gradient(
+      circle at var(--sidebar-usage-fillet) 0,
+      transparent calc(var(--sidebar-usage-rim) - 0.25px),
+      var(--openbot-border) calc(var(--sidebar-usage-rim) + 0.25px),
+      var(--openbot-border) calc(var(--sidebar-usage-fillet) - 0.25px),
+      transparent calc(var(--sidebar-usage-fillet) + 0.25px)
+    ),
+    radial-gradient(
+      circle at var(--sidebar-usage-fillet) 0,
+      transparent calc(var(--sidebar-usage-rim) - 0.5px),
+      var(--sidebar-pill-bg) var(--sidebar-usage-rim)
+    );
+}
+
+/* With CSS math on lengths, the tab reaches further, and each fillet circle touches the round end
+ * of the pill instead of its flat top. Lengths are from the top left corner of the pill, down is
+ * positive. The circle center is `--sidebar-usage-shift` inside the round-end center across and
+ * `--sidebar-usage-drop` above it. The fillet starts where the two circles touch, and reaches one
+ * border below the top edge of the pill, so the round-end edge under it is covered. */
+@supports (width: calc(1px / 1px * 1px)) {
+  .sidebar.sidebar-chat {
+    --sidebar-usage-tab-overlap: 8px;
+  }
+
+  .sidebar-usage.sidebar-usage-tab::before,
+  .sidebar-usage.sidebar-usage-tab::after {
+    --sidebar-usage-end: calc(var(--sidebar-pill-height) / 2);
+    --sidebar-usage-reach: calc(var(--sidebar-usage-end) + var(--sidebar-usage-rim));
+    --sidebar-usage-shift: max(0px, calc(var(--sidebar-usage-tab-overlap) - var(--sidebar-pill-border)));
+    --sidebar-usage-drop: calc(
+      sqrt(pow(var(--sidebar-usage-reach) / 1px, 2) - pow(var(--sidebar-usage-shift) / 1px, 2)) *
+      1px
+    );
+    --sidebar-usage-start: calc(
+      var(--sidebar-usage-end) *
+      (1 - var(--sidebar-usage-shift) / var(--sidebar-usage-reach))
+    );
+
+    bottom: calc(-1 * var(--sidebar-pill-border));
+    width: calc(
+      var(--sidebar-usage-end) +
+      var(--sidebar-usage-fillet) -
+      var(--sidebar-usage-tab-overlap) +
+      var(--sidebar-pill-border) -
+      var(--sidebar-usage-start)
+    );
+    height: calc(var(--sidebar-usage-drop) - var(--sidebar-usage-end) + 2 * var(--sidebar-pill-border));
+  }
+}
+
+/* The rings share the row and shrink to fit, so the row never wraps or scrolls. */
+.sidebar-usage-tab > .ui-motion-tooltip-trigger {
   min-width: 0;
+  flex: 0 1 28px;
 }
 
 /* Two rings to a line in the dock, so the faces above keep their room. */
 .sidebar-usage.sidebar-usage-column {
   display: grid;
-  grid-template-columns: repeat(2, 34px);
+  grid-template-columns: repeat(2, var(--sidebar-usage-ring));
   gap: 2px;
   justify-content: center;
 }
 
 .sidebar-chat .sidebar-usage-button.ui-button {
   display: flex;
-  width: 100%;
+  width: var(--sidebar-usage-ring);
   height: auto;
   min-width: 0;
   align-items: center;
-  justify-content: flex-start;
-  gap: var(--openbot-space-2);
-  border-radius: var(--openbot-radius-lg);
-  padding: var(--openbot-space-1);
+  justify-content: center;
+  border-radius: var(--openbot-radius-pill);
+  padding: 0;
   color: var(--openbot-text-primary);
   font-weight: inherit;
-  text-align: left;
 }
 
-.sidebar-usage-row .sidebar-usage-button.ui-button {
-  padding-right: var(--openbot-space-2);
+.sidebar-chat .sidebar-usage-tab .sidebar-usage-button.ui-button {
+  width: 100%;
+  border: 0;
 }
 
 .sidebar-chat .sidebar-usage-button.ui-button:hover {
   background: var(--openbot-hover);
 }
 
-.sidebar-chat .sidebar-usage-column .sidebar-usage-button.ui-button {
-  width: 34px;
-  padding: 0;
-  border-radius: var(--openbot-radius-pill);
-}
-
 .sidebar-usage-ring-box {
   position: relative;
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: var(--sidebar-usage-ring);
   flex: none;
+  aspect-ratio: 1;
   place-items: center;
+}
+
+.sidebar-usage-tab .sidebar-usage-ring-box {
+  width: 100%;
 }
 
 .sidebar-usage-ring {
   position: absolute;
   inset: 0;
-  width: 34px;
-  height: 34px;
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
 }
 
 .sidebar-usage-logo {
-  width: var(--openbot-icon-xs);
-  height: var(--openbot-icon-xs);
+  width: min(var(--openbot-icon-xs), 42%);
+  height: auto;
+  aspect-ratio: 1;
   overflow: visible;
   fill: var(--openbot-provider-current);
 }
@@ -272,30 +388,6 @@
 
 .sidebar-usage-arc[data-usage-tone="critical"] {
   stroke: var(--openbot-danger);
-}
-
-.sidebar-usage-copy {
-  display: flex;
-  min-width: 0;
-  overflow: hidden;
-  flex-direction: column;
-  font-size: var(--openbot-text-sm);
-  line-height: 15px;
-}
-
-.sidebar-usage-name,
-.sidebar-usage-left {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidebar-usage-left {
-  color: var(--openbot-text-secondary);
-}
-
-.sidebar-usage-left.sidebar-usage-low {
-  color: var(--openbot-warning-text);
 }
 
 /* The hover card of a usage ring shows the limits only. The usage page has the refresh. */
@@ -331,10 +423,10 @@
   min-width: 0;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--openbot-border);
+  border: var(--sidebar-pill-border) solid var(--openbot-border);
   border-radius: var(--openbot-radius-pill);
-  background: color-mix(in srgb, var(--openbot-text-primary) 5%, var(--openbot-bg-sidebar));
-  padding: 5px;
+  background: var(--sidebar-pill-bg);
+  padding: var(--sidebar-pill-padding);
 }
 
 .sidebar-pill-pages {
@@ -348,8 +440,8 @@
 .sidebar-chat .sidebar-pill-button {
   position: relative;
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: var(--sidebar-pill-button);
+  height: var(--sidebar-pill-button);
   flex: none;
   place-items: center;
   border: 0;
@@ -398,8 +490,8 @@
 .sidebar-chat .sidebar-account-switch.ui-button {
   position: relative;
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: var(--sidebar-pill-button);
+  height: var(--sidebar-pill-button);
   flex: none;
   place-items: center;
   border-radius: var(--openbot-radius-pill);

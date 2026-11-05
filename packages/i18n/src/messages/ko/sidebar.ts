@@ -30,7 +30,6 @@ export const messages = {
   "sidebar.chat.newMenu": "새 에이전트 또는 채널",
   "sidebar.chat.unread": "읽지 않음",
   "sidebar.usage.label": "AI 제공자",
-  "sidebar.usage.left": "{percent}% 남음",
   "sidebar.pill.chats": "채팅",
   "sidebar.pill.pinPage": "{name}을(를) 사이드바에 고정",
   "sidebar.pill.moreNotice": "더 보기. {notice}",

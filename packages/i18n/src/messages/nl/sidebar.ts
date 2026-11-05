@@ -30,7 +30,6 @@ export const messages = {
   "sidebar.chat.newMenu": "Nieuwe agent of kanaal",
   "sidebar.chat.unread": "Ongelezen",
   "sidebar.usage.label": "AI-aanbieders",
-  "sidebar.usage.left": "{percent}% over",
   "sidebar.pill.chats": "Chats",
   "sidebar.pill.pinPage": "{name} vastzetten in de zijbalk",
   "sidebar.pill.moreNotice": "Meer. {notice}",

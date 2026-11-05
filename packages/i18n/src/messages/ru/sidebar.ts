@@ -30,7 +30,6 @@ export const messages = {
   "sidebar.chat.newMenu": "Новый агент или канал",
   "sidebar.chat.unread": "Не прочитано",
   "sidebar.usage.label": "Поставщики ИИ",
-  "sidebar.usage.left": "Осталось {percent}%",
   "sidebar.pill.chats": "Чаты",
   "sidebar.pill.pinPage": "Закрепить {name} на боковой панели",
   "sidebar.pill.moreNotice": "Ещё. {notice}",

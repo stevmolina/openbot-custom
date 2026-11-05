@@ -30,7 +30,6 @@ export const messages = {
   "sidebar.chat.newMenu": "新しいエージェントまたはチャンネル",
   "sidebar.chat.unread": "未読",
   "sidebar.usage.label": "AI プロバイダー",
-  "sidebar.usage.left": "残り {percent}%",
   "sidebar.pill.chats": "チャット",
   "sidebar.pill.pinPage": "{name} をサイドバーに固定",
   "sidebar.pill.moreNotice": "その他。{notice}",
