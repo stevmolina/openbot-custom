@@ -1,0 +1,12 @@
+{
+  "fromVersion": 50,
+  "toVersion": 57,
+  "tablesBefore": 74,
+  "tablesAfter": 78,
+  "rowsBefore": 34595,
+  "rowsAfter": 34602,
+  "lost": [],
+  "integrity": {
+    "integrity_check": "ok"
+  }
+}
