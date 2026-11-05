@@ -86,42 +86,35 @@ export const PROTOTYPE_AGENTS: PrototypeAgent[] = [
   },
 ];
 
-/** Threads of all agents, for the History tab. */
-export const PROTOTYPE_HISTORY: { day: string; items: { agentId: string; title: string; time: string }[] }[] = [
-  {
-    day: "Today",
-    items: [
-      { agentId: "search-visibility", title: "Pricing page ranking audit", time: "10:02" },
-      { agentId: "prototype", title: "Render the two demo MP4s", time: "9:48" },
-      { agentId: "tool-scout", title: "Compare hero variants", time: "9:30" },
-      { agentId: "master", title: "Set up the SEO agent", time: "9:12" },
-    ],
-  },
-  {
-    day: "Yesterday",
-    items: [
-      { agentId: "product-design", title: "Sidebar chrome polish", time: "18:40" },
-      { agentId: "social-media", title: "LinkedIn launch posts", time: "16:05" },
-      { agentId: "product-design", title: "Empty state for side threads", time: "11:20" },
-    ],
-  },
-  {
-    day: "Monday",
-    items: [
-      { agentId: "personal-organizer", title: "Weekly groceries list", time: "20:14" },
-      { agentId: "sales", title: "Two outbound sequences", time: "15:02" },
-    ],
-  },
-];
+/** The two accounts the user switches between. Each one is a server with its own agents. */
+export const PROTOTYPE_ACCOUNTS = [
+  { id: "personal", name: "Personal", server: "Local", detail: "This Mac", seed: "local" },
+  { id: "resorsi", name: "Resorsi", server: "Resorsi VPS", detail: "Remote server", seed: "Resorsi VPS" },
+] as const;
 
-/** Connected tools, for the Connections tab. */
-export const PROTOTYPE_CONNECTIONS = [
-  { name: "Composio", detail: "LinkedIn, X, Gmail", connected: true },
-  { name: "Slack", detail: "Resorsi workspace", connected: true },
-  { name: "Linear", detail: "Personal projects", connected: true },
-  { name: "Google Drive", detail: "Not connected", connected: false },
-  { name: "Notion", detail: "Not connected", connected: false },
-];
+export type PrototypeAccountId = (typeof PROTOTYPE_ACCOUNTS)[number]["id"];
+
+/** The AI provider accounts with plan limits, as the usage rings of the page rail show them. */
+export const PROTOTYPE_PROVIDERS = [
+  {
+    provider: "claude",
+    name: "Claude Max",
+    windows: [
+      { label: "5-hour", remaining: 62, tone: "ok" },
+      { label: "Weekly", remaining: 80, tone: "ok" },
+    ],
+  },
+  {
+    provider: "codex",
+    name: "ChatGPT Pro",
+    windows: [
+      { label: "5-hour", remaining: 18, tone: "warning" },
+      { label: "Weekly", remaining: 54, tone: "ok" },
+    ],
+  },
+] as const;
+
+export type PrototypeProvider = (typeof PROTOTYPE_PROVIDERS)[number];
 
 export const PROTOTYPE_AGENT_BY_ID = new Map(PROTOTYPE_AGENTS.map((agent) => [agent.id, agent]));
 

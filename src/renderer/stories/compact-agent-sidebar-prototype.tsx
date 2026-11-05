@@ -1,98 +1,173 @@
 /**
- * Prototype: a chat-style agent sidebar, after a reference screenshot. Each variant renders the real
- * app and puts only its own sidebar into it. A click on a row opens the real chat of that agent.
+ * Prototype: a chat-style agent sidebar that also holds the page rail. Each variant renders the real
+ * app, hides its page rail and sidebar content, and puts only its own sidebar in their place. A click
+ * on a row opens the real chat; a page button clicks the real rail button, so the real page opens.
  */
 
-import { ChevronDown, History, MessageCircle, PanelLeft, Plug, Plus, Search, Tooltip } from "@openbot/ui";
+import { ProviderLogo } from "@openbot/brand";
+import {
+  CalendarClock,
+  ChartArea,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  CircleQuestionMark,
+  DropdownMenu,
+  Ellipsis,
+  ListChecks,
+  MessageCircle,
+  PanelLeft,
+  Plus,
+  Search,
+  ServerGradientLogo,
+  Settings,
+  Store,
+  Tooltip,
+  Waypoints,
+  Workflow,
+} from "@openbot/ui";
 import { AgentAvatar } from "@openbot/ui/features/agents/AgentAvatar";
-import { type JSX, Portal } from "@solidjs/web";
+import { Dynamic, type JSX } from "@solidjs/web";
 import { createSignal, For, onSettled, Show } from "solid-js";
 import {
+  PROTOTYPE_ACCOUNTS,
   PROTOTYPE_AGENT_BY_ID,
   PROTOTYPE_AGENTS,
-  PROTOTYPE_CONNECTIONS,
-  PROTOTYPE_HISTORY,
   PROTOTYPE_OPTIONS,
+  PROTOTYPE_PROVIDERS,
+  type PrototypeAccountId,
   type PrototypeAgent,
+  type PrototypeProvider,
 } from "./compact-agent-sidebar-fixtures";
-import { type AppDom, AppSlot, createAppDom, PrototypeApp } from "./prototype-support";
+import { AppSlot, createAppDom, PrototypeApp } from "./prototype-support";
 import "./CompactAgentSidebarPrototype.css";
 
-type Tab = "chats" | "history" | "connections";
+type PageId = "workflows" | "tasks" | "usage" | "routines" | "schedule" | "marketplace" | "help" | "settings";
 
-const TABS: { id: Tab; label: string; icon: () => JSX.Element }[] = [
-  { id: "chats", label: "Chats", icon: () => <MessageCircle aria-hidden="true" /> },
-  { id: "history", label: "History", icon: () => <History aria-hidden="true" /> },
-  { id: "connections", label: "Connections", icon: () => <Plug aria-hidden="true" /> },
-];
+interface Page {
+  id: PageId;
+  label: string;
+  icon: typeof Waypoints;
+}
+
+/** Every page of the real rail and its More menu, in rail order. */
+const PAGES: Record<PageId, Page> = {
+  workflows: { id: "workflows", label: "Workflows", icon: Waypoints },
+  tasks: { id: "tasks", label: "Tasks", icon: ListChecks },
+  usage: { id: "usage", label: "Usage", icon: ChartArea },
+  routines: { id: "routines", label: "Routines", icon: Workflow },
+  schedule: { id: "schedule", label: "Schedule", icon: CalendarClock },
+  marketplace: { id: "marketplace", label: "Marketplace", icon: Store },
+  help: { id: "help", label: "Help", icon: CircleQuestionMark },
+  settings: { id: "settings", label: "Settings", icon: Settings },
+};
+
+const pages = (...ids: PageId[]) => ids.map((id) => PAGES[id]);
 
 /** Clicks the real sidebar row of an agent, so the real chat opens. */
 function openRealAgent(root: HTMLElement, name: string): boolean {
-  const rows = root.querySelectorAll<HTMLButtonElement>("aside.sidebar nav.agent-list button.agent-row");
-  const row = [...rows].find((button) => button.querySelector("strong")?.textContent?.trim() === name);
+  const rows = root.querySelectorAll<HTMLButtonElement>("aside.sidebar nav.agent-list button");
+  const row = [...rows].find((button) => {
+    const label = button.getAttribute("aria-label") ?? "";
+    return label === name || label.startsWith(`${name},`) || label.startsWith(`${name}.`);
+  });
   row?.click();
   return row !== undefined;
 }
 
-/** The real app, the active agent, and a way to open an agent's chat. */
-function createPrototypeShell() {
+/** The real app, the active agent and account, and the actions that the variants share. */
+function createPrototypeShell(collapsed: boolean) {
   const app = createAppDom();
   const first = PROTOTYPE_AGENTS[0];
   const [active, setActive] = createSignal(first?.id ?? "");
+  const [account, setAccount] = createSignal<PrototypeAccountId>("personal");
+  const [isCollapsed, setCollapsed] = createSignal(collapsed);
+  const [page, setPage] = createSignal<PageId | null>(null);
   const open = (id: string) => {
     const agent = PROTOTYPE_AGENT_BY_ID.get(id);
     const root = app.dom.root;
-    if (agent && root) openRealAgent(root, agent.name);
+    if (!agent || !root) return;
+    // A page hides the chat list, so the Agents rail button comes back to it first.
+    root.querySelector<HTMLButtonElement>('nav.window-rail > :not(.cas-sidebar) button[aria-label="Agents"]')?.click();
+    // The chat list comes back after the Agents page draws, so the row is tried until it shows.
+    const started = performance.now();
+    const tryOpen = () => {
+      if (!openRealAgent(root, agent.name) && performance.now() - started < 3000) requestAnimationFrame(tryOpen);
+    };
+    tryOpen();
     setActive(id);
+    setPage(null);
   };
   onSettled(() => {
     const root = app.dom.root;
     if (!root || !first) return;
+    // The app restores its last chat after it loads, so the first agent opens until its tab is the selected one.
     const observer = new MutationObserver(() => {
-      if (openRealAgent(root, first.name)) observer.disconnect();
+      if (
+        root.querySelector('.conversation-header [role="tab"][aria-selected="true"]')?.textContent?.includes(first.name)
+      ) {
+        observer.disconnect();
+        return;
+      }
+      openRealAgent(root, first.name);
     });
     observer.observe(root, { subtree: true, childList: true });
     return () => observer.disconnect();
   });
   const search = () => app.dom.root?.querySelector<HTMLButtonElement>(".sidebar-search-wrap button")?.click();
-  return { app, active, open, search };
+  /** Opens the real page through its rail button, when the rail has one. */
+  const openPage = (id: PageId) => {
+    const button = app.dom.root?.querySelector<HTMLButtonElement>(
+      `nav.window-rail > :not(.cas-sidebar) button[aria-label="${PAGES[id].label}"]`,
+    );
+    button?.click();
+    setPage(id);
+  };
+  return {
+    app,
+    active: () => (page() ? "" : active()),
+    lastAgent: active,
+    page,
+    open,
+    search,
+    openPage,
+    account,
+    setAccount,
+    collapsed: isCollapsed,
+    toggle: () => setCollapsed((value) => !value),
+  };
 }
 
-function mood(agent: PrototypeAgent) {
-  return agent.state ?? "idle";
-}
+type Shell = ReturnType<typeof createPrototypeShell>;
 
 function Avatar(props: { agent: PrototypeAgent }) {
   return (
     <AgentAvatar
       agent={{ avatarSeed: props.agent.id, avatarHue: props.agent.hue, avatarUrl: null }}
       motion="idle"
-      mood={mood(props.agent)}
+      mood={props.agent.state ?? "idle"}
     />
   );
 }
 
+const detail = (agent: PrototypeAgent) => (agent.state === "waiting" ? agent.waitReason : agent.preview);
+
 /** One agent: big face, name, and the last message. */
-function ChatRow(props: { agent: PrototypeAgent; active: boolean; onOpen: () => void; showTime?: boolean }) {
+function ChatRow(props: { agent: PrototypeAgent; active: boolean; onOpen: () => void }) {
   return (
     <button
       type="button"
       class={["cas-row", { "cas-row-active": props.active }]}
-      aria-pressed={props.active ? "true" : "false"}
+      aria-current={props.active ? "page" : undefined}
       onClick={() => props.onOpen()}
     >
       <span class="cas-row-avatar">
         <Avatar agent={props.agent} />
       </span>
       <span class="cas-row-copy">
-        <span class="cas-row-top">
-          <strong>{props.agent.name}</strong>
-          <Show when={props.showTime}>
-            <span class="cas-row-time">{props.agent.time}</span>
-          </Show>
-        </span>
+        <strong>{props.agent.name}</strong>
         <span class={["cas-row-preview", { "cas-row-preview-wait": props.agent.state === "waiting" }]}>
-          {props.agent.state === "waiting" ? props.agent.waitReason : props.agent.preview}
+          {detail(props.agent)}
         </span>
       </span>
       <Show when={props.agent.unread}>
@@ -104,101 +179,48 @@ function ChatRow(props: { agent: PrototypeAgent; active: boolean; onOpen: () => 
   );
 }
 
-function HistoryPanel(props: { onOpen: (id: string) => void }) {
+function ChatRows(props: { shell: Shell }) {
   return (
-    <div class="cas-panel-list">
-      <For each={PROTOTYPE_HISTORY}>
-        {(group) => (
-          <section class="cas-group" aria-label={group.day}>
-            <h2 class="cas-group-title">{group.day}</h2>
-            <For each={group.items}>
-              {(item) => {
-                const agent = () => PROTOTYPE_AGENT_BY_ID.get(item.agentId);
-                return (
-                  <Show when={agent()}>
-                    {(found) => (
-                      <button type="button" class="cas-history-row" onClick={() => props.onOpen(found().id)}>
-                        <span class="cas-history-avatar">
-                          <Avatar agent={found()} />
-                        </span>
-                        <span class="cas-row-copy">
-                          <strong>{item.title}</strong>
-                          <span class="cas-row-preview">
-                            {found().name} · {item.time}
-                          </span>
-                        </span>
-                      </button>
-                    )}
-                  </Show>
-                );
-              }}
-            </For>
-          </section>
-        )}
-      </For>
-    </div>
+    <For each={PROTOTYPE_AGENTS}>
+      {(agent) => (
+        <ChatRow agent={agent} active={props.shell.active() === agent.id} onOpen={() => props.shell.open(agent.id)} />
+      )}
+    </For>
   );
 }
 
-function ConnectionsPanel() {
+/** A name that shows on hover and focus, at the right of a dock button. */
+function Tip(props: { title: string; detail?: string | undefined; children: JSX.Element }) {
   return (
-    <div class="cas-panel-list">
-      <h2 class="cas-group-title">Connections</h2>
-      <For each={PROTOTYPE_CONNECTIONS}>
-        {(item) => (
-          <button type="button" class="cas-history-row">
-            <span class="cas-tool-tile" aria-hidden="true">
-              {item.name.slice(0, 1)}
-            </span>
-            <span class="cas-row-copy">
-              <strong>{item.name}</strong>
-              <span class="cas-row-preview">{item.detail}</span>
-            </span>
-            <span class={["cas-tool-state", { "cas-tool-state-on": item.connected }]}>
-              {item.connected ? "On" : "Connect"}
-            </span>
-          </button>
-        )}
-      </For>
-    </div>
+    <Tooltip.Root placement="right" openDelay={150} gutter={10}>
+      <Tooltip.Trigger as="span" class="cas-tip-trigger">
+        {props.children}
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content class="cas-tip">
+          <strong>{props.title}</strong>
+          <Show when={props.detail}>
+            <span>{props.detail}</span>
+          </Show>
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
   );
 }
 
-/** The user's face and the three views, in one floating pill. */
-function TabPill(props: { tab: Tab; onTab: (tab: Tab) => void; vertical?: boolean }) {
-  return (
-    <div class={["cas-pill", { "cas-pill-vertical": props.vertical }]}>
-      <button type="button" class="cas-me" aria-label="Account and servers: Steven, Local">
-        S
-      </button>
-      <div class="cas-tabs" role="tablist" aria-label="Sidebar views">
-        <For each={TABS}>
-          {(tab) => (
-            <button
-              type="button"
-              role="tab"
-              class="cas-tab"
-              aria-selected={props.tab === tab.id ? "true" : "false"}
-              aria-label={tab.label}
-              title={tab.label}
-              onClick={() => props.onTab(tab.id)}
-            >
-              {tab.icon()}
-            </button>
-          )}
-        </For>
-      </div>
-    </div>
-  );
-}
-
-function RoundButton(props: { label: string; onClick?: () => void; children: JSX.Element }) {
+function IconButton(props: {
+  label: string;
+  current?: boolean;
+  class?: string;
+  onClick?: () => void;
+  children: JSX.Element;
+}) {
   return (
     <button
       type="button"
-      class="cas-round"
+      class={["cas-icon-button", props.class, { "cas-icon-button-current": props.current }]}
       aria-label={props.label}
-      title={props.label}
+      aria-current={props.current ? "page" : undefined}
       onClick={() => props.onClick?.()}
     >
       {props.children}
@@ -206,168 +228,517 @@ function RoundButton(props: { label: string; onClick?: () => void; children: JSX
   );
 }
 
-function PrototypeFrame(props: { app: AppDom; class: string; children: JSX.Element }) {
+function RoundButton(props: { label: string; onClick?: () => void; children: JSX.Element }) {
   return (
-    <div class={["cas-proto", props.class]} ref={props.app.attach}>
+    <button type="button" class="cas-round" aria-label={props.label} onClick={() => props.onClick?.()}>
+      {props.children}
+    </button>
+  );
+}
+
+function PageIcon(props: { page: Page }) {
+  return <Dynamic component={props.page.icon} aria-hidden="true" />;
+}
+
+/** The More menu: the pages that have no button of their own. */
+function MoreMenu(props: {
+  shell: Shell;
+  pages: Page[];
+  placement: "top-end" | "right-end" | "bottom-start";
+  class?: string;
+  label?: string;
+}) {
+  const current = () => props.pages.some((page) => page.id === props.shell.page());
+  return (
+    <DropdownMenu.Root placement={props.placement} gutter={8}>
+      <DropdownMenu.Trigger
+        class={["cas-icon-button", props.class, { "cas-icon-button-current": current() }]}
+        aria-label="More pages"
+      >
+        <Ellipsis aria-hidden="true" />
+        <Show when={props.label}>
+          <span class="cas-shortcut-label" aria-hidden="true">
+            {props.label}
+          </span>
+        </Show>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content class="agent-context-menu cas-menu" aria-label="More pages">
+          <For each={props.pages}>
+            {(page) => (
+              <DropdownMenu.Item onSelect={() => props.shell.openPage(page.id)}>
+                <Dynamic component={page.icon} class="agent-context-icon size-4" aria-hidden="true" />
+                <span>{page.label}</span>
+              </DropdownMenu.Item>
+            )}
+          </For>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+const accountById = (id: PrototypeAccountId) =>
+  PROTOTYPE_ACCOUNTS.find((account) => account.id === id) ?? PROTOTYPE_ACCOUNTS[0];
+
+/** The menu of the account switch: both accounts, Settings, and a way to add one. */
+function AccountMenuContent(props: { shell: Shell }) {
+  return (
+    <DropdownMenu.Portal>
+      <DropdownMenu.Content class="agent-context-menu cas-menu cas-account-menu" aria-label="Accounts">
+        <For each={PROTOTYPE_ACCOUNTS}>
+          {(account) => (
+            <DropdownMenu.Item onSelect={() => props.shell.setAccount(account.id)}>
+              <ServerGradientLogo seed={account.seed} class="cas-account-logo-small" />
+              <span class="cas-account-menu-copy">
+                <span>{account.name}</span>
+                <span class="cas-account-menu-detail">
+                  {account.server} · {account.detail}
+                </span>
+              </span>
+              <Show when={account.id === props.shell.account()}>
+                <Check class="agent-context-icon size-4 cas-account-check" aria-hidden="true" />
+              </Show>
+            </DropdownMenu.Item>
+          )}
+        </For>
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item onSelect={() => props.shell.openPage("settings")}>
+          <Settings class="agent-context-icon size-4" aria-hidden="true" />
+          <span>Settings</span>
+        </DropdownMenu.Item>
+        <DropdownMenu.Item>
+          <Plus class="agent-context-icon size-4" aria-hidden="true" />
+          <span>Add an account</span>
+        </DropdownMenu.Item>
+      </DropdownMenu.Content>
+    </DropdownMenu.Portal>
+  );
+}
+
+/**
+ * The account switch. `stack` shows the current account with the other one behind it; `card` adds the
+ * name and server. Both open the account menu.
+ */
+function AccountSwitch(props: { shell: Shell; look: "stack" | "card"; placement: "top-start" | "right-end" }) {
+  const current = () => accountById(props.shell.account());
+  const other = () => PROTOTYPE_ACCOUNTS.find((account) => account.id !== props.shell.account());
+  return (
+    <DropdownMenu.Root placement={props.placement} gutter={8}>
+      <DropdownMenu.Trigger
+        class={["cas-account", { "cas-account-card": props.look === "card" }]}
+        aria-label={props.look === "stack" ? `${current().name} ${current().server}, switch account` : undefined}
+      >
+        <span class="cas-account-stack">
+          <Show when={other()}>
+            {(account) => <ServerGradientLogo seed={account().seed} class="cas-account-logo cas-account-logo-back" />}
+          </Show>
+          <ServerGradientLogo seed={current().seed} class="cas-account-logo cas-account-logo-front" />
+        </span>
+        <Show when={props.look === "card"}>
+          <span class="cas-account-copy">
+            <strong>{current().name} </strong>
+            <span>{current().server}</span>
+            <span class="sr-only">, switch account</span>
+          </span>
+          <ChevronsUpDown class="cas-account-chevron" aria-hidden="true" />
+        </Show>
+      </DropdownMenu.Trigger>
+      <AccountMenuContent shell={props.shell} />
+    </DropdownMenu.Root>
+  );
+}
+
+/** Both accounts side by side: one click switches. */
+function AccountPair(props: { shell: Shell }) {
+  return (
+    <fieldset class="cas-fieldset cas-account-pair" aria-label="Accounts">
+      <For each={PROTOTYPE_ACCOUNTS}>
+        {(account) => (
+          <button
+            type="button"
+            class={["cas-account-pair-button", { "cas-account-pair-current": account.id === props.shell.account() }]}
+            aria-label={`${account.name}, ${account.server}`}
+            aria-pressed={account.id === props.shell.account() ? "true" : "false"}
+            title={`${account.name} · ${account.server}`}
+            onClick={() => props.shell.setAccount(account.id)}
+          >
+            <ServerGradientLogo seed={account.seed} class="cas-account-logo" />
+          </button>
+        )}
+      </For>
+    </fieldset>
+  );
+}
+
+/** Two tracks in a 32px box, as the page rail draws them. */
+const RING = { size: 32, stroke: 2.25, spacing: 4.5 };
+
+/** Starts with the words that the button shows, so a voice command can name it. */
+function usageLabel(provider: PrototypeProvider) {
+  const lowest = Math.min(...provider.windows.map((window) => window.remaining));
+  const windows = provider.windows.map((window) => `${window.label} ${window.remaining}%`).join(", ");
+  return `${provider.name} ${lowest}% left. ${windows}`;
+}
+
+/** One provider's plan limits as two rings around its logo. A click opens the usage page. */
+function UsageRing(props: { provider: PrototypeProvider; onOpen: () => void; withText?: boolean | undefined }) {
+  const outer = (RING.size - RING.stroke) / 2;
+  const lowest = () => Math.min(...props.provider.windows.map((window) => window.remaining));
+  return (
+    <button
+      type="button"
+      class={["cas-usage", { "cas-usage-text": props.withText }]}
+      aria-label={props.withText ? undefined : usageLabel(props.provider)}
+      title={usageLabel(props.provider)}
+      onClick={() => props.onOpen()}
+    >
+      <span class="cas-usage-ring-box">
+        <svg class="cas-usage-ring" viewBox={`0 0 ${RING.size} ${RING.size}`} fill="none" aria-hidden="true">
+          <For each={props.provider.windows}>
+            {(window, index) => (
+              <g>
+                <circle
+                  class="cas-usage-track"
+                  cx={RING.size / 2}
+                  cy={RING.size / 2}
+                  r={outer - index() * RING.spacing}
+                  stroke-width={RING.stroke}
+                />
+                <circle
+                  class="cas-usage-arc"
+                  data-tone={window.tone}
+                  cx={RING.size / 2}
+                  cy={RING.size / 2}
+                  r={outer - index() * RING.spacing}
+                  stroke-width={RING.stroke}
+                  stroke-linecap="round"
+                  pathLength={100}
+                  stroke-dasharray={`${window.remaining} 100`}
+                />
+              </g>
+            )}
+          </For>
+        </svg>
+        <ProviderLogo provider={props.provider.provider} class="cas-usage-logo" />
+      </span>
+      <Show when={props.withText}>
+        <span class="cas-usage-copy">
+          <span class="cas-usage-name">{props.provider.name} </span>
+          <span class={["cas-usage-left", { "cas-usage-low": lowest() < 25 }]}>{lowest()}% left</span>
+          <span class="sr-only">
+            . {props.provider.windows.map((window) => `${window.label} ${window.remaining}%`).join(", ")}
+          </span>
+        </span>
+      </Show>
+    </button>
+  );
+}
+
+function UsageRings(props: { shell: Shell; withText?: boolean; class?: string }) {
+  return (
+    <fieldset class={["cas-fieldset cas-usage-group", props.class]} aria-label="AI providers">
+      <For each={PROTOTYPE_PROVIDERS}>
+        {(provider) => (
+          <UsageRing provider={provider} withText={props.withText} onOpen={() => props.shell.openPage("usage")} />
+        )}
+      </For>
+    </fieldset>
+  );
+}
+
+function TopBar(props: { shell: Shell }) {
+  return (
+    <div class="cas-top window-drag">
+      <IconButton label="Collapse sidebar" onClick={props.shell.toggle}>
+        <PanelLeft aria-hidden="true" />
+      </IconButton>
+      <span class="cas-spacer" />
+      <RoundButton label="Search" onClick={props.shell.search}>
+        <Search aria-hidden="true" />
+      </RoundButton>
+      <RoundButton label="New agent">
+        <Plus aria-hidden="true" />
+      </RoundButton>
+    </div>
+  );
+}
+
+/** A page button in a dock, with its name on hover. */
+function DockPage(props: { shell: Shell; page: Page }) {
+  return (
+    <Tip title={props.page.label}>
+      <IconButton
+        label={props.page.label}
+        class="cas-dock-button"
+        current={props.shell.page() === props.page.id}
+        onClick={() => props.shell.openPage(props.page.id)}
+      >
+        <PageIcon page={props.page} />
+      </IconButton>
+    </Tip>
+  );
+}
+
+/** The collapsed sidebar: faces only, with each variant's pages and accounts. */
+function Dock(props: { shell: Shell; top?: JSX.Element; bottom: JSX.Element }) {
+  return (
+    <div class="cas-sidebar cas-dock">
+      <div class="cas-dock-top window-drag">
+        <Tip title="Expand sidebar">
+          <IconButton label="Expand sidebar" class="cas-dock-button" onClick={props.shell.toggle}>
+            <PanelLeft aria-hidden="true" />
+          </IconButton>
+        </Tip>
+        <Tip title="Search">
+          <RoundButton label="Search" onClick={props.shell.search}>
+            <Search aria-hidden="true" />
+          </RoundButton>
+        </Tip>
+        <Tip title="New agent">
+          <RoundButton label="New agent">
+            <Plus aria-hidden="true" />
+          </RoundButton>
+        </Tip>
+        {props.top}
+      </div>
+      <nav class="cas-dock-list" aria-label="Chat list">
+        <For each={PROTOTYPE_AGENTS}>
+          {(agent) => (
+            <Tip title={agent.name} detail={detail(agent)}>
+              <button
+                type="button"
+                class={["cas-dock-face", { "cas-dock-face-active": props.shell.active() === agent.id }]}
+                aria-label={`${agent.name}. ${detail(agent)}`}
+                aria-current={props.shell.active() === agent.id ? "page" : undefined}
+                onClick={() => props.shell.open(agent.id)}
+              >
+                <Avatar agent={agent} />
+                <Show when={agent.unread}>
+                  <span class="cas-unread cas-dock-unread" />
+                </Show>
+              </button>
+            </Tip>
+          )}
+        </For>
+      </nav>
+      <div class="cas-dock-bottom">{props.bottom}</div>
+    </div>
+  );
+}
+
+function PrototypeFrame(props: { shell: Shell; children: JSX.Element }) {
+  return (
+    <div class={["cas-proto", { "cas-collapsed": props.shell.collapsed() }]} ref={props.shell.app.attach}>
       <PrototypeApp options={PROTOTYPE_OPTIONS} />
-      <AppSlot app={props.app} slot="sidebar">
+      <AppSlot app={props.shell.app} slot="rail">
         {props.children}
       </AppSlot>
     </div>
   );
 }
 
-/** A. The reference, close to as is: one list by last message, and the views in a pill at the bottom. */
-export function ChatListVariant() {
-  const shell = createPrototypeShell();
-  const [tab, setTab] = createSignal<Tab>("chats");
-  return (
-    <PrototypeFrame app={shell.app} class="cas-variant-list">
-      <div class="cas-sidebar">
-        <div class="cas-top window-drag">
-          <button type="button" class="cas-icon-button" aria-label="Hide sidebar" title="Hide sidebar">
-            <PanelLeft aria-hidden="true" />
-          </button>
-          <span class="cas-spacer" />
-          <RoundButton label="Search" onClick={shell.search}>
-            <Search aria-hidden="true" />
-          </RoundButton>
-          <RoundButton label="New agent">
-            <Plus aria-hidden="true" />
-          </RoundButton>
-        </div>
-        <nav class="cas-list" aria-label="Chat list">
-          <Show when={tab() === "chats"}>
-            <For each={PROTOTYPE_AGENTS}>
-              {(agent) => (
-                <ChatRow agent={agent} active={shell.active() === agent.id} onOpen={() => shell.open(agent.id)} />
-              )}
-            </For>
-          </Show>
-          <Show when={tab() === "history"}>
-            <HistoryPanel onOpen={shell.open} />
-          </Show>
-          <Show when={tab() === "connections"}>
-            <ConnectionsPanel />
-          </Show>
-        </nav>
-        <TabPill tab={tab()} onTab={setTab} />
-      </div>
-    </PrototypeFrame>
-  );
-}
-
-/** B. The real top bar, search and page rail stay. The rows become chat rows, grouped by what they need. */
-export function LanesVariant() {
-  const shell = createPrototypeShell();
-  const lanes = [
-    { id: "waiting", title: "Needs you", agents: PROTOTYPE_AGENTS.filter((agent) => agent.state === "waiting") },
-    { id: "working", title: "Working", agents: PROTOTYPE_AGENTS.filter((agent) => agent.state === "working") },
-    { id: "agents", title: "Agents", agents: PROTOTYPE_AGENTS.filter((agent) => !agent.state) },
-  ];
-  const [closed, setClosed] = createSignal<string[]>([]);
-  const toggle = (id: string) =>
-    setClosed((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
-  return (
-    <PrototypeFrame app={shell.app} class="cas-variant-lanes">
-      <nav class="cas-sidebar cas-list" aria-label="Chat list">
-        <For each={lanes}>
-          {(lane) => (
-            <section class="cas-group" aria-label={lane.title}>
-              <button
-                type="button"
-                class="cas-lane-header"
-                aria-expanded={closed().includes(lane.id) ? "false" : "true"}
-                onClick={() => toggle(lane.id)}
-              >
-                <span class={["cas-lane-title", { "cas-lane-title-wait": lane.id === "waiting" }]}>{lane.title}</span>
-                <span class="cas-lane-count">{lane.agents.length}</span>
-                <ChevronDown aria-hidden="true" class="cas-lane-chevron" />
-              </button>
-              <Show when={!closed().includes(lane.id)}>
-                <For each={lane.agents}>
-                  {(agent) => (
-                    <ChatRow
-                      agent={agent}
-                      active={shell.active() === agent.id}
-                      onOpen={() => shell.open(agent.id)}
-                      showTime
-                    />
-                  )}
-                </For>
-              </Show>
-            </section>
+/**
+ * A1. The pill of the reference holds Chats and the two main pages; More holds the rest. The provider
+ * rings sit above the pill with how much is left.
+ */
+export function PillVariant(props: { collapsed?: boolean }) {
+  const shell = createPrototypeShell(props.collapsed === true);
+  const more = pages("usage", "routines", "schedule", "marketplace", "help", "settings");
+  const pill = (vertical: boolean) => (
+    <div class={["cas-pill", { "cas-pill-vertical": vertical }]}>
+      <AccountSwitch shell={shell} look="stack" placement={vertical ? "right-end" : "top-start"} />
+      <div class="cas-pill-pages">
+        <IconButton
+          label="Chats"
+          class="cas-pill-button"
+          current={shell.page() === null}
+          onClick={() => shell.open(shell.lastAgent())}
+        >
+          <MessageCircle aria-hidden="true" />
+        </IconButton>
+        <For each={pages("workflows", "tasks")}>
+          {(page) => (
+            <IconButton
+              label={page.label}
+              class="cas-pill-button"
+              current={shell.page() === page.id}
+              onClick={() => shell.openPage(page.id)}
+            >
+              <PageIcon page={page} />
+            </IconButton>
           )}
         </For>
-      </nav>
+        <MoreMenu shell={shell} pages={more} placement={vertical ? "right-end" : "top-end"} class="cas-pill-button" />
+      </div>
+    </div>
+  );
+  return (
+    <PrototypeFrame shell={shell}>
+      <Show
+        when={!shell.collapsed()}
+        fallback={
+          <Dock
+            shell={shell}
+            bottom={
+              <>
+                <UsageRings shell={shell} class="cas-usage-column" />
+                {pill(true)}
+              </>
+            }
+          />
+        }
+      >
+        <div class="cas-sidebar">
+          <TopBar shell={shell} />
+          <nav class="cas-list" aria-label="Chat list">
+            <ChatRows shell={shell} />
+          </nav>
+          <UsageRings shell={shell} withText class="cas-usage-row" />
+          {pill(false)}
+        </div>
+      </Show>
     </PrototypeFrame>
   );
 }
 
-/** One face in the dock. The name and last message show on hover and focus. */
-function DockFace(props: { agent: PrototypeAgent; active: boolean; onOpen: () => void }) {
-  const detail = () => (props.agent.state === "waiting" ? props.agent.waitReason : props.agent.preview);
+/** A2. A row of labelled shortcuts under the top bar; accounts, provider rings and Settings at the bottom. */
+export function ShortcutsVariant(props: { collapsed?: boolean }) {
+  const shell = createPrototypeShell(props.collapsed === true);
+  const shortcuts = pages("workflows", "tasks", "usage");
+  const more = pages("routines", "schedule", "marketplace", "help");
   return (
-    <Tooltip.Root placement="right" openDelay={150}>
-      <Tooltip.Trigger
-        as="button"
-        type="button"
-        class={["cas-dock-face", { "cas-dock-face-active": props.active }]}
-        aria-label={`${props.agent.name}. ${detail()}`}
-        aria-pressed={props.active ? "true" : "false"}
-        onClick={() => props.onOpen()}
+    <PrototypeFrame shell={shell}>
+      <Show
+        when={!shell.collapsed()}
+        fallback={
+          <Dock
+            shell={shell}
+            top={
+              <div class="cas-dock-pages">
+                <For each={shortcuts}>{(page) => <DockPage shell={shell} page={page} />}</For>
+                <Tip title="More">
+                  <MoreMenu shell={shell} pages={more} placement="right-end" class="cas-dock-button" />
+                </Tip>
+              </div>
+            }
+            bottom={
+              <>
+                <UsageRings shell={shell} class="cas-usage-column" />
+                <DockPage shell={shell} page={PAGES.settings} />
+                <AccountSwitch shell={shell} look="stack" placement="right-end" />
+              </>
+            }
+          />
+        }
       >
-        <Avatar agent={props.agent} />
-        <Show when={props.agent.unread}>
-          <span class="cas-unread cas-dock-unread" />
-        </Show>
-      </Tooltip.Trigger>
-      <Tooltip.Portal>
-        <Tooltip.Content class="cas-tip">
-          <strong>{props.agent.name}</strong>
-          <span>{detail()}</span>
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
+        <div class="cas-sidebar">
+          <TopBar shell={shell} />
+          <fieldset class="cas-fieldset cas-shortcuts" aria-label="Pages">
+            <For each={shortcuts}>
+              {(page) => (
+                <IconButton
+                  label={page.label}
+                  class="cas-shortcut"
+                  current={shell.page() === page.id}
+                  onClick={() => shell.openPage(page.id)}
+                >
+                  <PageIcon page={page} />
+                  <span class="cas-shortcut-label" aria-hidden="true">
+                    {page.label}
+                  </span>
+                </IconButton>
+              )}
+            </For>
+            <MoreMenu shell={shell} pages={more} placement="bottom-start" class="cas-shortcut" label="More" />
+          </fieldset>
+          <nav class="cas-list" aria-label="Chat list">
+            <ChatRows shell={shell} />
+          </nav>
+          <div class="cas-bottom-bar">
+            <AccountPair shell={shell} />
+            <span class="cas-spacer" />
+            <UsageRings shell={shell} />
+            <IconButton
+              label="Settings"
+              current={shell.page() === "settings"}
+              onClick={() => shell.openPage("settings")}
+            >
+              <Settings aria-hidden="true" />
+            </IconButton>
+          </div>
+        </div>
+      </Show>
+    </PrototypeFrame>
   );
 }
 
-/** C. Faces only. The name and last message show on hover; History and Connections open beside the dock. */
-export function DockVariant() {
-  const shell = createPrototypeShell();
-  const [tab, setTab] = createSignal<Tab>("chats");
-  const openFromPanel = (id: string) => {
-    shell.open(id);
-    setTab("chats");
-  };
+/** A3. Three pages as rows above the chats, with "See more" for the rest; one account card at the bottom. */
+export function SeeMoreVariant(props: { collapsed?: boolean; expanded?: boolean }) {
+  const shell = createPrototypeShell(props.collapsed === true);
+  const [expanded, setExpanded] = createSignal(props.expanded === true);
+  const main = pages("workflows", "tasks", "usage");
+  const rest = pages("routines", "schedule", "marketplace", "help", "settings");
+  const row = (page: Page) => (
+    <button
+      type="button"
+      class={["cas-page-row", { "cas-page-row-current": shell.page() === page.id }]}
+      aria-current={shell.page() === page.id ? "page" : undefined}
+      onClick={() => shell.openPage(page.id)}
+    >
+      <PageIcon page={page} />
+      <span>{page.label}</span>
+    </button>
+  );
   return (
-    <PrototypeFrame app={shell.app} class="cas-variant-dock">
-      <div class="cas-sidebar">
-        <div class="cas-dock-top window-drag">
-          <RoundButton label="Search" onClick={shell.search}>
-            <Search aria-hidden="true" />
-          </RoundButton>
-          <RoundButton label="New agent">
-            <Plus aria-hidden="true" />
-          </RoundButton>
-        </div>
-        <nav class="cas-dock-list" aria-label="Agents">
-          <For each={PROTOTYPE_AGENTS}>
-            {(agent) => (
-              <DockFace agent={agent} active={shell.active() === agent.id} onOpen={() => shell.open(agent.id)} />
-            )}
-          </For>
-        </nav>
-        <TabPill tab={tab()} onTab={setTab} vertical />
-      </div>
-      <Show when={tab() !== "chats"}>
-        <Portal mount={document.body}>
-          <div class="cas-flyout" role="dialog" aria-label={tab() === "history" ? "History" : "Connections"}>
-            <Show when={tab() === "history"} fallback={<ConnectionsPanel />}>
-              <HistoryPanel onOpen={openFromPanel} />
-            </Show>
+    <PrototypeFrame shell={shell}>
+      <Show
+        when={!shell.collapsed()}
+        fallback={
+          <Dock
+            shell={shell}
+            bottom={
+              <>
+                <For each={main}>{(page) => <DockPage shell={shell} page={page} />}</For>
+                <Tip title="See more">
+                  <MoreMenu shell={shell} pages={rest} placement="right-end" class="cas-dock-button" />
+                </Tip>
+                <span class="cas-dock-rule" />
+                <UsageRings shell={shell} class="cas-usage-column" />
+                <AccountSwitch shell={shell} look="stack" placement="right-end" />
+              </>
+            }
+          />
+        }
+      >
+        <div class="cas-sidebar">
+          <TopBar shell={shell} />
+          <nav class="cas-list" aria-label="Pages and chats">
+            <section class="cas-group" aria-label="Pages">
+              <For each={main}>{(page) => row(page)}</For>
+              <Show when={expanded()}>
+                <For each={rest}>{(page) => row(page)}</For>
+              </Show>
+              <button
+                type="button"
+                class="cas-page-row cas-see-more"
+                aria-expanded={expanded() ? "true" : "false"}
+                onClick={() => setExpanded((value) => !value)}
+              >
+                <ChevronDown aria-hidden="true" class="cas-see-more-chevron" />
+                <span>{expanded() ? "See less" : "See more"}</span>
+              </button>
+            </section>
+            <section class="cas-group" aria-label="Chats">
+              <h2 class="cas-group-title">Chats</h2>
+              <ChatRows shell={shell} />
+            </section>
+          </nav>
+          <div class="cas-bottom-bar">
+            <AccountSwitch shell={shell} look="card" placement="top-start" />
+            <UsageRings shell={shell} />
           </div>
-        </Portal>
+        </div>
       </Show>
     </PrototypeFrame>
   );

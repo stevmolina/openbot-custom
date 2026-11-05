@@ -1,38 +1,42 @@
-/* Prototype only: a chat-style agent sidebar. Every rule is scoped under `.cas-proto` or a `cas-`
- * class, so the real app around it keeps its own styles. */
+/* Prototype only: a chat-style agent sidebar that also holds the page rail. Every rule is scoped
+ * under `.cas-proto` or a `cas-` class, so the real app around it keeps its own styles. */
 
 .cas-proto {
   height: 100vh;
 }
 
-/* The real sidebar content hides; the prototype's sidebar takes its place. */
-.cas-proto:not(.cas-variant-lanes) aside.sidebar > :not(.cas-sidebar):not(:has(.cas-sidebar)) {
+/* The new sidebar takes the place of the page rail, so it stays on every page, as the rail does.
+ * The real sidebar hides; the prototype still clicks its rows to open a chat. */
+.cas-proto .app-window > nav.window-rail {
+  width: 300px;
+  align-items: stretch;
+  justify-content: flex-start;
+  background: var(--openbot-bg-sidebar);
+  padding: 0;
+}
+
+.cas-proto.cas-collapsed .app-window > nav.window-rail {
+  width: 80px;
+}
+
+.cas-proto nav.window-rail > :not(.cas-sidebar) {
   display: none;
 }
 
-/* B keeps the real top bar and search. */
-.cas-variant-lanes aside.sidebar > :not(.cas-sidebar, .sidebar-topbar, .sidebar-search-wrap):not(:has(.cas-sidebar)) {
+.cas-proto .app-frame {
+  --left-panel-width: 0px !important;
+}
+
+.cas-proto .app-frame > aside.sidebar,
+.cas-proto .app-frame > .left-panel-resizer {
   display: none;
 }
 
-.cas-variant-lanes .app-frame,
-.cas-variant-list .app-frame {
-  --left-panel-width: 300px !important;
-}
-
-/* A and C put the pages into the pill, so the page rail hides. */
-.cas-variant-list .app-window,
-.cas-variant-dock .app-window {
-  grid-template-columns: 0 minmax(0, 1fr) !important;
-}
-
-.cas-variant-list nav.window-rail,
-.cas-variant-dock nav.window-rail {
-  display: none;
-}
-
-.cas-variant-dock .app-frame {
-  --left-panel-width: 80px !important;
+.cas-fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
 }
 
 .cas-sidebar {
@@ -42,32 +46,47 @@
   flex-direction: column;
 }
 
+.cas-spacer {
+  flex: 1;
+}
+
 .cas-top {
   display: flex;
   height: 56px;
   flex: none;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px 4px;
+  /* The macOS window buttons sit at the left of this row. */
+  padding: 8px 12px 4px 84px;
 }
 
-.cas-spacer {
-  flex: 1;
-}
-
+/* Buttons. */
 .cas-icon-button {
+  position: relative;
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  flex: none;
   place-items: center;
   border: 0;
   border-radius: var(--openbot-radius-md);
   background: transparent;
   color: var(--openbot-text-secondary);
+  transition:
+    background-color var(--openbot-duration-hover) ease,
+    color var(--openbot-duration-hover) ease;
 }
 
 .cas-icon-button:hover {
   background: var(--openbot-hover);
+  color: var(--openbot-text-primary);
+}
+
+.cas-icon-button-current,
+.cas-icon-button-current:hover {
+  background: var(--openbot-bg-surface);
+  box-shadow: var(--openbot-shadow-card);
+  color: var(--openbot-text-primary);
 }
 
 .cas-icon-button svg,
@@ -80,6 +99,7 @@
   display: grid;
   width: 36px;
   height: 36px;
+  flex: none;
   place-items: center;
   border: 1px solid var(--openbot-border);
   border-radius: 999px;
@@ -93,10 +113,12 @@
   background: var(--openbot-bg-control-hover);
 }
 
-.cas-round:active {
+.cas-round:active,
+.cas-icon-button:active {
   transform: scale(0.94);
 }
 
+/* The chat list. */
 .cas-list {
   display: flex;
   min-height: 0;
@@ -104,10 +126,9 @@
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
-  padding: 4px 10px 12px;
+  padding: 4px 10px 8px;
 }
 
-/* One agent. */
 .cas-row {
   position: relative;
   display: flex;
@@ -158,16 +179,7 @@
   gap: 2px;
 }
 
-.cas-row-top {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
-}
-
 .cas-row-copy strong {
-  min-width: 0;
-  flex: 1;
   overflow: hidden;
   color: var(--openbot-text-primary);
   font-size: 15px;
@@ -177,15 +189,9 @@
   white-space: nowrap;
 }
 
-.cas-row-time {
-  flex: none;
-  color: var(--openbot-text-muted);
-  font-size: var(--openbot-text-sm);
-}
-
 .cas-row-preview {
   overflow: hidden;
-  color: var(--openbot-text-muted);
+  color: var(--openbot-text-secondary);
   font-size: var(--openbot-text-md);
   line-height: 18px;
   text-overflow: ellipsis;
@@ -205,214 +211,442 @@
   background: var(--openbot-accent);
 }
 
-/* Groups: lanes in B, days in History. */
 .cas-group {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .cas-group-title {
   margin: 10px 10px 4px;
-  color: var(--openbot-text-muted);
+  color: var(--openbot-text-readable);
   font-size: var(--openbot-text-sm);
   font-weight: 560;
 }
 
-.cas-lane-header {
+/* A3: page rows above the chats. */
+.cas-page-row {
   display: flex;
+  width: 100%;
+  height: 36px;
+  flex: none;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   border: 0;
   border-radius: var(--openbot-radius-md);
   background: transparent;
-  padding: 8px 10px 4px;
-  color: var(--openbot-text-muted);
-  font-size: var(--openbot-text-sm);
-  font-weight: 560;
-}
-
-.cas-lane-title-wait {
-  color: var(--openbot-warning-text);
-}
-
-.cas-lane-count {
-  color: var(--openbot-text-muted);
-  font-weight: 400;
-}
-
-.cas-lane-chevron {
-  width: 14px;
-  height: 14px;
-  margin-left: auto;
-  opacity: 0;
-}
-
-.cas-lane-header:hover .cas-lane-chevron,
-.cas-lane-header:focus-visible .cas-lane-chevron {
-  opacity: 1;
-}
-
-.cas-lane-header[aria-expanded="false"] .cas-lane-chevron {
-  opacity: 1;
-  transform: rotate(-90deg);
-}
-
-/* History and Connections rows. */
-.cas-panel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.cas-history-row {
-  display: flex;
-  width: 100%;
-  min-height: 52px;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  border-radius: var(--openbot-radius-lg);
-  background: transparent;
-  padding: 6px 10px;
-  color: inherit;
+  padding: 0 12px;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-lg);
   text-align: left;
 }
 
-.cas-history-row:hover {
+.cas-page-row svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.cas-page-row:hover {
   background: var(--openbot-hover);
+  color: var(--openbot-text-primary);
 }
 
-.cas-history-row .cas-row-copy strong {
-  font-size: var(--openbot-text-lg);
-  font-weight: 500;
+.cas-page-row-current,
+.cas-page-row-current:hover {
+  background: var(--openbot-bg-control-active);
+  color: var(--openbot-text-primary);
 }
 
-.cas-history-avatar {
+.cas-see-more {
+  color: var(--openbot-text-readable);
+  font-size: var(--openbot-text-md);
+}
+
+.cas-see-more[aria-expanded="true"] .cas-see-more-chevron {
+  transform: rotate(180deg);
+}
+
+/* A2: labelled shortcuts under the top bar. */
+.cas-shortcuts {
   display: grid;
-  width: 30px;
-  height: 30px;
   flex: none;
-  place-items: center;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  margin: 2px 10px 6px;
+  border-bottom: 1px solid var(--openbot-border);
+  padding-bottom: 8px;
 }
 
-.cas-history-avatar .agent-avatar {
+.cas-icon-button.cas-shortcut {
   width: 100%;
-  height: 100%;
+  height: 52px;
+  grid-template-rows: 20px 14px;
+  align-content: center;
+  gap: 4px;
+  border-radius: var(--openbot-radius-lg);
 }
 
-.cas-tool-tile {
-  display: grid;
-  width: 30px;
-  height: 30px;
+.cas-shortcut-label {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Bottom bars. */
+.cas-bottom-bar {
+  display: flex;
   flex: none;
-  place-items: center;
-  border: 1px solid var(--openbot-border);
-  border-radius: var(--openbot-radius-md);
-  background: var(--openbot-bg-surface);
-  color: var(--openbot-text-secondary);
-  font-weight: 600;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 12px 12px;
+  border-top: 1px solid var(--openbot-border);
+  padding-top: 10px;
 }
 
-.cas-tool-state {
-  flex: none;
-  color: var(--openbot-text-muted);
-  font-size: var(--openbot-text-sm);
-}
-
-.cas-tool-state-on {
-  color: var(--openbot-success-text);
-}
-
-/* The floating pill at the bottom. */
 .cas-pill {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 8px;
-  margin: 8px 12px 12px;
+  gap: 6px;
+  margin: 6px 12px 12px;
   border: 1px solid var(--openbot-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--openbot-text-primary) 5%, var(--openbot-bg-sidebar));
-  padding: 6px;
+  padding: 5px;
 }
 
-.cas-me {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  flex: none;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--openbot-accent-soft), var(--openbot-accent));
-  color: var(--openbot-text-on-accent);
-  font-weight: 650;
-}
-
-.cas-tabs {
+.cas-pill-pages {
   display: flex;
   flex: 1;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 2px;
 }
 
-.cas-tab {
-  display: grid;
-  width: 52px;
+.cas-icon-button.cas-pill-button {
+  width: 44px;
   height: 40px;
-  place-items: center;
+  border-radius: 999px;
+}
+
+.cas-pill-vertical {
+  flex-direction: column;
+  margin: 0;
+}
+
+.cas-pill-vertical .cas-pill-pages {
+  flex-direction: column;
+}
+
+.cas-pill-vertical .cas-icon-button.cas-pill-button {
+  width: 40px;
+}
+
+/* Accounts. */
+.cas-account {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  align-items: center;
+  gap: 10px;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--openbot-text-secondary);
-  transition:
-    background-color var(--openbot-duration-hover) ease,
-    color var(--openbot-duration-hover) ease;
+  padding: 0;
+  color: inherit;
+  text-align: left;
 }
 
-.cas-tab:hover {
-  color: var(--openbot-text-primary);
+.cas-account-stack {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: none;
 }
 
-.cas-tab[aria-selected="true"] {
-  background: var(--openbot-bg-surface);
-  box-shadow: var(--openbot-shadow-card);
-  color: var(--openbot-text-primary);
+.cas-account-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
 }
 
-.cas-tab svg {
+.cas-account-stack .cas-account-logo {
+  position: absolute;
+}
+
+.cas-account-logo-back {
+  top: 0;
+  right: 0;
   width: 20px;
   height: 20px;
 }
 
-/* C: the dock. */
+.cas-account-logo-front {
+  bottom: 0;
+  left: 0;
+  width: 33px;
+  height: 33px;
+  box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
+}
+
+.cas-account-card {
+  flex: 1;
+  border-radius: var(--openbot-radius-lg);
+  padding: 4px 8px 4px 4px;
+}
+
+.cas-account-card:hover,
+.cas-account:focus-visible {
+  background: var(--openbot-hover);
+}
+
+.cas-account-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.cas-account-copy strong {
+  overflow: hidden;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-lg);
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cas-account-copy span {
+  color: var(--openbot-text-readable);
+  font-size: var(--openbot-text-sm);
+}
+
+.cas-account-chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--openbot-text-readable);
+}
+
+.cas-account-pair {
+  display: flex;
+  gap: 4px;
+}
+
+.cas-account-pair-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0;
+  opacity: 0.55;
+  transition: opacity var(--openbot-duration-hover) ease;
+}
+
+.cas-account-pair-button:hover {
+  opacity: 0.85;
+}
+
+.cas-account-pair-current,
+.cas-account-pair-current:hover {
+  border-color: var(--openbot-text-primary);
+  opacity: 1;
+}
+
+.cas-account-pair-button .cas-account-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.cas-account-logo-small {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 999px;
+}
+
+.cas-account-menu {
+  min-width: 240px;
+}
+
+.cas-account-menu-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.cas-account-menu-detail {
+  color: var(--openbot-text-readable);
+  font-size: var(--openbot-text-sm);
+}
+
+.cas-account-check {
+  margin-left: auto;
+}
+
+/* AI provider usage rings. */
+.cas-usage-group {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.cas-usage-row {
+  margin: 4px 12px 0;
+}
+
+.cas-usage-row .cas-usage {
+  flex: 1;
+}
+
+.cas-usage-column {
+  flex-direction: column;
+  align-items: center;
+}
+
+.cas-usage {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 2px;
+  color: var(--openbot-text-primary);
+  text-align: left;
+}
+
+.cas-usage:hover {
+  background: var(--openbot-hover);
+}
+
+.cas-usage-text {
+  border-radius: var(--openbot-radius-lg);
+  padding: 4px 8px 4px 4px;
+}
+
+.cas-usage-ring-box {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+}
+
+.cas-usage-ring {
+  position: absolute;
+  inset: 1px;
+  width: 32px;
+  height: 32px;
+  transform: rotate(-90deg);
+}
+
+.cas-usage-logo {
+  width: 13px;
+  height: 13px;
+  fill: currentcolor;
+}
+
+.cas-usage-track {
+  stroke: currentcolor;
+  opacity: 0.15;
+}
+
+.cas-usage-arc {
+  stroke: var(--openbot-success);
+}
+
+.cas-usage-arc[data-tone="warning"] {
+  stroke: var(--openbot-warning);
+}
+
+.cas-usage-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  font-size: var(--openbot-text-sm);
+  line-height: 15px;
+}
+
+.cas-usage-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cas-usage-left {
+  color: var(--openbot-text-readable);
+}
+
+.cas-usage-left.cas-usage-low {
+  color: var(--openbot-warning-text);
+}
+
+/* The collapsed dock. */
+.cas-dock {
+  align-items: center;
+}
+
 .cas-dock-top {
   display: flex;
   flex: none;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 12px 0 8px;
+  gap: 6px;
+  /* The macOS window buttons sit above the first button. */
+  padding: 40px 0 6px;
+}
+
+.cas-dock-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+  border-top: 1px solid var(--openbot-border);
+  padding-top: 6px;
+}
+
+.cas-tip-trigger {
+  display: grid;
+  place-items: center;
+}
+
+.cas-icon-button.cas-dock-button {
+  width: 40px;
+  height: 36px;
 }
 
 .cas-dock-list {
   display: flex;
+  width: 100%;
   min-height: 0;
   flex: 1;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 6px 0;
+  /* A face cut by the edge fades out, so the list reads as one that scrolls. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
 }
 
 .cas-dock-face {
   position: relative;
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   flex: none;
   place-items: center;
   border: 0;
@@ -431,17 +665,6 @@
   background: var(--openbot-bg-control-active);
 }
 
-.cas-dock-face-active::before {
-  position: absolute;
-  top: 16px;
-  bottom: 16px;
-  left: -12px;
-  width: 4px;
-  border-radius: 999px;
-  background: var(--openbot-text-primary);
-  content: "";
-}
-
 .cas-dock-unread {
   position: absolute;
   top: 6px;
@@ -449,19 +672,23 @@
   box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
 }
 
-.cas-pill-vertical {
+.cas-dock-bottom {
+  display: flex;
+  flex: none;
   flex-direction: column;
-  margin: 8px auto 12px;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--openbot-border);
+  padding: 8px 0 12px;
 }
 
-.cas-pill-vertical .cas-tabs {
-  flex-direction: column;
+.cas-dock-rule {
+  width: 28px;
+  height: 1px;
+  background: var(--openbot-border);
 }
 
-.cas-pill-vertical .cas-tab {
-  width: 40px;
-}
-
+/* Hover names and menus. */
 .cas-tip {
   display: flex;
   max-width: 260px;
@@ -472,7 +699,7 @@
   background: var(--openbot-bg-sheet);
   box-shadow: var(--openbot-shadow-overlay);
   padding: 8px 10px;
-  color: var(--openbot-text-muted);
+  color: var(--openbot-text-readable);
   font-size: var(--openbot-text-md);
   line-height: 18px;
 }
@@ -482,17 +709,13 @@
   font-weight: 560;
 }
 
-.cas-flyout {
-  position: fixed;
-  z-index: 40;
-  top: 8px;
-  bottom: 8px;
-  left: 88px;
-  width: 300px;
-  overflow-y: auto;
-  border: 1px solid var(--openbot-border);
-  border-radius: var(--openbot-radius-card);
-  background: var(--openbot-bg-sheet);
-  box-shadow: var(--openbot-shadow-overlay);
-  padding: 8px;
+.cas-menu {
+  min-width: 200px;
+}
+
+/* An account row has two lines: the name and its server. */
+.cas-account-menu [role="menuitem"]:has(.cas-account-menu-copy) {
+  height: auto;
+  min-height: 44px;
+  line-height: 18px;
 }
