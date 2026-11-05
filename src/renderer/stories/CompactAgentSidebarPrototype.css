@@ -1,0 +1,498 @@
+/* Prototype only: a chat-style agent sidebar. Every rule is scoped under `.cas-proto` or a `cas-`
+ * class, so the real app around it keeps its own styles. */
+
+.cas-proto {
+  height: 100vh;
+}
+
+/* The real sidebar content hides; the prototype's sidebar takes its place. */
+.cas-proto:not(.cas-variant-lanes) aside.sidebar > :not(.cas-sidebar):not(:has(.cas-sidebar)) {
+  display: none;
+}
+
+/* B keeps the real top bar and search. */
+.cas-variant-lanes aside.sidebar > :not(.cas-sidebar, .sidebar-topbar, .sidebar-search-wrap):not(:has(.cas-sidebar)) {
+  display: none;
+}
+
+.cas-variant-lanes .app-frame,
+.cas-variant-list .app-frame {
+  --left-panel-width: 300px !important;
+}
+
+/* A and C put the pages into the pill, so the page rail hides. */
+.cas-variant-list .app-window,
+.cas-variant-dock .app-window {
+  grid-template-columns: 0 minmax(0, 1fr) !important;
+}
+
+.cas-variant-list nav.window-rail,
+.cas-variant-dock nav.window-rail {
+  display: none;
+}
+
+.cas-variant-dock .app-frame {
+  --left-panel-width: 80px !important;
+}
+
+.cas-sidebar {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.cas-top {
+  display: flex;
+  height: 56px;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 4px;
+}
+
+.cas-spacer {
+  flex: 1;
+}
+
+.cas-icon-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--openbot-radius-md);
+  background: transparent;
+  color: var(--openbot-text-secondary);
+}
+
+.cas-icon-button:hover {
+  background: var(--openbot-hover);
+}
+
+.cas-icon-button svg,
+.cas-round svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cas-round {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--openbot-border);
+  border-radius: 999px;
+  background: var(--openbot-bg-surface);
+  box-shadow: var(--openbot-shadow-card);
+  color: var(--openbot-text-primary);
+  transition: transform var(--openbot-duration-hover) ease;
+}
+
+.cas-round:hover {
+  background: var(--openbot-bg-control-hover);
+}
+
+.cas-round:active {
+  transform: scale(0.94);
+}
+
+.cas-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  padding: 4px 10px 12px;
+}
+
+/* One agent. */
+.cas-row {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 66px;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: var(--openbot-radius-card);
+  background: transparent;
+  padding: 8px 10px;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--openbot-duration-hover) ease;
+}
+
+.cas-row:hover {
+  background: var(--openbot-hover);
+}
+
+.cas-row-active,
+.cas-row-active:hover {
+  --agent-avatar-outline: var(--openbot-bg-control-active);
+
+  background: var(--openbot-bg-control-active);
+}
+
+.cas-row-avatar {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  place-items: center;
+}
+
+.cas-row-avatar .agent-avatar,
+.cas-dock-face .agent-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.cas-row-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cas-row-top {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cas-row-copy strong {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--openbot-text-primary);
+  font-size: 15px;
+  font-weight: 560;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cas-row-time {
+  flex: none;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+}
+
+.cas-row-preview {
+  overflow: hidden;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-md);
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cas-row-preview-wait {
+  color: var(--openbot-warning-text);
+  font-weight: 540;
+}
+
+.cas-unread {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--openbot-accent);
+}
+
+/* Groups: lanes in B, days in History. */
+.cas-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.cas-group-title {
+  margin: 10px 10px 4px;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  font-weight: 560;
+}
+
+.cas-lane-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--openbot-radius-md);
+  background: transparent;
+  padding: 8px 10px 4px;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  font-weight: 560;
+}
+
+.cas-lane-title-wait {
+  color: var(--openbot-warning-text);
+}
+
+.cas-lane-count {
+  color: var(--openbot-text-muted);
+  font-weight: 400;
+}
+
+.cas-lane-chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  opacity: 0;
+}
+
+.cas-lane-header:hover .cas-lane-chevron,
+.cas-lane-header:focus-visible .cas-lane-chevron {
+  opacity: 1;
+}
+
+.cas-lane-header[aria-expanded="false"] .cas-lane-chevron {
+  opacity: 1;
+  transform: rotate(-90deg);
+}
+
+/* History and Connections rows. */
+.cas-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cas-history-row {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: var(--openbot-radius-lg);
+  background: transparent;
+  padding: 6px 10px;
+  color: inherit;
+  text-align: left;
+}
+
+.cas-history-row:hover {
+  background: var(--openbot-hover);
+}
+
+.cas-history-row .cas-row-copy strong {
+  font-size: var(--openbot-text-lg);
+  font-weight: 500;
+}
+
+.cas-history-avatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+}
+
+.cas-history-avatar .agent-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.cas-tool-tile {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-md);
+  background: var(--openbot-bg-surface);
+  color: var(--openbot-text-secondary);
+  font-weight: 600;
+}
+
+.cas-tool-state {
+  flex: none;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+}
+
+.cas-tool-state-on {
+  color: var(--openbot-success-text);
+}
+
+/* The floating pill at the bottom. */
+.cas-pill {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 12px 12px;
+  border: 1px solid var(--openbot-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--openbot-text-primary) 5%, var(--openbot-bg-sidebar));
+  padding: 6px;
+}
+
+.cas-me {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--openbot-accent-soft), var(--openbot-accent));
+  color: var(--openbot-text-on-accent);
+  font-weight: 650;
+}
+
+.cas-tabs {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.cas-tab {
+  display: grid;
+  width: 52px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--openbot-text-secondary);
+  transition:
+    background-color var(--openbot-duration-hover) ease,
+    color var(--openbot-duration-hover) ease;
+}
+
+.cas-tab:hover {
+  color: var(--openbot-text-primary);
+}
+
+.cas-tab[aria-selected="true"] {
+  background: var(--openbot-bg-surface);
+  box-shadow: var(--openbot-shadow-card);
+  color: var(--openbot-text-primary);
+}
+
+.cas-tab svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* C: the dock. */
+.cas-dock-top {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 8px;
+}
+
+.cas-dock-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.cas-dock-face {
+  position: relative;
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  padding: 6px;
+  transition: background-color var(--openbot-duration-hover) ease;
+}
+
+.cas-dock-face:hover {
+  background: var(--openbot-hover);
+}
+
+.cas-dock-face-active,
+.cas-dock-face-active:hover {
+  background: var(--openbot-bg-control-active);
+}
+
+.cas-dock-face-active::before {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: -12px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--openbot-text-primary);
+  content: "";
+}
+
+.cas-dock-unread {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
+}
+
+.cas-pill-vertical {
+  flex-direction: column;
+  margin: 8px auto 12px;
+}
+
+.cas-pill-vertical .cas-tabs {
+  flex-direction: column;
+}
+
+.cas-pill-vertical .cas-tab {
+  width: 40px;
+}
+
+.cas-tip {
+  display: flex;
+  max-width: 260px;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-lg);
+  background: var(--openbot-bg-sheet);
+  box-shadow: var(--openbot-shadow-overlay);
+  padding: 8px 10px;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-md);
+  line-height: 18px;
+}
+
+.cas-tip strong {
+  color: var(--openbot-text-primary);
+  font-weight: 560;
+}
+
+.cas-flyout {
+  position: fixed;
+  z-index: 40;
+  top: 8px;
+  bottom: 8px;
+  left: 88px;
+  width: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-card);
+  background: var(--openbot-bg-sheet);
+  box-shadow: var(--openbot-shadow-overlay);
+  padding: 8px;
+}
