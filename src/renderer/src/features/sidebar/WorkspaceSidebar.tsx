@@ -37,6 +37,7 @@ import { useServers } from "../servers/servers-context";
 import { useSettings } from "../settings/settings-context";
 import { usePresence } from "../team/team-context";
 import { SidebarUpdateIsland } from "../updates/SidebarUpdateIsland";
+import { useWindowPage } from "../window/window-page-context";
 import { useWorkspaceSidebarPages } from "../window/workspace-sidebar-pages";
 import { createCommunityCardVisibility } from "./community-card";
 import { createMachineCard } from "./machine-card";
@@ -105,6 +106,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
   const agentThreads = useAgentThreads();
   const threadActivity = createThreadActivity();
   const pages = useWorkspaceSidebarPages();
+  const windowPage = useWindowPage();
   /**
    * The lanes list the threads of every agent, so each agent's thread list loads once per server.
    * Events keep a loaded list current.
@@ -358,6 +360,8 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
       onSelectPerson={(memberId) => void selectDirectMember(memberId)}
       onPreloadDirectConversation={props.peopleEnabled ? () => void DirectConversation.preload() : undefined}
       onCreateAgent={() => {
+        // New shows on every page now, so the agent form opens on the agents page.
+        windowPage.showAgents();
         channels.close();
         openAgentSetup();
       }}
