@@ -260,6 +260,19 @@ risks since the last release.
 Read [check design notes](docs/development-checks.md#lint-and-ui-rules) when changing these checks.
 They describe the enforced syntax, fixture behavior, and reasons for removed rules.
 
+## OpenBot Custom app
+
+This repository is Steven's fork. Steven uses the `OpenBot Custom` app in `/Applications`, which
+`electron-builder.custom.yml` builds. A merge to `main` does not update that app.
+
+- After each merge to `main` that changes the desktop app, the web client, or `packages/ui`, build
+  and install the app again. Do this in the same task as the merge, without a new request.
+- Run `scripts/custom-build-install.sh` from a clean checkout of `origin/main`. The script builds
+  the app, copies the installed app to `~/OpenBot/backups/`, installs the new app, and opens it to
+  make sure that it stays up.
+- If the app runs, the script stops. Ask Steven to quit the app, then run the script again.
+- In the report, give the commit of the installed app and the result of the launch check.
+
 ## Pull requests
 
 - Open a PR only when asked.
