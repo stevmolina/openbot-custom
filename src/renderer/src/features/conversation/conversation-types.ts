@@ -469,6 +469,11 @@ export interface ConversationThreads {
   onCompactContext?: (() => Promise<void>) | undefined;
   /** Missing when the host cannot move a queued message to a new thread. */
   onRunQueuedMessage?: ((deliveryId: string) => void) | undefined;
+  /**
+   * Custom: closes the new thread and starts one with another agent, whose chat opens. Missing when no
+   * new thread is open, or where the header shows only this agent's tabs.
+   */
+  onChangeDraftAgent?: ((agentId: string) => void) | undefined;
   /** The actions of the queue of a side thread. Missing when the host sends no queue of a thread. */
   queueActions?: ThreadQueueActions | undefined;
   /**

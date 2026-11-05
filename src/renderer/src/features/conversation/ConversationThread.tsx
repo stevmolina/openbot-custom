@@ -269,6 +269,7 @@ export function ConversationThread() {
             limit={current().threads.limit}
             agent={current().agent}
             agents={props.agents}
+            onChangeAgent={current().threads.onChangeDraftAgent}
             messages={messages}
             skills={installedSkills()}
             skillsLoadFailed={installedSkillsLoadFailed()}

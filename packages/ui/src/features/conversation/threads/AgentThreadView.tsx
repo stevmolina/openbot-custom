@@ -10,7 +10,7 @@ import type {
 } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { isAgentTaskActive } from "@openbot/team-client/agent-tasks";
-import { Button, MessageSquareText } from "@openbot/ui";
+import { Button, Check, DropdownMenu, MessageSquareText } from "@openbot/ui";
 import { createScrollFades } from "@openbot/ui/components/createScrollFades";
 import type {
   AgentMessage,
@@ -135,6 +135,11 @@ export interface AgentThreadViewProps {
   limit: number;
   agent: AgentProfile;
   agents: AgentProfile[];
+  /**
+   * Custom: starts the new thread with another agent. With it, the avatar of a new thread is a menu of
+   * the agents. Missing for a thread that has started, or where the host cannot move the new thread.
+   */
+  onChangeAgent?: ((agentId: string) => void) | undefined;
   messages: readonly AgentMessage[];
   /** The agent's skills, for the `$` picker and the skill tags in messages. */
   skills?: InstalledSkill[] | undefined;
@@ -574,7 +579,49 @@ export function AgentThreadView(props: AgentThreadViewProps) {
       >
         <Show when={empty()}>
           <div class="agent-thread-empty">
-            <AgentAvatar agent={props.agent} mood="idle" motion="always" class="agent-thread-empty-avatar" />
+            <Show
+              when={props.onChangeAgent && props.agents.length > 1 ? props.onChangeAgent : undefined}
+              fallback={
+                <AgentAvatar agent={props.agent} mood="idle" motion="always" class="agent-thread-empty-avatar" />
+              }
+            >
+              {(change) => (
+                <DropdownMenu.Root placement="bottom" gutter={8}>
+                  <DropdownMenu.Trigger
+                    class="agent-thread-empty-agent"
+                    aria-label={t("conversation.threads.view.changeAgent", { name: props.agent.name })}
+                  >
+                    <AgentAvatar agent={props.agent} mood="idle" motion="always" class="agent-thread-empty-avatar" />
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content class="agent-thread-empty-agent-menu">
+                      <DropdownMenu.RadioGroup
+                        value={props.agent.id}
+                        onChange={(agentId) => {
+                          if (agentId !== props.agent.id) change()(agentId);
+                        }}
+                      >
+                        <For each={props.agents} keyed={(option) => option.id}>
+                          {(option) => (
+                            <DropdownMenu.RadioItem
+                              value={option().id}
+                              closeOnSelect
+                              class="agent-thread-empty-agent-option"
+                            >
+                              <AgentAvatar agent={option()} class="agent-thread-empty-agent-option-avatar" />
+                              <span>{option().name}</span>
+                              <Show when={props.agent.id === option().id}>
+                                <Check aria-hidden="true" class="agent-thread-empty-agent-check" />
+                              </Show>
+                            </DropdownMenu.RadioItem>
+                          )}
+                        </For>
+                      </DropdownMenu.RadioGroup>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+              )}
+            </Show>
             <h2 class="agent-thread-empty-title">{t("conversation.threads.view.emptyTitle")}</h2>
             <p class="agent-thread-empty-subtitle">
               {t("conversation.threads.view.emptySubtitle", { name: props.agent.name })}

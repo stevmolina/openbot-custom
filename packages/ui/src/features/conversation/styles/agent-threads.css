@@ -722,6 +722,53 @@
   margin-bottom: var(--openbot-space-2);
 }
 
+/* Custom: the avatar of a new thread opens a menu of the agents, which starts the thread with another one. */
+.agent-thread-empty-agent {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: var(--openbot-radius-lg);
+  background: transparent;
+  cursor: pointer;
+  transition: transform var(--openbot-duration-fast) var(--openbot-ease-out);
+}
+
+.agent-thread-empty-agent:hover,
+.agent-thread-empty-agent[data-expanded] {
+  transform: scale(1.04);
+}
+
+.agent-thread-empty-agent:active {
+  transform: scale(0.97);
+}
+
+.agent-thread-empty-agent:focus-visible {
+  outline: none;
+  box-shadow: var(--openbot-focus-ring);
+}
+
+/* A server can have more agents than the window has rows, so the menu fits the space left and scrolls. */
+.agent-thread-empty-agent-menu {
+  max-height: min(520px, calc(100dvh - 16px), var(--kb-popper-content-available-height, 520px));
+  overflow-y: auto;
+}
+
+.agent-thread-empty-agent-option > span {
+  flex: 1 1 auto;
+}
+
+.agent-thread-empty-agent-option-avatar.agent-avatar {
+  --agent-avatar-optical-offset: -2px;
+
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.agent-thread-empty-agent-check {
+  color: var(--openbot-text-primary);
+}
+
 .agent-thread-empty-title {
   margin: 0;
   color: var(--openbot-text-primary);

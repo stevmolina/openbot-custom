@@ -74,7 +74,7 @@ interface AllAgentTabsInput {
 
 /** The threads of one agent, for the conversation. Read it in a memo: it reads the thread state. */
 export function conversationThreads(input: ConversationThreadsInput): ConversationThreads {
-  const { agent, tasks, tabs, approvals, prompts, takeovers, onCompactContext } = input;
+  const { agent, tasks, tabs, approvals, prompts, takeovers, onCompactContext, allTabs } = input;
   const agentId = agent.id;
   const snapshot = tasks.snapshot(agentId);
   const list = snapshot?.tasks ?? [];
@@ -202,6 +202,8 @@ export function conversationThreads(input: ConversationThreadsInput): Conversati
       return open ? input.contextStates?.()[open.threadId] : undefined;
     },
     onCompactContext: open && onCompactContext ? () => onCompactContext(open.id) : undefined,
+    // Custom: the new thread moves to another agent. The draft of this agent closes, and the other agent's opens.
+    onChangeDraftAgent: allTabs && open === null ? (target) => changeDraftAgent(input, allTabs, target) : undefined,
     // Only this computer moves a queued message to a new thread.
     onRunQueuedMessage: tasks.local() ? (deliveryId) => void tabs.runQueuedMessage(agentId, deliveryId) : undefined,
     queueActions: tasks.queueActions()
@@ -233,6 +235,15 @@ export function conversationThreads(input: ConversationThreadsInput): Conversati
     },
     focusMessage: focus && list.some((task) => task.id === focus.taskId) ? focus : null,
   };
+}
+
+/** Custom: starts the new thread with another agent, and closes the new thread of this one. */
+function changeDraftAgent(input: ConversationThreadsInput, all: AllAgentTabsInput, target: string): void {
+  const { agent, tabs } = input;
+  if (target === agent.id || !all.agents.some((profile) => profile.id === target)) return;
+  tabs.startNew(target);
+  tabs.close(agent.id, DRAFT_THREAD_ID);
+  all.open(target, DRAFT_THREAD_ID);
 }
 
 /** The open side thread where the routine runs. */

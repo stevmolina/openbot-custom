@@ -83,6 +83,7 @@ export const messages = {
   "conversation.threads.branch.fromDeleted": "削除されたスレッドから分岐",
   "conversation.threads.view.emptyTitle": "何に取り組みますか？",
   "conversation.threads.view.emptySubtitle": "{name} との新しい会話。",
+  "conversation.threads.view.changeAgent": "エージェントを変更（現在: {name}）",
   "conversation.threads.view.newPlaceholder": "{name} との新しいスレッド",
   "conversation.threads.view.placeholder": "{title} で {name} にメッセージを送る",
   "conversation.threads.view.queued": "このスレッドで待機中のメッセージ",

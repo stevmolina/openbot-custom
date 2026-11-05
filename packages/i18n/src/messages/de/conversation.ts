@@ -86,6 +86,7 @@ export const messages = {
   "conversation.threads.branch.fromDeleted": "Abgezweigt von einem gelöschten Thread",
   "conversation.threads.view.emptyTitle": "Woran möchtest du arbeiten?",
   "conversation.threads.view.emptySubtitle": "Ein neues Gespräch mit {name}.",
+  "conversation.threads.view.changeAgent": "Agent wechseln, jetzt {name}",
   "conversation.threads.view.newPlaceholder": "Neuer Thread mit {name}",
   "conversation.threads.view.placeholder": "Nachricht an {name} in {title}",
   "conversation.threads.view.queued": "Nachrichten, die in diesem Thread warten",
