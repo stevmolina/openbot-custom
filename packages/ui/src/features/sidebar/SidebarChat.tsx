@@ -305,7 +305,7 @@ export function SidebarChat(chatProps: { pages: SidebarPages }) {
             <SidebarUsage
               usageRows={chatProps.pages.usageRows}
               customAgentUsage={chatProps.pages.customAgentUsage}
-              withText={false}
+              layout="column"
               onOpen={chatProps.pages.onUsage}
             />
             <SidebarPill pages={chatProps.pages} vertical />
@@ -320,7 +320,7 @@ export function SidebarChat(chatProps: { pages: SidebarPages }) {
         <SidebarUsage
           usageRows={chatProps.pages.usageRows}
           customAgentUsage={chatProps.pages.customAgentUsage}
-          withText
+          layout="tab"
           onOpen={chatProps.pages.onUsage}
         />
         <SidebarPill pages={chatProps.pages} vertical={false} />

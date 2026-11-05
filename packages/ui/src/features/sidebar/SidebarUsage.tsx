@@ -1,8 +1,8 @@
 /**
  * The plan usage of each AI provider account, above the pill of the chat sidebar. Each provider
  * shows as rings around its logo: the outer ring is the longest window, the inner ring the shortest,
- * and each arc shows how much is left. The open sidebar adds the name and the percent left. The hover
- * card lists the windows with their reset times, and a click opens the usage page.
+ * and each arc shows how much is left. The open sidebar shows the rings in one row, in a tab on top of the
+ * pill. The hover card lists the windows with their reset times, and a click opens the usage page.
  */
 
 import { ProviderLogo } from "@openbot/brand";
@@ -17,12 +17,16 @@ import type { SidebarCustomAgentUsage } from "./sidebar-pages";
 /** Two tracks in a 34px box, with 4.5px between their centers. */
 const RING = { size: 34, stroke: 2.25, spacing: 4.5 };
 
-/** Below this percent left, the text of the open sidebar shows in the warning color. */
-const LOW_PERCENT = 25;
+/**
+ * Where the hover card opens: above a ring of the tab, so it leaves the other rings of the row free,
+ * and beside a ring of the dock.
+ */
+type UsagePlacement = "top" | "right-end";
 
 /** One usage button. The hover card shows instead of a name tooltip. */
 function UsageButton(props: {
   label: string;
+  placement: UsagePlacement;
   card: () => JSX.Element;
   onOpen: (button: HTMLElement) => void;
   children: JSX.Element;
@@ -31,7 +35,7 @@ function UsageButton(props: {
     <MotionTooltip
       content={props.card()}
       class="ui-popover-menu-surface account-usage-popover sidebar-usage-card"
-      placement="right-end"
+      placement={props.placement}
       openDelay={250}
       closeDelay={75}
     >
@@ -56,14 +60,13 @@ function UsageButton(props: {
 function UsageRings(props: {
   row: AccountUsageProviderRow;
   shared: readonly AccountUsageProviderRow[];
-  withText: boolean;
+  placement: UsagePlacement;
   onOpen: (button: HTMLElement) => void;
 }) {
   const { t, format } = useText();
   const rows = () => [props.row, ...props.shared];
   const ringRow = () =>
     rows().reduce((lowest, row) => ((row.remainingPercent ?? 100) < (lowest.remainingPercent ?? 100) ? row : lowest));
-  const left = () => ringRow().remainingPercent;
   const label = () =>
     t("app.rail.usageRings", {
       name: format.list(rows().map((row) => row.name)),
@@ -77,6 +80,7 @@ function UsageRings(props: {
   return (
     <UsageButton
       label={label()}
+      placement={props.placement}
       card={() => (
         <AccountUsageDetails
           rows={rows()}
@@ -121,16 +125,6 @@ function UsageRings(props: {
         </svg>
         <ProviderLogo provider={props.row.provider} class="sidebar-usage-logo" />
       </span>
-      <Show when={props.withText}>
-        <span class="sidebar-usage-copy" aria-hidden="true">
-          <span class="sidebar-usage-name">{props.row.name}</span>
-          <Show when={left() !== null}>
-            <span class={["sidebar-usage-left", { "sidebar-usage-low": (left() ?? 100) < LOW_PERCENT }]}>
-              {t("sidebar.usage.left", { percent: left() ?? 0 })}
-            </span>
-          </Show>
-        </span>
-      </Show>
     </UsageButton>
   );
 }
@@ -138,13 +132,14 @@ function UsageRings(props: {
 /** The plan usage of one custom agent: its logo, with no ring. The card shows the answer as the agent wrote it. */
 function CustomAgentUsage(props: {
   row: SidebarCustomAgentUsage;
-  withText: boolean;
+  placement: UsagePlacement;
   onOpen: (button: HTMLElement) => void;
 }) {
   const { t } = useText();
   return (
     <UsageButton
       label={t("app.rail.customAgentUsage", { name: props.row.name })}
+      placement={props.placement}
       card={() => (
         <div class="sidebar-agent-usage">
           <h2 class="account-usage-popover-title">{props.row.name}</h2>
@@ -156,23 +151,22 @@ function CustomAgentUsage(props: {
       <span class="sidebar-usage-ring-box">
         <ProviderLogo provider="acp" class="sidebar-usage-logo" />
       </span>
-      <Show when={props.withText}>
-        <span class="sidebar-usage-copy" aria-hidden="true">
-          <span class="sidebar-usage-name">{props.row.name}</span>
-        </span>
-      </Show>
     </UsageButton>
   );
 }
 
-/** The usage of each provider: a row in the open sidebar, a column in the dock. Empty, it shows nothing. */
+/**
+ * The usage of each provider: a row of rings in a tab on top of the pill in the open sidebar, a column
+ * in the dock. Empty, it shows nothing.
+ */
 export function SidebarUsage(props: {
   usageRows: readonly AccountUsageProviderRow[];
   customAgentUsage?: readonly SidebarCustomAgentUsage[] | undefined;
-  withText: boolean;
+  layout: "tab" | "column";
   onOpen: (button: HTMLElement) => void;
 }) {
   const { t } = useText();
+  const placement = (): UsagePlacement => (props.layout === "tab" ? "top" : "right-end");
   /**
    * One ring per reading, except a reading that counts the quota of another provider's own sign-in,
    * such as Cursor on a merged Grok plan: that ring's card lists it instead.
@@ -189,17 +183,17 @@ export function SidebarUsage(props: {
     <Show when={rings().length > 0 || (props.customAgentUsage?.length ?? 0) > 0}>
       {/* A group, not a list: each button names its provider. */}
       <fieldset
-        class={["sidebar-usage", props.withText ? "sidebar-usage-row" : "sidebar-usage-column"]}
+        class={["sidebar-usage", props.layout === "tab" ? "sidebar-usage-tab" : "sidebar-usage-column"]}
         aria-label={t("sidebar.usage.label")}
       >
         {/* A status update builds new rows. The key keeps each ring, and its open hover card, mounted. */}
         <For each={rings()} keyed={(ring) => accountUsageRowKey(ring.row)}>
           {(ring) => (
-            <UsageRings row={ring().row} shared={ring().shared} withText={props.withText} onOpen={props.onOpen} />
+            <UsageRings row={ring().row} shared={ring().shared} placement={placement()} onOpen={props.onOpen} />
           )}
         </For>
         <For each={props.customAgentUsage ?? []} keyed={(row) => row.id}>
-          {(row) => <CustomAgentUsage row={row()} withText={props.withText} onOpen={props.onOpen} />}
+          {(row) => <CustomAgentUsage row={row()} placement={placement()} onOpen={props.onOpen} />}
         </For>
       </fieldset>
     </Show>

@@ -30,7 +30,6 @@ export const messages = {
   "sidebar.chat.newMenu": "Yeni ajan veya kanal",
   "sidebar.chat.unread": "Okunmadı",
   "sidebar.usage.label": "Yapay zekâ sağlayıcıları",
-  "sidebar.usage.left": "%{percent} kaldı",
   "sidebar.pill.chats": "Sohbetler",
   "sidebar.pill.pinPage": "{name} öğesini kenar çubuğuna sabitle",
   "sidebar.pill.moreNotice": "Daha fazla. {notice}",

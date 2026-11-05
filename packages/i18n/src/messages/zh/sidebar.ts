@@ -30,7 +30,6 @@ export const messages = {
   "sidebar.chat.newMenu": "新建智能体或频道",
   "sidebar.chat.unread": "未读",
   "sidebar.usage.label": "AI 提供商",
-  "sidebar.usage.left": "剩余 {percent}%",
   "sidebar.pill.chats": "聊天",
   "sidebar.pill.pinPage": "将{name}固定到侧边栏",
   "sidebar.pill.moreNotice": "更多。{notice}",
