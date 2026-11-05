@@ -104,8 +104,8 @@ import {
   sidebarAgentWaits,
   sidebarChannelWaits,
 } from "@openbot/ui/features/sidebar/sidebar-agent-states";
+import type { SidebarPage, SidebarPages } from "@openbot/ui/features/sidebar/sidebar-pages";
 import type { SidebarView } from "@openbot/ui/features/sidebar/sidebar-types";
-import { PageRail, type PageRailPage } from "@openbot/ui/features/window/PageRail";
 import { useText } from "@openbot/ui/text";
 import { Effect } from "effect";
 import {
@@ -203,7 +203,7 @@ import { createCommunityCardVisibility } from "../sidebar/community-card";
 import { isReaderAuthor } from "../team/reader-identity";
 import type { ServerVaultOptions } from "../vault/ServerVaultPanel";
 import { createVaultStore } from "../vault/stores/vault-store";
-import { RailHelpMenu } from "../window/RailHelpMenu";
+import { createHelpMenu } from "../window/help-menu";
 import { ServerSettingsPageTitle, SettingsPageFrame } from "../window/SettingsPageFrame";
 import type { SettingsKind, WindowPage } from "../window/window-page-context";
 import { WebAgentSettings } from "./WebAgentSettings";
@@ -875,23 +875,10 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   /** Whether a page other than the agents covers the conversation. A message there is not seen. */
   const pageCovered = () => page() !== "agents";
   /**
-   * As on desktop: the Tasks page shows in the middle pane, and wins over the other panes. The agent list
-   * is hidden each time the page opens, until the user shows it. A row of the list closes the page, as
-   * each row calls `showAgents`.
+   * As on desktop: the Tasks page shows in the middle pane, and wins over the other panes. The chat
+   * sidebar stays beside it. A row of the list closes the page, as each row calls `showAgents`.
    */
   const tasksOpen = () => page() === "tasks";
-  const [tasksAgentsOpen, setTasksAgentsOpen] = createSignal(false);
-  createEffect(page, (next) => {
-    if (next !== "tasks") setTasksAgentsOpen(false);
-  });
-  /** The list stays while a connection screen covers the page: the screen does not span the sidebar. */
-  const tasksAgentsHidden = () =>
-    tasksOpen() &&
-    !tasksAgentsOpen() &&
-    workspace.state.status === "online" &&
-    !workspace.state.panelsFailed &&
-    !hostOffline() &&
-    !blockedServer();
   /** Shows the agents and closes the other pages. */
   function showAgents() {
     setAccountSettingsOpen(false);
@@ -1730,12 +1717,44 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     showAgents();
     setCreating(true);
   }
-  /** The rail button of the page. The server settings open from the server menu, so no button is current. */
-  const railPage = (): PageRailPage | null => {
+  /** The sidebar button of the page. The server settings open from the server menu, so no button is current. */
+  const sidebarPage = (): SidebarPage | null => {
     const current = page();
-    if (current === "agents") return layout.sidebarView();
+    if (current === "agents") return layout.sidebarView() === "routines" ? "routines" : "chats";
     return current === "server-settings" ? null : current;
   };
+  const help = createHelpMenu({
+    version: () => null,
+    onOpenWhatsNew: () => void openWebDestination("changelog"),
+    onOpenLink: (destination) => void openWebDestination(destination),
+  });
+  /** As on desktop: the pages, the provider usage and the account switch of the chat sidebar. */
+  const sidebarPages = (): SidebarPages => ({
+    current: sidebarPage(),
+    pinned: layout.railPinned(),
+    onPinChange: layout.setRailPinned,
+    usageRows: usageRows(),
+    onChats: () => showSidebarView("agents"),
+    onRoutines: routinesSupported() ? () => showSidebarView("routines") : undefined,
+    onTasks: tasksSupported()
+      ? (button) => {
+          const id = server()?.id;
+          if (id) void openHostPage(id, "tasks", button);
+        }
+      : undefined,
+    onSchedule: (button) => {
+      const id = server()?.id;
+      if (id) void openHostPage(id, "schedule", button);
+    },
+    onUsage: (button) => {
+      const id = server()?.id;
+      if (id) void openHostPage(id, "usage", button);
+    },
+    onMarketplace: workspace.state.status === "online" ? openMarketplace : undefined,
+    onSettings: openAccountSettings,
+    help,
+    onCollapse: () => layout.setSidebarCollapsed(true),
+  });
   /** The settings page on screen, if any. */
   const settingsKind = (): SettingsKind | null =>
     page() === "settings" ? "personal" : page() === "server-settings" ? "server" : null;
@@ -1786,43 +1805,8 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
             </div>
           }
         >
-          {/* As on desktop: the page rail sits at the left of the frame. */}
+          {/* As on desktop: the chat sidebar sits at the left of the frame and opens the pages. */}
           <div class="app-window web-app-window">
-            <PageRail
-              hidden={false}
-              logo={{ variant: "production", href: "/" }}
-              current={railPage()}
-              pinned={layout.railPinned()}
-              onPinChange={layout.setRailPinned}
-              usageRows={usageRows()}
-              onAgents={() => showSidebarView("agents")}
-              onRoutines={routinesSupported() ? () => showSidebarView("routines") : undefined}
-              onTasks={
-                tasksSupported()
-                  ? (button) => {
-                      const id = server()?.id;
-                      if (id) void openHostPage(id, "tasks", button);
-                    }
-                  : undefined
-              }
-              onSchedule={(button) => {
-                const id = server()?.id;
-                if (id) void openHostPage(id, "schedule", button);
-              }}
-              onUsage={(button) => {
-                const id = server()?.id;
-                if (id) void openHostPage(id, "usage", button);
-              }}
-              onMarketplace={workspace.state.status === "online" ? openMarketplace : undefined}
-              onSettings={openAccountSettings}
-              help={
-                <RailHelpMenu
-                  version={null}
-                  onOpenWhatsNew={() => void openWebDestination("changelog")}
-                  onOpenLink={(destination) => void openWebDestination(destination)}
-                />
-              }
-            />
             <WorkspaceFrame
               class="web-app-frame"
               data-web-mobile-pane={mobilePane()}
@@ -1892,7 +1876,6 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                 })
               }
               windowPage={page()}
-              sidebarHidden={tasksAgentsHidden()}
               page={
                 <Show
                   when={page() === "usage" || page() === "schedule" ? server() : undefined}
@@ -2105,6 +2088,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     onHideAgent={hideSupported() ? (agentId) => setAgentHidden(agentId, true) : undefined}
                     onRestoreAgent={hideSupported() ? (agentId) => setAgentHidden(agentId, false) : undefined}
                     compact={compact()}
+                    pages={sidebarPages()}
                     onExpand={layout.expandSidebar}
                     onOpenSearch={() => setSearchOpen(true)}
                     onOpenMarketplace={openMarketplace}
@@ -2391,8 +2375,6 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                       serverId={target().id}
                       hostName={target().name}
                       onBack={closeHostPage}
-                      agentsOpen={!tasksAgentsHidden()}
-                      onToggleAgents={() => setTasksAgentsOpen(tasksAgentsHidden())}
                       source={tasksSource}
                       mediaSource={runtime.attachmentMedia}
                       files={{

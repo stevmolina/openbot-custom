@@ -31,7 +31,6 @@ export function PrototypeApp(props: { options?: MockOpenBotOptions; setup?: (moc
 const SLOTS = [
   ["header", ".conversation-header"],
   ["topbar", ".sidebar-topbar"],
-  ["rail", "nav.window-rail"],
   ["sidebar", "aside.sidebar"],
 ] as const;
 
@@ -46,7 +45,6 @@ export function createAppDom() {
     root: null,
     header: null,
     topbar: null,
-    rail: null,
     sidebar: null,
   });
 

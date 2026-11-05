@@ -1,0 +1,612 @@
+/* The chat sidebar: a top row, one chat list by last message, the provider usage and the pill.
+ * Collapsed, it is a dock of faces. It took the place of the page rail, so it stays on every page. */
+
+.sidebar.sidebar-chat {
+  --sidebar-chat-face: 46px;
+  --sidebar-chat-control: 34px;
+
+  position: relative;
+  z-index: 2;
+  background: var(--openbot-bg-sidebar);
+}
+
+/* The top row has the height of the top row of the card, so its buttons line up with the macOS
+ * window buttons and the tabs of the chat. */
+.sidebar-chat-top {
+  display: flex;
+  height: var(--left-header-height, 38px);
+  box-sizing: content-box;
+  flex: none;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  padding: 0 var(--openbot-space-3);
+}
+
+.sidebar-chat-spacer {
+  flex: 1;
+}
+
+.sidebar-chat .sidebar-chat-toggle.ui-button {
+  width: var(--sidebar-chat-control);
+  height: var(--sidebar-chat-control);
+  flex: none;
+  padding: 0;
+  border-radius: var(--openbot-radius-md);
+  color: var(--openbot-text-secondary);
+}
+
+.sidebar-chat .sidebar-chat-round {
+  display: grid;
+  width: var(--sidebar-chat-control);
+  height: var(--sidebar-chat-control);
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-bg-surface);
+  box-shadow: var(--openbot-shadow-card);
+  padding: 0;
+  color: var(--openbot-text-primary);
+  transition:
+    background-color var(--openbot-duration-hover) ease,
+    transform var(--openbot-duration-hover) ease;
+}
+
+.sidebar-chat .sidebar-chat-round:hover {
+  background: var(--openbot-bg-control-hover);
+}
+
+.sidebar-chat :is(.sidebar-chat-round, .sidebar-chat-toggle, .sidebar-pill-button):active {
+  transform: scale(0.94);
+}
+
+.sidebar-chat :is(.sidebar-chat-round, .sidebar-chat-toggle, .sidebar-pill-button) svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The list. */
+.sidebar-chat .sidebar-chat-list {
+  padding: var(--openbot-space-2) 10px;
+}
+
+.sidebar-chat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-chat .sidebar-chat-row.ui-button {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: 66px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--openbot-space-3);
+  border-radius: var(--openbot-radius-card);
+  padding: var(--openbot-space-2) 10px;
+  color: inherit;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.sidebar-chat .sidebar-chat-row.ui-button:hover {
+  background: var(--openbot-hover);
+}
+
+.sidebar-chat .sidebar-chat-active.ui-button,
+.sidebar-chat .sidebar-chat-active.ui-button:hover {
+  --agent-avatar-outline: var(--openbot-bg-control-active);
+
+  background: var(--openbot-bg-control-active);
+}
+
+.sidebar-chat-avatar {
+  position: relative;
+  display: grid;
+  width: var(--sidebar-chat-face);
+  height: var(--sidebar-chat-face);
+  flex: none;
+  place-items: center;
+}
+
+.sidebar-chat-avatar > :is(.agent-avatar, .channel-avatar) {
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar-chat-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-chat-name {
+  overflow: hidden;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-lg);
+  font-weight: var(--openbot-weight-semibold);
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The secondary text color: the muted one fails contrast on this background. */
+.sidebar-chat-preview {
+  overflow: hidden;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-md);
+  font-weight: var(--openbot-weight-regular);
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-chat-preview-wait,
+.sidebar-chat-tip .sidebar-chat-preview-wait {
+  color: var(--openbot-warning-text);
+  font-weight: var(--openbot-weight-medium);
+}
+
+.sidebar-chat-unread {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-accent);
+}
+
+.sidebar-chat-footer:empty {
+  display: none;
+}
+
+.sidebar-chat-footer {
+  flex: none;
+}
+
+/* The provider usage and the pill. */
+.sidebar-chat-bottom {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--openbot-space-1);
+  padding: var(--openbot-space-1) var(--openbot-space-3) var(--openbot-space-3);
+}
+
+.sidebar-usage {
+  display: flex;
+  min-width: 0;
+  gap: var(--openbot-space-1);
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+/* Two providers to a line, so a name and its percent keep their room. */
+.sidebar-usage.sidebar-usage-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sidebar-usage-row > .ui-motion-tooltip-trigger {
+  min-width: 0;
+}
+
+/* Two rings to a line in the dock, so the faces above keep their room. */
+.sidebar-usage.sidebar-usage-column {
+  display: grid;
+  grid-template-columns: repeat(2, 34px);
+  gap: 2px;
+  justify-content: center;
+}
+
+.sidebar-chat .sidebar-usage-button.ui-button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--openbot-space-2);
+  border-radius: var(--openbot-radius-lg);
+  padding: var(--openbot-space-1);
+  color: var(--openbot-text-primary);
+  font-weight: inherit;
+  text-align: left;
+}
+
+.sidebar-usage-row .sidebar-usage-button.ui-button {
+  padding-right: var(--openbot-space-2);
+}
+
+.sidebar-chat .sidebar-usage-button.ui-button:hover {
+  background: var(--openbot-hover);
+}
+
+.sidebar-chat .sidebar-usage-column .sidebar-usage-button.ui-button {
+  width: 34px;
+  padding: 0;
+  border-radius: var(--openbot-radius-pill);
+}
+
+.sidebar-usage-ring-box {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+}
+
+.sidebar-usage-ring {
+  position: absolute;
+  inset: 0;
+  width: 34px;
+  height: 34px;
+  transform: rotate(-90deg);
+}
+
+.sidebar-usage-logo {
+  width: var(--openbot-icon-xs);
+  height: var(--openbot-icon-xs);
+  overflow: visible;
+  fill: var(--openbot-provider-current);
+}
+
+.sidebar-usage-track {
+  stroke: currentcolor;
+  opacity: 0.15;
+}
+
+.sidebar-usage-arc {
+  stroke: var(--openbot-success);
+}
+
+.sidebar-usage-arc[data-usage-tone="warning"] {
+  stroke: var(--openbot-warning);
+}
+
+.sidebar-usage-arc[data-usage-tone="critical"] {
+  stroke: var(--openbot-danger);
+}
+
+.sidebar-usage-copy {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  flex-direction: column;
+  font-size: var(--openbot-text-sm);
+  line-height: 15px;
+}
+
+.sidebar-usage-name,
+.sidebar-usage-left {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-usage-left {
+  color: var(--openbot-text-secondary);
+}
+
+.sidebar-usage-left.sidebar-usage-low {
+  color: var(--openbot-warning-text);
+}
+
+/* The hover card of a usage ring shows the limits only. The usage page has the refresh. */
+.sidebar-usage-card .account-usage-refresh {
+  display: none;
+}
+
+/* The card opens, closes and moves with the tooltip motion, not with the transition of the usage
+ * popover. A transition would cover the motion. */
+.account-usage-popover.sidebar-usage-card {
+  transition: none;
+  transform-origin: var(--kb-tooltip-content-transform-origin);
+}
+
+.sidebar-agent-usage {
+  display: grid;
+  max-width: 280px;
+  padding-inline: var(--openbot-space-1);
+  gap: var(--openbot-space-1);
+}
+
+.sidebar-agent-usage-text {
+  margin: 0;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  line-height: var(--openbot-leading-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-pill {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-pill);
+  background: color-mix(in srgb, var(--openbot-text-primary) 5%, var(--openbot-bg-sidebar));
+  padding: 5px;
+}
+
+.sidebar-pill-pages {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.sidebar-chat .sidebar-pill-button {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: var(--openbot-radius-pill);
+  background: transparent;
+  padding: 0;
+  color: var(--openbot-text-secondary);
+  transition:
+    background-color var(--openbot-duration-hover) ease,
+    color var(--openbot-duration-hover) ease,
+    transform var(--openbot-duration-hover) ease;
+}
+
+.sidebar-chat .sidebar-pill-button:hover {
+  background: var(--openbot-hover);
+  color: var(--openbot-text-primary);
+}
+
+.sidebar-chat .sidebar-pill-button[aria-current="page"],
+.sidebar-chat .sidebar-pill-button[aria-current="page"]:hover {
+  background: var(--openbot-bg-surface);
+  box-shadow: var(--openbot-shadow-card);
+  color: var(--openbot-text-primary);
+}
+
+.sidebar-pill-notice {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-accent);
+  box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
+}
+
+.sidebar-pill-vertical {
+  flex-direction: column;
+}
+
+.sidebar-pill-vertical .sidebar-pill-pages {
+  flex-direction: column;
+}
+
+/* The account switch: the active server in front, another one small behind it. */
+.sidebar-chat .sidebar-account-switch.ui-button {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  place-items: center;
+  border-radius: var(--openbot-radius-pill);
+  padding: 0;
+}
+
+.sidebar-account-stack {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.sidebar-account-logo {
+  position: absolute;
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--openbot-radius-pill);
+}
+
+.sidebar-account-logo > * {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--openbot-radius-pill);
+}
+
+.sidebar-account-logo-back {
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar-account-logo-front {
+  bottom: 0;
+  left: 0;
+  width: 33px;
+  height: 33px;
+  box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
+}
+
+.sidebar-account-sleep {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  color: var(--openbot-text-secondary);
+}
+
+/* The More menu: a pin at the end of each page row. */
+.sidebar-more-menu {
+  min-width: 220px;
+}
+
+.sidebar-more-menu .sidebar-more-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--openbot-control-md);
+  align-items: center;
+  border-radius: var(--ui-menu-item-radius);
+  transition: background-color var(--openbot-duration-hover) var(--openbot-ease-out);
+}
+
+/* The whole line highlights, for the page and for its pin. The items have no background of their own. */
+.ui-action-menu.sidebar-more-menu .sidebar-more-row:is(:hover, :has([data-highlighted])) {
+  background: var(--ui-menu-item-hover);
+}
+
+.ui-action-menu.sidebar-more-menu
+  .sidebar-more-row
+  :is([role="menuitem"], [role="menuitemcheckbox"]):is(:hover, :focus-visible, [data-highlighted]) {
+  background: transparent;
+}
+
+/* The pin shows on a pinned page, and on the row under the pointer or the keyboard. The shared
+ * .ui-action-menu item rule outranks a single class, so this rule names the role to center the pin. */
+.ui-action-menu.sidebar-more-menu .sidebar-more-pin[role="menuitemcheckbox"] {
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+}
+
+.ui-action-menu.sidebar-more-menu .sidebar-more-row:is([data-pinned], :hover, :focus-within) .sidebar-more-pin {
+  opacity: 1;
+}
+
+/* A touch screen has no hover, so each pin shows. */
+@media (hover: none) {
+  .ui-action-menu.sidebar-more-menu .sidebar-more-pin[role="menuitemcheckbox"] {
+    opacity: 1;
+  }
+}
+
+/* Only a pinned page has a filled pin. A highlighted pin stays an outline. */
+.ui-action-menu.sidebar-more-menu .sidebar-more-pin > .agent-context-icon > * {
+  fill-opacity: 0;
+}
+
+.sidebar-more-menu .sidebar-more-row[data-pinned] .sidebar-more-pin > .agent-context-icon > * {
+  fill-opacity: 1;
+}
+
+/* The page icon follows the line, also when the pin is highlighted. */
+.ui-action-menu.sidebar-more-menu
+  .sidebar-more-row:is(:hover, :has([data-highlighted]))
+  > [role="menuitem"]
+  > .agent-context-icon {
+  color: var(--openbot-text-primary);
+}
+
+.ui-action-menu.sidebar-more-menu
+  .sidebar-more-row:is(:hover, :has([data-highlighted]))
+  > [role="menuitem"]
+  > .agent-context-icon
+  > * {
+  fill-opacity: 1;
+}
+
+.sidebar-more-notice {
+  max-width: 120px;
+  overflow: hidden;
+  color: var(--openbot-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The dock. */
+.sidebar-chat.sidebar-compact {
+  align-items: center;
+}
+
+.sidebar-chat.sidebar-compact .sidebar-chat-top {
+  height: auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--openbot-space-2) 0 6px;
+}
+
+.sidebar-chat.sidebar-compact .sidebar-chat-top > .ui-motion-tooltip-trigger {
+  display: grid;
+  place-items: center;
+}
+
+.sidebar-chat.sidebar-compact .sidebar-chat-spacer {
+  display: none;
+}
+
+.sidebar-chat-dock-list {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--openbot-space-1);
+  overflow-y: auto;
+  padding: 6px 0 28px;
+  scrollbar-width: none;
+  /* A face cut by the edge fades out, so the list reads as one that scrolls. */
+  mask-image: linear-gradient(to bottom, var(--openbot-text-primary) calc(100% - 28px), transparent);
+}
+
+.sidebar-chat-dock-list::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-chat .sidebar-chat-face.ui-button {
+  position: relative;
+  display: grid;
+  width: 54px;
+  height: 54px;
+  flex: none;
+  place-items: center;
+  border-radius: var(--openbot-radius-xl);
+  padding: 4px;
+}
+
+.sidebar-chat .sidebar-chat-face.ui-button:hover {
+  background: var(--openbot-hover);
+}
+
+.sidebar-chat-face > .sidebar-chat-unread {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
+}
+
+.sidebar-chat-dock-bottom {
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--openbot-border);
+  padding: var(--openbot-space-2) 0 var(--openbot-space-3);
+}
+
+.sidebar-chat-tip {
+  display: flex;
+  max-width: 260px;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--openbot-space-2) 10px;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-md);
+  line-height: 18px;
+}
+
+.sidebar-chat-tip strong {
+  color: var(--openbot-text-primary);
+  font-weight: var(--openbot-weight-semibold);
+}

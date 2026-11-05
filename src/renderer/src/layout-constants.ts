@@ -9,12 +9,12 @@ export const LEFT_PANEL_COLLAPSED_STORAGE_KEY = "openbot:left-panel-collapsed";
 export const SERVER_VIEW_STORAGE_KEY = "openbot:server-view";
 /** Whether the middle shows the open agent's chat or its routines. */
 export const SIDEBAR_VIEW_STORAGE_KEY = "openbot:sidebar-view";
-/** The pages that the user pinned to the page rail or took off it: a JSON record of booleans. */
+/** The pages that the user pinned to the sidebar pill or took off it: a JSON record of booleans. */
 export const RAIL_PINS_STORAGE_KEY = "openbot:rail-pins";
-export const LEFT_PANEL_DEFAULT = 280;
-export const LEFT_PANEL_MIN = 128;
+export const LEFT_PANEL_DEFAULT = 300;
+export const LEFT_PANEL_MIN = 240;
 export const LEFT_PANEL_MAX = 400;
-export const LEFT_PANEL_COMPACT = 88;
+export const LEFT_PANEL_COMPACT = 80;
 export const LEFT_PANEL_COLLAPSE_THRESHOLD = 110;
 export const LEFT_PANEL_EXPAND_THRESHOLD = 118;
 export const CONVERSATION_MIN_WIDTH = 424;

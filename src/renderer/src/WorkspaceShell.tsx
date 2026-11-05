@@ -36,7 +36,6 @@ import { TasksPanel } from "./features/tasks/TasksPanel";
 import { createHostRestartToasts, type HostRestartView } from "./features/updates/host-restart-toast";
 import { useUsage } from "./features/usage/usage-context";
 import { WindowPageView } from "./features/window/WindowPageView";
-import { WorkspacePageRail } from "./features/window/WorkspacePageRail";
 import { useWindowPage } from "./features/window/window-page-context";
 import { useLayout } from "./layout";
 import { usePlatform } from "./platform";
@@ -57,15 +56,15 @@ import { WorkspaceOverlays } from "./WorkspaceOverlays";
  *
  * The order of the children is the paint order the stylesheet expects, and the
  * middle-pane `<Show>`s are mutually exclusive by construction: a blocked remote
- * server wins over everything, then the Tasks page of the rail, then a joined server's provider step,
+ * server wins over everything, then the Tasks page, then a joined server's provider step,
  * then the Agent form, then a channel, then a person, then a Agent: its chat, or on the Routines view
- * its routine canvas. The Tasks page hides the agent list until the user shows it. A row of the list
- * closes the page, as each row calls `showAgents`. The other pages of the rail - schedule, usage or settings - sit outside that
+ * its routine canvas. The chat sidebar stays beside every page. A row of the list closes the page, as
+ * each row calls `showAgents`. The other pages of the sidebar - schedule, usage or settings - sit outside that
  * group and inert it.
  */
 export function WorkspaceShell(props: { account: () => CentralAuthUser }) {
   const platform = usePlatform();
-  /** A window that main opened for one chat shows that chat alone, with no rail and no sidebar. */
+  /** A window that main opened for one chat shows that chat alone, with no sidebar. */
   const chatWindow = platform.chatWindow !== null;
   const { sourceText, t } = useText();
   const scope = useServerScope();
@@ -133,13 +132,6 @@ export function WorkspaceShell(props: { account: () => CentralAuthUser }) {
       if (unsupported) usage.closeUsage();
     },
   );
-  /** The list stays while a connection screen covers the page: the screen does not span the sidebar. */
-  const tasksAgentsHidden = () =>
-    middlePane() === "tasks" &&
-    !windowPage.tasksAgentsOpen() &&
-    scope.loaded() &&
-    !scope.connection.panelsFailed &&
-    !blockedRemoteServer();
 
   const blockedRemoteServer = createMemo(() => {
     const server = activeServer();
@@ -220,9 +212,8 @@ export function WorkspaceShell(props: { account: () => CentralAuthUser }) {
   return (
     // The overlays and the chat cards show the same connectors.
     <ConnectorsProvider>
-      {/* The page rail sits at the left of the frame. The frame is the card of the page that the rail selects. */}
+      {/* The chat sidebar sits at the left of the frame and opens the pages. The frame is the card of the page. */}
       <div class="app-window">
-        <WorkspacePageRail hidden={chatWindow || remoteDesktopWorkspaceVisible()} />
         <WorkspaceFrame
           class={chatWindow ? "app-frame-chat-window" : undefined}
           compact={layout.leftPanelCompact()}
@@ -282,7 +273,6 @@ export function WorkspaceShell(props: { account: () => CentralAuthUser }) {
           blockedServer={blockedRemoteServer()}
           onRetryServer={retryServerConnection}
           windowPage={windowPage.page()}
-          sidebarHidden={tasksAgentsHidden()}
           left={
             <Show when={!chatWindow}>
               <WorkspaceServerRail />
@@ -305,8 +295,6 @@ export function WorkspaceShell(props: { account: () => CentralAuthUser }) {
                 serverId={serverId()}
                 hostName={servers().find((server) => server.id === serverId())?.name ?? t("app.page.serverFallback")}
                 onBack={usage.closeUsage}
-                agentsOpen={!tasksAgentsHidden()}
-                onToggleAgents={() => windowPage.setTasksAgentsOpen(tasksAgentsHidden())}
               />
             )}
           </Show>

@@ -63,18 +63,8 @@
     --web-mobile-navigation-height: 64px;
   }
 
-  /* The workspace pane shows the page rail at its left, so its pages stay in reach on a phone. */
-  .web-app-window:has(> .web-app-frame[data-web-mobile-pane="workspace"]) > .window-rail {
-    display: flex;
-    padding-bottom: calc(
-      var(--web-mobile-navigation-height) +
-      env(safe-area-inset-bottom, 0px) +
-      var(--openbot-space-3)
-    );
-  }
-
   .web-app-frame {
-    /* The workspace pane gives the rail a 56px column, also in the macOS geometry. */
+    /* The workspace pane gives the server rail a 56px column, also in the macOS geometry. */
     --server-rail-width: 56px;
 
     grid-template-columns: minmax(0, 1fr);
@@ -88,6 +78,11 @@
   .web-app-frame[data-web-mobile-pane="conversation"] > .server-rail,
   .web-app-frame[data-web-mobile-pane="conversation"] > .sidebar {
     display: none;
+  }
+
+  /* The phone shows the list as a full pane, so it has no dock to collapse to. */
+  .web-app-frame > .sidebar-chat .sidebar-chat-toggle {
+    visibility: hidden;
   }
 
   /* One pane at a time leaves nothing to resize. */

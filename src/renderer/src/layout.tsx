@@ -1,7 +1,7 @@
 import type { AppInfo } from "@openbot/contracts/ipc";
 import type { ServerView } from "@openbot/ui/features/servers/ServerMenu";
+import { SIDEBAR_PINNABLE_PAGES, type SidebarPinnablePage } from "@openbot/ui/features/sidebar/sidebar-pages";
 import type { SidebarView } from "@openbot/ui/features/sidebar/sidebar-types";
-import { PAGE_RAIL_PINNABLE_PAGES, type PageRailPinnablePage } from "@openbot/ui/features/window/PageRail";
 import { createEffect, createMemo, createSignal, onSettled } from "solid-js";
 import { z } from "zod";
 import { readPanelWidth } from "./components/panel-width-storage";
@@ -46,8 +46,11 @@ function shouldAutoCompactSidebar(
   return window.innerWidth - serverRailWidth - panelWidth < CONVERSATION_MIN_WIDTH;
 }
 
-/** The pages in the rail until the user chooses. The others start in the More menu. */
-const RAIL_PINNED_BY_DEFAULT: ReadonlySet<PageRailPinnablePage> = new Set(["tasks", "workflows", "usage"]);
+/**
+ * The pages in the pill of the sidebar until the user chooses. The others start in the More menu.
+ * Usage has its own row of rings above the pill.
+ */
+const RAIL_PINNED_BY_DEFAULT: ReadonlySet<SidebarPinnablePage> = new Set(["tasks", "workflows"]);
 
 // A record, not an object: a page that only another version knows keeps its choice when this version saves.
 const railPinChoicesSchema = z.record(z.string(), z.boolean().optional().catch(undefined));
@@ -85,8 +88,8 @@ function readRailPinChoices(): RailPinChoices {
  * menu view the user expands the sidebar to switch servers; the rail does not
  * come back.
  *
- * The user also pins pages to the page rail. Pages that are not pinned are in its More menu. The
- * choice is saved on this computer.
+ * The user also pins pages to the pill of the sidebar. Pages that are not pinned are in its More
+ * menu. The choice is saved on this computer, under the key of the page rail that the pill replaced.
  *
  * The geometry itself is in `layout-constants.ts`; the view imports it directly
  * rather than reading constants through a context.
@@ -112,7 +115,7 @@ const Layout = createSimpleContext({
     const [railPinChoices, setRailPinChoices] = createSignal<RailPinChoices>(readRailPinChoices());
     const railPinned = createMemo(() => {
       const choices = railPinChoices();
-      return PAGE_RAIL_PINNABLE_PAGES.filter((page) => choices[page] ?? RAIL_PINNED_BY_DEFAULT.has(page));
+      return SIDEBAR_PINNABLE_PAGES.filter((page) => choices[page] ?? RAIL_PINNED_BY_DEFAULT.has(page));
     });
     const [leftPanelAutoCompact, setLeftPanelAutoCompact] = createSignal(false);
     const leftPanelCompact = createMemo(() => leftPanelCollapsed() || leftPanelAutoCompact());
@@ -164,7 +167,7 @@ const Layout = createSimpleContext({
       window.localStorage.setItem(SIDEBAR_VIEW_STORAGE_KEY, view);
     }
 
-    function setRailPinned(page: PageRailPinnablePage, pinned: boolean): void {
+    function setRailPinned(page: SidebarPinnablePage, pinned: boolean): void {
       // Start from the saved value, so the choices of another window stay. Blocked storage reads as no choice.
       const choices = { ...railPinChoices(), ...readRailPinChoices(), [page]: pinned };
       setRailPinChoices(choices);
