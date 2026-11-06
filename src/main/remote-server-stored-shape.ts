@@ -81,6 +81,9 @@ export interface StoredRemoteServers {
   // The joined servers that may send browser connections through this computer (`browser-egress-v1`).
   // An older build drops this key on its next write; that turns sharing off, never on.
   browserEgressServerIds: string[];
+  // The joined servers whose agents may use Computer Use on this computer (`remote-computer-use-v1`).
+  // An older build drops this key on its next write; that turns it off, never on.
+  remoteComputerServerIds: string[];
   // Entries kept verbatim for whoever can read them, each with the slot it occupied. In memory only:
   // `serializeStoredRemoteServers` puts them back in `servers`, because a key of its own would be
   // invisible to the older build that is the whole reason for keeping them -- and puts them back
@@ -102,6 +105,7 @@ export function emptyStoredRemoteServers(): StoredRemoteServers {
     mutedServerIds: [],
     serverNotifications: {},
     browserEgressServerIds: [],
+    remoteComputerServerIds: [],
     unreadableServers: [],
     unreadableActiveServerId: null,
   };
@@ -148,6 +152,9 @@ export function readStoredRemoteServers(value: unknown): StoredRemoteServers | n
     browserEgressServerIds: Array.isArray(value.browserEgressServerIds)
       ? value.browserEgressServerIds.filter(isString)
       : [],
+    remoteComputerServerIds: Array.isArray(value.remoteComputerServerIds)
+      ? value.remoteComputerServerIds.filter(isString)
+      : [],
     unreadableServers,
     unreadableActiveServerId: !selectable && preservedActive ? value.activeServerId : null,
   };
@@ -177,6 +184,7 @@ export function serializeStoredRemoteServers(state: StoredRemoteServers): {
   mutedServerIds: string[];
   serverNotifications: Record<string, StoredServerNotifications>;
   browserEgressServerIds: string[];
+  remoteComputerServerIds: string[];
 } {
   const readableIds = new Set(state.servers.map((server) => server.id));
   // A preserved entry whose id a readable server now holds is written where that server sits, so the
@@ -212,6 +220,7 @@ export function serializeStoredRemoteServers(state: StoredRemoteServers): {
     mutedServerIds: state.mutedServerIds,
     serverNotifications: state.serverNotifications,
     browserEgressServerIds: state.browserEgressServerIds,
+    remoteComputerServerIds: state.remoteComputerServerIds,
   };
 }
 

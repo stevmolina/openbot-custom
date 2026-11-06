@@ -82,6 +82,7 @@ import { PROVIDERS_V5_CODECS } from "./providers-v5";
 import { PROVIDERS_V8_CODECS } from "./providers-v8";
 import { ANDROID_PUSH_NOTIFICATIONS_CODECS } from "./push-notifications-android-v1";
 import { PUSH_NOTIFICATIONS_CODECS } from "./push-notifications-v1";
+import { REMOTE_COMPUTER_USE_CODECS } from "./remote-computer-use-v1";
 import { ROUTINE_FLOWS_CODECS } from "./routine-flows-v1";
 import { ROUTINE_RECOVERY_CODECS } from "./routine-recovery-v1";
 import { ROUTINE_RESULTS_CODECS } from "./routine-results-v1";
@@ -169,6 +170,7 @@ const CODECS: ReadonlyMap<string, OptionalRouteCodec> = new Map([
   ...WEBHOOK_SENDER_SECRET_CODECS,
   ...STORAGE_DISK_CODECS,
   ...MACHINE_RESOURCES_CODECS,
+  ...REMOTE_COMPUTER_USE_CODECS,
   ...PROVIDER_ACCOUNTS_CODECS,
   ...PROVIDER_ACCOUNT_RELAY_CODECS,
   ...PROVIDER_ACCOUNT_RELAY_V2_CODECS,

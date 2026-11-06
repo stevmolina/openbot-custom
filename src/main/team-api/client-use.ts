@@ -39,6 +39,7 @@ import { PROVIDERS_ADMIN_ROUTES } from "@openbot/contracts/team-protocol/provide
 import { PROVIDERS_RUNTIMES_V2_ROUTES } from "@openbot/contracts/team-protocol/providers-v2";
 import { ANDROID_PUSH_NOTIFICATIONS_ROUTES } from "@openbot/contracts/team-protocol/push-notifications-android-v1";
 import { PUSH_NOTIFICATIONS_ROUTES } from "@openbot/contracts/team-protocol/push-notifications-v1";
+import { REMOTE_COMPUTER_USE_ROUTES } from "@openbot/contracts/team-protocol/remote-computer-use-v1";
 import { ROUTINE_RECOVERY_ROUTES } from "@openbot/contracts/team-protocol/routine-recovery-v1";
 import { ROUTINE_RESULTS_ROUTES } from "@openbot/contracts/team-protocol/routine-results-v1";
 import { SERVER_AUDIT_ROUTES } from "@openbot/contracts/team-protocol/server-audit-v1";
@@ -126,6 +127,9 @@ const PASSIVE_ROUTES: ReadonlySet<string> = new Set([
   FOCUS_USE_ROUTES.ping,
   // Input on the computer of a desktop app keeps the member's phones quiet, not a hosted server running.
   COMPUTER_ACTIVITY_ROUTES.report,
+  // A computer that offers Computer Use repeats its state, and answers the agent's requests.
+  REMOTE_COMPUTER_USE_ROUTES.state,
+  REMOTE_COMPUTER_USE_ROUTES.reply,
 ]);
 
 /** A client opens a conversation and the app marks it read, or a member marks it unread. */

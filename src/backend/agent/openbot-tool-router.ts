@@ -888,7 +888,7 @@ export class OpenBotToolRouter {
         schedule: routine.trigger.schedule,
         nextRunAt: routine.trigger.nextRunAt,
       })),
-      mcpServers: agentMcpServers(this.#hooks.enabledMcpServers(), computerUse).map((server) => ({
+      mcpServers: agentMcpServers(this.#hooks.enabledMcpServers(), computerUse, agent.id).map((server) => ({
         name: server.name,
         transport: server.transport,
       })),

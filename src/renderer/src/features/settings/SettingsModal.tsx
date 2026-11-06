@@ -43,6 +43,7 @@ import { createSettingsUpdatesStore } from "@openbot/ui/features/settings/stores
 import { createEffect, createSignal, Show, untrack } from "solid-js";
 import { useI18n } from "../../i18n-context";
 import { ComputerUseSetup } from "../computer-use/ComputerUseSetup";
+import { RemoteComputerSettings } from "../computer-use/RemoteComputerSettings";
 import type { CodexLiveAccess } from "../speech/codex-live-access";
 import { licenseContactUs, trackLicenseEvent } from "./license-analytics";
 import { createNotificationLevelsStore } from "./notification-levels-store";
@@ -349,6 +350,7 @@ export function SettingsModal(props: SettingsModalProps) {
 
         <Tabs.Content value="computer-use" class="settings-modal-tab-panel" data-tab="computer-use">
           <ComputerUseSetup variant="settings" />
+          <RemoteComputerSettings />
         </Tabs.Content>
 
         <Tabs.Content value="profile" class="settings-modal-tab-panel profile-panel" data-tab="profile">

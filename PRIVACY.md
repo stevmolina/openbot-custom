@@ -1410,6 +1410,14 @@ default and which are not OpenBot's. They would send the driver version, the ope
 random installation identifier, and a bucketed record of each tool call to that vendor. They never
 send screen contents, window or application names, typed text, or the content of a tool result.
 
+You can let your own agents on a server that you joined use Computer Use on your computer. It is off
+for every server until you turn it on for that server in Settings > Computer Use, on that computer,
+and it works only on a server where you are the only member.
+While it is on, your computer's name goes to that server, and the screenshots, accessibility trees and
+other results of each request go from your computer to that server and from there to the agent's
+provider. Whoever runs that server can reach these requests too. Stop in the OpenBot window, or the
+switch, ends it at once.
+
 On its own the driver also asks GitHub for a newer release each time it starts.
 
 **OpenBot stops both calls, always.** Every copy of the driver OpenBot starts gets

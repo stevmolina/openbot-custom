@@ -283,6 +283,8 @@ export class RemoteServerStore implements RemoteServerDirectory {
     this.#state.servers = this.#state.servers.filter((server) => server.id !== serverId);
     // A server that the user joins again does not get the connection of this computer back by itself.
     this.#state.browserEgressServerIds = this.#state.browserEgressServerIds.filter((id) => id !== serverId);
+    // Nor its agents this computer.
+    this.#state.remoteComputerServerIds = this.#state.remoteComputerServerIds.filter((id) => id !== serverId);
     if (this.#state.activeServerId === serverId) this.setActiveServerId(LOCAL_SERVER_ID);
     yield* this.persist();
   });
@@ -436,6 +438,35 @@ export class RemoteServerStore implements RemoteServerDirectory {
     );
   });
 
+  /** Whether the agents of a joined server may use Computer Use on this computer. */
+  sharesComputer(serverId: string): boolean {
+    return this.#state.remoteComputerServerIds.includes(serverId);
+  }
+
+  /** The joined servers whose agents may use Computer Use on this computer. */
+  computerSharingServerIds(): readonly string[] {
+    return [...this.#state.remoteComputerServerIds];
+  }
+
+  readonly setComputerSharing = Effect.fn("RemoteStore.setComputerSharing")(function* (
+    this: RemoteServerStore,
+    serverId: string,
+    sharing: boolean,
+  ): Effect.fn.Return<void, RemoteWorkflowError> {
+    yield* this.#writes.withPermit(
+      Effect.uninterruptible(
+        Effect.gen({ self: this }, function* () {
+          if (!this.has(serverId))
+            return yield* new RemoteWorkflowError({ cause: new Error(sourceText("error.remote.serverNotFound")) });
+          const remoteComputerServerIds = this.#state.remoteComputerServerIds.filter((id) => id !== serverId);
+          if (sharing) remoteComputerServerIds.push(serverId);
+          yield* this.#writeSnapshot({ ...structuredClone(this.#state), remoteComputerServerIds });
+          this.#state.remoteComputerServerIds = remoteComputerServerIds;
+        }),
+      ),
+    );
+  });
+
   readonly #writeNotificationsEffect = Effect.fn("RemoteStore.writeNotifications")(function* (
     this: RemoteServerStore,
     serverId: string,
@@ -469,6 +500,7 @@ export class RemoteServerStore implements RemoteServerDirectory {
             mutedServerIds: [...this.#state.mutedServerIds],
             serverNotifications: structuredClone(this.#state.serverNotifications),
             browserEgressServerIds: [...this.#state.browserEgressServerIds],
+            remoteComputerServerIds: [...this.#state.remoteComputerServerIds],
           }),
         ),
       ),

@@ -506,6 +506,16 @@ not stop the phone's push notifications. A ping moves `lastClientUseAt` only for
 later of the last user action of its session and the start of its focus period. The route is in `PASSIVE_ROUTES`, so the generic client use path
 does not count it. See [hosted servers](../hosted-servers.md) step 5.
 
+### Remote Computer Use
+
+`remote-computer-use-v1` adds `POST /v1/client/computer-use/state` with `{ available, computerName }`,
+`POST /v1/client/computer-use/reply` with `{ requestId, ok, payload }`, and the optional event
+`remote-computer-call` (`{ requestId, operation: "list-tools" }` or `{ requestId, operation:
+"call-tool", tool, arguments }`, the arguments as JSON text). Both routes act for the session of the
+request only. A host advertises it when it can give tools to its agents (`remoteComputers` in
+`TeamApiOptions`), and the capability is v9 only. Both routes are in `PASSIVE_ROUTES`. See
+[Computer Use](computer-use.md#a-members-own-computer-for-agents-on-a-server).
+
 ### Computer activity
 
 `computer-activity-v1` adds `POST /v1/client/activity` with `{ idleSeconds }`, the whole seconds since

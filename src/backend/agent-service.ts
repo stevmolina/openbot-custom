@@ -407,6 +407,11 @@ export interface AgentServiceOptions {
    */
   computerUseMcpServer?: () => McpServerConfig | null;
   /**
+   * The entries for members' own computers (`remote-computer-use-v1`), read at each spawn like
+   * `computerUseMcpServer`. Each one names the agent it was made for.
+   */
+  remoteComputerMcpServers?: () => readonly McpServerConfig[];
+  /**
    * The built-in GitHub connection of this computer, or `null`. Read at each spawn and each hand-off,
    * for the same reason as `computerUseMcpServer`: the user connects and disconnects while OpenBot runs.
    */
@@ -535,6 +540,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       workflowTools,
       developmentDefaults = false,
       computerUseMcpServer = () => null,
+      remoteComputerMcpServers = () => [],
       githubConnector = null,
       hostMemory = null,
       busyMessageMode = () => DEFAULT_BUSY_MESSAGE_MODE,
@@ -551,6 +557,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       servers: new McpServerStore(store.database),
       credentials,
       computerUseMcpServer,
+      remoteComputerMcpServers,
       githubConnector,
       agents: () => store.list(),
       logger,

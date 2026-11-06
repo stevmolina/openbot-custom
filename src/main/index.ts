@@ -685,6 +685,7 @@ function registerIpcHandlers({
   host,
   remoteDesktop,
   remoteServers,
+  remoteComputerClient,
   centralAuth,
   skills,
   hostedSites,
@@ -780,6 +781,8 @@ function registerIpcHandlers({
       cuaDriver,
       openExternal: (url) => shell.openExternal(url),
       permissionHelp: computerUsePermissionHelp,
+      remoteServers,
+      remoteComputers: remoteComputerClient,
     }),
     ...macAutomationIpcHandlers({ platform: process.platform }),
     ...backgroundProcessIpcHandlers({ platform: process.platform, agents: () => service.listAgents() }),
@@ -1444,6 +1447,34 @@ if (!hasSingleInstanceLock) {
       remoteServers.on("directTyping", forwardDirectTyping);
       remoteServers.on("attachmentDownload", forwardAttachmentDownload);
       remoteServers.on("attachmentImportProgress", forwardAttachmentImportProgress);
+      // The switches that let joined servers use this computer, and the servers that use it now.
+      const remoteComputerClient = built.remoteComputerClient;
+      if (remoteComputerClient) {
+        remoteServers.on("changed", () => {
+          const servers = remoteServers.remoteComputerServers();
+          for (const window of BrowserWindow.getAllWindows())
+            sendToRenderer(window, IPC_ENDPOINTS.computerUse.remoteServers, servers);
+        });
+        // When each server last got the system notice. An agent that pauses between actions starts a
+        // new session, which does not need a new notice within ten minutes.
+        const noticeAt = new Map<string, number>();
+        remoteComputerClient.onSessionsChanged((sessions) => {
+          for (const window of BrowserWindow.getAllWindows())
+            sendToRenderer(window, IPC_ENDPOINTS.computerUse.remoteSessions, sessions);
+          // A system notice when a server starts, so the user knows even with every window hidden.
+          const now = Date.now();
+          const started = sessions.filter((session) => now - (noticeAt.get(session.serverId) ?? 0) > 10 * 60_000);
+          for (const session of started) noticeAt.set(session.serverId, now);
+          if (!Notification.isSupported()) return;
+          for (const session of started)
+            showRetainedNotification(
+              new Notification({
+                title: built.language.translate("notification.remoteComputer.title", { server: session.serverName }),
+                body: built.language.translate("notification.remoteComputer.body"),
+              }),
+            );
+        });
+      }
       // Machine alerts are hidden for now: the check does not start, and no alert notification shows.
       // The selected server connects while the window loads. Its WebRTC setup takes seconds, and
       // the first screen waits for it. The other servers start after the load, below. The connection

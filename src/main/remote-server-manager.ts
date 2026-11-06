@@ -60,6 +60,7 @@ import {
   EMPTY_AGENT_NOTIFICATION_LEVELS,
   LOCAL_SERVER_ID,
   REMOTE_DESKTOP_SETUP_CAPABILITY,
+  type RemoteComputerServer,
   type RemoteDesktopTestInput,
 } from "@openbot/contracts/ipc";
 import { isDynamicRecord } from "@openbot/contracts/runtime-values";
@@ -83,6 +84,10 @@ import { FOCUS_USE_CAPABILITY, FOCUS_USE_ROUTES } from "@openbot/contracts/team-
 import type { HostRestartEvent } from "@openbot/contracts/team-protocol/host-update-v1";
 import { INSTANCE_TRANSFER_ROUTES } from "@openbot/contracts/team-protocol/instance-transfer-v1";
 import type { MachineAlertEvent } from "@openbot/contracts/team-protocol/machine-resources-v1";
+import {
+  REMOTE_COMPUTER_USE_CAPABILITY,
+  type RemoteComputerCallEvent,
+} from "@openbot/contracts/team-protocol/remote-computer-use-v1";
 import { decodeTeamProtocolV1CurrentHttpResponse } from "@openbot/contracts/team-protocol/v1-adapter";
 import { sourceText } from "@openbot/i18n/source";
 import { createFocusUsePing } from "@openbot/team-client/focus-use";
@@ -181,6 +186,7 @@ interface RemoteServerEvents {
   directMessage: [serverId: string, event: DirectMessageRealtimeEvent];
   directTyping: [serverId: string, event: DirectTypingRealtimeEvent];
   machineAlert: [serverId: string, event: MachineAlertEvent];
+  remoteComputerCall: [serverId: string, event: RemoteComputerCallEvent];
   attachmentDownload: [progress: AttachmentDownloadProgress];
   attachmentImportProgress: [progress: AttachmentImportProgress];
 }
@@ -461,6 +467,7 @@ export class RemoteServerManager extends EventEmitter<RemoteServerEvents> {
       onDirectTyping: (serverId, event) => this.emit("directTyping", serverId, event),
       onHostRestart: (serverId, event) => this.#applyHostRestart(serverId, event),
       onMachineAlert: (serverId, event) => this.emit("machineAlert", serverId, event),
+      onRemoteComputerCall: (serverId, event) => this.emit("remoteComputerCall", serverId, event),
       onOffline: (serverId) => this.#presence.markOffline(serverId),
       onChanged: () => this.#emitChanged(),
     });
@@ -894,6 +901,36 @@ export class RemoteServerManager extends EventEmitter<RemoteServerEvents> {
     if (!this.supportsCapability(serverId, BROWSER_EGRESS_CAPABILITY)) return null;
     return { sharing: this.#store.sharesBrowserEgress(serverId) };
   }
+
+  /**
+   * The joined servers whose agents could use Computer Use on this computer (`remote-computer-use-v1`),
+   * with the switch of each. This computer's own server is not one: its agents already use it.
+   */
+  remoteComputerServers(): RemoteComputerServer[] {
+    return this.list()
+      .filter((server) => server.id !== LOCAL_SERVER_ID && this.#store.has(server.id))
+      .map((server) => ({
+        serverId: server.id,
+        serverName: server.name,
+        enabled: this.#store.sharesComputer(server.id),
+        supported: this.supportsCapability(server.id, REMOTE_COMPUTER_USE_CAPABILITY),
+        connected: this.#connections.stateFor(server.id) === "online",
+      }));
+  }
+
+  readonly setRemoteComputerServer = Effect.fn("RemoteManager.setRemoteComputerServer")(
+    function* (
+      this: RemoteServerManager,
+      serverId: string,
+      enabled: boolean,
+    ): Effect.fn.Return<void, RemoteWorkflowError> {
+      if (serverId === LOCAL_SERVER_ID)
+        return yield* new RemoteWorkflowError({ cause: new Error(sourceText("error.team.agentSettingsUnsupported")) });
+      yield* this.#store.setComputerSharing(serverId, enabled);
+      this.#emitChanged();
+    },
+    (operation) => this.#owned(operation),
+  ).bind(this);
 
   /** Whether the egress channel to a server must be open now: sharing is on and the server is connected. */
   browserEgressWanted(serverId: string): boolean {
@@ -2556,6 +2593,7 @@ export class RemoteServerManager extends EventEmitter<RemoteServerEvents> {
     else if (event.type === "team-direct-typing") this.emit("directTyping", serverId, event);
     else if (event.type === "host-restart") this.#applyHostRestart(serverId, event);
     else if (event.type === "machine-alert") this.emit("machineAlert", serverId, event);
+    else if (event.type === "remote-computer-call") this.emit("remoteComputerCall", serverId, event);
     else this.#background(this.#owned(this.#refresh.forward(serverId, event)));
   }
 

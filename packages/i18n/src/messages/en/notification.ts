@@ -34,6 +34,9 @@ export const messages = defineMessages("notification", {
   "notification.machineAlert.memory": "{server}: memory {percent} used",
   "notification.machineAlert.cpu": "{server}: CPU {percent} busy",
   "notification.machineAlert.body": "It passed the alert level of {level}. See Server settings > Storage.",
+  // An agent on a joined server started to use this computer through Computer Use.
+  "notification.remoteComputer.title": "An agent on {server} is using this computer",
+  "notification.remoteComputer.body": "To stop it, click Stop in the OpenBot window.",
   "notification.test": "Notifications are working.",
   "notification.welcome": "OpenBot will tell you here when an agent needs you.",
   // The toast region in each window.

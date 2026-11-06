@@ -82,6 +82,7 @@ import type { PasswordManagersService } from "../password-managers/password-mana
 import type { ProviderAccountsHost } from "../provider-accounts-host";
 import type { ProviderHostSignIns } from "../provider-host-sign-ins";
 import type { PushNotificationService } from "../push-notifications";
+import type { RemoteComputerHost } from "../remote-computer-host";
 import type { RemoteScreenGateway } from "../remote-screen-gateway";
 import type { SignInRelayHost } from "../sign-in-relay-host";
 import type { TeamStore } from "../team-store";
@@ -597,6 +598,11 @@ export type TeamApiVault = VaultService;
 export type TeamApiAgentAccess = Pick<AgentAccessStore, "copyAgent" | "get" | "levels" | "set" | "subscribe">;
 export type TeamApiServerAudit = Pick<ServerAuditStore, "read">;
 
+export type TeamApiRemoteComputers = Pick<
+  RemoteComputerHost,
+  "attach" | "detach" | "setState" | "reply" | "sessionDisconnected"
+>;
+
 export interface TeamApiOptions {
   /** `events-v1`: admin-only event source and routine management. */
   events?: HostEventsApi | undefined;
@@ -617,6 +623,8 @@ export interface TeamApiOptions {
   mcpToolRuntimePreparation?: McpToolRuntimePreparation;
   storage?: TeamApiStorage;
   machine?: TeamApiMachine;
+  /** `remote-computer-use-v1`: members' own computers, for the agents that only that member can use. */
+  remoteComputers?: TeamApiRemoteComputers;
   hostedSites?: TeamApiHostedSites;
   agentImport?: TeamApiAgentImport;
   instanceTransfer?: TeamApiInstanceTransfer;
