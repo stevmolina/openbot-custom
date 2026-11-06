@@ -102,6 +102,51 @@ Every copy OpenBot starts gets `CUA_DRIVER_RS_TELEMETRY_ENABLED=0` and
 a user chose, and OpenBot pins the version, so a release check could only offer an update OpenBot
 would refuse.
 
+### A member's own computer, for agents on a server
+
+`remote-computer-use-v1` lets an agent on a server use Computer Use on the computer of the member who
+owns that agent. The member turns it on in that computer's desktop app, per joined server, under
+Settings > Computer Use. The switch is stored in `servers.json` of that computer
+(`remoteComputerServerIds`) and starts off; leaving the server turns it off.
+
+```mermaid
+flowchart LR
+  A[Agent CLI on the host] -->|MCP over loopback HTTP| B[RemoteComputerHost]
+  B -->|remote-computer-call event| C[Member's desktop app]
+  C -->|MCP stdio, through the tap| D[cua-driver daemon]
+  C -->|POST reply| B
+```
+
+- **Desktop app** (`RemoteComputerClient`). While the switch is on, the server is connected, the host
+  advertises the capability and the local driver is `ready`, it posts `state` with `available: true`
+  and the computer name, and repeats it every 30 seconds. Each `remote-computer-call` runs on one MCP
+  connection of its own to the driver (a `cua-driver mcp` child through the tap), so OpenBot draws its
+  agent cursor and rim for it as for a local turn. A call from a server whose switch is off is
+  refused here as well. Tools that change the driver itself (settings, updates, extensions,
+  recordings) are not offered. A screenshot gets `max_image_dimension` 1568 unless the agent names a
+  size; the driver maps the coordinates back. An answer that is still over the reply limit is sent
+  again as JPEG at the same size. The window shows "An agent on <server> is using this computer" with
+  Stop, and a system notification says so when a server starts; Stop turns the switch off and aborts
+  the running calls.
+- **Host** (`RemoteComputerHost`). A computer is one session: the `state` route keys it by the
+  session of the request, and a call goes only to the event connections of that session that took
+  the capability. A reply settles a call only from the same member and session. The host offers the
+  computer to the agents that only that member can use: the member has `manage`, and every other
+  enabled member has `none` or `view`. Owners and admins always have `manage`, so on a server with a
+  second owner or admin no agent gets a member's computer. For each pair of computer and agent,
+  `mcpServers()` returns one http entry, named `my_computer` (`_2` and up for a second computer of
+  the member), whose path and bearer (an HMAC of a per-run secret) name the computer and the agent.
+  Each request checks the bearer, that the computer is still there, and that the agent may still use
+  it. `agentMcpServers` keeps for an agent only the entries made for it, and none for a hand-off that
+  names no agent. A computer that sends no `state` for 90 seconds is forgotten. The last event socket
+  of the session closing fails its waiting calls at once. A change in the set of computers refreshes
+  the agent runtimes, like the local driver entry.
+
+Anyone who controls the host can reach the computer while the switch is on: every agent on a host
+runs as the same operating system user, so an agent of another member could read a bearer from the
+process list. The setting says so. The answer of a call travels to the host and, as a tool result,
+to that agent's provider.
+
 ## Remote desktop permission checks and live tests
 
 `RemoteScreenGateway` owns setup checks and live-test session ownership. The optional

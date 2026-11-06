@@ -15,6 +15,7 @@ import { type ChatColorsEvent, chatColorsEvent } from "./chat-colors-v1";
 import { type HostRestartEvent, hostRestartEvent } from "./host-update-v1";
 import { type MachineAlertEvent, machineAlertEvent } from "./machine-resources-v1";
 import { type QuietTurnCompletedEvent, quietTurnEvent } from "./quiet-turn-v1";
+import { type RemoteComputerCallEvent, remoteComputerCallEvent } from "./remote-computer-use-v1";
 import { type RoutineFlowsEvent, routineFlowsEvent } from "./routine-flows-v1";
 import { type SidebarFoldersEvent, sidebarFoldersEvent } from "./sidebar-folders-v1";
 import { type SidebarPinsEvent, sidebarPinsEvent } from "./sidebar-pins-v1";
@@ -36,6 +37,7 @@ export type OptionalTeamEvent =
   | ChannelEvent
   | HostRestartEvent
   | MachineAlertEvent
+  | RemoteComputerCallEvent
   | SidebarPinsEvent
   | SidebarFoldersEvent
   | SkillsEvent
@@ -68,6 +70,7 @@ export function optionalTeamEvent(value: unknown, options?: OptionalTeamEventOpt
     channelEvent(value) ??
     hostRestartEvent(value) ??
     machineAlertEvent(value) ??
+    remoteComputerCallEvent(value) ??
     sidebarPinsEvent(value) ??
     sidebarFoldersEvent(value) ??
     skillsEvent(value) ??

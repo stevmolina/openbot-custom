@@ -158,6 +158,10 @@ import {
   TEAM_REASONING_EFFORTS_CAPABILITY,
   withLegacyReasoningEfforts,
 } from "@openbot/contracts/team-protocol/reasoning-efforts-v1";
+import {
+  REMOTE_COMPUTER_USE_CAPABILITY,
+  type RemoteComputerCallEvent,
+} from "@openbot/contracts/team-protocol/remote-computer-use-v1";
 import { SERVER_AUDIT_CAPABILITY } from "@openbot/contracts/team-protocol/server-audit-v1";
 import { teamSideRouteCodec } from "@openbot/contracts/team-protocol/side-routes";
 import { SIDEBAR_FOLDERS_CAPABILITY, sidebarFoldersEvent } from "@openbot/contracts/team-protocol/sidebar-folders-v1";
@@ -303,6 +307,7 @@ import { routeProviderSignOut } from "./team-api/route-provider-sign-out";
 import { routeProviderUsageReset } from "./team-api/route-provider-usage-reset";
 import { routeProviders } from "./team-api/route-providers";
 import { routePushNotifications } from "./team-api/route-push-notifications";
+import { routeRemoteComputer } from "./team-api/route-remote-computer";
 import { routeRemoteScreen } from "./team-api/route-remote-screen";
 import { routeRoutineFlows } from "./team-api/route-routine-flows";
 import { routeRoutineResults } from "./team-api/route-routine-results";
@@ -528,6 +533,10 @@ export class TeamApiServer {
       this.#options.machine?.subscribe((memberId, event) => {
         if (memberId) this.#sendMachineAlert(memberId, event);
       }) ?? null;
+    this.#options.remoteComputers?.attach({
+      send: (sessionId, event) => this.#sendRemoteComputerCall(sessionId, event),
+      agentsOnlyFor: (memberId) => this.#agentsOnlyFor(memberId),
+    });
     // A change on one device of a member shows at once on their other devices.
     this.#stopNotificationLevelsListener =
       this.#options.agentNotificationLevels?.subscribe((memberId) => this.#sendNotificationLevels(memberId)) ?? null;
@@ -556,6 +565,7 @@ export class TeamApiServer {
     this.#stopAgentAccessListener = null;
     this.#stopMachineAlertListener?.();
     this.#stopMachineAlertListener = null;
+    this.#options.remoteComputers?.detach();
     this.#stopNotificationLevelsListener?.();
     this.#stopNotificationLevelsListener = null;
     this.#stopSidebarPinsListener?.();
@@ -765,6 +775,51 @@ export class TeamApiServer {
       const hidden = this.hiddenAgentIds(eventProtocol(connection.capabilities), connection.capabilities, member);
       client.send(JSON.stringify({ type: "sidebar-pins-changed", ...pins.snapshot(memberId, hidden) }));
     }
+  }
+
+  /**
+   * Sends one tool request to the event connections of the session that offered its computer, and to
+   * no other. It is outside the frozen event vocabulary, so it bypasses the encoders like
+   * `machine-alert` does. False when no connection of that session took the capability.
+   */
+  #sendRemoteComputerCall(sessionId: string, event: RemoteComputerCallEvent): boolean {
+    const payload = JSON.stringify(event);
+    let sent = false;
+    for (const [client, connection] of this.#eventClients) {
+      if (
+        connection.sessionId !== sessionId ||
+        !connection.capabilities.has(REMOTE_COMPUTER_USE_CAPABILITY) ||
+        client.readyState !== webSockets.WebSocket.OPEN ||
+        !this.#options.store.authenticate(connection.token)
+      )
+        continue;
+      client.send(payload);
+      sent = true;
+    }
+    return sent;
+  }
+
+  /**
+   * The agents that only `memberId` can use: the member manages them, and no other enabled member can
+   * chat with them. A computer that its member shares reaches these agents and no other, so another
+   * member cannot ask an agent to use it.
+   */
+  #agentsOnlyFor(memberId: string): string[] {
+    const members = this.#options.store.listMembers().filter((member) => !member.disabled);
+    const member = members.find((candidate) => candidate.id === memberId);
+    if (!member) return [];
+    const others = members.filter((candidate) => candidate.id !== memberId);
+    return this.#options.agents
+      .listAgents()
+      .map((agent) => agent.id)
+      .filter(
+        (agentId) =>
+          this.agentLevel(member, agentId) === "manage" &&
+          others.every((other) => {
+            const level = this.agentLevel(other, agentId);
+            return level === "none" || level === "view";
+          }),
+      );
   }
 
   #sendPendingMachineAlerts(client: Ws.WebSocket, connection: EventClientState): void {
@@ -1135,6 +1190,7 @@ export class TeamApiServer {
         return;
       if ((await routePushNotifications(context, this.#options.pushNotifications)) === "handled") return;
       if ((await routeComputerActivity(context, this.#options.pushNotifications)) === "handled") return;
+      if ((await routeRemoteComputer(context, this.#options.remoteComputers)) === "handled") return;
       if (
         (await routeFocusUse(context, this.#options.focusUse ? (id) => this.#recordFocusUse(id) : undefined)) ===
         "handled"
@@ -1835,6 +1891,8 @@ export class TeamApiServer {
         this.#options.liveActivityPush?.disconnected(sessionId);
         this.#options.pushNotifications?.disconnected(sessionId);
         this.#options.browser.releaseUserControlHeldBy({ kind: "session", sessionId });
+        // The computer of this session cannot answer now, so its waiting tool calls fail at once.
+        this.#options.remoteComputers?.sessionDisconnected(sessionId);
       }
       if (directTypingRecipientId && !this.#hasDirectTyping(connection.memberId, directTypingRecipientId)) {
         this.#publishDirectTyping(connection.memberId, directTypingRecipientId, false);
@@ -2311,6 +2369,8 @@ export class TeamApiServer {
             return this.#options.browserProfiles !== undefined;
           // The host reads the egress channel of each desktop peer, and only a profile proxy uses it.
           if (capability === BROWSER_EGRESS_CAPABILITY) return this.#options.browserProfiles !== undefined;
+          // The host gives a member's computer to that member's agents as an MCP entry.
+          if (capability === REMOTE_COMPUTER_USE_CAPABILITY) return this.#options.remoteComputers !== undefined;
           if (capability === SKILLS_ADMIN_CAPABILITY) return this.#options.admin?.skills !== undefined;
           if (capability === SKILLS_EVENTS_CAPABILITY) return this.#options.skills !== undefined;
           if (capability === SHARED_TABLES_CAPABILITY) return this.#options.admin?.sharedTables !== undefined;

@@ -132,6 +132,7 @@ import {
   type QueueDelivery,
   type QueuedMessageReceipt,
   type QueueSnapshot,
+  type RemoteComputerServer,
   type RemoteDesktopSession,
   type RemoteNetworkRouteState,
   type RemoteSessionReusePreference,
@@ -448,6 +449,9 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       ports: [8000],
       agentId: null,
     },
+  ];
+  let remoteComputerServers: RemoteComputerServer[] = [
+    { serverId: "server-team", serverName: "Team server", enabled: false, supported: true, connected: true },
   ];
   const computerUseState = (): ComputerUseState => {
     const permissions = (["screen-recording", "accessibility"] as const).map((id) => ({
@@ -1342,6 +1346,19 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       // The rim is drawn over another application's window, which the preview has none of, so this
       // subscribes to a stream that never carries anything.
       onHighlightPlacement: () => () => undefined,
+      // One joined server, so the settings show a switch that moves.
+      listRemoteServers: async () => clone(remoteComputerServers),
+      setRemoteServer: async ({ serverId, enabled }) => {
+        remoteComputerServers = remoteComputerServers.map((server) =>
+          server.serverId === serverId ? { ...server, enabled } : server,
+        );
+        return clone(remoteComputerServers);
+      },
+      onRemoteServers: () => () => undefined,
+      // No agent on a server uses the preview's computer.
+      getRemoteSessions: async () => [],
+      stopRemoteSession: async () => undefined,
+      onRemoteSessions: () => () => undefined,
     },
     openExternal: async () => undefined,
     // A preview user who has used OpenBot for a while, so the social toast can show.

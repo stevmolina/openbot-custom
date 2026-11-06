@@ -10,6 +10,7 @@ import type {
   ResetAgentSessionSettingInput,
   SetAgentSessionSettingInput,
 } from "./ipc-agent-session-settings";
+import type { RemoteComputerServer, RemoteComputerSession, SetRemoteComputerServerInput } from "./ipc-remote-computer";
 import type { ServerAuditLog } from "./ipc-server-audit";
 // The one channel list. Each endpoint holds its wire value, the group it belongs to, and whether it
 // is a request the renderer invokes or an event the main process sends. That is what lets a
@@ -988,6 +989,15 @@ export const IPC_ENDPOINTS = {
     startPermissionAppDrag: request<undefined, void>()("computer-use:start-permission-app-drag"),
     revealPermissionApp: request<undefined, void>()("computer-use:reveal-permission-app"),
     highlightPlacement: event<ComputerUseHighlightPlacement>()("computer-use:highlight-placement"),
+    // The joined servers whose agents may use this computer (`remote-computer-use-v1`). The switch is
+    // stored on this computer and starts off.
+    listRemoteServers: request<undefined, RemoteComputerServer[]>()("computer-use:list-remote-servers"),
+    setRemoteServer: request<SetRemoteComputerServerInput, RemoteComputerServer[]>()("computer-use:set-remote-server"),
+    remoteServers: event<RemoteComputerServer[]>()("computer-use:remote-servers"),
+    // The servers whose agents use this computer now. Stop turns the switch of that server off.
+    getRemoteSessions: request<undefined, RemoteComputerSession[]>()("computer-use:get-remote-sessions"),
+    stopRemoteSession: request<string, void>()("computer-use:stop-remote-session"),
+    remoteSessions: event<RemoteComputerSession[]>()("computer-use:remote-sessions"),
   },
   macAutomation: {
     /** Sends one harmless Apple Event to each app, so macOS shows its Automation prompts now. */

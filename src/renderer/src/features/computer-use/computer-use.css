@@ -412,3 +412,43 @@ body:has(.computer-use-highlight-surface),
   justify-content: flex-end;
   gap: var(--openbot-space-2);
 }
+
+/* An agent on a joined server uses this computer now. It floats over every page until it stops. */
+.remote-computer-banner-stack {
+  position: fixed;
+  top: calc(var(--openbot-space-8) + var(--openbot-space-4));
+  left: 50%;
+  z-index: var(--openbot-layer-toast);
+  display: grid;
+  gap: var(--openbot-space-2);
+  transform: translateX(-50%);
+  max-width: calc(100vw - var(--openbot-space-8));
+}
+
+.remote-computer-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--openbot-space-3);
+  padding: var(--openbot-space-2) var(--openbot-space-2) var(--openbot-space-2) var(--openbot-space-4);
+  border: 1px solid var(--openbot-warning);
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-bg-surface-raised);
+  box-shadow: var(--openbot-shadow-raised);
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-sm);
+}
+
+.remote-computer-banner-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  stroke-width: var(--openbot-icon-stroke);
+  color: var(--openbot-warning);
+}
+
+.remote-computer-banner-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

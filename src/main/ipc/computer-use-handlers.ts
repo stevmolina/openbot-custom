@@ -1,10 +1,14 @@
 // The Computer Use driver's readiness, and the macOS permission panes it may need.
 
+import { parseRemoteComputerServerId, parseSetRemoteComputerServerInput } from "@openbot/contracts/ipc";
+import { sourceText } from "@openbot/i18n/source";
 import { createOpenBotLogger, toLogValue } from "@openbot/logging";
 import { runCauseEffect } from "../../backend/effect-boundary";
 import type { ComputerUsePermissionHelpWindowController } from "../computer-use-permission-help-window";
 import type { CuaDriverRuntime } from "../cua-driver-runtime";
 import { MAC_PERMISSION_URLS } from "../mac-permission-urls";
+import type { RemoteComputerClient } from "../remote-computer-client";
+import type { RemoteServerManager } from "../remote-server-manager";
 import { parseMacPermission } from "./app-inputs";
 import { eventHandler, handler, type IpcGroupHandlers, payloadHandler } from "./define-ipc-group";
 
@@ -19,6 +23,10 @@ export interface ComputerUseIpcDependencies {
     ComputerUsePermissionHelpWindowController,
     "show" | "close" | "permissionApp" | "startDrag" | "reveal"
   >;
+  /** The switches of the joined servers. Null where this app joins no server. */
+  remoteServers: Pick<RemoteServerManager, "remoteComputerServers" | "setRemoteComputerServer"> | null;
+  /** The agents of joined servers that use this computer now. Null on a server. */
+  remoteComputers: Pick<RemoteComputerClient, "sessions" | "stop"> | null;
 }
 
 /**
@@ -39,8 +47,12 @@ export function computerUseIpcHandlers({
   cuaDriver,
   openExternal,
   permissionHelp,
+  remoteServers,
+  remoteComputers,
 }: ComputerUseIpcDependencies): Pick<IpcGroupHandlers, "computerUse"> {
   const state = () => runCauseEffect(cuaDriver.state());
+  // A server offers nothing: it has no person at its screen to see the agent work.
+  const servers = () => (remoteServers && remoteComputers ? remoteServers.remoteComputerServers() : []);
   return {
     computerUse: {
       getState: handler(state),
@@ -63,6 +75,16 @@ export function computerUseIpcHandlers({
       startPermissionAppDrag: eventHandler((event) => runCauseEffect(permissionHelp.startDrag(event.sender))),
       revealPermissionApp: eventHandler(async (event) => {
         permissionHelp.reveal(event.sender.id);
+      }),
+      listRemoteServers: handler(async () => servers()),
+      setRemoteServer: payloadHandler(parseSetRemoteComputerServerInput, async ({ serverId, enabled }) => {
+        if (!remoteServers || !remoteComputers) throw new Error(sourceText("error.team.agentSettingsUnsupported"));
+        await runCauseEffect(remoteServers.setRemoteComputerServer(serverId, enabled));
+        return servers();
+      }),
+      getRemoteSessions: handler(async () => remoteComputers?.sessions() ?? []),
+      stopRemoteSession: payloadHandler(parseRemoteComputerServerId, async (serverId) => {
+        if (remoteComputers) await runCauseEffect(remoteComputers.stop(serverId));
       }),
     },
   };

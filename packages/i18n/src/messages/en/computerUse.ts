@@ -39,4 +39,16 @@ export const messages = defineMessages("computerUse", {
   "computerUse.help.revealFailed": "The application could not be shown in Finder.",
   "computerUse.help.dragFailed": "The application could not be dragged.",
   "computerUse.highlight.working": "OpenBot is working in {title}",
+  // Agents on a joined server that use Computer Use on this computer. The switch starts off.
+  "computerUse.remote.title": "Agents on your servers",
+  "computerUse.remote.description":
+    "Let your own agents on a server see and control this computer. Only the agents that only you can use on that server get it. Whoever runs the server can reach it too while it is on.",
+  "computerUse.remote.switchLabel": "Let agents on {server} use this computer",
+  "computerUse.remote.on": "On",
+  "computerUse.remote.off": "Off",
+  "computerUse.remote.offline": "Not connected",
+  "computerUse.remote.unsupported": "This server needs an update first",
+  "computerUse.remote.error": "OpenBot could not change this setting.",
+  "computerUse.remote.inUse": "An agent on {server} is using this computer",
+  "computerUse.remote.stop": "Stop",
 });

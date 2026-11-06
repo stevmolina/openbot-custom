@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { isManagedRuntimeProvider, type ManagedProviderId } from "@openbot/contracts/agent-providers";
 import { ANALYTICS_GENERATIONS, openPanelTransport, ReportQueue } from "@openbot/telemetry";
 import { fileReportStorage } from "@openbot/telemetry/node";
@@ -304,12 +304,14 @@ import { ProviderRuntimeManager, providerRuntimeRoot, runtimeTarget } from "./pr
 import { ProviderUseSettingsStore } from "./provider-use-settings-store";
 import { RelayedMessagingInstalls } from "./relayed-messaging-installs";
 import { decodeQueuedMessageReceipt } from "./remote-agent-decoding";
+import { RemoteComputerClient } from "./remote-computer-client";
+import { RemoteComputerHost } from "./remote-computer-host";
 import { RemoteConnectTrace } from "./remote-connect-trace";
 import { RemoteDesktopManager } from "./remote-desktop-manager";
 import { resolveRemoteDesktopRuntime } from "./remote-desktop-runtime-artifact";
 import { loadOrCreateRemoteDesktopCredentials } from "./remote-desktop-secret-store";
 import { appendRemoteDiagnosticLog } from "./remote-diagnostics";
-import { decodeVoid } from "./remote-host-decoding";
+import { acceptEmpty, decodeVoid } from "./remote-host-decoding";
 import {
   createRemoteNetworkRoutePreferenceStore,
   type RemoteNetworkRoutePreferenceStore,
@@ -500,6 +502,8 @@ const TEARDOWN_ORDER = {
   providerDetection: 48,
   providerRuntimes: 50,
   cuaDriver: 55,
+  /** After the host stops sending calls, before the agent service stops the providers that hold the entries. */
+  remoteComputers: 95,
   /** Before the remote servers: each child detaches from its entry when it stops. */
   localServers: 57,
   remoteServers: 60,
@@ -679,6 +683,8 @@ export interface ApplicationServices {
   host: HostService;
   remoteDesktop: RemoteDesktopManager;
   remoteServers: RemoteServerManager;
+  /** Computer Use on this computer for the agents of joined servers. Null on a server and a local server child. */
+  remoteComputerClient: RemoteComputerClient | null;
   /** Null in a local server, in server mode and on a hosted server. */
   localServers: LocalServers | null;
   centralAuth: CentralAuthManager;
@@ -1746,6 +1752,9 @@ export async function createApplicationServices({
   // After the provider runtimes, which hold the `cua-driver mcp` children that talk to this
   // daemon: stopping it first would leave them reading a socket nothing answers.
   teardown.push(TEARDOWN_ORDER.cuaDriver, "the Computer Use driver", () => runCauseEffect(cuaDriver.stop()));
+  // The host end of `remote-computer-use-v1`: members' own computers, offered to their agents.
+  const remoteComputers = new RemoteComputerHost();
+  teardown.push(TEARDOWN_ORDER.remoteComputers, "members' computers", () => runCauseEffect(remoteComputers.stop()));
   /*
    * The rim OpenBot draws over the window an agent works in.
    *
@@ -1754,6 +1763,9 @@ export async function createApplicationServices({
    * which an MCP client of OpenBot's could not see: the tools report only the sessions of the lease
    * that asks, and the agent's lease is its own.
    */
+  // When an agent on a joined server started using this computer, or null. Set below, once the
+  // remote servers exist; the rim and the cursor show for that use as for a local turn.
+  let remoteComputerActiveSince: () => number | null = () => null;
   const computerUseReads = new CuaDriverDaemonClient(() =>
     cuaDriver.mcpServerForProviders() ? cuaDriver.socketPath() : null,
   );
@@ -1763,7 +1775,7 @@ export async function createApplicationServices({
     place: sendComputerUseHighlightPlacement,
     displays: computerUseDisplays,
     // `service` is built below; the controller starts only after it.
-    idle: () => service.earliestRunningTurnStartedAt() === null,
+    idle: () => service.earliestRunningTurnStartedAt() === null && remoteComputerActiveSince() === null,
     // The driver's own cursor on one screen, OpenBot's inside this overlay on more than one. The
     // runtime answers `null` for the screen it draws itself, so only one cursor is ever drawn.
     readPointer: () => {
@@ -1779,7 +1791,8 @@ export async function createApplicationServices({
         // turn that does not touch the desktop. Neither a lease nor an action names its agent, so the
         // oldest running turn is the bound: a newer turn of another agent does not hide this one's
         // rim. `service` is built below; the controller starts only after it.
-        const turnStartedAt = service.earliestRunningTurnStartedAt();
+        // An agent on a joined server that uses this computer counts as a running turn.
+        const turnStartedAt = earliestTime(service.earliestRunningTurnStartedAt(), remoteComputerActiveSince());
         if (turnStartedAt === null) return null;
         const session = liveSession(yield* computerUseReads.sessions(), (Date.now() - turnStartedAt) / 1000);
         if (!session) return null;
@@ -1949,6 +1962,8 @@ export async function createApplicationServices({
     // ACP providers. Null until the daemon runs, which is what keeps a machine with no driver from
     // handing every provider a command it cannot start.
     computerUseMcpServer: () => cuaDriver.mcpServerForProviders(),
+    // Members' own computers, one entry for each agent that only that member can use.
+    remoteComputerMcpServers: () => remoteComputers.mcpServers(),
     githubConnector: {
       mcpServer: () => githubConnector.mcpServer(),
       mcpAuthorization: () => githubConnector.mcpAuthorization().pipe(toMcpGatewayFailed),
@@ -2226,6 +2241,12 @@ export async function createApplicationServices({
   // provider session, so the driver stays quiet for a grant, for the warm-up below, and from the
   // moment OpenBot quits, where the sessions are being left for the next run.
   cuaDriver.onMcpServerChanged(() => {
+    void runCauseEffect(service.notifyComputerUseChanged()).catch((error) =>
+      logger.warn("Provider tools did not refresh.", toLogValue(error)),
+    );
+  });
+  // A member's computer came, went or was renamed, so the agents of that member hold the wrong tools.
+  remoteComputers.onChanged(() => {
     void runCauseEffect(service.notifyComputerUseChanged()).catch((error) =>
       logger.warn("Provider tools did not refresh.", toLogValue(error)),
     );
@@ -2720,6 +2741,8 @@ export async function createApplicationServices({
     storage: storageUsage,
     // Present, so the host advertises `machine-resources-v1`. The routes are admin-only.
     machine: machineAlerts,
+    // Present, so the host advertises `remote-computer-use-v1`. A member offers only their own computer.
+    remoteComputers,
     // Present, so the host advertises `hosted-sites-v1`. Members list; only admins delete.
     hostedSites,
     // Present, so the host advertises `agent-import-v1`. Any member can import.
@@ -3223,6 +3246,41 @@ export async function createApplicationServices({
     remoteServers.off("changed", browserEgressClient.reconcile);
     browserEgressClient.dispose();
   });
+  // Computer Use on this computer for the agents of the joined servers that the user turned it on for.
+  // A server has no user at its screen to offer, and a local server child is a workspace of this app.
+  const remoteComputerClient =
+    localServerChild || serverModeEnvironment || hostedServer
+      ? null
+      : new RemoteComputerClient({
+          servers: () => remoteServers.remoteComputerServers(),
+          disable: (serverId) => remoteServers.setRemoteComputerServer(serverId, false),
+          send: (serverId, path, body) => remoteServers.request(serverId, path, acceptEmpty, { method: "POST", body }),
+          driver: () => cuaDriver.mcpServerForProviders(),
+          computerName: () => localComputerName(),
+          toJpeg: (data, _mimeType, quality) => {
+            const image = nativeImage.createFromBuffer(Buffer.from(data, "base64"));
+            return image.isEmpty() ? null : image.toJPEG(quality).toString("base64");
+          },
+        });
+  if (remoteComputerClient) {
+    remoteComputerActiveSince = () => remoteComputerClient.activeSince();
+    remoteServers.on("changed", remoteComputerClient.reconcile);
+    remoteServers.on("remoteComputerCall", remoteComputerClient.handleCall);
+    const stopDriverListener = cuaDriver.onMcpServerChanged(remoteComputerClient.reconcile);
+    const stopStateListener = cuaDriver.onStateChanged(remoteComputerClient.reconcile);
+    // The rim and the cursor wake up for the first request, as they do for a new local turn.
+    remoteComputerClient.onSessionsChanged((sessions) => {
+      if (sessions.length > 0) startComputerUseHighlight();
+    });
+    remoteComputerClient.start();
+    teardown.push(TEARDOWN_ORDER.browserEgress, "Computer Use for joined servers", () => {
+      remoteServers.off("changed", remoteComputerClient.reconcile);
+      remoteServers.off("remoteComputerCall", remoteComputerClient.handleCall);
+      stopDriverListener();
+      stopStateListener();
+      remoteComputerClient.dispose();
+    });
+  }
   performance.mark("openbot:services.plugin-catalog");
   // Not on a server: a local server is a workspace of the desktop app.
   const localServers =
@@ -3786,6 +3844,7 @@ export async function createApplicationServices({
     host,
     remoteDesktop,
     remoteServers,
+    remoteComputerClient,
     localServers,
     centralAuth,
     skills,
@@ -3825,4 +3884,32 @@ export async function createApplicationServices({
     appliedAccount: signedInState,
     centralAuthInitialization,
   };
+}
+
+/** The earlier of two times, or the one that is there. */
+function earliestTime(left: number | null, right: number | null): number | null {
+  if (left === null) return right;
+  return right === null ? left : Math.min(left, right);
+}
+
+/**
+ * This computer's name as its owner set it (System Settings > General > About on macOS), for the
+ * agents that use it from a joined server. The host name when there is none.
+ */
+let cachedComputerName: string | null = null;
+function localComputerName(): string {
+  if (cachedComputerName === null) cachedComputerName = readComputerName();
+  return cachedComputerName;
+}
+
+function readComputerName(): string {
+  if (process.platform === "darwin") {
+    try {
+      const name = execFileSync("/usr/sbin/scutil", ["--get", "ComputerName"], { encoding: "utf8", timeout: 2_000 });
+      if (name.trim()) return name.trim();
+    } catch {
+      // The host name below.
+    }
+  }
+  return hostname().replace(/\.local$/u, "");
 }

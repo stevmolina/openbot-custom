@@ -13,6 +13,7 @@ import { useAgents } from "./features/agents/agents-context";
 import { WorkspaceAgentSetup } from "./features/agents/WorkspaceAgentSetup";
 import { useChannels } from "./features/channels/channels-context";
 import { WorkspaceChannelConversation } from "./features/channels/WorkspaceChannelConversation";
+import { RemoteComputerBanner } from "./features/computer-use/RemoteComputerBanner";
 import { ConnectorsProvider } from "./features/connectors/connectors-context";
 import { useConversation } from "./features/conversation/conversation-context";
 import { useDirectMessages } from "./features/conversation/direct-messages-context";
@@ -331,6 +332,7 @@ export function WorkspaceShell(props: {
           after={
             <>
               <WorkspaceOverlays account={props.account} />
+              <RemoteComputerBanner />
               <Show when={!chatWindow}>
                 <ServerUpdateDialogHost hosts={remoteHosts()} />
               </Show>

@@ -1,6 +1,7 @@
 import type { HostRestartEvent } from "@openbot/contracts/team-protocol/host-update-v1";
 import type { MachineAlertEvent } from "@openbot/contracts/team-protocol/machine-resources-v1";
 import { optionalTeamEvent, optionalTeamEventToCurrent } from "@openbot/contracts/team-protocol/optional-events";
+import type { RemoteComputerCallEvent } from "@openbot/contracts/team-protocol/remote-computer-use-v1";
 import { decodeTeamProtocolV8BaseCurrentEvent } from "@openbot/contracts/team-protocol/v8-base-adapter";
 import { Effect, Exit, Result, Scope } from "effect";
 import { RemoteWorkflowError, remoteDecode } from "./remote-service-effects";
@@ -115,6 +116,7 @@ export interface RemoteEventStreamOptions {
   onDirectTyping: (serverId: string, event: DirectTypingRealtimeEvent) => void;
   onHostRestart: (serverId: string, event: HostRestartEvent) => void;
   onMachineAlert: (serverId: string, event: MachineAlertEvent) => void;
+  onRemoteComputerCall: (serverId: string, event: RemoteComputerCallEvent) => void;
   onOffline: (serverId: string) => void;
   onChanged: () => void;
 }
@@ -134,6 +136,7 @@ export class RemoteEventStream {
   readonly #onDirectTyping: RemoteEventStreamOptions["onDirectTyping"];
   readonly #onHostRestart: RemoteEventStreamOptions["onHostRestart"];
   readonly #onMachineAlert: RemoteEventStreamOptions["onMachineAlert"];
+  readonly #onRemoteComputerCall: RemoteEventStreamOptions["onRemoteComputerCall"];
   readonly #onOffline: RemoteEventStreamOptions["onOffline"];
   readonly #onChanged: RemoteEventStreamOptions["onChanged"];
   readonly #controllers = new Map<string, AbortController>();
@@ -162,6 +165,7 @@ export class RemoteEventStream {
     this.#onDirectTyping = options.onDirectTyping;
     this.#onHostRestart = options.onHostRestart;
     this.#onMachineAlert = options.onMachineAlert;
+    this.#onRemoteComputerCall = options.onRemoteComputerCall;
     this.#onOffline = options.onOffline;
     this.#onChanged = options.onChanged;
   }
@@ -567,6 +571,8 @@ export class RemoteEventStream {
               this.#onHostRestart(serverId, event);
             } else if (event.type === "machine-alert") {
               this.#onMachineAlert(serverId, event);
+            } else if (event.type === "remote-computer-call") {
+              this.#onRemoteComputerCall(serverId, event);
             } else {
               if (!agentEventsReady) {
                 if (bufferedAgentEvents.length >= REMOTE_EVENT_INITIAL_BUFFER_LIMIT) {

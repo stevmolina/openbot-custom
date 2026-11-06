@@ -21,6 +21,7 @@ import { causeHelpers } from "./effect-boundary";
 import { isMissingFileError } from "./file-errors";
 import type { McpOperationError } from "./mcp-effects";
 import { getRecord } from "./protocol";
+import { isRemoteComputerMcpServerId, remoteComputerMcpServerAgentId } from "./remote-computer-mcp";
 
 const execFileAsync = promisify(execFile);
 
@@ -178,7 +179,13 @@ export function agentMcpServers(
   computerUse: boolean,
   agentId: string | null = null,
 ): readonly McpServerConfig[] {
-  const given = computerUse ? configs : configs.filter((config) => config.id !== COMPUTER_USE_MCP_SERVER_ID);
+  // A member's own computer reaches only the agent its entry was made for, and no agent when the
+  // hand-off does not name one. The Computer Use switch of the agent turns it off too.
+  const own = configs.filter((config) => {
+    const remoteAgentId = remoteComputerMcpServerAgentId(config.id);
+    return remoteAgentId === null ? !isRemoteComputerMcpServerId(config.id) : computerUse && remoteAgentId === agentId;
+  });
+  const given = computerUse ? own : own.filter((config) => config.id !== COMPUTER_USE_MCP_SERVER_ID);
   // A Linux server with no shared agent display gives this agent a screen of its own. The shared
   // entry, when the one driver is running, would point every agent at that one screen.
   return withAgentScreen(given, agentId, computerUse);

@@ -74,6 +74,11 @@ export interface McpGatewayOptions {
   /** The main process's knowledge of this machine: the tool runtimes and the http sign-ins. */
   credentials: ProviderClientContext;
   computerUseMcpServer: () => McpServerConfig | null;
+  /**
+   * The entries for the computers of members who let their agents use them (`remote-computer-use-v1`),
+   * one for each agent that may use each computer. `agentMcpServers` gives each agent only its own.
+   */
+  remoteComputerMcpServers?: () => readonly McpServerConfig[];
   githubConnector?: GitHubConnectorSource | null;
   /** The agents, read when a server signed in through the proxy opens a session, for their names. */
   agents?: () => ReadonlyArray<{ id: string; name: string }>;
@@ -92,6 +97,7 @@ export interface McpGatewayOptions {
 export class McpGateway {
   readonly #servers: McpServerStore;
   readonly #computerUseMcpServer: () => McpServerConfig | null;
+  readonly #remoteComputerMcpServers: () => readonly McpServerConfig[];
   readonly #githubConnector: GitHubConnectorSource | null;
   /**
    * What OpenBot downloaded for the MCP servers, read at each use. It travels with the credentials
@@ -125,6 +131,7 @@ export class McpGateway {
     const { credentials } = options;
     this.#servers = options.servers;
     this.#computerUseMcpServer = options.computerUseMcpServer;
+    this.#remoteComputerMcpServers = options.remoteComputerMcpServers ?? (() => []);
     this.#githubConnector = options.githubConnector ?? null;
     this.#toolRuntimes = () => credentials.mcpToolRuntimes?.() ?? NO_MCP_TOOL_RUNTIMES;
     this.#oauth = credentials.mcpOAuth ?? null;
@@ -528,6 +535,9 @@ export class McpGateway {
     if (computerUse) builtIn.push(computerUse);
     const github = this.#githubConnector?.mcpServer() ?? null;
     if (github && !configured.some((config) => config.name === github.name)) builtIn.push(github);
+    // A member's computer keeps out of the way of a server with the same name, as GitHub does.
+    for (const remote of this.#remoteComputerMcpServers())
+      if (!configured.some((config) => config.name === remote.name)) builtIn.push(remote);
     return this.#handoff.record([...configured, ...builtIn]);
   }
 

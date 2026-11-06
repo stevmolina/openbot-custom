@@ -103,6 +103,7 @@ import { PUSH_NOTIFICATIONS_CAPABILITY } from "./push-notifications-v1";
 import { TEAM_QUEUE_EDIT_CAPABILITY } from "./queue-edit-v1";
 import { QUIET_TURN_CAPABILITY } from "./quiet-turn-v1";
 import { TEAM_REASONING_EFFORTS_CAPABILITY } from "./reasoning-efforts-v1";
+import { REMOTE_COMPUTER_USE_CAPABILITY } from "./remote-computer-use-v1";
 import { ROUTINE_FLOWS_CAPABILITY } from "./routine-flows-v1";
 import { ROUTINE_RECOVERY_CAPABILITY } from "./routine-recovery-v1";
 import { ROUTINE_RESULTS_CAPABILITY } from "./routine-results-v1";
@@ -260,6 +261,7 @@ export {
   PROVIDERS_V8_CAPABILITY,
   PUSH_NOTIFICATIONS_CAPABILITY,
   QUIET_TURN_CAPABILITY,
+  REMOTE_COMPUTER_USE_CAPABILITY,
   ROUTINE_FLOWS_CAPABILITY,
   ROUTINE_RECOVERY_CAPABILITY,
   ROUTINE_RESULTS_CAPABILITY,
@@ -452,6 +454,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   PASSWORD_MANAGERS_CAPABILITY,
   BROWSER_PROXIES_CAPABILITY,
   BROWSER_EGRESS_CAPABILITY,
+  REMOTE_COMPUTER_USE_CAPABILITY,
 ] as const;
 
 export type TeamCurrentCapability = (typeof TEAM_CURRENT_CAPABILITIES)[number];
@@ -619,7 +622,8 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== WORKFLOWS_CHATS_CAPABILITY &&
     capability !== PASSWORD_MANAGERS_CAPABILITY &&
     capability !== BROWSER_PROXIES_CAPABILITY &&
-    capability !== BROWSER_EGRESS_CAPABILITY,
+    capability !== BROWSER_EGRESS_CAPABILITY &&
+    capability !== REMOTE_COMPUTER_USE_CAPABILITY,
 );
 /**
  * The capabilities that only a protocol 9 peer sends and gets. Protocols 7 and 8 read at most 128
@@ -663,6 +667,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   PASSWORD_MANAGERS_CAPABILITY,
   BROWSER_PROXIES_CAPABILITY,
   BROWSER_EGRESS_CAPABILITY,
+  REMOTE_COMPUTER_USE_CAPABILITY,
 ]);
 // A v8 host reads at most 128 capabilities, so a client sends the protocol 9 ones only after it
 // negotiates protocol 9.
@@ -789,6 +794,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== WORKFLOWS_CHATS_CAPABILITY &&
       capability !== PASSWORD_MANAGERS_CAPABILITY &&
       capability !== BROWSER_PROXIES_CAPABILITY &&
-      capability !== BROWSER_EGRESS_CAPABILITY,
+      capability !== BROWSER_EGRESS_CAPABILITY &&
+      capability !== REMOTE_COMPUTER_USE_CAPABILITY,
   );
 }
