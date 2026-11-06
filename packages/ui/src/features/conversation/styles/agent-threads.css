@@ -769,6 +769,21 @@
   color: var(--openbot-text-primary);
 }
 
+/* Custom: the agent name under the title opens the same menu as the avatar. */
+.agent-thread-empty-subtitle .agent-thread-empty-agent-name {
+  display: inline;
+  border: 0;
+  font: inherit;
+  font-weight: var(--openbot-weight-medium);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.agent-thread-empty-subtitle .agent-thread-empty-agent-name:hover,
+.agent-thread-empty-subtitle .agent-thread-empty-agent-name[aria-expanded="true"] {
+  text-decoration-style: solid;
+}
+
 .agent-thread-empty-title {
   margin: 0;
   color: var(--openbot-text-primary);
