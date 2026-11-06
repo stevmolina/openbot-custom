@@ -131,21 +131,30 @@ flowchart LR
 - **Host** (`RemoteComputerHost`). A computer is one session: the `state` route keys it by the
   session of the request, and a call goes only to the event connections of that session that took
   the capability. A reply settles a call only from the same member and session. The host offers the
-  computer to the agents that only that member can use: the member has `manage`, and every other
-  enabled member has `none` or `view`. Owners and admins always have `manage`, so on a server with a
-  second owner or admin no agent gets a member's computer. For each pair of computer and agent,
+  computer only on a server where that member is the only enabled member, to every agent the member
+  manages. Agent access levels are not enough: another member could reach the computer by a message
+  from one of their own agents, through a channel, or by reading a bearer from a provider process,
+  because every agent on a host runs as the same operating system user. A computer that no agent may
+  use is not kept. For each pair of computer and agent,
   `mcpServers()` returns one http entry, named `my_computer` (`_2` and up for a second computer of
   the member), whose path and bearer (an HMAC of a per-run secret) name the computer and the agent.
   Each request checks the bearer, that the computer is still there, and that the agent may still use
   it. `agentMcpServers` keeps for an agent only the entries made for it, and none for a hand-off that
   names no agent. A computer that sends no `state` for 90 seconds is forgotten. The last event socket
-  of the session closing fails its waiting calls at once. A change in the set of computers refreshes
-  the agent runtimes, like the local driver entry.
+  of the session closing fails its waiting calls at once. A change in the entries refreshes the agent
+  runtimes, like the local driver entry; a repeated state or a new computer name does not. The host
+  refuses a tool request longer than the event allows (a 128-character name, 64 KiB of arguments),
+  because the app would treat it as a malformed event and drop its connection.
+  A call that the provider cancels, or whose request closes, stops waiting and frees its slot; the
+  computer may still finish an action it already started, and its late answer is dropped. A bearer
+  whose computer is gone gets an empty tool list and a tool error rather than 401, which an MCP
+  client could take as a sign-in to start. The app answers every call, a failure included, and
+  measures the answer in UTF-8 bytes against the 1 MiB body of an HTTPS host.
 
-Anyone who controls the host can reach the computer while the switch is on: every agent on a host
-runs as the same operating system user, so an agent of another member could read a bearer from the
-process list. The setting says so. The answer of a call travels to the host and, as a tool result,
-to that agent's provider.
+Anyone who controls the host can reach the computer while the switch is on, and so can text that
+reaches the member's own agents, such as a linked chat or a webhook, as with local Computer Use. The
+setting says so. The answer of a call travels to the host and, as a tool result, to that agent's
+provider. The app refuses tools that change the driver itself by name; the boundary is the switch.
 
 ## Remote desktop permission checks and live tests
 

@@ -13,8 +13,10 @@ import {
 import type { McpServerConfig } from "@openbot/contracts/ipc";
 import { isString } from "@openbot/contracts/runtime-values";
 import {
+  REMOTE_COMPUTER_ARGUMENTS_MAX_LENGTH,
   REMOTE_COMPUTER_CALL_EVENT,
   REMOTE_COMPUTER_STATE_INTERVAL_MS,
+  REMOTE_COMPUTER_TOOL_MAX_LENGTH,
   type RemoteComputerCallEvent,
 } from "@openbot/contracts/team-protocol/remote-computer-use-v1";
 import { createOpenBotLogger, toLogValue } from "@openbot/logging";
@@ -60,8 +62,8 @@ export interface RemoteComputerHostLink {
   /** Sends a call to the event connections of one session that took the capability. False when there is none. */
   send(sessionId: string, event: RemoteComputerCallEvent): boolean;
   /**
-   * The agents that only this member can use: the member can manage them, and no other enabled member
-   * can chat with them. Empty for a member that is not there or is disabled.
+   * The agents that may use this member's computer. Empty for a member that is not there, is
+   * disabled, or shares the server with another enabled member.
    */
   agentsOnlyFor(memberId: string): readonly string[];
 }
@@ -106,6 +108,9 @@ export class RemoteComputerHost {
   #server: HttpServer | null = null;
   #port: number | null = null;
   #sweep: ReturnType<typeof setInterval> | null = null;
+  #listening: Promise<void> | null = null;
+  /** The entries last told to the listeners, as ids and names. */
+  #emitted = "[]";
   readonly #now: () => number;
 
   constructor(options: { now?: () => number } = {}) {
@@ -183,7 +188,14 @@ export class RemoteComputerHost {
       if (existing) this.#remove(existing, "The computer stopped sharing.");
       return;
     }
-    if (!this.#link) return yield* new RemoteComputerError({ cause: new Error("The host is not serving members.") });
+    const link = this.#link;
+    if (!link) return yield* new RemoteComputerError({ cause: new Error("The host is not serving members.") });
+    // A computer that no agent may use is not kept: nothing would use it, and each change of it
+    // would refresh the agents of every member.
+    if (link.agentsOnlyFor(memberId).length === 0) {
+      if (existing) this.#remove(existing, "No agent may use the computer.");
+      return;
+    }
     const name = computerName(state.computerName);
     if (existing && existing.memberId === memberId) {
       existing.seenAt = this.#now();
@@ -195,6 +207,14 @@ export class RemoteComputerHost {
     }
     if (existing) this.#remove(existing, "The session changed members.");
     yield* this.#listen();
+    // Another state of the same session can have added the computer while the server started.
+    const raced = this.#computers.get(sessionId);
+    if (raced?.memberId === memberId) {
+      raced.seenAt = this.#now();
+      raced.name = name;
+      return;
+    }
+    if (raced) this.#remove(raced, "The session changed members.");
     const now = this.#now();
     this.#computers.set(sessionId, {
       id: randomUUID(),
@@ -287,7 +307,11 @@ export class RemoteComputerHost {
     if (emit) this.#emit();
   }
 
+  /** Tells the listeners only when the entries changed, because each change refreshes every agent. */
   #emit(): void {
+    const entries = JSON.stringify(this.mcpServers().map((entry) => [entry.id, entry.name]));
+    if (entries === this.#emitted) return;
+    this.#emitted = entries;
     for (const listener of this.#listeners) {
       try {
         listener();
@@ -315,8 +339,17 @@ export class RemoteComputerHost {
     return createHmac("sha256", this.#secret).update(`${computerId}\u0000${agentId}`).digest("base64url");
   }
 
+  /** Starts the loopback server once: two states that come together share one start. */
   #listen(): Effect.Effect<void, RemoteComputerError> {
     if (this.#server) return Effect.void;
+    this.#listening ??= runCauseEffect(this.#open()).finally(() => {
+      this.#listening = null;
+    });
+    const listening = this.#listening;
+    return remoteComputerCall(() => listening);
+  }
+
+  #open(): Effect.Effect<void, RemoteComputerError> {
     return Effect.callback<void, RemoteComputerError>((resume) => {
       const server = createServer((request, response) => {
         void runCauseEffect(this.#handle(request, response)).catch((error) => {
@@ -344,8 +377,12 @@ export class RemoteComputerHost {
     });
   }
 
-  /** The computer and agent that a request names, when its bearer is theirs and the agent may still use it. */
-  #authorize(request: IncomingMessage): { computer: Computer; agentId: string } | null {
+  /**
+   * The computer and agent that a request names, when its bearer is theirs. `computer` is null when
+   * the computer is gone or the agent may no longer use it: the request is then answered with a tool
+   * error, not 401, which an MCP client could take as a sign-in to start.
+   */
+  #authorize(request: IncomingMessage): { computer: Computer | null; agentId: string } | null {
     const link = this.#link;
     if (!link) return null;
     const match = /^\/computer\/([0-9a-f-]{36})\/([^/?#]+)$/u.exec(new URL(request.url ?? "/", "http://x").pathname);
@@ -362,7 +399,7 @@ export class RemoteComputerHost {
     const expected = Buffer.from(this.#bearer(match[1], agentId));
     if (candidate.length !== expected.length || !timingSafeEqual(candidate, expected)) return null;
     const computer = [...this.#computers.values()].find((entry) => entry.id === match[1]);
-    if (!computer || !link.agentsOnlyFor(computer.memberId).includes(agentId)) return null;
+    if (!computer || !link.agentsOnlyFor(computer.memberId).includes(agentId)) return { computer: null, agentId };
     return { computer, agentId };
   }
 
@@ -383,19 +420,35 @@ export class RemoteComputerHost {
       return;
     }
     const { computer } = target;
+    // The provider stopped waiting: the turn was stopped, or its request closed. The call stops too.
+    const closed = new AbortController();
+    response.once("close", () => closed.abort());
     const mcp = new Server(
       { name: "openbot-remote-computer", version: "1.0.0" },
       {
         capabilities: { tools: {} },
         instructions:
-          `These tools use Computer Use on "${computer.name}", the computer of the person who owns this ` +
-          "agent, and not on the server that runs the agent. They see and control that computer's screen.",
+          `These tools use Computer Use on ${computer ? `"${computer.name}"` : "a computer"}, the computer of ` +
+          "the person who owns this agent, and not on the server that runs the agent. They see and control " +
+          "that computer's screen.",
       },
     );
-    mcp.setRequestHandler(ListToolsRequestSchema, () => runCauseEffect(this.#listTools(computer)));
-    mcp.setRequestHandler(CallToolRequestSchema, ({ params }) =>
+    mcp.setRequestHandler(ListToolsRequestSchema, (_request, extra) =>
+      computer
+        ? runCauseEffect(this.#listTools(computer, AbortSignal.any([closed.signal, extra.signal])))
+        : Promise.resolve<ListToolsResult>({ tools: [] }),
+    );
+    mcp.setRequestHandler(CallToolRequestSchema, ({ params }, extra) =>
       runCauseEffect(
-        this.#callTool(computer, params.name, params.arguments ?? {}).pipe(
+        (computer
+          ? this.#callTool(
+              computer,
+              params.name,
+              params.arguments ?? {},
+              AbortSignal.any([closed.signal, extra.signal]),
+            )
+          : Effect.fail(new RemoteComputerError({ cause: new Error("The computer is not available now.") }))
+        ).pipe(
           Effect.catch(({ cause }) =>
             Effect.succeed<CallToolResult>({
               isError: true,
@@ -425,9 +478,10 @@ export class RemoteComputerHost {
   readonly #listTools = Effect.fn("RemoteComputerHost.listTools")(function* (
     this: RemoteComputerHost,
     computer: Computer,
+    signal: AbortSignal,
   ): Effect.fn.Return<ListToolsResult, RemoteComputerError> {
     if (computer.tools && this.#now() - computer.tools.at < TOOL_LIST_TTL_MS) return computer.tools.result;
-    const value = yield* this.#call(computer, { operation: "list-tools" });
+    const value = yield* this.#call(computer, { operation: "list-tools" }, signal);
     const parsed = ListToolsResultSchema.safeParse(value);
     if (!parsed.success)
       return yield* new RemoteComputerError({ cause: new Error("The computer sent a tool list that is not valid.") });
@@ -440,8 +494,13 @@ export class RemoteComputerHost {
     computer: Computer,
     tool: string,
     input: unknown,
+    signal: AbortSignal,
   ): Effect.fn.Return<CallToolResult, RemoteComputerError> {
-    const value = yield* this.#call(computer, { operation: "call-tool", tool, arguments: JSON.stringify(input) });
+    const text = JSON.stringify(input ?? {});
+    // The app refuses a longer call as a malformed event, which would end its whole connection.
+    if (tool.length > REMOTE_COMPUTER_TOOL_MAX_LENGTH || text.length > REMOTE_COMPUTER_ARGUMENTS_MAX_LENGTH)
+      return yield* new RemoteComputerError({ cause: new Error("The tool request is too large for the computer.") });
+    const value = yield* this.#call(computer, { operation: "call-tool", tool, arguments: text }, signal);
     const parsed = CallToolResultSchema.safeParse(value);
     if (!parsed.success)
       return yield* new RemoteComputerError({ cause: new Error("The computer sent a tool result that is not valid.") });
@@ -452,6 +511,7 @@ export class RemoteComputerHost {
     this: RemoteComputerHost,
     computer: Computer,
     operation: Operation,
+    signal: AbortSignal,
   ): Effect.fn.Return<unknown, RemoteComputerError> {
     const link = this.#link;
     if (!link || this.#computers.get(computer.sessionId) !== computer)
@@ -481,13 +541,29 @@ export class RemoteComputerHost {
       this.#pending.delete(requestId);
       return yield* new RemoteComputerError({ cause: new Error(`"${computer.name}" is not connected now.`) });
     }
+    // A cancelled call stops waiting and frees its slot. The computer may still finish the action it
+    // already started; its late answer is not taken.
+    const cancel = () => {
+      if (!this.#pending.delete(requestId)) return;
+      Deferred.doneUnsafe(
+        result,
+        Effect.fail(new RemoteComputerError({ cause: new Error("The request was cancelled.") })),
+      );
+    };
+    if (signal.aborted) cancel();
+    else signal.addEventListener("abort", cancel, { once: true });
     return yield* Deferred.await(result).pipe(
       Effect.timeoutOrElse({
         duration: Duration.millis(CALL_TIMEOUT_MS),
         orElse: () =>
           Effect.fail(new RemoteComputerError({ cause: new Error(`"${computer.name}" did not answer in time.`) })),
       }),
-      Effect.ensuring(Effect.sync(() => this.#pending.delete(requestId))),
+      Effect.ensuring(
+        Effect.sync(() => {
+          signal.removeEventListener("abort", cancel);
+          this.#pending.delete(requestId);
+        }),
+      ),
     );
   });
 }

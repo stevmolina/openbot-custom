@@ -1455,13 +1455,16 @@ if (!hasSingleInstanceLock) {
           for (const window of BrowserWindow.getAllWindows())
             sendToRenderer(window, IPC_ENDPOINTS.computerUse.remoteServers, servers);
         });
-        let shownSessionIds = new Set<string>();
+        // When each server last got the system notice. An agent that pauses between actions starts a
+        // new session, which does not need a new notice within ten minutes.
+        const noticeAt = new Map<string, number>();
         remoteComputerClient.onSessionsChanged((sessions) => {
           for (const window of BrowserWindow.getAllWindows())
             sendToRenderer(window, IPC_ENDPOINTS.computerUse.remoteSessions, sessions);
           // A system notice when a server starts, so the user knows even with every window hidden.
-          const started = sessions.filter((session) => !shownSessionIds.has(session.serverId));
-          shownSessionIds = new Set(sessions.map((session) => session.serverId));
+          const now = Date.now();
+          const started = sessions.filter((session) => now - (noticeAt.get(session.serverId) ?? 0) > 10 * 60_000);
+          for (const session of started) noticeAt.set(session.serverId, now);
           if (!Notification.isSupported()) return;
           for (const session of started)
             showRetainedNotification(

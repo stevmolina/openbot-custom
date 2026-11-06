@@ -42,7 +42,7 @@ export const messages = defineMessages("computerUse", {
   // Agents on a joined server that use Computer Use on this computer. The switch starts off.
   "computerUse.remote.title": "Agents on your servers",
   "computerUse.remote.description":
-    "Let your own agents on a server see and control this computer. Only the agents that only you can use on that server get it. Whoever runs the server can reach it too while it is on.",
+    "Let your agents on a server see and control this computer. It works only on a server where you are the only member. Whoever runs the server can reach this computer too while it is on.",
   "computerUse.remote.switchLabel": "Let agents on {server} use this computer",
   "computerUse.remote.on": "On",
   "computerUse.remote.off": "Off",

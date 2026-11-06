@@ -800,26 +800,20 @@ export class TeamApiServer {
   }
 
   /**
-   * The agents that only `memberId` can use: the member manages them, and no other enabled member can
-   * chat with them. A computer that its member shares reaches these agents and no other, so another
-   * member cannot ask an agent to use it.
+   * The agents that may use the computer of `memberId`: every agent that member manages, but only on
+   * a server where that member is the only enabled member. Another member could otherwise reach the
+   * computer without a level on the agent: by a message from one of their own agents, through a
+   * channel, or by reading a bearer from a provider process, since every agent on a host runs as the
+   * same operating system user. Empty for a member that is not there or is disabled.
    */
   #agentsOnlyFor(memberId: string): string[] {
     const members = this.#options.store.listMembers().filter((member) => !member.disabled);
     const member = members.find((candidate) => candidate.id === memberId);
-    if (!member) return [];
-    const others = members.filter((candidate) => candidate.id !== memberId);
+    if (!member || members.length !== 1) return [];
     return this.#options.agents
       .listAgents()
       .map((agent) => agent.id)
-      .filter(
-        (agentId) =>
-          this.agentLevel(member, agentId) === "manage" &&
-          others.every((other) => {
-            const level = this.agentLevel(other, agentId);
-            return level === "none" || level === "view";
-          }),
-      );
+      .filter((agentId) => this.agentLevel(member, agentId) === "manage");
   }
 
   #sendPendingMachineAlerts(client: Ws.WebSocket, connection: EventClientState): void {

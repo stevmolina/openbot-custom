@@ -151,6 +151,16 @@ try {
   assert.equal(host.reply(MEMBER, "session-2", { requestId: "nope", ok: true, payload: "{}" }), false);
   pass("a reply from another session settles nothing");
 
+  const huge = await mcp.callTool({ name: "click", arguments: { text: "x".repeat(70_000) } });
+  assert.equal(huge.isError, true);
+  assert.equal((await mcp.callTool({ name: "get_screen_size", arguments: {} })).isError, undefined);
+  pass("a request larger than the event allows is refused on the host, and the computer keeps working");
+
+  await runCauseEffect(host.setState("member-2", "session-2", { available: true, computerName: "Other" }));
+  assert.equal(host.mcpServers().length, 1);
+  assert.equal(changes, 1);
+  pass("a member whom no agent may serve does not add a computer or refresh the agents");
+
   // The switch goes off: the desktop refuses the next call, then tells the host it is gone.
   enabled = false;
   const off = await mcp.callTool({ name: "click", arguments: { x: 1 } });
@@ -158,8 +168,11 @@ try {
   pass("a call to a computer whose switch is off is refused");
   client.reconcile();
   await waitFor(() => host.mcpServers().length === 0);
-  assert.ok(await refused(entry.url, bearer));
-  pass("switch off removes the entry and its bearer stops working");
+  const gone = await connect(entry.url, bearer);
+  assert.deepEqual((await gone.listTools()).tools, []);
+  assert.equal((await gone.callTool({ name: "click", arguments: { x: 1 } })).isError, true);
+  await gone.close();
+  pass("switch off removes the entry; its bearer then gets no tools and a tool error, not a sign-in prompt");
 
   // On again, then Stop.
   enabled = true;
@@ -176,7 +189,7 @@ try {
 } catch (error) {
   report.error = error instanceof Error ? (error.stack ?? error.message) : String(error);
 } finally {
-  client.dispose();
+  await client.dispose();
   await runCauseEffect(host.stop());
   await mkdir(OUT, { recursive: true });
   await writeFile(resolve(OUT, "report.json"), `${JSON.stringify(report, null, 2)}\n`);

@@ -536,8 +536,13 @@ export class McpGateway {
     const github = this.#githubConnector?.mcpServer() ?? null;
     if (github && !configured.some((config) => config.name === github.name)) builtIn.push(github);
     // A member's computer keeps out of the way of a server with the same name, as GitHub does.
-    for (const remote of this.#remoteComputerMcpServers())
-      if (!configured.some((config) => config.name === remote.name)) builtIn.push(remote);
+    for (const remote of this.#remoteComputerMcpServers()) {
+      if (configured.some((config) => config.name === remote.name)) continue;
+      builtIn.push(remote);
+      // The token alone too, as for the proxy's bearers: an error can quote it without "Bearer ".
+      for (const header of remote.headers)
+        if (header.value.startsWith("Bearer ")) this.#handoff.recordSecret(header.value.slice("Bearer ".length));
+    }
     return this.#handoff.record([...configured, ...builtIn]);
   }
 

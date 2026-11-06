@@ -15,7 +15,7 @@ import {
   type RemoteComputerCallEvent,
 } from "@openbot/contracts/team-protocol/remote-computer-use-v1";
 import { createOpenBotLogger, toLogValue } from "@openbot/logging";
-import { Effect, Schema } from "effect";
+import { Cause, Effect, Schema } from "effect";
 import { causeHelpers } from "../backend/effect-boundary";
 import type { RemoteWorkflowError } from "./remote-service-effects";
 
@@ -56,9 +56,11 @@ const BLOCKED_TOOLS: ReadonlySet<string> = new Set([
 const DEFAULT_IMAGE_DIMENSION = 1568;
 const JPEG_QUALITIES = [80, 65, 50, 35] as const;
 /** A server stays in the sessions list this long after its last request. */
-const SESSION_IDLE_MS = 45_000;
+const SESSION_IDLE_MS = 2 * 60_000;
 const SESSION_CHECK_MS = 5_000;
 const CALL_TIMEOUT_MS = 2 * 60_000;
+/** The reply body's limit on an HTTPS host is 1 MiB; this leaves room for the rest of the body. */
+const REPLY_MAX_BYTES = 1_000_000;
 
 export class RemoteComputerClientError extends Schema.TaggedError<RemoteComputerClientError>()(
   "RemoteComputerClientError",
@@ -107,6 +109,11 @@ export class RemoteComputerClient {
   /** The servers that were last told that this computer is available. */
   readonly #announced = new Set<string>();
   readonly #sessions = new Map<string, Session>();
+  /**
+   * Servers stopped by the user whose switch may still read on until the write lands. A call from one
+   * is refused at once. It leaves the set when the switch reads off.
+   */
+  readonly #stopped = new Set<string>();
   readonly #sessionListeners = new Set<(sessions: RemoteComputerSession[]) => void>();
   #connection: Connection | null = null;
   #heartbeat: ReturnType<typeof setInterval> | null = null;
@@ -137,6 +144,7 @@ export class RemoteComputerClient {
         .map((server) => server.serverId),
     );
     for (const serverId of [...this.#sessions.keys()]) if (!enabled.has(serverId)) this.#endSession(serverId);
+    for (const serverId of [...this.#stopped]) if (!enabled.has(serverId)) this.#stopped.delete(serverId);
     if (!this.#options.driver()) this.#closeConnection();
   };
 
@@ -175,6 +183,7 @@ export class RemoteComputerClient {
 
   /** Stop: the switch of that server goes off, and its session ends now. */
   readonly stop = Effect.fn("RemoteComputerClient.stop")(function* (this: RemoteComputerClient, serverId: string) {
+    this.#stopped.add(serverId);
     this.#endSession(serverId);
     yield* this.#options.disable(serverId);
     this.reconcile();
@@ -184,37 +193,43 @@ export class RemoteComputerClient {
     if (this.#disposed) return;
     void Effect.runPromise(
       this.#answer(serverId, event).pipe(
-        Effect.catch((failure) =>
-          Effect.sync(() => logger.warn("A remote computer answer was not sent.", toLogValue(failure.cause))),
+        Effect.catchCause((cause) =>
+          Effect.sync(() => logger.warn("A remote computer answer was not sent.", toLogValue(cause))),
         ),
       ),
     );
   };
 
-  dispose(): void {
+  /** Stops the client. It waits up to two seconds for the hosts to hear that the computer is gone. */
+  async dispose(): Promise<void> {
     this.#disposed = true;
     if (this.#heartbeat) clearInterval(this.#heartbeat);
     this.#heartbeat = null;
     if (this.#sessionCheck) clearInterval(this.#sessionCheck);
     this.#sessionCheck = null;
     for (const serverId of [...this.#sessions.keys()]) this.#endSession(serverId);
-    // The hosts forget this computer when its state expires; a quitting app does not wait for them.
-    for (const serverId of this.#announced)
-      void Effect.runPromise(
-        Effect.ignore(
-          this.#options.send(serverId, REMOTE_COMPUTER_USE_ROUTES.state, {
+    // A host that does not hear it forgets this computer when its state expires.
+    const goodbyes = [...this.#announced].map((serverId) =>
+      Effect.runPromise(
+        this.#options
+          .send(serverId, REMOTE_COMPUTER_USE_ROUTES.state, {
             available: false,
             computerName: this.#options.computerName(),
-          }),
-        ),
-      );
+          })
+          .pipe(
+            Effect.timeoutOrElse({ duration: 2_000, orElse: () => Effect.void }),
+            Effect.catchCause(() => Effect.void),
+          ),
+      ),
+    );
     this.#announced.clear();
     this.#closeConnection();
+    await Promise.all(goodbyes);
   }
 
   /** Whether `serverId` may use this computer now. */
   #allowed(serverId: string): RemoteComputerServer | null {
-    if (!this.#options.driver()) return null;
+    if (!this.#options.driver() || this.#stopped.has(serverId)) return null;
     const server = this.#options.servers().find((candidate) => candidate.serverId === serverId);
     return server?.enabled && server.supported && server.connected ? server : null;
   }
@@ -228,7 +243,7 @@ export class RemoteComputerClient {
         if (!server.connected) this.#announced.delete(server.serverId);
         continue;
       }
-      const wanted = server.enabled && driverReady;
+      const wanted = server.enabled && driverReady && !this.#stopped.has(server.serverId);
       const announced = this.#announced.has(server.serverId);
       if (!wanted && !announced) continue;
       if (wanted && announced && !repeat) continue;
@@ -261,20 +276,26 @@ export class RemoteComputerClient {
     if (!server) return yield* reply(false, "This computer does not let the agents of this server use it now.");
     const controller = new AbortController();
     const session = this.#begin(serverId, server.serverName, controller);
+    // Every end gets an answer, a defect included, so the agent never waits for the host's timeout.
     const outcome = yield* this.#run(event, controller.signal).pipe(
       Effect.map((value) => ({ ok: true as const, value })),
-      Effect.catch((failure) =>
-        Effect.succeed({
+      Effect.catchCause((cause) => {
+        const failure = Cause.squash(cause);
+        const inner = failure instanceof RemoteComputerClientError ? failure.cause : failure;
+        return Effect.succeed({
           ok: false as const,
-          value: failure.cause instanceof Error ? failure.cause.message : "The request failed on this computer.",
-        }),
-      ),
+          value: inner instanceof Error ? inner.message : "The request failed on this computer.",
+        });
+      }),
       Effect.ensuring(Effect.sync(() => this.#finish(session, controller))),
     );
     // Stop ends the session: a call that was running then gets no result.
     if (controller.signal.aborted) return yield* reply(false, "The user stopped agents from using this computer.");
     if (!outcome.ok) return yield* reply(false, outcome.value.slice(0, 2_000));
-    yield* reply(true, outcome.value);
+    // A host can still refuse the answer (its body limit), so the agent then hears why.
+    yield* reply(true, outcome.value).pipe(
+      Effect.catch(() => reply(false, "The answer of this computer could not reach the server.")),
+    );
   });
 
   /** The JSON text of the answer, small enough for the reply route. */
@@ -344,7 +365,7 @@ export class RemoteComputerClient {
   #fit(result: CallToolResult): Effect.Effect<string, RemoteComputerClientError> {
     return Effect.suspend(() => {
       let text = JSON.stringify(result);
-      if (text.length <= REMOTE_COMPUTER_REPLY_MAX_LENGTH) return Effect.succeed(text);
+      if (fitsReply(text)) return Effect.succeed(text);
       const images = result.content.filter(
         (item): item is Extract<CallToolResult["content"][number], { type: "image" }> => item.type === "image",
       );
@@ -357,14 +378,19 @@ export class RemoteComputerClient {
         images.forEach((image, index) => {
           const original = originals[index];
           if (!original) return;
-          const jpeg = this.#options.toJpeg(original.data, original.mimeType, quality);
+          let jpeg: string | null = null;
+          try {
+            jpeg = this.#options.toJpeg(original.data, original.mimeType, quality);
+          } catch {
+            jpeg = null;
+          }
           if (jpeg) {
             image.data = jpeg;
             image.mimeType = "image/jpeg";
           }
         });
         text = JSON.stringify(result);
-        if (text.length <= REMOTE_COMPUTER_REPLY_MAX_LENGTH) return Effect.succeed(text);
+        if (fitsReply(text)) return Effect.succeed(text);
       }
       return Effect.fail(
         new RemoteComputerClientError({
@@ -480,4 +506,12 @@ export class RemoteComputerClient {
     }, SESSION_CHECK_MS);
     this.#sessionCheck.unref?.();
   }
+}
+
+/**
+ * Whether an answer fits the reply route: the wire limit counts UTF-16 units, and an HTTPS host reads
+ * at most 1 MiB of UTF-8 for the whole body, where the answer is escaped once more as a string.
+ */
+function fitsReply(text: string): boolean {
+  return text.length <= REMOTE_COMPUTER_REPLY_MAX_LENGTH && Buffer.byteLength(JSON.stringify(text)) <= REPLY_MAX_BYTES;
 }

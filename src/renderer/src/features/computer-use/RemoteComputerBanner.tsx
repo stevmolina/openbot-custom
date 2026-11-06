@@ -35,6 +35,8 @@ export function RemoteComputerBanner() {
     try {
       await computerUsePort().computerUse.stopRemoteSession(serverId);
       if (!disposed) setSessions((current) => current.filter((session) => session.serverId !== serverId));
+    } catch {
+      // The session list from main stays the truth: a stop that failed leaves the notice up.
     } finally {
       if (!disposed) setStopping(null);
     }

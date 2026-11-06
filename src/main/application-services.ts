@@ -501,6 +501,8 @@ const TEARDOWN_ORDER = {
   browserView: 45,
   providerDetection: 48,
   providerRuntimes: 50,
+  /** Before the driver and the remote servers: it tells the hosts the computer is gone, then closes its driver child. */
+  remoteComputerClient: 54,
   cuaDriver: 55,
   /** After the host stops sending calls, before the agent service stops the providers that hold the entries. */
   remoteComputers: 95,
@@ -3273,12 +3275,12 @@ export async function createApplicationServices({
       if (sessions.length > 0) startComputerUseHighlight();
     });
     remoteComputerClient.start();
-    teardown.push(TEARDOWN_ORDER.browserEgress, "Computer Use for joined servers", () => {
+    teardown.push(TEARDOWN_ORDER.remoteComputerClient, "Computer Use for joined servers", () => {
       remoteServers.off("changed", remoteComputerClient.reconcile);
       remoteServers.off("remoteComputerCall", remoteComputerClient.handleCall);
       stopDriverListener();
       stopStateListener();
-      remoteComputerClient.dispose();
+      return remoteComputerClient.dispose();
     });
   }
   performance.mark("openbot:services.plugin-catalog");

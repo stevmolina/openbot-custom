@@ -4,12 +4,13 @@
 // app tells the host that the agents of that member on the host may use Computer Use on the computer
 // that the app runs on (`state`, with `available` and the computer's name). The app sends it only for
 // a server that the user turned on in the app, and only while its own Computer Use has its grants. The
-// host then gives a Computer Use tool for that computer to the agents that only that member can use,
-// and sends each tool request of those agents as a `remote-computer-call` event to the event
-// connections of the session that sent `state`, and of no other session. The app runs the request on
-// its own Computer Use driver and sends the answer to `reply`, from the same session. The host keeps
-// the state in memory only, and forgets it when the session has no event connection, when the
-// session sends `available: false`, or when it does not send `state` again in time. Any member can
+// host then gives a Computer Use tool for that computer to the agents that member manages, only while
+// that member is the only enabled member of the server, and sends each tool request of those agents
+// as a `remote-computer-call` event to the event connections of the session that sent `state`, and of
+// no other session. The app runs the request on its own Computer Use driver and sends the answer to
+// `reply`, from the same session. The host keeps the state in memory only, fails the waiting requests
+// when the session has no event connection, and forgets the computer when the session sends
+// `available: false` or does not send `state` again in time. Any member can
 // send it. A host that cannot give tools to its agents does not advertise it. Widening any of it needs
 // a second capability string.
 import { isDynamicRecord, isString } from "../runtime-values";
