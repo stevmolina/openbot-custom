@@ -239,7 +239,7 @@ export function CodeBlock(props: {
                 <Check />
               </span>
             </span>
-            <span>{copied() ? t("common.copied") : t("common.copy")}</span>
+            <span class="message-code-action-label">{copied() ? t("common.copied") : t("common.copy")}</span>
           </Button>
           {props.trailingActions}
         </div>

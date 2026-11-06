@@ -230,3 +230,35 @@
 .message-preview-dialog-body .message-preview-frame {
   height: 100%;
 }
+
+/* In the preview, the page or diagram fills the block. Its controls float over the top-right
+   corner as icons and show on hover or keyboard focus. The code view keeps the normal header, and
+   so does any device with a touch screen, where a toolbar that needs hover would stay hidden. */
+@media (hover: hover) and (pointer: fine) and (not (any-pointer: coarse)) {
+  .message-preview[data-toolbar="floating"] .message-code-block {
+    position: relative;
+  }
+
+  .message-preview[data-toolbar="floating"] .message-code-header {
+    position: absolute;
+    top: var(--openbot-space-2);
+    right: var(--openbot-space-2);
+    z-index: 1;
+    min-height: 0;
+    border-bottom: 0;
+    border-radius: var(--openbot-radius-md);
+    background: var(--openbot-bg-overlay);
+    box-shadow: 0 0 0 1px var(--openbot-border);
+    padding: var(--openbot-space-0-5);
+    opacity: 0;
+    transition: opacity var(--openbot-duration-fast) var(--openbot-ease-out);
+  }
+
+  .message-preview[data-toolbar="floating"]:is(:hover, :focus-within) .message-code-header {
+    opacity: 1;
+  }
+
+  .message-preview[data-toolbar="floating"] :is(.message-code-heading, .message-code-action-label) {
+    display: none;
+  }
+}
