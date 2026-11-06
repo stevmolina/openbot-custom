@@ -128,6 +128,9 @@ export interface AgentThreadQueue {
   onReorder: (deliveryIds: string[]) => void;
 }
 
+/** Stands in for the agent name, so the name in the empty-thread subtitle can be a button. */
+const AGENT_NAME_MARKER = "\u0000";
+
 export interface AgentThreadViewProps {
   /** Null for a new thread: its first message starts it. */
   task: AgentTask | null;
@@ -276,6 +279,15 @@ export function AgentThreadView(props: AgentThreadViewProps) {
   const [reactionMessageId, setReactionMessageId] = createSignal<string | null>(null);
   const [expandedEmojiId, setExpandedEmojiId] = createSignal<string | null>(null);
   const [skillPickerRequest, setSkillPickerRequest] = createSignal(0);
+  // Custom: the avatar and the agent name of a new thread open the same menu of agents.
+  const [agentMenuOpen, setAgentMenuOpen] = createSignal(false);
+  const canChangeAgent = () => (props.onChangeAgent && props.agents.length > 1 ? props.onChangeAgent : undefined);
+  const emptySubtitleParts = () => {
+    const [before = "", after = ""] = t("conversation.threads.view.emptySubtitle", {
+      name: AGENT_NAME_MARKER,
+    }).split(AGENT_NAME_MARKER);
+    return [before, after] as const;
+  };
   /* A thread does not tag itself. */
   const otherThreads = createMemo(() => props.threads?.filter((thread) => thread.id !== props.task?.id));
   let scroller: HTMLElement | undefined;
@@ -580,13 +592,13 @@ export function AgentThreadView(props: AgentThreadViewProps) {
         <Show when={empty()}>
           <div class="agent-thread-empty">
             <Show
-              when={props.onChangeAgent && props.agents.length > 1 ? props.onChangeAgent : undefined}
+              when={canChangeAgent()}
               fallback={
                 <AgentAvatar agent={props.agent} mood="idle" motion="always" class="agent-thread-empty-avatar" />
               }
             >
               {(change) => (
-                <DropdownMenu.Root placement="bottom" gutter={8}>
+                <DropdownMenu.Root placement="bottom" gutter={8} open={agentMenuOpen()} onOpenChange={setAgentMenuOpen}>
                   <DropdownMenu.Trigger
                     class="agent-thread-empty-agent"
                     aria-label={t("conversation.threads.view.changeAgent", { name: props.agent.name })}
@@ -624,7 +636,24 @@ export function AgentThreadView(props: AgentThreadViewProps) {
             </Show>
             <h2 class="agent-thread-empty-title">{t("conversation.threads.view.emptyTitle")}</h2>
             <p class="agent-thread-empty-subtitle">
-              {t("conversation.threads.view.emptySubtitle", { name: props.agent.name })}
+              <Show
+                when={canChangeAgent()}
+                fallback={t("conversation.threads.view.emptySubtitle", { name: props.agent.name })}
+              >
+                {emptySubtitleParts()[0]}
+                <Button
+                  type="button"
+                  variant="link"
+                  class="agent-thread-empty-agent-name"
+                  aria-label={t("conversation.threads.view.changeAgent", { name: props.agent.name })}
+                  aria-haspopup="menu"
+                  aria-expanded={agentMenuOpen() ? "true" : "false"}
+                  onClick={() => setAgentMenuOpen(true)}
+                >
+                  {props.agent.name}
+                </Button>
+                {emptySubtitleParts()[1]}
+              </Show>
             </p>
           </div>
         </Show>
