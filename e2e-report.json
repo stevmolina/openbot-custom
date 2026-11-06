@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "checks": [
+    "available computer becomes one my_computer entry for the member's agent",
+    "only the named agent gets the entry; no agent, another agent, or Computer Use off gets none",
+    "no bearer, a wrong bearer, and the bearer on another agent's path get 401",
+    "tool list comes from the desktop driver, without set_config",
+    "a screenshot without a size is asked at 1568 pixels",
+    "set_config is refused on the desktop",
+    "a reply from another session settles nothing",
+    "a request larger than the event allows is refused on the host, and the computer keeps working",
+    "a member whom no agent may serve does not add a computer or refresh the agents",
+    "a call to a computer whose switch is off is refused",
+    "switch off removes the entry; its bearer then gets no tools and a tool error, not a sign-in prompt",
+    "Stop turns the switch off, ends the session, and the host drops the computer"
+  ]
+}
