@@ -21,7 +21,7 @@ body:has(.browser-full-view) .app-frame {
 
 .browser-full-view {
   --browser-full-edge: var(--openbot-space-1);
-  --browser-full-top-height: 38px;
+  --browser-full-top-height: 48px;
   position: fixed;
   z-index: calc(var(--openbot-layer-dropdown) - 1);
   inset: 0;
@@ -64,7 +64,7 @@ body:has(.browser-full-view) .app-frame {
 
 /*
  * On macOS the window is `titleBarStyle: "hidden"` and the traffic lights are drawn over the view.
- * `trafficLightPosition: { x: 12, y: 13 }` (`src/main/main-window.ts`) puts the group at x 12..71, so
+ * `trafficLightPosition: { x: 12, y: 18 }` (`src/main/main-window.ts`) puts the group at x 12..71, so
  * the first control starts at x 82, where the top row of the app frame starts beside those dots.
  * In a right-to-left language the group is at the top right (`src/main/window-buttons.ts`), so
  * the inset is at the inline start.

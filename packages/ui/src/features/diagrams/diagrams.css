@@ -28,7 +28,7 @@
 /* The same height, avatar and name as the agent chat header, so switching views keeps the bar. */
 .diagram-view-header {
   display: flex;
-  height: 38px;
+  height: var(--left-header-height, 38px);
   flex: none;
   align-items: center;
   gap: var(--openbot-space-1-5);
