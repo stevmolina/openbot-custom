@@ -19,7 +19,8 @@ type PreviewView = "preview" | "code";
 
 /**
  * A fenced ```html or ```mermaid block: the rendered page or diagram in the code block's frame,
- * with a switch to its code and a larger view. While the block streams, it shows the code, because
+ * with a switch to its code and a larger view. In the preview, these controls float over the corner
+ * and show on hover or focus, so the page or diagram fills the block. While the block streams, it shows the code, because
  * half a page or diagram is not worth drawing. A diagram that Mermaid cannot draw stays code, with
  * the reason above it.
  */
@@ -144,6 +145,7 @@ export function CodePreview(props: {
     <SlidingTabs.Root
       ref={card}
       class="message-preview"
+      data-toolbar={previewable() && view() === "preview" ? "floating" : undefined}
       value={view()}
       onChange={(value: string) => setView(value === "code" ? "code" : "preview")}
     >
@@ -166,11 +168,13 @@ export function CodePreview(props: {
               variant="ghost"
               size="xs"
               class="message-code-copy message-preview-expand"
+              aria-label={t("chat.preview.expandLabel")}
+              title={t("chat.preview.expandLabel")}
               data-cuelume-open=""
               onClick={() => setExpanded(true)}
             >
               <Maximize2 aria-hidden="true" />
-              <span>{t("chat.preview.expandLabel")}</span>
+              <span class="message-code-action-label">{t("chat.preview.expandLabel")}</span>
             </Button>
           </Show>
         }
