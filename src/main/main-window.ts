@@ -242,7 +242,7 @@ export function createMainWindowController({
       // The dots are drawn over the renderer, so this position is a layout value, not a chrome
       // detail. macOS spaces the three 13px dots 23px apart, so the group is 59px wide: x 12 leaves
       // it 11px clear of the 82px where the top row's first control starts, in the app frame and in
-      // the full-bleed browser header alike, and y 13 puts its centre line within half a pixel of
+      // the full-bleed browser header alike, and y 18 puts its centre line within half a pixel of
       // both of those rows. The setup window below uses the same offsets. In a right-to-left language
       // the group is at the top right with the same offsets (`window-buttons.ts`).
       ...(process.platform === "darwin"
@@ -750,7 +750,8 @@ export function createComputerUsePermissionHelpWindow(
     backgroundColor: windowBackgroundColor(MAIN_WINDOW_DARK_BACKGROUND),
     title: translate("window.computerUsePermissionTitle"),
     ...(process.platform === "darwin"
-      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: WINDOW_BUTTON_INSET }
+      ? // This card has no 48px top row, so it keeps the original offset.
+        { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 12, y: 13 } }
       : {}),
     webPreferences: {
       preload: join(__dirname, "../preload/index.cjs"),

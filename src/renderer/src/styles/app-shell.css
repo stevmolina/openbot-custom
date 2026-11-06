@@ -22,7 +22,7 @@
  */
 
 .app-frame {
-  --left-header-height: 38px;
+  --left-header-height: 48px;
   --server-rail-width: 64px;
 
   position: relative;

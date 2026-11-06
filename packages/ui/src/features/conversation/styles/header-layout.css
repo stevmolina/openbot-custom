@@ -1,6 +1,6 @@
 .conversation-header {
   display: flex;
-  height: 38px;
+  height: var(--left-header-height, 38px);
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;

@@ -12,8 +12,11 @@ import { app, type BrowserWindow } from "electron";
  * each resize, because `setWindowButtonPosition` counts from the edge that AppKit starts at.
  */
 
-/** The offset of the button group from the top corner, as in every window with these buttons. */
-export const WINDOW_BUTTON_INSET = { x: 12, y: 13 } as const;
+/**
+ * The offset of the button group from the top corner. y 18 centres the 13px buttons on the 48px top
+ * row of the renderer (`--left-header-height`).
+ */
+export const WINDOW_BUTTON_INSET = { x: 12, y: 18 } as const;
 /** macOS spaces the three 13px buttons 23px apart, so the group is 59px wide. */
 const WINDOW_BUTTON_GROUP_WIDTH = 59;
 
