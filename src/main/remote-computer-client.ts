@@ -181,6 +181,12 @@ export class RemoteComputerClient {
     }));
   }
 
+  /** The user turned the switch of a stopped server on again: its calls are taken again. */
+  resume(serverId: string): void {
+    this.#stopped.delete(serverId);
+    this.reconcile();
+  }
+
   /** Stop: the switch of that server goes off, and its session ends now. */
   readonly stop = Effect.fn("RemoteComputerClient.stop")(function* (this: RemoteComputerClient, serverId: string) {
     this.#stopped.add(serverId);

@@ -26,7 +26,7 @@ export interface ComputerUseIpcDependencies {
   /** The switches of the joined servers. Null where this app joins no server. */
   remoteServers: Pick<RemoteServerManager, "remoteComputerServers" | "setRemoteComputerServer"> | null;
   /** The agents of joined servers that use this computer now. Null on a server. */
-  remoteComputers: Pick<RemoteComputerClient, "sessions" | "stop"> | null;
+  remoteComputers: Pick<RemoteComputerClient, "sessions" | "stop" | "resume"> | null;
 }
 
 /**
@@ -80,6 +80,8 @@ export function computerUseIpcHandlers({
       setRemoteServer: payloadHandler(parseSetRemoteComputerServerInput, async ({ serverId, enabled }) => {
         if (!remoteServers || !remoteComputers) throw new Error(sourceText("error.team.agentSettingsUnsupported"));
         await runCauseEffect(remoteServers.setRemoteComputerServer(serverId, enabled));
+        // The user's own switch is the newest answer, also after a Stop whose write failed.
+        if (enabled) remoteComputers.resume(serverId);
         return servers();
       }),
       getRemoteSessions: handler(async () => remoteComputers?.sessions() ?? []),

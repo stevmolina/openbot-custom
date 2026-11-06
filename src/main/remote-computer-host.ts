@@ -207,6 +207,8 @@ export class RemoteComputerHost {
     }
     if (existing) this.#remove(existing, "The session changed members.");
     yield* this.#listen();
+    // The Team API server can have stopped while the loopback server started.
+    if (!this.#link) return;
     // Another state of the same session can have added the computer while the server started.
     const raced = this.#computers.get(sessionId);
     if (raced?.memberId === memberId) {
@@ -370,6 +372,12 @@ export class RemoteComputerHost {
           resume(Effect.fail(new RemoteComputerError({ cause: new Error("The remote computer server has no port.") })));
           return;
         }
+        // A stop that came while the server started leaves nothing to serve.
+        if (!this.#link) {
+          server.close();
+          resume(Effect.fail(new RemoteComputerError({ cause: new Error("The host stopped.") })));
+          return;
+        }
         this.#server = server;
         this.#port = address.port;
         resume(Effect.void);
@@ -498,7 +506,11 @@ export class RemoteComputerHost {
   ): Effect.fn.Return<CallToolResult, RemoteComputerError> {
     const text = JSON.stringify(input ?? {});
     // The app refuses a longer call as a malformed event, which would end its whole connection.
-    if (tool.length > REMOTE_COMPUTER_TOOL_MAX_LENGTH || text.length > REMOTE_COMPUTER_ARGUMENTS_MAX_LENGTH)
+    if (
+      !tool.length ||
+      tool.length > REMOTE_COMPUTER_TOOL_MAX_LENGTH ||
+      text.length > REMOTE_COMPUTER_ARGUMENTS_MAX_LENGTH
+    )
       return yield* new RemoteComputerError({ cause: new Error("The tool request is too large for the computer.") });
     const value = yield* this.#call(computer, { operation: "call-tool", tool, arguments: text }, signal);
     const parsed = CallToolResultSchema.safeParse(value);
