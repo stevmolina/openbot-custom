@@ -233,8 +233,8 @@
 
 /* In the preview, the page or diagram fills the block. Its controls float over the top-right
    corner as icons and show on hover or keyboard focus. The code view keeps the normal header, and
-   so do touch screens, where a toolbar without hover would always cover the preview. */
-@media (hover: hover) and (pointer: fine) {
+   so does any device with a touch screen, where a toolbar that needs hover would stay hidden. */
+@media (hover: hover) and (pointer: fine) and (not (any-pointer: coarse)) {
   .message-preview[data-toolbar="floating"] .message-code-block {
     position: relative;
   }
