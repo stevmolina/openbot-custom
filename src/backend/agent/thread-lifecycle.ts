@@ -206,8 +206,6 @@ export interface ThreadLifecycleOptions {
   channelThread?: (threadId: string) => boolean;
   /** Whether a side thread is a branch: a copy of another conversation, which its first session must receive. */
   branchThread?: (threadId: string) => boolean;
-  /** Whether a side thread takes the runs of a routine. */
-  routineThread?: (threadId: string) => boolean;
 }
 
 /**
@@ -241,7 +239,6 @@ export class ThreadLifecycle {
   readonly #sectionTeammates: (agentId: string) => SectionTeammates | null;
   readonly #channelThread: (threadId: string) => boolean;
   readonly #branchThread: (threadId: string) => boolean;
-  readonly #routineThread: (threadId: string) => boolean;
   readonly #pendingHandoffs = new Map<string, string>();
   /**
    * Routine digests and the cleanup after a turn change a handoff one at a time. A routine thread
@@ -279,7 +276,6 @@ export class ThreadLifecycle {
     this.#sectionTeammates = options.sectionTeammates ?? (() => null);
     this.#channelThread = options.channelThread ?? (() => false);
     this.#branchThread = options.branchThread ?? (() => false);
-    this.#routineThread = options.routineThread ?? (() => false);
   }
 
   /**
@@ -478,11 +474,7 @@ export class ThreadLifecycle {
       // A Codex tool/config change replaces only the provider session, never the public thread.
       if (
         client.provider === "codex" &&
-        !(yield* this.hasCurrentToolsEffect(
-          this.#sessionAgent(currentAgent, publicThreadId),
-          client,
-          session.externalSessionId,
-        ))
+        !(yield* this.hasCurrentToolsEffect(currentAgent, client, session.externalSessionId, publicThreadId))
       ) {
         const replacement = yield* this.startProviderThread(
           currentAgent,
@@ -655,12 +647,12 @@ export class ThreadLifecycle {
     client: AgentClient,
     publicThreadId: string,
   ) {
-    const agent = this.#sessionAgent(owner, publicThreadId);
+    const agent = owner;
     yield* checkAgentFolders(agent);
     // One reading of the MCP set for the request and for the manifest below. Read twice, a change
     // that lands while the provider answers would be recorded as what this session was given, and
     // `hasCurrentTools` would then accept a session that never got it.
-    const mcpServers = this.#agentMcpServers(agent);
+    const mcpServers = this.#agentMcpServers(agent, publicThreadId);
     // The runtimes join that single reading for the same reason: a download that finishes while
     // the provider answers must not be recorded as what resolved this session's servers.
     const toolRuntimes = this.#toolRuntimes();
@@ -686,12 +678,11 @@ export class ThreadLifecycle {
       sandbox: codexSandboxMode(agent),
       ...this.#workspaceOnlyParam(agent, client),
       ...this.#computerUseParam(agent, client),
-      ...this.#mcpAgentParam(agent, client),
+      ...this.#mcpAgentParam(agent, client, publicThreadId),
       ...this.#instructions(
         agent,
         client,
         section,
-        this.#computerUseInOwnChat(owner, publicThreadId),
         yield* this.#homeSkills(agent, client),
         this.#conversation.isTaskThread(publicThreadId),
         mcpServers,
@@ -1079,26 +1070,18 @@ export class ThreadLifecycle {
   }
 
   /**
-   * The settings that one session of the agent runs with. A task runs without Computer Use: the
-   * agent's own chat keeps the one screen of this computer, so two conversations of the agent never
-   * drive it at the same time. A routine thread keeps it: a scheduled run that sends a message
-   * through a desktop app has no person to continue the step in the chat.
+   * The enabled servers this conversation of the agent is given. Every thread, its own chat and each
+   * side thread, keeps Computer Use when the agent has it on: the main process gives each thread its
+   * own driver address and takes the turns between them (`ComputerUseCoordinator`). Without Computer
+   * Use the fingerprint changes, so Codex replaces the session.
    */
-  #sessionAgent(agent: AgentSummary, publicThreadId: string): AgentSummary {
-    return this.#computerUseInOwnChat(agent, publicThreadId) ? { ...agent, computerUse: false } : agent;
-  }
-
-  #computerUseInOwnChat(agent: AgentSummary, publicThreadId: string): boolean {
-    return (
-      this.#conversation.isTaskThread(publicThreadId) &&
-      !this.#routineThread(publicThreadId) &&
-      agentComputerUseEnabled(agent)
+  #agentMcpServers(agent: AgentSummary, publicThreadId: string): readonly McpServerConfig[] {
+    const computerUse = agentComputerUseEnabled(agent);
+    return agentMcpServers(
+      this.#mcpServers(computerUse ? { agentId: agent.id, threadId: publicThreadId } : undefined),
+      computerUse,
+      agent.id,
     );
-  }
-
-  /** The enabled servers this agent is given. Without Computer Use the fingerprint changes, so Codex replaces the session. */
-  #agentMcpServers(agent: AgentSummary): readonly McpServerConfig[] {
-    return agentMcpServers(this.#mcpServers(), agentComputerUseEnabled(agent), agent.id);
   }
 
   /** The process environment, plus this agent's own display when screens are not shared. */
@@ -1130,8 +1113,12 @@ export class ThreadLifecycle {
    * The agent, for Claude and the ACP clients, which read the servers themselves. Codex gets its
    * servers from `codexConfigEffect` and takes the params as they are, so it is told nothing.
    */
-  #mcpAgentParam(agent: AgentSummary, client: AgentClient): { openbotAgentId?: string } {
-    return client.provider === "codex" ? {} : { openbotAgentId: agent.id };
+  #mcpAgentParam(
+    agent: AgentSummary,
+    client: AgentClient,
+    publicThreadId: string,
+  ): { openbotAgentId?: string; openbotThreadId?: string } {
+    return client.provider === "codex" ? {} : { openbotAgentId: agent.id, openbotThreadId: publicThreadId };
   }
 
   private readonly hasCurrentToolsEffect = Effect.fn("ThreadLifecycle.hasCurrentTools")(function* (
@@ -1139,6 +1126,7 @@ export class ThreadLifecycle {
     agent: AgentSummary,
     client: AgentClient,
     sessionId: string,
+    publicThreadId: string,
   ) {
     const stored = yield* Effect.result(threadIo(() => readFile(this.toolManifestPath(sessionId), "utf8")));
     if (Result.isFailure(stored)) {
@@ -1146,7 +1134,7 @@ export class ThreadLifecycle {
       return yield* stored.failure;
     }
     yield* checkAgentFolders(agent);
-    const configs = this.#agentMcpServers(agent);
+    const configs = this.#agentMcpServers(agent, publicThreadId);
     const toolRuntimes = this.#toolRuntimes();
     const own = yield* this.codexOwnServersEffect(client, configs, toolRuntimes);
     const proxy = yield* this.#proxyFingerprint(configs);
@@ -1195,7 +1183,6 @@ export class ThreadLifecycle {
     agent: AgentSummary,
     client: AgentClient,
     section = this.#sectionTeammates(agent.id),
-    computerUseInOwnChat = false,
     homeSkills: readonly HomeSkill[] = [],
     sideThread = false,
     mcpServers: readonly McpServerConfig[],
@@ -1203,7 +1190,6 @@ export class ThreadLifecycle {
   ): DynamicRecord {
     const memories = this.#memories.essentialFor(agent.id);
     const options = {
-      computerUseInOwnChat,
       sideThread,
       passwordVault: this.#passwordVaultConnected(),
       vaultItems: this.#vaultItems(),
@@ -1283,10 +1269,9 @@ export class ThreadLifecycle {
     externalThreadId: string,
   ): Effect.fn.Return<DynamicRecord, ThreadOperationFailed> {
     const publicThreadId = this.#conversation.publicThreadId(owner.id, externalThreadId);
-    const computerUseInOwnChat = this.#computerUseInOwnChat(owner, publicThreadId);
-    const agent = this.#sessionAgent(owner, publicThreadId);
+    const agent = owner;
     yield* checkAgentFolders(agent);
-    const configs = this.#agentMcpServers(agent);
+    const configs = this.#agentMcpServers(agent, publicThreadId);
     const toolRuntimes = this.#toolRuntimes();
     return {
       threadId: externalThreadId,
@@ -1298,12 +1283,11 @@ export class ThreadLifecycle {
       sandbox: codexSandboxMode(agent),
       ...this.#workspaceOnlyParam(agent, client),
       ...this.#computerUseParam(agent, client),
-      ...this.#mcpAgentParam(agent, client),
+      ...this.#mcpAgentParam(agent, client, publicThreadId),
       ...this.#instructions(
         agent,
         client,
         this.#sectionTeammates(agent.id),
-        computerUseInOwnChat,
         yield* this.#homeSkills(agent, client),
         this.#conversation.isTaskThread(publicThreadId),
         configs,

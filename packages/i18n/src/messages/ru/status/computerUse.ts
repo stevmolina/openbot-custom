@@ -10,4 +10,9 @@ export const messages = {
   "status.computerUse.driverMissing": "В этой сборке OpenBot нет драйвера управления компьютером.",
   "status.computerUse.progressActing": "Работаю с приложением на этом компьютере…",
   "status.computerUse.progressDeciding": "Выбираю следующий шаг в приложении…",
+  "status.computerUse.mainChat": "основной чат",
+  "status.computerUse.anotherAgent": "другой агент",
+  "status.computerUse.joinedServer": "подключённый сервер",
+  "status.computerUse.unnamedThread": "побочная ветка",
+  "status.computerUse.thisApp": "Это приложение",
 } as const satisfies PartialTranslation<typeof source>;

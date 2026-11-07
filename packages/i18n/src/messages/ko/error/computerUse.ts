@@ -13,4 +13,7 @@ export const messages = {
   "error.computerUse.socketDirectoryOtherOwner": "컴퓨터 제어 소켓 디렉터리 {path}은(는) 다른 사용자의 소유예요.",
   "error.computerUse.socketDirectoryShared": "컴퓨터 제어 소켓 디렉터리 {path}은(는) 다른 사용자에게 열려 있어요.",
   "error.computerUse.socketNotReady": "{seconds}초 안에 연결을 받지 못했어요. {reason}",
+  "error.computerUse.appInUse":
+    "{agent}({thread})이(가) {app}을(를) 사용 중입니다. 나중에 다시 시도하거나 다른 앱을 사용하세요.",
+  "error.computerUse.desktopBusy": "이 컴퓨터의 다른 작업이 제시간에 끝나지 않았습니다. 잠시 후 다시 시도하세요.",
 } as const satisfies PartialTranslation<typeof source>;

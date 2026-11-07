@@ -10,4 +10,9 @@ export const messages = {
   "status.computerUse.driverMissing": "لا يتضمن هذا الإصدار من OpenBot مشغّل التحكم في الحاسوب.",
   "status.computerUse.progressActing": "جارٍ استخدام تطبيق على هذا الحاسوب…",
   "status.computerUse.progressDeciding": "جارٍ تحديد الخطوة التالية في التطبيق…",
+  "status.computerUse.mainChat": "المحادثة الرئيسية",
+  "status.computerUse.anotherAgent": "وكيل آخر",
+  "status.computerUse.joinedServer": "خادم منضم",
+  "status.computerUse.unnamedThread": "سلسلة جانبية",
+  "status.computerUse.thisApp": "هذا التطبيق",
 } as const satisfies PartialTranslation<typeof source>;

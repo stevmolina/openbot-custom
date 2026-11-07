@@ -185,10 +185,17 @@ import {
   readMobileConnectApiUrl,
 } from "./central-auth-manager";
 import { ChatVisualPreviewer } from "./chat-visual-preview";
+import {
+  type ComputerUseActorDirectory,
+  cachedComputerUseActorLabels,
+  computerUseRefusalText,
+} from "./computer-use-actors";
+import { COMPUTER_USE_REMOTE_ACTOR, ComputerUseCoordinator, computerUseActor } from "./computer-use-coordinator";
 import { ComputerUseHighlightController } from "./computer-use-highlight-window";
 import { applicationBundlePath, applicationIconName } from "./computer-use-permission-app";
 import { ComputerUsePermissionHelpWindowController } from "./computer-use-permission-help-window";
 import {
+  appNameOfPid,
   COMPUTER_USE_ACTION_MAX_AGE_MS,
   COMPUTER_USE_CURSOR_MAX_AGE_MS,
   chooseTarget,
@@ -1724,7 +1731,38 @@ export async function createApplicationServices({
       applicationsDirectory: "/Applications",
     });
   };
+  /*
+   * Turns on the desktop for every agent and thread: one input action at a time, and one
+   * conversation at a time in each app. The tap asks it before each request reaches the daemon.
+   * `service` and `computerUseReads` are built below; neither is read before an agent acts.
+   */
+  const computerUseCoordinator = new ComputerUseCoordinator();
+  const computerUseActors: ComputerUseActorDirectory = {
+    agent: (agentId) => {
+      const agent = service.listAgents().find((candidate) => candidate.id === agentId);
+      if (!agent) return null;
+      return {
+        name: agent.name,
+        color: agent.avatarColor ?? agent.chatColor ?? null,
+        chatThreadId: agent.threadId ?? "",
+      };
+    },
+    threadTitle: (agentId, threadId) =>
+      service.listTasks(agentId).tasks.find((task) => task.threadId === threadId)?.title ?? null,
+  };
+  const computerUseLabel = cachedComputerUseActorLabels(computerUseActors);
   const cuaDriver = new CuaDriverRuntime({
+    coordinator: computerUseCoordinator,
+    refusalText: (refused) =>
+      computerUseRefusalText(
+        computerUseActors,
+        (pid) =>
+          computerUseReads.listWindows().pipe(
+            Effect.map((windows) => appNameOfPid(windows, pid)),
+            Effect.orElseSucceed(() => null),
+          ),
+        refused,
+      ),
     executable: await Effect.runPromise(resolveCuaDriverExecutable()),
     resolveExecutable: resolveCuaDriverExecutable,
     // Linux ships as an AppImage, whose mount is somewhere else at each launch, so the command the
@@ -1778,12 +1816,14 @@ export async function createApplicationServices({
     displays: computerUseDisplays,
     // `service` is built below; the controller starts only after it.
     idle: () => service.earliestRunningTurnStartedAt() === null && remoteComputerActiveSince() === null,
-    // The driver's own cursor on one screen, OpenBot's inside this overlay on more than one. The
-    // runtime answers `null` for the screen it draws itself, so only one cursor is ever drawn.
-    readPointer: () => {
-      const pointer = cuaDriver.lastPointer(COMPUTER_USE_CURSOR_MAX_AGE_MS);
-      return pointer ? computerUseDesktopPoint(pointer) : null;
-    },
+    // One cursor for each conversation that aimed the pointer recently, labelled with its agent,
+    // because several agents and threads can work on the desktop at the same time.
+    readPointers: () =>
+      cuaDriver.pointers(COMPUTER_USE_CURSOR_MAX_AGE_MS).map(({ actor, pointer }) => {
+        const label = computerUseLabel(actor);
+        const { x, y } = computerUseDesktopPoint({ x: pointer.x, y: pointer.y });
+        return { id: actor.key, x, y, label: label.agent, color: label.color };
+      }),
     readTarget: (previous) =>
       Effect.gen(function* () {
         if (!cuaDriver.mcpServerForProviders()) return null;
@@ -1939,7 +1979,8 @@ export async function createApplicationServices({
       customAgents: () => customAgents.configs(),
       // The enabled MCP servers, read at each spawn. The service owns the store, so this reads back
       // into the object being constructed; nothing calls it before the constructor returns.
-      mcpServers: () => service.enabledMcpServers(),
+      // With the audience, so each conversation of Claude, ACP, Pi and Muse gets its own Computer Use address.
+      mcpServers: (audience) => service.enabledMcpServers(audience),
       // The floor under those servers: the `bin` of every managed tool runtime, appended after the
       // user's own `PATH`, so a machine with no Node can still start `npx some-server` and a machine
       // that has one keeps the build it installed.
@@ -1963,7 +2004,17 @@ export async function createApplicationServices({
     // Appended to the stored servers at each spawn, so the same tools reach Codex, Claude and the
     // ACP providers. Null until the daemon runs, which is what keeps a machine with no driver from
     // handing every provider a command it cannot start.
-    computerUseMcpServer: () => cuaDriver.mcpServerForProviders(),
+    // One address for each conversation, so the coordinator knows who sends each action.
+    computerUseMcpServer: (audience) =>
+      cuaDriver.mcpServerForProviders(audience ? computerUseActor(audience.agentId, audience.threadId) : null),
+    // Turns of every thread, the tasks and channels included, whose events never reach `event`. The
+    // poll rests while no turn runs, so each turn wakes it, and a turn that held an app lets it go,
+    // so another conversation can work there at once. Both functions are defined below; no turn
+    // starts before they are.
+    observeTurn: (event) => {
+      if (event.type === "turn-started") startComputerUseHighlight();
+      else computerUseCoordinator.turnEnded(event.agentId, event.threadId);
+    },
     // Members' own computers, one entry for each agent that only that member can use.
     remoteComputerMcpServers: () => remoteComputers.mcpServers(),
     githubConnector: {
@@ -2298,10 +2349,6 @@ export async function createApplicationServices({
       clearInterval(screenReap);
     });
   }
-  // The poll rests while no turn runs, so each turn wakes it.
-  service.on("event", (event) => {
-    if (event.type === "turn-started") startComputerUseHighlight();
-  });
   /*
    * Where the decision put the download: onboarding, which is the screen this start is about to
    * show. A user who finished onboarding before OpenBot downloaded a runtime at all is asked for
@@ -3257,7 +3304,8 @@ export async function createApplicationServices({
           servers: () => remoteServers.remoteComputerServers(),
           disable: (serverId) => remoteServers.setRemoteComputerServer(serverId, false),
           send: (serverId, path, body) => remoteServers.request(serverId, path, acceptEmpty, { method: "POST", body }),
-          driver: () => cuaDriver.mcpServerForProviders(),
+          // One actor for every agent on a joined server: the released protocol names no agent.
+          driver: () => cuaDriver.mcpServerForProviders(COMPUTER_USE_REMOTE_ACTOR),
           computerName: () => localComputerName(),
           toJpeg: (data, _mimeType, quality) => {
             const image = nativeImage.createFromBuffer(Buffer.from(data, "base64"));

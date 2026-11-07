@@ -12,4 +12,6 @@ export const messages = defineMessages("error.computerUse", {
   "error.computerUse.socketDirectoryOtherOwner": "The Computer Use socket directory {path} belongs to another user.",
   "error.computerUse.socketDirectoryShared": "The Computer Use socket directory {path} is open to other users.",
   "error.computerUse.socketNotReady": "It did not accept a connection in {seconds} seconds. {reason}",
+  "error.computerUse.appInUse": "{app} is in use by {agent} ({thread}). Try again later or use another app.",
+  "error.computerUse.desktopBusy": "Another action on this computer did not finish in time. Try again in a moment.",
 });

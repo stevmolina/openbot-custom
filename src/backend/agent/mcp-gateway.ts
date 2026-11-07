@@ -25,6 +25,7 @@ import { inspectMcpServer, type McpSignInPlace, testMcpServer } from "../mcp-pro
 import {
   type McpEndpoint,
   type McpEndpointRefusal,
+  type McpServerAudience,
   type McpServerDrop,
   type McpToolRuntimeSource,
   type McpToolRuntimes,
@@ -73,7 +74,8 @@ export interface McpGatewayOptions {
   servers: McpServerStore;
   /** The main process's knowledge of this machine: the tool runtimes and the http sign-ins. */
   credentials: ProviderClientContext;
-  computerUseMcpServer: () => McpServerConfig | null;
+  /** The Computer Use entry for one conversation, or the shared one for a reader that names none. */
+  computerUseMcpServer: (audience: McpServerAudience | null) => McpServerConfig | null;
   /**
    * The entries for the computers of members who let their agents use them (`remote-computer-use-v1`),
    * one for each agent that may use each computer. `agentMcpServers` gives each agent only its own.
@@ -96,7 +98,7 @@ export interface McpGatewayOptions {
  */
 export class McpGateway {
   readonly #servers: McpServerStore;
-  readonly #computerUseMcpServer: () => McpServerConfig | null;
+  readonly #computerUseMcpServer: (audience: McpServerAudience | null) => McpServerConfig | null;
   readonly #remoteComputerMcpServers: () => readonly McpServerConfig[];
   readonly #githubConnector: GitHubConnectorSource | null;
   /**
@@ -528,10 +530,10 @@ export class McpGateway {
    * name: a server the user added keeps working as they set it up, and two entries with one name
    * would collide in every provider's configuration.
    */
-  enabled(): McpServerConfig[] {
+  enabled(audience?: McpServerAudience): McpServerConfig[] {
     const configured = this.#servers.listEnabled();
     const builtIn: McpServerConfig[] = [];
-    const computerUse = this.#computerUseMcpServer();
+    const computerUse = this.#computerUseMcpServer(audience ?? null);
     if (computerUse) builtIn.push(computerUse);
     const github = this.#githubConnector?.mcpServer() ?? null;
     if (github && !configured.some((config) => config.name === github.name)) builtIn.push(github);

@@ -11,4 +11,9 @@ export const messages = {
   "status.computerUse.driverMissing": "Questa versione di OpenBot non include il driver del Controllo del computer.",
   "status.computerUse.progressActing": "Uso di un'app su questo computer…",
   "status.computerUse.progressDeciding": "Scelta del prossimo passo nell'app…",
+  "status.computerUse.mainChat": "chat principale",
+  "status.computerUse.anotherAgent": "un altro agente",
+  "status.computerUse.joinedServer": "un server collegato",
+  "status.computerUse.unnamedThread": "un thread secondario",
+  "status.computerUse.thisApp": "Questa app",
 } as const satisfies PartialTranslation<typeof source>;

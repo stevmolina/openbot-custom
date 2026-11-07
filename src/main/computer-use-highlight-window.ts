@@ -1,6 +1,6 @@
 import type {
+  ComputerUseAgentCursorPlacement,
   ComputerUseCoveredArea,
-  ComputerUseCursorPoint,
   ComputerUseHighlightPlacement,
 } from "@openbot/contracts/ipc";
 import { createOpenBotLogger, type Logger, toLogValue } from "@openbot/logging";
@@ -68,12 +68,13 @@ export interface ComputerUseHighlightControllerOptions<W extends HighlightOverla
     previous: ComputerUseHighlightTarget | null,
   ) => Effect.Effect<ComputerUseHighlightTarget | null, CuaDriverFailure>;
   /**
-   * Where the agent last aimed the pointer, on the desktop, or `null` when nothing is to be drawn.
+   * Where each conversation last aimed the pointer, on the desktop: one agent cursor each, oldest
+   * first. Empty when nothing is to be drawn.
    *
-   * Read after the target and never instead of it: the cursor is drawn inside the same overlay and
+   * Read after the target and never instead of it: the cursors are drawn inside the same overlay and
    * only while an agent holds the desktop, so no point is asked for while the rim is down.
    */
-  readPointer?: () => ComputerUseCursorPoint | null;
+  readPointers?: () => readonly ComputerUseAgentCursorPlacement[];
   /**
    * Every display the desktop is made of, each with the rectangle it covers.
    *
@@ -221,7 +222,7 @@ export class ComputerUseHighlightController<W extends HighlightOverlayWindow = B
       return;
     }
     const displays = this.#options.displays();
-    const pointer = this.#options.readPointer?.() ?? null;
+    const pointers = this.#options.readPointers?.() ?? [];
     for (const id of [...this.#overlays.keys()]) {
       if (!displays.some((display) => display.id === id)) this.#retire(id);
     }
@@ -246,12 +247,17 @@ export class ComputerUseHighlightController<W extends HighlightOverlayWindow = B
         overlay.bounds = display.bounds;
         overlay.window.setBounds(display.bounds, false);
       }
-      this.#place(overlay.window, target, display.bounds, pointer);
+      this.#place(overlay.window, target, display.bounds, pointers);
     }
   }).bind(this);
 
   /** The rim and the cursor in one display's own pixels, which is what that overlay draws in. */
-  #place(window: W, target: ComputerUseHighlightTarget, display: Rectangle, pointer: ComputerUseCursorPoint | null) {
+  #place(
+    window: W,
+    target: ComputerUseHighlightTarget,
+    display: Rectangle,
+    pointers: readonly ComputerUseAgentCursorPlacement[],
+  ) {
     this.#options.place(window, {
       x: target.bounds.x - display.x,
       y: target.bounds.y - display.y,
@@ -259,7 +265,7 @@ export class ComputerUseHighlightController<W extends HighlightOverlayWindow = B
       height: target.bounds.height,
       cornerRadius: this.#options.cornerRadius ?? DEFAULT_CORNER_RADIUS,
       windowTitle: target.title,
-      cursor: cursorIn(pointer, display),
+      cursors: pointers.flatMap((pointer) => cursorIn(pointer, display) ?? []),
       covered: target.covered.map((area) => inDisplay(area, display)),
     });
     // Never `show()`: that would take the key window away from the application the agent is
@@ -297,18 +303,17 @@ export class ComputerUseHighlightController<W extends HighlightOverlayWindow = B
 }
 
 /**
- * The cursor's place inside one overlay, or `null` when there is none or it is on another display.
+ * A cursor's place inside one overlay, or `null` when it is on another display.
  *
  * A point outside the overlay is dropped rather than clamped to an edge: a cursor pinned to the
  * side of the screen would claim the agent works there, which is the mistake this whole cursor
  * exists to correct.
  */
-function cursorIn(point: ComputerUseCursorPoint | null, display: Rectangle): ComputerUseCursorPoint | null {
-  if (!point) return null;
+function cursorIn(point: ComputerUseAgentCursorPlacement, display: Rectangle): ComputerUseAgentCursorPlacement | null {
   const x = point.x - display.x;
   const y = point.y - display.y;
   if (x < 0 || y < 0 || x > display.width || y > display.height) return null;
-  return { x, y };
+  return { ...point, x, y };
 }
 
 /** One display's overlay: the window, whether its surface is loaded, and the display it covers. */

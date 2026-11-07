@@ -11,4 +11,9 @@ export const messages = {
   "status.computerUse.driverMissing": "Diese Version von OpenBot enthält keinen Treiber für die Computersteuerung.",
   "status.computerUse.progressActing": "Eine App auf diesem Computer wird verwendet…",
   "status.computerUse.progressDeciding": "Der nächste Schritt in der App wird bestimmt…",
+  "status.computerUse.mainChat": "Hauptchat",
+  "status.computerUse.anotherAgent": "ein anderer Agent",
+  "status.computerUse.joinedServer": "ein beigetretener Server",
+  "status.computerUse.unnamedThread": "ein Nebenthread",
+  "status.computerUse.thisApp": "Diese App",
 } as const satisfies PartialTranslation<typeof source>;

@@ -6,13 +6,21 @@
 // window order is no answer either, because the driver acts in the background by design and leaves
 // the order alone, and because the user's own clicks move it.
 //
-// OpenBot does own one thing: the address it hands the providers. This listens on an address of its
-// own, forwards every request byte to the daemon unchanged, and reads the few fields it needs out
-// of the request line - which application, which window, and which point the agent asked the
+// OpenBot does own one thing: the addresses it hands the providers. This listens on addresses of its
+// own, forwards each request to the daemon unchanged, and reads the few fields it needs out of the
+// request line - which tool, which application, which window, and which point the agent asked the
 // daemon to act on.
 //
-// It carries no policy. It refuses nothing and delays no request: a tap that could change an
-// action would be a second, quieter place where Computer Use is decided.
+// Each conversation (an agent's own chat or one of its side threads) gets an address of its own,
+// so a request names its actor without trusting anything the request says. The proxy opens one
+// connection for each request, and the one shared address stays for a client that names no
+// conversation. The address is stable for one conversation, because it reaches the proxy as an
+// argument, and Codex folds the arguments into the stored tool fingerprint.
+//
+// It holds one decision, and only one: when a tool call that sends input may reach the daemon.
+// `ComputerUseCoordinator` makes it, so that two conversations never type into the same app or at
+// the same moment. A request it refuses gets a tool error with the reason instead of an answer
+// from the daemon; every other request passes unchanged and in order. Reads take no turn.
 //
 // It changes one thing on the way back. The answer to a tool call gets one more text item, a JSON
 // copy of its `structuredContent`, because some providers show the model only the text and the
@@ -25,10 +33,17 @@
 
 import { chmod } from "node:fs/promises";
 import { connect, createServer, type Server, type Socket } from "node:net";
+import { dirname, join } from "node:path";
 import { Transform, type TransformCallback } from "node:stream";
 import { type DynamicRecord, isDynamicRecord } from "@openbot/contracts/runtime-values";
 import { createOpenBotLogger, type Logger } from "@openbot/logging";
-import { Effect, Result } from "effect";
+import { Effect, Exit, Result } from "effect";
+import {
+  COMPUTER_USE_SHARED_ACTOR_KEY,
+  type ComputerUseActor,
+  type ComputerUseCoordinator,
+  type ComputerUseRefused,
+} from "./computer-use-coordinator";
 import { CuaDriverFailure, cuaIO } from "./cua-driver-effects";
 import { rewriteCallAnswer } from "./cua-driver-structured-text";
 
@@ -167,10 +182,12 @@ export interface ActionTapAddresses {
   tap: string;
 }
 
-/** A tool call the daemon has not answered yet: its tool, and when the request passed through. */
+/** A tool call the daemon has not answered yet: its tool, when the request passed through, and its turn. */
 interface PendingCall {
   tool: string;
   at: number;
+  /** Gives back the action lease the call holds. The answer ends the action, and so does a closed connection. */
+  release: () => void;
 }
 
 /**
@@ -191,10 +208,10 @@ class CallAnswerLines extends Transform {
   #answering: PendingCall | null = null;
   #held: Buffer[] = [];
   #heldBytes = 0;
-  readonly #answered: (tool: string, ms: number) => void;
+  readonly #answered: (call: PendingCall, ms: number) => void;
   readonly #now: () => number;
 
-  constructor(answered: (tool: string, ms: number) => void, now: () => number) {
+  constructor(answered: (call: PendingCall, ms: number) => void, now: () => number) {
     super();
     this.#answered = answered;
     this.#now = now;
@@ -238,7 +255,7 @@ class CallAnswerLines extends Transform {
       if (newline >= 0) {
         if (this.#line === "hold") this.#release(true);
         const answering = this.#answering;
-        if (answering) this.#answered(answering.tool, this.#now() - answering.at);
+        if (answering) this.#answered(answering, this.#now() - answering.at);
         this.#answering = null;
         this.#line = null;
       }
@@ -269,24 +286,83 @@ function withCopy(line: Buffer): Buffer {
   return rewritten === null ? line : Buffer.from(`${rewritten}\n`, "utf8");
 }
 
-/** Keeps the last action an agent asked for, and forwards everything else unchanged. */
+/** A point an agent aimed at, with the conversation that aimed it. */
+export interface ObservedActorPointer {
+  actor: ComputerUseActor;
+  pointer: ObservedPointer;
+}
+
+const SHARED_ACTOR: ComputerUseActor = { key: COMPUTER_USE_SHARED_ACTOR_KEY, agentId: null, threadId: null };
+const WINDOWS_PIPE_PREFIX = "\\\\.\\pipe\\";
+
+export interface CuaDriverActionTapOptions {
+  now?: () => number;
+  logger?: Logger;
+  /** Decides when a tool call that sends input may run. Without one, every request passes at once. */
+  coordinator?: ComputerUseCoordinator;
+  /** The tool error an agent reads for a refused request. */
+  refusalText?: (refused: ComputerUseRefused) => Effect.Effect<string>;
+  /**
+   * The longest Unix socket path this computer takes. An address for one conversation that would be
+   * longer is not made, and that conversation gets the shared address instead.
+   */
+  maxSocketPathLength?: number;
+}
+
+/** One listening address: the shared one, or the one of a conversation. */
+interface Listener {
+  server: Server;
+  address: string;
+  actor: ComputerUseActor;
+}
+
+/** Keeps the last action each agent asked for, holds input to its turn, and forwards everything else unchanged. */
 export class CuaDriverActionTap {
-  #server: Server | null = null;
+  #shared: Listener | null = null;
+  readonly #actorListeners = new Map<string, Listener>();
+  /**
+   * Every conversation that was given an address in this run. The providers keep those addresses, so
+   * a daemon that restarts gets them all back rather than only the shared one.
+   */
+  readonly #actors = new Map<string, ComputerUseActor>();
+  #upstream: string | null = null;
   #sockets = new Set<Socket>();
   #action: ObservedAction | null = null;
   #pointer: ObservedPointer | null = null;
-  #address: string | null = null;
-  #now: () => number;
-  #logger: Logger;
+  readonly #pointers = new Map<string, ObservedActorPointer>();
+  readonly #now: () => number;
+  readonly #logger: Logger;
+  readonly #coordinator: ComputerUseCoordinator | null;
+  readonly #refusalText: (refused: ComputerUseRefused) => Effect.Effect<string>;
+  readonly #maxSocketPathLength: number | null;
 
-  constructor(now: () => number = Date.now, logger: Logger = defaultLogger) {
-    this.#now = now;
-    this.#logger = logger;
+  constructor(options: CuaDriverActionTapOptions = {}) {
+    this.#now = options.now ?? Date.now;
+    this.#logger = options.logger ?? defaultLogger;
+    this.#coordinator = options.coordinator ?? null;
+    this.#refusalText = options.refusalText ?? ((refused) => Effect.succeed(refused.reason));
+    this.#maxSocketPathLength = options.maxSocketPathLength ?? null;
   }
 
-  /** The address to hand the providers, or `null` while nothing listens. */
+  /** The shared address to hand a client that names no conversation, or `null` while nothing listens. */
   get address(): string | null {
-    return this.#address;
+    return this.#shared?.address ?? null;
+  }
+
+  /**
+   * The address of one conversation, listening by the time this returns, or `null` when it cannot
+   * have one (the tap is down, or the path would be too long). The caller then hands out the shared
+   * address, which still works and still takes turns, as one actor for every such client.
+   *
+   * Synchronous, because the MCP entry is read synchronously by every provider. Binding a Unix
+   * socket or a named pipe is synchronous in Node, so the proxy that the provider starts next always
+   * finds it.
+   */
+  actorAddress(actor: ComputerUseActor): string | null {
+    this.#actors.set(actor.key, actor);
+    const existing = this.#actorListeners.get(actor.key);
+    if (existing) return existing.address;
+    return this.#listenActor(actor);
   }
 
   /**
@@ -314,13 +390,20 @@ export class CuaDriverActionTap {
     return this.#now() - pointer.at <= maxAgeMs ? pointer : null;
   }
 
+  /** The last point of each conversation that aimed recently, oldest first, so the newest is drawn on top. */
+  pointers(maxAgeMs: number): ObservedActorPointer[] {
+    const now = this.#now();
+    return [...this.#pointers.values()]
+      .filter((entry) => now - entry.pointer.at <= maxAgeMs)
+      .sort((left, right) => left.pointer.at - right.pointer.at);
+  }
+
   listen = Effect.fn("CuaDriverActionTap.listen")(function* (
     this: CuaDriverActionTap,
     { upstream, tap }: ActionTapAddresses,
   ) {
-    if (this.#server) return;
-    const server = createServer((client) => this.#join(client, upstream));
-    this.#server = server;
+    if (this.#shared) return;
+    const server = createServer((client) => this.#join(client, upstream, SHARED_ACTOR));
     const result = yield* Effect.result(
       Effect.callback<void, CuaDriverFailure>((resume) => {
         const fail = (cause: Error) => resume(Effect.fail(new CuaDriverFailure({ cause })));
@@ -339,35 +422,97 @@ export class CuaDriverActionTap {
     // Keep the listener safe after it is acquired and while it is closed after a bind failure.
     server.on("error", () => undefined);
     if (Result.isFailure(result)) {
-      yield* this.close();
+      yield* Effect.callback<void>((resume) => {
+        server.close(() => resume(Effect.void));
+      });
       return yield* result.failure;
     }
     yield* cuaIO(() => chmod(tap, 0o600)).pipe(Effect.catch(() => Effect.void));
-    this.#address = tap;
+    this.#shared = { server, address: tap, actor: SHARED_ACTOR };
+    this.#upstream = upstream;
+    // The conversations given an address before the daemon restarted still hold it.
+    for (const actor of this.#actors.values()) this.#listenActor(actor);
   }, Effect.uninterruptible);
 
   close = Effect.fn("CuaDriverActionTap.close")(function* (this: CuaDriverActionTap) {
-    const server = this.#server;
-    this.#server = null;
-    this.#address = null;
+    const listeners = [...(this.#shared ? [this.#shared] : []), ...this.#actorListeners.values()];
+    this.#shared = null;
+    this.#actorListeners.clear();
+    this.#upstream = null;
     this.#action = null;
     this.#pointer = null;
+    this.#pointers.clear();
     for (const socket of this.#sockets) socket.destroy();
     this.#sockets.clear();
-    if (!server) return;
-    yield* Effect.callback<void>((resume) => {
-      server.close(() => resume(Effect.void));
-    });
+    yield* Effect.forEach(
+      listeners,
+      ({ server }) =>
+        Effect.callback<void>((resume) => {
+          server.close(() => resume(Effect.void));
+        }),
+      { discard: true },
+    );
   }, Effect.uninterruptible);
 
-  #join(client: Socket, upstream: string): void {
+  #listenActor(actor: ComputerUseActor): string | null {
+    const shared = this.#shared;
+    const upstream = this.#upstream;
+    if (!shared || !upstream) return null;
+    const address = shared.address.startsWith(WINDOWS_PIPE_PREFIX)
+      ? `${shared.address}-${actor.key}`
+      : join(dirname(shared.address), `a-${actor.key}.sock`);
+    if (
+      !address.startsWith(WINDOWS_PIPE_PREFIX) &&
+      this.#maxSocketPathLength !== null &&
+      address.length > this.#maxSocketPathLength
+    )
+      return null;
+    const server = createServer((client) => this.#join(client, upstream, actor));
+    const listener: Listener = { server, address, actor };
+    // A bind failure arrives as an event on the next tick. The conversation then gets the shared
+    // address at its next session start; the proxy already started fails its requests, as it would
+    // for a daemon that stopped.
+    server.on("error", (cause: Error) => {
+      if (this.#actorListeners.get(actor.key) === listener) this.#actorListeners.delete(actor.key);
+      this.#logger.warn("A Computer Use address did not listen", { message: cause.message });
+      server.close();
+    });
+    try {
+      server.listen(address);
+    } catch (cause) {
+      this.#logger.warn("A Computer Use address did not listen", {
+        message: cause instanceof Error ? cause.message : String(cause),
+      });
+      return null;
+    }
+    this.#actorListeners.set(actor.key, listener);
+    // The directory is already private to this user; the mode is the same belt as the shared address.
+    if (!address.startsWith(WINDOWS_PIPE_PREFIX))
+      Effect.runFork(cuaIO(() => chmod(address, 0o600)).pipe(Effect.catch(() => Effect.void)));
+    return address;
+  }
+
+  #join(client: Socket, upstream: string, actor: ComputerUseActor): void {
     const daemon = connect(upstream);
     this.#sockets.add(client);
     this.#sockets.add(daemon);
-    const answers = new CallAnswerLines((tool, ms) => this.#logAnswered(tool, ms), this.#now);
+    const answers = new CallAnswerLines((call, ms) => {
+      call.release();
+      this.#logAnswered(call.tool, ms);
+    }, this.#now);
+    /** The admission in progress, which a closed connection interrupts. */
+    let waiting: ((interruptor?: number) => void) | null = null;
+    let ended = false;
     const end = () => {
+      if (ended) return;
+      ended = true;
+      waiting?.();
+      waiting = null;
       // A call that hangs in the driver ends here, when the agent gives up and closes the connection.
-      for (const call of answers.takeUnanswered()) this.#logUnanswered(call.tool, this.#now() - call.at);
+      for (const call of answers.takeUnanswered()) {
+        call.release();
+        this.#logUnanswered(call.tool, this.#now() - call.at);
+      }
       this.#sockets.delete(client);
       this.#sockets.delete(daemon);
       client.destroy();
@@ -385,32 +530,89 @@ export class CuaDriverActionTap {
     // Piped, so the stream keeps the back pressure of a screenshot that the agent reads slower than
     // the daemon writes it.
     daemon.pipe(answers).pipe(client);
-    let pending = "";
-    let skipping = false;
-    client.on("data", (chunk: Buffer) => {
-      daemon.write(chunk);
-      pending += chunk.toString("utf8");
-      let newline = pending.indexOf("\n");
-      while (newline >= 0) {
-        const line = pending.slice(0, newline);
-        pending = pending.slice(newline + 1);
-        // Told before the daemon can answer, because this runs in the same turn as the write above.
-        if (skipping) {
-          answers.expect(null);
-        } else {
-          const at = this.#now();
-          const { tool, action, pointer } = readRequest(line, at);
-          answers.expect(tool === null ? null : { tool, at });
-          if (action) this.#action = action;
-          if (pointer) this.#pointer = pointer;
+
+    /** Bytes the agent sent that have not gone to the daemon yet, because their line is not whole or not admitted. */
+    let held: Buffer = Buffer.alloc(0);
+    const forward = (line: Buffer, request: ObservedRequest, at: number, release: () => void) => {
+      // Told before the daemon can answer, because this runs in the same turn as the write below.
+      answers.expect(request.tool === null ? null : { tool: request.tool, at, release });
+      if (request.tool === null) release();
+      if (request.action) this.#action = request.action;
+      if (request.pointer) {
+        this.#pointer = request.pointer;
+        this.#pointers.set(actor.key, { actor, pointer: request.pointer });
+      }
+      daemon.write(line);
+    };
+    const refuse = (text: string) => {
+      // The proxy sends one request on each connection, so the refusal is the whole answer and the
+      // connection ends with it. The result has no `structuredContent`: a client checks that against
+      // the tool's output schema, and an error result needs none.
+      const answer = { ok: true, result: { content: [{ type: "text", text }], isError: true } };
+      held = Buffer.alloc(0);
+      daemon.unpipe(answers);
+      client.end(`${JSON.stringify(answer)}\n`);
+      daemon.destroy();
+    };
+    const pump = () => {
+      while (!waiting && !ended) {
+        const newline = held.indexOf(NEWLINE);
+        if (newline < 0) {
+          // A client that never sends a newline must not grow this buffer without end. A line this
+          // long is no request the proxy sends, so it is not forwarded unread past the turns.
+          if (held.length > MAX_REQUEST_LINE_BYTES) end();
+          return;
         }
-        skipping = false;
-        newline = pending.indexOf("\n");
+        const line = held.subarray(0, newline + 1);
+        held = held.subarray(newline + 1);
+        const at = this.#now();
+        const request = readRequest(line.toString("utf8", 0, line.length - 1), at);
+        const coordinator = this.#coordinator;
+        if (!coordinator || request.tool === null) {
+          forward(line, request, at, () => undefined);
+          continue;
+        }
+        const admitted = coordinator.admit(actor, { tool: request.tool, pid: request.action?.pid ?? null }).pipe(
+          Effect.map((admission) => ({ admission, text: null })),
+          Effect.catchTag("ComputerUseRefused", (refused) =>
+            this.#refusalText(refused).pipe(Effect.map((text) => ({ admission: null, text }))),
+          ),
+        );
+        // An admission can settle before `runCallback` returns. The loop then goes on by itself, and
+        // only a later settle has to start it again.
+        let settled = false;
+        let synchronous = true;
+        const cancel = Effect.runCallback(admitted, {
+          onExit: (exit) => {
+            settled = true;
+            waiting = null;
+            if (Exit.isFailure(exit)) {
+              // Interrupted by a closed connection, which has already ended.
+              if (!ended) end();
+              return;
+            }
+            const { admission, text } = exit.value;
+            if (ended) {
+              admission?.release();
+              return;
+            }
+            if (!admission) {
+              this.#logger.info("Computer Use request refused", { tool: request.tool });
+              refuse(text ?? "");
+              return;
+            }
+            // The time of the request is when it reached the daemon, so the log shows the driver's share.
+            forward(line, request, this.#now(), () => admission.release());
+            if (!synchronous) pump();
+          },
+        });
+        synchronous = false;
+        if (!settled) waiting = cancel;
       }
-      if (pending.length > MAX_REQUEST_LINE_BYTES) {
-        pending = "";
-        skipping = true;
-      }
+    };
+    client.on("data", (chunk: Buffer) => {
+      held = held.length === 0 ? chunk : Buffer.concat([held, chunk]);
+      pump();
     });
   }
 

@@ -13,4 +13,7 @@ export const messages = {
   "error.computerUse.socketDirectoryOtherOwner": "Bilgisayar Kullanımı soket dizini {path} başka bir kullanıcıya ait.",
   "error.computerUse.socketDirectoryShared": "Bilgisayar Kullanımı soket dizini {path} diğer kullanıcılara açık.",
   "error.computerUse.socketNotReady": "{seconds} saniye içinde bir bağlantıyı kabul etmedi. {reason}",
+  "error.computerUse.appInUse":
+    "{app} şu anda {agent} ({thread}) tarafından kullanılıyor. Daha sonra tekrar deneyin veya başka bir uygulama kullanın.",
+  "error.computerUse.desktopBusy": "Bu bilgisayardaki başka bir işlem zamanında bitmedi. Biraz sonra tekrar deneyin.",
 } as const satisfies PartialTranslation<typeof source>;

@@ -10,4 +10,9 @@ export const messages = {
   "status.computerUse.driverMissing": "Cette version d’OpenBot ne contient pas de pilote Computer Use.",
   "status.computerUse.progressActing": "Utilisation d’une application sur cet ordinateur…",
   "status.computerUse.progressDeciding": "Choix de la prochaine étape dans l’application…",
+  "status.computerUse.mainChat": "discussion principale",
+  "status.computerUse.anotherAgent": "un autre agent",
+  "status.computerUse.joinedServer": "un serveur rejoint",
+  "status.computerUse.unnamedThread": "un fil secondaire",
+  "status.computerUse.thisApp": "Cette app",
 } as const satisfies PartialTranslation<typeof source>;

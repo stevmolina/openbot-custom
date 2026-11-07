@@ -15,4 +15,7 @@ export const messages = {
   "error.computerUse.socketDirectoryShared":
     "El directorio del socket de uso del equipo {path} está abierto a otros usuarios.",
   "error.computerUse.socketNotReady": "No aceptó una conexión en {seconds} segundos. {reason}",
+  "error.computerUse.appInUse": "{agent} ({thread}) está usando {app}. Inténtalo más tarde o usa otra app.",
+  "error.computerUse.desktopBusy":
+    "Otra acción en este ordenador no terminó a tiempo. Inténtalo de nuevo en un momento.",
 } as const satisfies PartialTranslation<typeof source>;

@@ -12,4 +12,6 @@ export const messages = {
   "error.computerUse.socketDirectoryOtherOwner": "Computer Use 套接字目录 {path} 属于其他用户。",
   "error.computerUse.socketDirectoryShared": "Computer Use 套接字目录 {path} 对其他用户开放。",
   "error.computerUse.socketNotReady": "它在 {seconds} 秒内没有接受连接。{reason}",
+  "error.computerUse.appInUse": "{app} 正由 {agent}（{thread}）使用。请稍后重试，或使用其他应用。",
+  "error.computerUse.desktopBusy": "这台电脑上的另一个操作未能及时完成。请稍后重试。",
 } as const satisfies PartialTranslation<typeof source>;

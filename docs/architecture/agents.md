@@ -128,10 +128,10 @@ opens the routine thread. The Team API adapters drop this event, so a remote cli
 notification for a run in a routine thread. The released `agent-tasks-v1` routes do not send
 `routineId`; only this computer's IPC list has it.
 
-A routine thread is a side thread, but its runs keep Computer Use when the agent has it on: a
-scheduled run that drives a desktop app has no person to continue the step in the chat. The
-routine thread and the chat of one agent can then drive the screen at the same time, as two agents
-can. Its runs also keep the tools of the chat that side threads do not have:
+A routine thread is a side thread. Like every side thread, it keeps Computer Use when the agent has
+it on, and OpenBot takes the turns between it, the chat and other agents (see
+[Computer Use turns](computer-use.md#turns-between-agents-and-threads)). Its runs also keep the tools
+of the chat that side threads do not have:
 `OpenBotToolRouter` does not count a routine thread as an execution thread, so a run can call
 `await_event` and `start_task`.
 
@@ -573,10 +573,11 @@ the agent's chat (`withoutTaskTurns`). The chat shows a row for each open task u
 instead, as on desktop: a finished task stays with its result until the person closes it, and a tap
 opens the task.
 
-Shared writes: each task thread owns its own browser tabs and tab queue. Computer Use is an MCP
-server that the provider starts, so OpenBot cannot queue its calls; `ThreadLifecycle` starts a task
-session without it, and the instructions send desktop work to the agent's own chat. A routine thread
-is the exception (see above). Tasks share the
+Shared writes: each task thread owns its own browser tabs and tab queue. Every thread keeps Computer
+Use when the agent has it on. `ThreadLifecycle` reads the MCP set with the agent and the public
+thread, so each thread gets its own driver address, and the main process takes the turns between
+all threads and all agents (see [Computer Use turns](computer-use.md#turns-between-agents-and-threads)).
+Tasks share the
 workspace, and OpenBot does not lock files; the `start_task` guidance warns the agent about this.
 
 A provider, account or custom-agent change that a user or an agent asks for while a turn, a task or

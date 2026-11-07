@@ -284,6 +284,11 @@ function workableWindows(visible: readonly DriverWindow[], ownPid: number): Driv
   );
 }
 
+/** The application name of a process, from a `list_windows` answer, or `null` when no window names it. */
+export function appNameOfPid(payload: unknown, pid: number): string | null {
+  return readWindows(payload).find((window) => window.pid === pid && window.appName)?.appName ?? null;
+}
+
 function readWindows(payload: unknown): DriverWindow[] {
   if (!isDynamicRecord(payload) || !Array.isArray(payload.windows)) return [];
   const windows: DriverWindow[] = [];

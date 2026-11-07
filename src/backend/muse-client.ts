@@ -26,6 +26,8 @@ import {
   type McpServerSource,
   type McpToolRuntimeSource,
   mcpAgentParam,
+  mcpAudience,
+  mcpThreadParam,
   usableMcpServers,
 } from "./mcp-provider-shapes";
 import { isInheritedProfileValue, mcpSecretValues, redactMcpValues } from "./mcp-redaction";
@@ -513,7 +515,11 @@ export class MuseAgentClient extends EventEmitter<ClientEvents> implements Agent
     const setup = Effect.gen({ self: this }, function* () {
       const resolved = yield* usableMcpServers(
         agentMcpServers(
-          this.#options.profileGeneration ? [] : (this.#options.mcpServers?.() ?? []),
+          this.#options.profileGeneration
+            ? []
+            : (this.#options.mcpServers?.(
+                mcpAudience(mcpAgentParam(params), mcpThreadParam(params), computerUseParam(params)),
+              ) ?? []),
           computerUseParam(params),
           mcpAgentParam(params),
         ),

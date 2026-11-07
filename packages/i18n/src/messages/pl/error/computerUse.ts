@@ -14,4 +14,7 @@ export const messages = {
   "error.computerUse.socketDirectoryShared":
     "Katalog gniazda Sterowania komputerem {path} jest dostępny dla innych użytkowników.",
   "error.computerUse.socketNotReady": "Nie przyjął połączenia w ciągu {seconds} s. {reason}",
+  "error.computerUse.appInUse": "Aplikacji {app} używa {agent} ({thread}). Spróbuj później lub użyj innej aplikacji.",
+  "error.computerUse.desktopBusy":
+    "Inna akcja na tym komputerze nie zakończyła się na czas. Spróbuj ponownie za chwilę.",
 } as const satisfies PartialTranslation<typeof source>;

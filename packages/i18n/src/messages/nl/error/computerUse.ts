@@ -14,4 +14,7 @@ export const messages = {
   "error.computerUse.socketDirectoryShared":
     "De socketmap {path} van Computerbesturing is toegankelijk voor andere gebruikers.",
   "error.computerUse.socketNotReady": "Er is binnen {seconds} seconden geen verbinding geaccepteerd. {reason}",
+  "error.computerUse.appInUse":
+    "{app} wordt gebruikt door {agent} ({thread}). Probeer het later opnieuw of gebruik een andere app.",
+  "error.computerUse.desktopBusy": "Een andere actie op deze computer is niet op tijd klaar. Probeer het zo opnieuw.",
 } as const satisfies PartialTranslation<typeof source>;

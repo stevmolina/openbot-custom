@@ -40,7 +40,7 @@ const placement = {
   height: 600,
   cornerRadius: 12,
   windowTitle: "Notes",
-  cursor: { x: 40, y: 60 },
+  cursors: [{ id: "a1", x: 40, y: 60, label: "Ada", color: "#3366ff" }],
   covered: [{ x: 100, y: 200, width: 300, height: 400 }],
 };
 
@@ -56,7 +56,14 @@ it("delivers a placement and refuses one that is not a placement", () => {
 
   expect(() => send({ ...placement, width: "wide" })).toThrow("Invalid Computer Use highlight placement.");
   expect(() => send({ ...placement, windowTitle: undefined })).toThrow("Invalid Computer Use highlight placement.");
-  expect(() => send({ ...placement, cursor: { x: 40 } })).toThrow("Invalid Computer Use highlight placement.");
+  expect(() => send({ ...placement, cursors: [{ id: "a1", x: 40, label: "Ada", color: null }] })).toThrow(
+    "Invalid Computer Use highlight placement.",
+  );
+  // The colour goes into a style, so only a hex colour passes.
+  expect(() =>
+    send({ ...placement, cursors: [{ id: "a1", x: 40, y: 60, label: "Ada", color: "red;background:url(x)" }] }),
+  ).toThrow("Invalid Computer Use highlight placement.");
+  expect(() => send({ ...placement, cursors: null })).toThrow("Invalid Computer Use highlight placement.");
   // The covered areas cut the rim away, so an entry that is not a rectangle would leave the rim
   // drawn whole over the window in front of the one it marks.
   expect(() => send({ ...placement, covered: {} })).toThrow("Invalid Computer Use highlight placement.");
@@ -65,9 +72,9 @@ it("delivers a placement and refuses one that is not a placement", () => {
   );
   expect(drawn).toHaveBeenCalledTimes(1);
 
-  // No cursor is the ordinary case: the driver draws its own on a desktop of one display.
-  send({ ...placement, cursor: null });
-  expect(drawn).toHaveBeenLastCalledWith({ ...placement, cursor: null });
+  // No cursor is the ordinary case between two pointer actions.
+  send({ ...placement, cursors: [] });
+  expect(drawn).toHaveBeenLastCalledWith({ ...placement, cursors: [] });
 
   stop();
   send(placement);

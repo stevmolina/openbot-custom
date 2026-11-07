@@ -6,6 +6,10 @@ export interface ComputerUseAgentCursorProps {
   /** Where the tip points, in the overlay's own pixels. */
   x: number;
   y: number;
+  /** The agent's name, beside the dart, so two cursors on one desktop say whose each is. */
+  label: string;
+  /** The agent's colour as `#rrggbb`, or `null` for the accent colour. */
+  color: string | null;
 }
 
 const translate = (point: CursorPoint) => `${point.x}px ${point.y}px`;
@@ -26,11 +30,14 @@ const translate = (point: CursorPoint) => `${point.x}px ${point.y}px`;
  * that cannot animate still stands on the right point. A new point during a move starts from where
  * the cursor is on screen, not from where it was going.
  *
+ * Several agents and threads can work on the desktop at the same time, so each draws its own dart,
+ * in its agent's colour, with the agent's name beside it.
+ *
  * It is decoration for a screen reader. The rim around the window carries the announcement, and a
  * point that moves with every click would otherwise interrupt the user many times a second.
  */
 export function ComputerUseAgentCursor(props: ComputerUseAgentCursorProps) {
-  let element: SVGSVGElement | undefined;
+  let element: HTMLDivElement | undefined;
   let target: CursorPoint | null = null;
   let playing: { move: CursorMove; animation: Animation } | null = null;
 
@@ -61,21 +68,26 @@ export function ComputerUseAgentCursor(props: ComputerUseAgentCursorProps) {
   );
 
   return (
-    <svg
+    <div
       ref={element}
       class="computer-use-agent-cursor"
-      style={{ translate: translate(props) }}
-      viewBox="0 0 45 49"
+      style={{
+        translate: translate(props),
+        ...(props.color ? { "--computer-use-cursor-color": props.color } : {}),
+      }}
       aria-hidden="true"
     >
-      {/*
-       * The dart of the driver theme, corner for corner, with its tip on the origin: the tip is
-       * the point the agent asked for, so nothing here is offset from it.
-       *
-       * The white stroke is drawn under the fill, which is what keeps the shape readable on a dark
-       * window and on a light one without a second path.
-       */}
-      <path d="M0 0 L45 20 L27 31 L14 49 Z" stroke-linejoin="round" stroke-linecap="round" />
-    </svg>
+      <svg class="computer-use-agent-cursor-dart" viewBox="0 0 45 49" aria-hidden="true">
+        {/*
+         * The dart of the driver theme, corner for corner, with its tip on the origin: the tip is
+         * the point the agent asked for, so nothing here is offset from it.
+         *
+         * The white stroke is drawn under the fill, which is what keeps the shape readable on a dark
+         * window and on a light one without a second path.
+         */}
+        <path d="M0 0 L45 20 L27 31 L14 49 Z" stroke-linejoin="round" stroke-linecap="round" />
+      </svg>
+      <span class="computer-use-agent-cursor-label">{props.label}</span>
+    </div>
   );
 }

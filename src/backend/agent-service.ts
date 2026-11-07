@@ -250,6 +250,7 @@ import type { LinkWallet } from "./link-wallet";
 import type { MailboxStore } from "./mailbox-store";
 import { toMcpOperationError } from "./mcp-effects";
 import type { McpSignInOpener } from "./mcp-oauth-provider";
+import type { McpServerAudience } from "./mcp-provider-shapes";
 import { McpServerStore } from "./mcp-server-store";
 import type { MessageDeleteAccess, MessageDeleteRefused } from "./message-delete";
 import { MessagingThreads, toMessagingThreadFailed } from "./messaging/messaging-threads";
@@ -405,12 +406,18 @@ export interface AgentServiceOptions {
    * answer is read at each spawn. It is the main process's knowledge: the driver is a child of the
    * main process, not of this class.
    */
-  computerUseMcpServer?: () => McpServerConfig | null;
+  computerUseMcpServer?: (audience: McpServerAudience | null) => McpServerConfig | null;
   /**
    * The entries for members' own computers (`remote-computer-use-v1`), read at each spawn like
    * `computerUseMcpServer`. Each one names the agent it was made for.
    */
   remoteComputerMcpServers?: () => readonly McpServerConfig[];
+  /**
+   * Told when a turn of any thread starts or ends: the agent's own chat, a task, a routine thread, a
+   * channel or a messaging thread. Called before those threads take their own events, which the
+   * `event` listeners never see. Computer Use ends the app claims of a turn here.
+   */
+  observeTurn?: (event: Extract<AgentEvent, { type: "turn-started" | "turn-completed" }>) => void;
   /**
    * The built-in GitHub connection of this computer, or `null`. Read at each spawn and each hand-off,
    * for the same reason as `computerUseMcpServer`: the user connects and disconnects while OpenBot runs.
@@ -509,6 +516,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
   readonly #routineFlowTools: (() => RoutineFlowTools) | undefined;
   readonly #workflowTools: (() => WorkflowTools) | undefined;
   readonly #developmentDefaults: boolean;
+  readonly #observeTurn: (event: Extract<AgentEvent, { type: "turn-started" | "turn-completed" }>) => void;
   readonly #busyMessageMode: () => BusyMessageMode;
   /** The last turn of each agent's chat that the user stopped. One per agent, so it needs no clean-up. */
   readonly #stoppedTurns = new Map<string, string>();
@@ -544,7 +552,9 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       githubConnector = null,
       hostMemory = null,
       busyMessageMode = () => DEFAULT_BUSY_MESSAGE_MODE,
+      observeTurn = () => undefined,
     } = options;
+    this.#observeTurn = observeTurn;
     this.#developmentDefaults = developmentDefaults;
     this.#busyMessageMode = busyMessageMode;
     this.#localSkillTools = localSkillTools;
@@ -938,7 +948,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
         // Every MCP set that leaves for a provider is remembered, so its secrets stay redactable
         // after the user edits them. This is the second of the two ways one leaves; the other is
         // `enabledMcpServers`, which the Codex thread configuration reads.
-        mcpServers: () => this.#mcp.record(credentials.mcpServers()),
+        mcpServers: (audience) => this.#mcp.record(credentials.mcpServers(audience)),
         reportMcpDrops: (provider, drops) => this.#mcp.reportDrops(provider, drops),
         mcpEndpoint: (config, agentId) => this.#mcp.endpoint(config, agentId).pipe(toMcpOperationError),
       },
@@ -1107,7 +1117,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       conversation: this.#conversation,
       memories: this.#memories,
       compaction: this.#compaction,
-      mcpServers: () => this.#mcp.enabled(),
+      mcpServers: (audience) => this.#mcp.enabled(audience),
       mcpToolRuntimes: () => this.#mcp.toolRuntimes(),
       mcpEndpoint: (config, agentId) => this.#mcp.endpoint(config, agentId).pipe(toMcpOperationError),
       mcpProxyFingerprint: (configs) => this.#mcp.proxyFingerprint(configs).pipe(toMcpOperationError),
@@ -1124,7 +1134,6 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       sectionTeammates: (agentId) => this.sectionTeammates(agentId),
       channelThread: (threadId) => this.channels.store.channelForThread(threadId) !== null,
       branchThread: (threadId) => this.#tasks.isBranchThread(threadId),
-      routineThread: (threadId) => this.#tasks.isRoutineThreadId(threadId),
       hooks: {
         logRecovery: (agentId, provider, outcome) =>
           logger.warn("Recovered an unavailable provider session.", { agentId, provider, outcome }),
@@ -2245,8 +2254,9 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       );
   }
 
-  enabledMcpServers(): McpServerConfig[] {
-    return this.#mcp.enabled();
+  /** The enabled servers. An audience gets the Computer Use entry of that conversation. */
+  enabledMcpServers(audience?: McpServerAudience): McpServerConfig[] {
+    return this.#mcp.enabled(audience);
   }
 
   /**
@@ -5467,6 +5477,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
 
   #emit(event: AgentEvent): void {
     recordAgentRestartActivity(event);
+    if (event.type === "turn-started" || event.type === "turn-completed") this.#observeTurn(event);
     if (this.channels?.event(event) || this.messaging?.event(event, this.#scope) || this.#tasks?.event(event)) return;
     this.emit("event", event);
   }

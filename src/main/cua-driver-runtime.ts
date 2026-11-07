@@ -3,7 +3,7 @@
 
 import { type ChildProcess, spawn as nodeSpawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { dirname, isAbsolute, join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -20,7 +20,13 @@ import { type DynamicRecord, isDynamicRecord } from "@openbot/contracts/runtime-
 import { sourceText } from "@openbot/i18n/source";
 import { Deferred, Effect, Exit, Result } from "effect";
 import { agentDisplayEnvironment } from "./agent-display";
-import { CuaDriverActionTap, type ObservedAction, type ObservedPointer } from "./cua-driver-action-tap";
+import type { ComputerUseActor, ComputerUseCoordinator, ComputerUseRefused } from "./computer-use-coordinator";
+import {
+  CuaDriverActionTap,
+  type ObservedAction,
+  type ObservedActorPointer,
+  type ObservedPointer,
+} from "./cua-driver-action-tap";
 import { CUA_DRIVER_VENDOR_CALLS_OFF } from "./cua-driver-artifact";
 import { CuaDriverFailure, cuaIO, cuaSync, toCuaDriverFailure } from "./cua-driver-effects";
 import { LifecycleGate } from "./lifecycle-gate";
@@ -29,6 +35,8 @@ import { forwardDiagnosticLines, stopRemoteProcess } from "./remote-diagnostics"
 const SOCKET_FILE = "driver.sock";
 /** The address OpenBot listens on itself, between the agents' proxies and the daemon. */
 const TAP_SOCKET_FILE = "tap.sock";
+/** The address of one conversation, which the tap names after its actor key. */
+const ACTOR_SOCKET_FILE = /^a-[0-9a-z]{1,16}\.sock$/;
 /** Where the Windows pipe name is kept, below the profile directory. */
 const PIPE_NAME_FILE = ["cua-driver", "pipe-name"] as const;
 /**
@@ -280,6 +288,10 @@ export interface CuaDriverRuntimeOptions {
   waitForSocket?: (path: string) => Promise<void>;
   /** Injected by the test, which listens on no address of its own. */
   actionTap?: CuaDriverActionTap;
+  /** Takes the turns of every agent and thread that sends input. Given to the tap this runtime makes. */
+  coordinator?: ComputerUseCoordinator;
+  /** The tool error an agent reads when the coordinator refuses its request. */
+  refusalText?: (refused: ComputerUseRefused) => Effect.Effect<string>;
   /**
    * True once OpenBot starts to quit. The providers are told nothing more from then on.
    *
@@ -314,7 +326,15 @@ export class CuaDriverRuntime {
     this.#options = options;
     this.#spawn = options.spawnProcess ?? nodeSpawn;
     this.#executable = options.executable;
-    this.#tap = options.actionTap ?? new CuaDriverActionTap();
+    this.#tap =
+      options.actionTap ??
+      new CuaDriverActionTap({
+        ...(options.coordinator ? { coordinator: options.coordinator } : {}),
+        ...(options.refusalText ? { refusalText: options.refusalText } : {}),
+        ...(MAX_SOCKET_PATH_LENGTH[options.platform] === undefined
+          ? {}
+          : { maxSocketPathLength: MAX_SOCKET_PATH_LENGTH[options.platform] }),
+      });
     this.#state = initialState(options.platform, options.supported, options.executable);
   }
 
@@ -361,6 +381,11 @@ export class CuaDriverRuntime {
     return this.#tap.lastPointer(maxAgeMs);
   }
 
+  /** Where each conversation last aimed the pointer, for one agent cursor each. */
+  pointers(maxAgeMs: number): ObservedActorPointer[] {
+    return this.#tap.pointers(maxAgeMs);
+  }
+
   /**
    * How to reach the running daemon over MCP, or `null` while there is nothing to reach.
    *
@@ -372,16 +397,19 @@ export class CuaDriverRuntime {
    * directory stays empty on purpose: ACP has no field for one, so ACP providers would drop this
    * entry with no error if it carried one.
    */
-  mcpServerConfig(): McpServerConfig | null {
+  mcpServerConfig(actor: ComputerUseActor | null = null): McpServerConfig | null {
     const command = this.#command ?? this.#executable;
     if (!command || !this.running()) return null;
+    // One address for each conversation, so the tap knows who sends each request. It is the same
+    // for one conversation in every run, because Codex folds the arguments into its fingerprint.
+    const address = (actor ? this.#tap.actorAddress(actor) : null) ?? this.tapAddress();
     return {
       id: COMPUTER_USE_MCP_SERVER_ID,
       name: COMPUTER_USE_MCP_SERVER_NAME,
       transport: "stdio",
       enabled: true,
       command,
-      args: ["mcp", "--socket", this.tapAddress()],
+      args: ["mcp", "--socket", address],
       env: [
         { key: EMBEDDED_ENV, value: "1" },
         ...Object.entries(CUA_DRIVER_VENDOR_CALLS_OFF).map(([key, value]) => ({ key, value })),
@@ -402,8 +430,8 @@ export class CuaDriverRuntime {
    * sessions would be replaced although the user changed nothing. Reading the state instead of the
    * process makes the panel and the warm-up agree: below `ready` there is no entry either way.
    */
-  mcpServerForProviders(): McpServerConfig | null {
-    return this.#state.status === "ready" ? this.mcpServerConfig() : null;
+  mcpServerForProviders(actor: ComputerUseActor | null = null): McpServerConfig | null {
+    return this.#state.status === "ready" ? this.mcpServerConfig(actor) : null;
   }
 
   onStateChanged(listener: (state: ComputerUseState) => void): () => void {
@@ -625,7 +653,17 @@ export class CuaDriverRuntime {
     // does. Without this, the restart would unlink the address below and then hand the providers a
     // path nothing answers on, with no way back except restarting OpenBot.
     yield* this.#tap.close();
-    if (endpoint.kind === "unix-socket") yield* cuaIO(() => rm(address, { force: true }).catch(() => undefined));
+    if (endpoint.kind === "unix-socket") {
+      yield* cuaIO(() => rm(address, { force: true }).catch(() => undefined));
+      // The addresses of single conversations that a crashed run left. A file there refuses the bind,
+      // and the tap would then hand that conversation the shared address.
+      const names = yield* cuaIO(() => readdir(endpoint.directory)).pipe(Effect.orElseSucceed(() => []));
+      yield* Effect.forEach(
+        names.filter((name) => ACTOR_SOCKET_FILE.test(name)),
+        (name) => cuaIO(() => rm(join(endpoint.directory, name), { force: true })).pipe(Effect.ignore),
+        { discard: true },
+      );
+    }
     const listening = yield* Effect.result(this.#tap.listen({ upstream: socketPath, tap: address }));
     if (Result.isFailure(listening))
       this.#options.onDiagnostic?.(

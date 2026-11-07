@@ -11,4 +11,9 @@ export const messages = {
   "status.computerUse.driverMissing": "Deze build van OpenBot bevat geen driver voor Computerbesturing.",
   "status.computerUse.progressActing": "Gebruikt een app op deze computer…",
   "status.computerUse.progressDeciding": "Bepaalt de volgende stap in de app…",
+  "status.computerUse.mainChat": "hoofdchat",
+  "status.computerUse.anotherAgent": "een andere agent",
+  "status.computerUse.joinedServer": "een gekoppelde server",
+  "status.computerUse.unnamedThread": "een zijthread",
+  "status.computerUse.thisApp": "Deze app",
 } as const satisfies PartialTranslation<typeof source>;
