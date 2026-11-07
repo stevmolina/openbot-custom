@@ -40,9 +40,16 @@ export interface McpServerAudience {
 /** Where a provider client reads the enabled configurations at spawn. */
 export type McpServerSource = (audience?: McpServerAudience) => readonly McpServerConfig[];
 
-/** The audience of a session of this agent and thread, or none when no agent is named. */
-export function mcpAudience(agentId: string | null, threadId: string | null): McpServerAudience | undefined {
-  return agentId ? { agentId, threadId } : undefined;
+/**
+ * The audience of a session of this agent and thread, or none when no agent is named or Computer Use
+ * is off for it: the address of a conversation is made only for one that is given the entry.
+ */
+export function mcpAudience(
+  agentId: string | null,
+  threadId: string | null,
+  computerUse: boolean,
+): McpServerAudience | undefined {
+  return agentId && computerUse ? { agentId, threadId } : undefined;
 }
 
 /**

@@ -10,7 +10,7 @@ export const messages = {
   "status.computerUse.driverMissing": "この OpenBot ビルドには Computer Use ドライバーが含まれていません。",
   "status.computerUse.progressActing": "このコンピューターのアプリを操作しています…",
   "status.computerUse.progressDeciding": "アプリでの次の操作を決めています…",
-  "status.computerUse.ownChat": "自分のチャット",
+  "status.computerUse.mainChat": "メインチャット",
   "status.computerUse.anotherAgent": "別のエージェント",
   "status.computerUse.joinedServer": "参加中のサーバー",
   "status.computerUse.unnamedThread": "サイドスレッド",

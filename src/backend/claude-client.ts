@@ -910,7 +910,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
       : claudeMcpServers(
           yield* usableMcpServers(
             agentMcpServers(
-              this.#mcpServers(mcpAudience(config.agentId, config.threadId)),
+              this.#mcpServers(mcpAudience(config.agentId, config.threadId, config.computerUse)),
               config.computerUse,
               config.agentId,
             ),

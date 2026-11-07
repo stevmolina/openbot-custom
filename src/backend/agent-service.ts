@@ -413,6 +413,12 @@ export interface AgentServiceOptions {
    */
   remoteComputerMcpServers?: () => readonly McpServerConfig[];
   /**
+   * Told when a turn of any thread starts or ends: the agent's own chat, a task, a routine thread, a
+   * channel or a messaging thread. Called before those threads take their own events, which the
+   * `event` listeners never see. Computer Use ends the app claims of a turn here.
+   */
+  observeTurn?: (event: Extract<AgentEvent, { type: "turn-started" | "turn-completed" }>) => void;
+  /**
    * The built-in GitHub connection of this computer, or `null`. Read at each spawn and each hand-off,
    * for the same reason as `computerUseMcpServer`: the user connects and disconnects while OpenBot runs.
    */
@@ -510,6 +516,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
   readonly #routineFlowTools: (() => RoutineFlowTools) | undefined;
   readonly #workflowTools: (() => WorkflowTools) | undefined;
   readonly #developmentDefaults: boolean;
+  readonly #observeTurn: (event: Extract<AgentEvent, { type: "turn-started" | "turn-completed" }>) => void;
   readonly #busyMessageMode: () => BusyMessageMode;
   /** The last turn of each agent's chat that the user stopped. One per agent, so it needs no clean-up. */
   readonly #stoppedTurns = new Map<string, string>();
@@ -545,7 +552,9 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       githubConnector = null,
       hostMemory = null,
       busyMessageMode = () => DEFAULT_BUSY_MESSAGE_MODE,
+      observeTurn = () => undefined,
     } = options;
+    this.#observeTurn = observeTurn;
     this.#developmentDefaults = developmentDefaults;
     this.#busyMessageMode = busyMessageMode;
     this.#localSkillTools = localSkillTools;
@@ -5468,6 +5477,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
 
   #emit(event: AgentEvent): void {
     recordAgentRestartActivity(event);
+    if (event.type === "turn-started" || event.type === "turn-completed") this.#observeTurn(event);
     if (this.channels?.event(event) || this.messaging?.event(event, this.#scope) || this.#tasks?.event(event)) return;
     this.emit("event", event);
   }

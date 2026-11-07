@@ -12,7 +12,7 @@ export const messages = defineMessages("status.computerUse", {
   "status.computerUse.progressActing": "Using an app on this computer…",
   "status.computerUse.progressDeciding": "Deciding the next step in the app…",
   // Who holds an app that Computer Use refused, and the label of each agent cursor.
-  "status.computerUse.ownChat": "own chat",
+  "status.computerUse.mainChat": "main chat",
   "status.computerUse.anotherAgent": "another agent",
   "status.computerUse.joinedServer": "a joined server",
   "status.computerUse.unnamedThread": "a side thread",

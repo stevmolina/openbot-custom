@@ -84,7 +84,9 @@ flowchart LR
 
 - **One address for each conversation.** `McpServerSource` takes an audience: the agent and the
   public thread. `ThreadLifecycle` passes it for Codex, and sends `openbotThreadId` beside
-  `openbotAgentId` to Claude, ACP, Pi and Muse, which read the servers themselves. The gateway asks
+  `openbotAgentId` to Claude, ACP, Pi and Muse, which read the servers themselves; ACP keeps it on a
+  released session, so a reopen gets the same address. Only a conversation with Computer Use on has
+  an audience, so no address is made for one that gets no entry. The gateway asks
   main for the Computer Use entry of that audience, and the runtime gives its proxy the socket
   `a-<key>.sock` beside the shared tap socket (a pipe name with the key on Windows). The key is the
   first 16 hex digits of a SHA-256 of the agent and thread ids, so it is the same in every run: the
@@ -110,7 +112,9 @@ flowchart LR
   use another app." A request that takes keyboard focus (`type_text`, `press_key`, `hotkey`,
   `set_value`, `bring_to_front`) gets the same error at once. A claim ends when the holder's turn
   ends (`turn-completed`, a stopped or failed turn included), and after 60 seconds with no action
-  from the holder. The app name comes from the daemon's `list_windows`; the agent name and the
+  from the holder. `AgentService` reports the turns of every thread through `observeTurn`, before
+  the tasks, channels and messaging threads take their own events, which the `event` listeners never
+  see. The app name comes from the daemon's `list_windows`; the agent name and the
   thread title come from the agent service. The text is `error.computerUse.appInUse`, sent with
   `sourceText`. The refusal has no `structuredContent`, because a client checks that against the
   tool's output schema.

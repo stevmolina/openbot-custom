@@ -284,6 +284,8 @@ interface AcpThread {
   computerUse: boolean;
   /** The agent whose session this is, named to the MCP servers that OpenBot signed in to. */
   agentId: string | null;
+  /** The public thread of the session, which has its own Computer Use address. See `mcpThreadParam`. */
+  openbotThreadId: string | null;
   idleRelease: ReturnType<typeof setTimeout> | null;
   /** Also set when the session was loaded only for a read. */
   idleSince: number;
@@ -304,7 +306,7 @@ interface AcpThread {
 /** What a closed idle session needs to be loaded again. Completed history lives in storage. */
 type ReleasedAcpThread = Pick<
   AcpThread,
-  "cwd" | "developerInstructions" | "dynamicTools" | "workspaceRoots" | "computerUse" | "agentId"
+  "cwd" | "developerInstructions" | "dynamicTools" | "workspaceRoots" | "computerUse" | "agentId" | "openbotThreadId"
 >;
 
 /** Persistence hooks for provider history. The database owns the data; ACP only streams it. */
@@ -529,13 +531,22 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
       this.#loadsSessions &&
       (thread.transport !== null || Boolean(this.#initialization?.agentCapabilities?.sessionCapabilities?.close)) &&
       thread.backgroundUntil === 0,
-    snapshot: ({ cwd, developerInstructions, dynamicTools, workspaceRoots, computerUse, agentId }) => ({
+    snapshot: ({
       cwd,
       developerInstructions,
       dynamicTools,
       workspaceRoots,
       computerUse,
       agentId,
+      openbotThreadId,
+    }) => ({
+      cwd,
+      developerInstructions,
+      dynamicTools,
+      workspaceRoots,
+      computerUse,
+      agentId,
+      openbotThreadId,
     }),
     dispose: (thread) => this.#closeSession(thread),
     reopen: (threadId, released) =>
@@ -548,6 +559,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
           runtimeWorkspaceRoots: released.workspaceRoots,
           computerUse: released.computerUse,
           openbotAgentId: released.agentId ?? undefined,
+          openbotThreadId: released.openbotThreadId ?? undefined,
         },
         true,
       ),
@@ -1440,6 +1452,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
         runtimeWorkspaceRoots: thread.workspaceRoots,
         computerUse: thread.computerUse,
         openbotAgentId: thread.agentId ?? undefined,
+        openbotThreadId: thread.openbotThreadId ?? undefined,
         model: thread.currentModelId,
       },
       true,
@@ -1540,6 +1553,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
       held.developerInstructions = getString(params, "developerInstructions") ?? held.developerInstructions;
       // A session loaded for a read has no agent. Its MCP servers keep that until it opens again.
       held.agentId ??= mcpAgentParam(params);
+      held.openbotThreadId ??= mcpThreadParam(params);
       yield* this.#configuration.applyConfig(
         held,
         getString(params, "model"),
@@ -1582,7 +1596,8 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     const dynamicTools = getArray(params, "dynamicTools").filter(isDynamicToolNamespace);
     const computerUse = computerUseParam(params);
     const agentId = mcpAgentParam(params);
-    const audience = mcpAudience(agentId, mcpThreadParam(params));
+    const openbotThreadId = mcpThreadParam(params);
+    const audience = mcpAudience(agentId, openbotThreadId, computerUse);
     let threadRef: AcpThread | null = null;
     let transport: AcpConnection | null = null;
     let retained = false;
@@ -1687,6 +1702,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
               workspaceRoots: additionalDirectories,
               computerUse,
               agentId,
+              openbotThreadId,
               idleRelease: null,
               idleSince: 0,
               restore: { cwd, ...directories, mcpServers, ...meta },

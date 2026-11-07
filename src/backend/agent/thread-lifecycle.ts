@@ -1076,9 +1076,10 @@ export class ThreadLifecycle {
    * Use the fingerprint changes, so Codex replaces the session.
    */
   #agentMcpServers(agent: AgentSummary, publicThreadId: string): readonly McpServerConfig[] {
+    const computerUse = agentComputerUseEnabled(agent);
     return agentMcpServers(
-      this.#mcpServers({ agentId: agent.id, threadId: publicThreadId }),
-      agentComputerUseEnabled(agent),
+      this.#mcpServers(computerUse ? { agentId: agent.id, threadId: publicThreadId } : undefined),
+      computerUse,
       agent.id,
     );
   }

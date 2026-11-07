@@ -251,7 +251,7 @@ pass("a key press into an app another conversation holds is refused at once, nam
 // 3. A click there waits up to the bounded time, then is refused with the same reason.
 const waitedClick = await send(graceAddress, "click", { pid: TEXT_EDIT, x: 1, y: 1, marker: "grace-click-wait" });
 assert.equal(waitedClick.isError, true);
-assert.match(waitedClick.text, /^TextEdit is in use by Ada \(own chat\)\./);
+assert.match(waitedClick.text, /^TextEdit is in use by Ada \(main chat\)\./);
 assert.ok(
   waitedClick.ms >= CLAIM_WAIT_MS - 20 && waitedClick.ms < CLAIM_WAIT_MS + 1_000,
   `a click waits the bounded time (${waitedClick.ms} ms)`,

@@ -10,7 +10,7 @@ export const messages = {
   "status.computerUse.driverMissing": "OpenBot'un bu derlemesi bir Bilgisayar Kullanımı sürücüsü içermiyor.",
   "status.computerUse.progressActing": "Bu bilgisayardaki bir uygulama kullanılıyor…",
   "status.computerUse.progressDeciding": "Uygulamadaki sonraki adıma karar veriliyor…",
-  "status.computerUse.ownChat": "kendi sohbeti",
+  "status.computerUse.mainChat": "ana sohbet",
   "status.computerUse.anotherAgent": "başka bir ajan",
   "status.computerUse.joinedServer": "katılınan bir sunucu",
   "status.computerUse.unnamedThread": "bir yan konu",

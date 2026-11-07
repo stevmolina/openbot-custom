@@ -590,7 +590,9 @@ export class PiAgentClient extends EventEmitter<ClientEvents> implements AgentCl
       const handoff = claudeMcpServers(
         yield* usableMcpServers(
           agentMcpServers(
-            this.options.mcpServers?.(mcpAudience(mcpAgentParam(params), mcpThreadParam(params))) ?? [],
+            this.options.mcpServers?.(
+              mcpAudience(mcpAgentParam(params), mcpThreadParam(params), computerUseParam(params)),
+            ) ?? [],
             computerUseParam(params),
             mcpAgentParam(params),
           ),

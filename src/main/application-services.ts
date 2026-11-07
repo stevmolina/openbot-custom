@@ -185,7 +185,11 @@ import {
   readMobileConnectApiUrl,
 } from "./central-auth-manager";
 import { ChatVisualPreviewer } from "./chat-visual-preview";
-import { type ComputerUseActorDirectory, computerUseActorLabel, computerUseRefusalText } from "./computer-use-actors";
+import {
+  type ComputerUseActorDirectory,
+  cachedComputerUseActorLabels,
+  computerUseRefusalText,
+} from "./computer-use-actors";
 import { COMPUTER_USE_REMOTE_ACTOR, ComputerUseCoordinator, computerUseActor } from "./computer-use-coordinator";
 import { ComputerUseHighlightController } from "./computer-use-highlight-window";
 import { applicationBundlePath, applicationIconName } from "./computer-use-permission-app";
@@ -1746,6 +1750,7 @@ export async function createApplicationServices({
     threadTitle: (agentId, threadId) =>
       service.listTasks(agentId).tasks.find((task) => task.threadId === threadId)?.title ?? null,
   };
+  const computerUseLabel = cachedComputerUseActorLabels(computerUseActors);
   const cuaDriver = new CuaDriverRuntime({
     coordinator: computerUseCoordinator,
     refusalText: (refused) =>
@@ -1815,7 +1820,7 @@ export async function createApplicationServices({
     // because several agents and threads can work on the desktop at the same time.
     readPointers: () =>
       cuaDriver.pointers(COMPUTER_USE_CURSOR_MAX_AGE_MS).map(({ actor, pointer }) => {
-        const label = computerUseActorLabel(computerUseActors, actor);
+        const label = computerUseLabel(actor);
         const { x, y } = computerUseDesktopPoint({ x: pointer.x, y: pointer.y });
         return { id: actor.key, x, y, label: label.agent, color: label.color };
       }),
@@ -1974,7 +1979,8 @@ export async function createApplicationServices({
       customAgents: () => customAgents.configs(),
       // The enabled MCP servers, read at each spawn. The service owns the store, so this reads back
       // into the object being constructed; nothing calls it before the constructor returns.
-      mcpServers: () => service.enabledMcpServers(),
+      // With the audience, so each conversation of Claude, ACP, Pi and Muse gets its own Computer Use address.
+      mcpServers: (audience) => service.enabledMcpServers(audience),
       // The floor under those servers: the `bin` of every managed tool runtime, appended after the
       // user's own `PATH`, so a machine with no Node can still start `npx some-server` and a machine
       // that has one keeps the build it installed.
@@ -2001,6 +2007,14 @@ export async function createApplicationServices({
     // One address for each conversation, so the coordinator knows who sends each action.
     computerUseMcpServer: (audience) =>
       cuaDriver.mcpServerForProviders(audience ? computerUseActor(audience.agentId, audience.threadId) : null),
+    // Turns of every thread, the tasks and channels included, whose events never reach `event`. The
+    // poll rests while no turn runs, so each turn wakes it, and a turn that held an app lets it go,
+    // so another conversation can work there at once. Both functions are defined below; no turn
+    // starts before they are.
+    observeTurn: (event) => {
+      if (event.type === "turn-started") startComputerUseHighlight();
+      else computerUseCoordinator.turnEnded(event.agentId, event.threadId);
+    },
     // Members' own computers, one entry for each agent that only that member can use.
     remoteComputerMcpServers: () => remoteComputers.mcpServers(),
     githubConnector: {
@@ -2335,12 +2349,6 @@ export async function createApplicationServices({
       clearInterval(screenReap);
     });
   }
-  // The poll rests while no turn runs, so each turn wakes it.
-  service.on("event", (event) => {
-    if (event.type === "turn-started") startComputerUseHighlight();
-    // The turn that held an app lets it go, so another conversation can work there at once.
-    if (event.type === "turn-completed") computerUseCoordinator.turnEnded(event.agentId, event.threadId);
-  });
   /*
    * Where the decision put the download: onboarding, which is the screen this start is about to
    * show. A user who finished onboarding before OpenBot downloaded a runtime at all is asked for

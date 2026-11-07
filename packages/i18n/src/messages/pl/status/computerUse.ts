@@ -11,7 +11,7 @@ export const messages = {
   "status.computerUse.driverMissing": "Ta wersja OpenBot nie zawiera sterownika Sterowania komputerem.",
   "status.computerUse.progressActing": "Korzysta z aplikacji na tym komputerze…",
   "status.computerUse.progressDeciding": "Wybiera następny krok w aplikacji…",
-  "status.computerUse.ownChat": "własny czat",
+  "status.computerUse.mainChat": "główny czat",
   "status.computerUse.anotherAgent": "inny agent",
   "status.computerUse.joinedServer": "dołączony serwer",
   "status.computerUse.unnamedThread": "wątek poboczny",

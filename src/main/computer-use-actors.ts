@@ -53,9 +53,28 @@ export function computerUseActorLabel(
     };
   const thread =
     actor.threadId === null || actor.threadId === entry.chatThreadId
-      ? sourceText("status.computerUse.ownChat")
+      ? sourceText("status.computerUse.mainChat")
       : (directory.threadTitle(actor.agentId, actor.threadId) ?? sourceText("status.computerUse.unnamedThread"));
   return { agent: entry.name, thread, color: entry.color };
+}
+
+/**
+ * The label of each actor, read again at most once in `ttlMs`. The cursor poll asks for every cursor
+ * thirty times a second, and a side thread's title is a database read.
+ */
+export function cachedComputerUseActorLabels(
+  directory: ComputerUseActorDirectory,
+  ttlMs = 5_000,
+  now: () => number = Date.now,
+): (actor: ComputerUseActor) => ComputerUseActorLabel {
+  const cache = new Map<string, { label: ComputerUseActorLabel; at: number }>();
+  return (actor) => {
+    const hit = cache.get(actor.key);
+    if (hit && now() - hit.at < ttlMs) return hit.label;
+    const label = computerUseActorLabel(directory, actor);
+    cache.set(actor.key, { label, at: now() });
+    return label;
+  };
 }
 
 /**
