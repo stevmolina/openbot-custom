@@ -515,13 +515,14 @@ export interface ComputerUseHighlightPlacement {
   /** Which application window the agent works in, for the screen reader. Never logged. */
   windowTitle: string;
   /**
-   * Where OpenBot draws the agent cursor, or `null` when it draws none.
+   * One agent cursor for each conversation (an agent's own chat or one of its side threads) whose
+   * last pointer action is recent enough to still say where it works, oldest first, so the newest
+   * is drawn on top. Empty when no cursor is drawn on this display.
    *
-   * The driver draws a cursor of its own, and two cursors for one agent say two places. So this
-   * carries a point only while the driver draws nothing, and only while the agent's last action is
-   * recent enough to still say where it works.
+   * Several agents and threads can use the desktop at the same time, so each cursor carries the
+   * name of its agent. The driver draws no cursor of its own (`--no-overlay`).
    */
-  cursor: ComputerUseCursorPoint | null;
+  cursors: readonly ComputerUseAgentCursorPlacement[];
   /**
    * The parts of the rim that a window in front of the marked one covers, which are cut out of it.
    *
@@ -545,6 +546,16 @@ export interface ComputerUseCoveredArea {
 export interface ComputerUseCursorPoint {
   x: number;
   y: number;
+}
+
+/** One agent cursor in the overlay: where its tip points, whose it is, and its colour. */
+export interface ComputerUseAgentCursorPlacement extends ComputerUseCursorPoint {
+  /** Stable for one conversation, so a cursor glides from its last point rather than appearing anew. */
+  id: string;
+  /** The agent's name, shown beside the dart. User content: never translated, never logged. */
+  label: string;
+  /** The agent's avatar colour as `#rrggbb`, or `null` for the accent colour. */
+  color: string | null;
 }
 
 /**

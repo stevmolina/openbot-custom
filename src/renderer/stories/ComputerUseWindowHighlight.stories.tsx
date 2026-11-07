@@ -86,7 +86,23 @@ export const WithAgentCursor: Story = {
     <main class="foundation-story">
       <MockWindow>
         <ComputerUseWindowHighlight windowTitle="Notes" />
-        <ComputerUseAgentCursor x={64} y={150} />
+        <ComputerUseAgentCursor x={64} y={150} label="Ada" color={null} />
+      </MockWindow>
+    </main>
+  ),
+};
+
+/**
+ * Two conversations on one desktop: each draws its own dart in its agent's colour, with the agent's
+ * name beside it, so the user can tell whose action went where.
+ */
+export const TwoAgentCursors: Story = {
+  render: () => (
+    <main class="foundation-story">
+      <MockWindow>
+        <ComputerUseWindowHighlight windowTitle="Notes" />
+        <ComputerUseAgentCursor x={64} y={150} label="Ada" color="#2f6fed" />
+        <ComputerUseAgentCursor x={320} y={60} label="Research assistant" color="#d9480f" />
       </MockWindow>
     </main>
   ),
@@ -108,7 +124,7 @@ function TravellingCursor() {
     return () => clearInterval(timer);
   });
   const point = () => CURSOR_STOPS[stop()] ?? { x: 64, y: 150 };
-  return <ComputerUseAgentCursor x={point().x} y={point().y} />;
+  return <ComputerUseAgentCursor x={point().x} y={point().y} label="Ada" color={null} />;
 }
 
 /**
@@ -133,7 +149,7 @@ export const AgentCursorOnDark: Story = {
     <main class="foundation-story">
       <MockWindow dark title="Terminal">
         <ComputerUseWindowHighlight windowTitle="Terminal" />
-        <ComputerUseAgentCursor x={64} y={150} />
+        <ComputerUseAgentCursor x={64} y={150} label="Ada" color={null} />
       </MockWindow>
     </main>
   ),

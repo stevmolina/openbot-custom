@@ -15,4 +15,8 @@ export const messages = {
   "error.computerUse.socketDirectoryShared":
     "Каталог сокета управления компьютером {path} открыт для других пользователей.",
   "error.computerUse.socketNotReady": "Он не принял подключение за {seconds} с. {reason}",
+  "error.computerUse.appInUse":
+    "{app} использует {agent} ({thread}). Повторите попытку позже или используйте другое приложение.",
+  "error.computerUse.desktopBusy":
+    "Другое действие на этом компьютере не завершилось вовремя. Повторите попытку через минуту.",
 } as const satisfies PartialTranslation<typeof source>;

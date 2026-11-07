@@ -5,8 +5,8 @@
 
 import {
   COMPUTER_USE_STATUSES,
+  type ComputerUseAgentCursorPlacement,
   type ComputerUseCoveredArea,
-  type ComputerUseCursorPoint,
   type ComputerUseHighlightPlacement,
   type ComputerUsePermission,
   type ComputerUsePermissionApp,
@@ -30,12 +30,29 @@ export function decodeComputerUseState(value: unknown): ComputerUseState {
   };
 }
 
-function decodeComputerUseCursorPoint(value: unknown): ComputerUseCursorPoint | null {
-  if (value === null || value === undefined) return null;
-  if (!isDynamicRecord(value) || typeof value.x !== "number" || typeof value.y !== "number") {
+/** The longest agent name a cursor shows. A longer one is cut, so a label cannot cover the screen. */
+const MAX_CURSOR_LABEL_LENGTH = 80;
+/** A colour the overlay can put in a style unchanged: `#` and three, six or eight hex digits. */
+const CURSOR_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+function decodeComputerUseAgentCursor(value: unknown): ComputerUseAgentCursorPlacement {
+  if (
+    !isDynamicRecord(value) ||
+    typeof value.x !== "number" ||
+    typeof value.y !== "number" ||
+    !isString(value.id) ||
+    !isString(value.label) ||
+    (value.color !== null && !(isString(value.color) && CURSOR_COLOR.test(value.color)))
+  ) {
     throw new Error("Invalid Computer Use highlight placement.");
   }
-  return { x: value.x, y: value.y };
+  return {
+    id: value.id,
+    x: value.x,
+    y: value.y,
+    label: value.label.slice(0, MAX_CURSOR_LABEL_LENGTH),
+    color: value.color,
+  };
 }
 
 export function decodeComputerUseHighlightPlacement(value: unknown): ComputerUseHighlightPlacement {
@@ -47,6 +64,7 @@ export function decodeComputerUseHighlightPlacement(value: unknown): ComputerUse
     typeof value.height !== "number" ||
     typeof value.cornerRadius !== "number" ||
     typeof value.windowTitle !== "string" ||
+    !Array.isArray(value.cursors) ||
     !Array.isArray(value.covered)
   ) {
     throw new Error("Invalid Computer Use highlight placement.");
@@ -58,7 +76,7 @@ export function decodeComputerUseHighlightPlacement(value: unknown): ComputerUse
     height: value.height,
     cornerRadius: value.cornerRadius,
     windowTitle: value.windowTitle,
-    cursor: decodeComputerUseCursorPoint(value.cursor),
+    cursors: value.cursors.map(decodeComputerUseAgentCursor),
     covered: value.covered.map(decodeComputerUseCoveredArea),
   };
 }

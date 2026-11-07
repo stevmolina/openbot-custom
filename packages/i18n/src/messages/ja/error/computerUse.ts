@@ -15,4 +15,8 @@ export const messages = {
   "error.computerUse.socketDirectoryShared":
     "Computer Use のソケットディレクトリ {path} は他のユーザーに公開されています。",
   "error.computerUse.socketNotReady": "{seconds} 秒以内に接続を受け付けませんでした。{reason}",
+  "error.computerUse.appInUse":
+    "{app} は {agent}（{thread}）が使用中です。後でもう一度試すか、別のアプリを使ってください。",
+  "error.computerUse.desktopBusy":
+    "このコンピューターの別の操作が時間内に終わりませんでした。少し待ってからもう一度試してください。",
 } as const satisfies PartialTranslation<typeof source>;

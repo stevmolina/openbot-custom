@@ -11,4 +11,6 @@ export const messages = {
   "error.computerUse.socketDirectoryOtherOwner": "مجلد مقبس التحكم في الحاسوب {path} يخص مستخدمًا آخر.",
   "error.computerUse.socketDirectoryShared": "مجلد مقبس التحكم في الحاسوب {path} مفتوح لمستخدمين آخرين.",
   "error.computerUse.socketNotReady": "لم يقبل اتصالًا خلال {seconds} ثانية. {reason}",
+  "error.computerUse.appInUse": "{app} قيد الاستخدام من {agent} ({thread}). حاول مرة أخرى لاحقًا أو استخدم تطبيقًا آخر.",
+  "error.computerUse.desktopBusy": "لم ينتهِ إجراء آخر على هذا الكمبيوتر في الوقت المحدد. حاول مرة أخرى بعد قليل.",
 } as const satisfies PartialTranslation<typeof source>;

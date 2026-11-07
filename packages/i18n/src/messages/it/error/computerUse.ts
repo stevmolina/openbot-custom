@@ -16,4 +16,7 @@ export const messages = {
   "error.computerUse.socketDirectoryShared":
     "La directory del socket del Controllo del computer {path} è accessibile ad altri utenti.",
   "error.computerUse.socketNotReady": "Non ha accettato una connessione entro {seconds} secondi. {reason}",
+  "error.computerUse.appInUse": "{app} è in uso da {agent} ({thread}). Riprova più tardi o usa un’altra app.",
+  "error.computerUse.desktopBusy":
+    "Un’altra azione su questo computer non è terminata in tempo. Riprova tra un momento.",
 } as const satisfies PartialTranslation<typeof source>;

@@ -75,6 +75,8 @@ import {
   type McpServerSource,
   type McpToolRuntimeSource,
   mcpAgentParam,
+  mcpAudience,
+  mcpThreadParam,
   providerMcpServerName,
   usableMcpServers,
 } from "./mcp-provider-shapes";
@@ -1580,6 +1582,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     const dynamicTools = getArray(params, "dynamicTools").filter(isDynamicToolNamespace);
     const computerUse = computerUseParam(params);
     const agentId = mcpAgentParam(params);
+    const audience = mcpAudience(agentId, mcpThreadParam(params));
     let threadRef: AcpThread | null = null;
     let transport: AcpConnection | null = null;
     let retained = false;
@@ -1615,7 +1618,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
               providerResult(
                 yield* Effect.result(
                   usableMcpServers(
-                    agentMcpServers(this.options.mcpServers?.() ?? [], computerUse, agentId),
+                    agentMcpServers(this.options.mcpServers?.(audience) ?? [], computerUse, agentId),
                     this.options.mcpToolRuntimes?.(),
                     this.options.mcpEndpoint,
                     agentId,

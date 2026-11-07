@@ -25,8 +25,25 @@ import { isRemoteComputerMcpServerId, remoteComputerMcpServerAgentId } from "./r
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * The conversation one MCP set is read for: an agent, and its own chat or one of its side threads.
+ *
+ * Only the Computer Use entry depends on it. Each conversation gets an address of its own, so that
+ * OpenBot knows who sends each desktop action and can give them turns (see `docs/architecture/computer-use.md`).
+ */
+export interface McpServerAudience {
+  agentId: string;
+  /** The public thread, or `null` when the reader knows only the agent. */
+  threadId: string | null;
+}
+
 /** Where a provider client reads the enabled configurations at spawn. */
-export type McpServerSource = () => readonly McpServerConfig[];
+export type McpServerSource = (audience?: McpServerAudience) => readonly McpServerConfig[];
+
+/** The audience of a session of this agent and thread, or none when no agent is named. */
+export function mcpAudience(agentId: string | null, threadId: string | null): McpServerAudience | undefined {
+  return agentId ? { agentId, threadId } : undefined;
+}
 
 /**
  * What OpenBot can lend a machine that does not have it: the `bin` directories of the tool runtimes
@@ -207,6 +224,14 @@ export function computerUseParam(params: unknown): boolean {
  */
 export function mcpAgentParam(params: unknown): string | null {
   return isDynamicRecord(params) && typeof params.openbotAgentId === "string" ? params.openbotAgentId : null;
+}
+
+/**
+ * The public thread of a `thread/start` or `thread/resume`. `ThreadLifecycle` sends `openbotThreadId`
+ * beside `openbotAgentId`, so that each conversation gets its own Computer Use address.
+ */
+export function mcpThreadParam(params: unknown): string | null {
+  return isDynamicRecord(params) && typeof params.openbotThreadId === "string" ? params.openbotThreadId : null;
 }
 
 export const usableMcpServers = Effect.fnUntraced(function* (

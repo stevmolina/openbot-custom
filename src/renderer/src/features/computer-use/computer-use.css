@@ -211,21 +211,48 @@ body:has(.computer-use-highlight-surface),
  * being cut at the edge of the box.
  */
 .computer-use-agent-cursor {
+  /* The agent's own colour when main sends one, the accent otherwise. */
+  --computer-use-cursor-fill: var(--computer-use-cursor-color, var(--openbot-accent));
   position: absolute;
   left: 0;
   top: 0;
   width: 22px;
   height: 24px;
   overflow: visible;
-  fill: var(--openbot-accent);
+  /* No transition: `ComputerUseAgentCursor` plays each move, and a transition would fight it. */
+  pointer-events: none;
+}
+
+.computer-use-agent-cursor-dart {
+  display: block;
+  width: 22px;
+  height: 24px;
+  overflow: visible;
+  fill: var(--computer-use-cursor-fill);
   /* The colour the accent carries text in, so the outline holds over any wallpaper. */
   stroke: var(--openbot-text-on-accent);
   stroke-width: 5;
   /* Under the fill, so the outline reads as an edge rather than as a second, thicker dart. */
   paint-order: stroke fill;
   filter: drop-shadow(0 0 6px var(--openbot-accent-strong));
-  /* No transition: `ComputerUseAgentCursor` plays each move, and a transition would fight it. */
-  pointer-events: none;
+}
+
+/* The agent's name below the dart, so two cursors on one desktop say whose each is. */
+.computer-use-agent-cursor-label {
+  position: absolute;
+  top: 24px;
+  left: 14px;
+  max-width: 180px;
+  padding: 2px 8px;
+  overflow: hidden;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--computer-use-cursor-fill);
+  color: var(--openbot-text-on-accent);
+  font-size: var(--openbot-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 4px var(--openbot-shadow-popover-ambient);
 }
 
 /*

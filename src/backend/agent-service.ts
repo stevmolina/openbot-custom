@@ -250,6 +250,7 @@ import type { LinkWallet } from "./link-wallet";
 import type { MailboxStore } from "./mailbox-store";
 import { toMcpOperationError } from "./mcp-effects";
 import type { McpSignInOpener } from "./mcp-oauth-provider";
+import type { McpServerAudience } from "./mcp-provider-shapes";
 import { McpServerStore } from "./mcp-server-store";
 import type { MessageDeleteAccess, MessageDeleteRefused } from "./message-delete";
 import { MessagingThreads, toMessagingThreadFailed } from "./messaging/messaging-threads";
@@ -405,7 +406,7 @@ export interface AgentServiceOptions {
    * answer is read at each spawn. It is the main process's knowledge: the driver is a child of the
    * main process, not of this class.
    */
-  computerUseMcpServer?: () => McpServerConfig | null;
+  computerUseMcpServer?: (audience: McpServerAudience | null) => McpServerConfig | null;
   /**
    * The entries for members' own computers (`remote-computer-use-v1`), read at each spawn like
    * `computerUseMcpServer`. Each one names the agent it was made for.
@@ -938,7 +939,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
         // Every MCP set that leaves for a provider is remembered, so its secrets stay redactable
         // after the user edits them. This is the second of the two ways one leaves; the other is
         // `enabledMcpServers`, which the Codex thread configuration reads.
-        mcpServers: () => this.#mcp.record(credentials.mcpServers()),
+        mcpServers: (audience) => this.#mcp.record(credentials.mcpServers(audience)),
         reportMcpDrops: (provider, drops) => this.#mcp.reportDrops(provider, drops),
         mcpEndpoint: (config, agentId) => this.#mcp.endpoint(config, agentId).pipe(toMcpOperationError),
       },
@@ -1107,7 +1108,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       conversation: this.#conversation,
       memories: this.#memories,
       compaction: this.#compaction,
-      mcpServers: () => this.#mcp.enabled(),
+      mcpServers: (audience) => this.#mcp.enabled(audience),
       mcpToolRuntimes: () => this.#mcp.toolRuntimes(),
       mcpEndpoint: (config, agentId) => this.#mcp.endpoint(config, agentId).pipe(toMcpOperationError),
       mcpProxyFingerprint: (configs) => this.#mcp.proxyFingerprint(configs).pipe(toMcpOperationError),
@@ -1124,7 +1125,6 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       sectionTeammates: (agentId) => this.sectionTeammates(agentId),
       channelThread: (threadId) => this.channels.store.channelForThread(threadId) !== null,
       branchThread: (threadId) => this.#tasks.isBranchThread(threadId),
-      routineThread: (threadId) => this.#tasks.isRoutineThreadId(threadId),
       hooks: {
         logRecovery: (agentId, provider, outcome) =>
           logger.warn("Recovered an unavailable provider session.", { agentId, provider, outcome }),
@@ -2245,8 +2245,9 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       );
   }
 
-  enabledMcpServers(): McpServerConfig[] {
-    return this.#mcp.enabled();
+  /** The enabled servers. An audience gets the Computer Use entry of that conversation. */
+  enabledMcpServers(audience?: McpServerAudience): McpServerConfig[] {
+    return this.#mcp.enabled(audience);
   }
 
   /**

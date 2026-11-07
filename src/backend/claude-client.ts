@@ -101,6 +101,8 @@ import {
   type McpServerSource,
   type McpToolRuntimeSource,
   mcpAgentParam,
+  mcpAudience,
+  mcpThreadParam,
   usableMcpServers,
 } from "./mcp-provider-shapes";
 import { PendingServerRequests } from "./pending-server-requests";
@@ -186,6 +188,8 @@ interface ThreadConfig {
   excludedFolders: string[];
   /** The agent, so the MCP sign-in proxy can name it to a server. See `mcpAgentParam`. */
   agentId: string | null;
+  /** The public thread, which gets its own Computer Use address. See `mcpThreadParam`. */
+  threadId: string | null;
 }
 
 interface ActiveTurn {
@@ -905,7 +909,11 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
       ? null
       : claudeMcpServers(
           yield* usableMcpServers(
-            agentMcpServers(this.#mcpServers(), config.computerUse, config.agentId),
+            agentMcpServers(
+              this.#mcpServers(mcpAudience(config.agentId, config.threadId)),
+              config.computerUse,
+              config.agentId,
+            ),
             this.#mcpToolRuntimes?.(),
             this.#mcpEndpoint,
             config.agentId,
@@ -2418,6 +2426,7 @@ function readThreadConfig(params: unknown): ThreadConfig {
         ? params.excludedFolders.filter((value): value is string => isString(value))
         : [],
     agentId: mcpAgentParam(params),
+    threadId: mcpThreadParam(params),
   };
 }
 

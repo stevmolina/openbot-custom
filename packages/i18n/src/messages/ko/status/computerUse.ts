@@ -10,4 +10,9 @@ export const messages = {
   "status.computerUse.driverMissing": "이 OpenBot 빌드에는 컴퓨터 제어 드라이버가 없어요.",
   "status.computerUse.progressActing": "이 컴퓨터의 앱을 사용하는 중…",
   "status.computerUse.progressDeciding": "앱에서 다음 단계를 결정하는 중…",
+  "status.computerUse.ownChat": "자체 채팅",
+  "status.computerUse.anotherAgent": "다른 에이전트",
+  "status.computerUse.joinedServer": "참여한 서버",
+  "status.computerUse.unnamedThread": "사이드 스레드",
+  "status.computerUse.thisApp": "이 앱",
 } as const satisfies PartialTranslation<typeof source>;

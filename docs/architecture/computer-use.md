@@ -65,6 +65,66 @@ drives the user's desktop; a release without the binary reports no driver. In a 
 `resolveCuaDriver` also reads an override, an install directory and `PATH`, so a developer can point
 `OPENBOT_CUA_DRIVER_PATH` at another build.
 
+### Turns between agents and threads
+
+Every agent with Computer Use on, and every thread of it (its own chat, each task and each routine
+thread), can use the desktop. They share one screen, one keyboard and one pointer, and the daemon
+takes no turns: two conversations that type at the same time can send keys into each other's
+window. So OpenBot takes the turns, in the tap, before a request reaches the daemon. The design is
+borrowed from agent-desktop: each actor has a stable id and its own cursor, and actions take turns
+on one interaction lease.
+
+```mermaid
+flowchart LR
+  A[Agent thread] -->|cua-driver mcp proxy| B[Its own tap address]
+  B --> C[ComputerUseCoordinator]
+  C -->|lease and app claim| D[cua-driver daemon]
+  C -->|refused: tool error| A
+```
+
+- **One address for each conversation.** `McpServerSource` takes an audience: the agent and the
+  public thread. `ThreadLifecycle` passes it for Codex, and sends `openbotThreadId` beside
+  `openbotAgentId` to Claude, ACP, Pi and Muse, which read the servers themselves. The gateway asks
+  main for the Computer Use entry of that audience, and the runtime gives its proxy the socket
+  `a-<key>.sock` beside the shared tap socket (a pipe name with the key on Windows). The key is the
+  first 16 hex digits of a SHA-256 of the agent and thread ids, so it is the same in every run: the
+  arguments are in the Codex tool fingerprint. Each Codex session is replaced once after the update
+  that brings this. The tap binds the socket before the entry is returned, because binding is
+  synchronous in Node, and binds every one again when the daemon restarts. A start removes the
+  sockets that a crashed run left. A reader that names no conversation, such as the permission panel,
+  gets the shared address and is one actor. The remote client of `remote-computer-use-v1` is one
+  more actor, because the released protocol names no agent.
+- **Who sent a request.** The proxy opens one connection for each request, so a connection is one
+  request and its actor is the address it came in on. The address is not authentication: every agent
+  runs as the same user and can reach every socket. The turns keep honest agents apart.
+- **The action lease.** A tool that sends input (`click`, `type_text`, `hotkey`, `drag`,
+  `launch_app`, the `browser_*` and `page` actions, a tool that a later driver adds) takes the one
+  lease before the tap forwards it, and gives it back when the daemon's answer line ends or the
+  connection closes. Waiters are served first in, first out. A request waits at most 30 seconds for
+  the lease and then gets a tool error. An action holds the lease at most 30 seconds, so a daemon that
+  does not answer cannot stop every agent. Reads (`get_window_state`, `list_windows`, screenshots,
+  `zoom`) and the driver's own session, cursor and settings tools take no lease.
+- **The app claim.** The first actor that sends input to an application (the `pid` of the request)
+  holds a claim on it. A click or scroll from another actor there waits up to 15 seconds for the
+  claim to end, then gets the tool error "<app> is in use by <agent> (<thread>). Try again later or
+  use another app." A request that takes keyboard focus (`type_text`, `press_key`, `hotkey`,
+  `set_value`, `bring_to_front`) gets the same error at once. A claim ends when the holder's turn
+  ends (`turn-completed`, a stopped or failed turn included), and after 60 seconds with no action
+  from the holder. The app name comes from the daemon's `list_windows`; the agent name and the
+  thread title come from the agent service. The text is `error.computerUse.appInUse`, sent with
+  `sourceText`. The refusal has no `structuredContent`, because a client checks that against the
+  tool's output schema.
+- **The cursors.** The tap keeps the last point of each actor. The overlay draws one dart for each
+  actor whose last point is at most 15 seconds old, in the agent's avatar colour, with the agent's
+  name beside it. The rim still follows the last action of any actor.
+
+The tap forwards each line unchanged and does not change an answer, except for the JSON copy of
+`structuredContent` described above. `scripts/computer-use-coordination-e2e.ts` runs the tap and the
+coordinator against a stand-in daemon at its socket and checks the order, the refusals and the
+releases.
+
+### The agent cursor
+
 OpenBot draws the agent cursor in its own per-display overlays for every display layout. The
 runtime starts `serve` with `--no-overlay`. The driver's overlay covers only the main display and
 cannot follow a display connected after startup. Keeping cursor ownership in OpenBot lets the
@@ -117,7 +177,8 @@ flowchart LR
   C -->|POST reply| B
 ```
 
-- **Desktop app** (`RemoteComputerClient`). While the switch is on, the server is connected, the host
+- **Desktop app** (`RemoteComputerClient`). Its driver connection has an address of its own, so its
+  calls take turns with the local agents as one actor named "another agent (a joined server)". While the switch is on, the server is connected, the host
   advertises the capability and the local driver is `ready`, it posts `state` with `available: true`
   and the computer name, and repeats it every 30 seconds. Each `remote-computer-call` runs on one MCP
   connection of its own to the driver (a `cua-driver mcp` child through the tap), so OpenBot draws its

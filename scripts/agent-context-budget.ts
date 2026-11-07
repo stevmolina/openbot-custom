@@ -38,7 +38,6 @@ const agent: AgentSummary = {
 function instructions(provider: "claude" | "codex"): string {
   const inTurns = provider === "claude";
   return developerInstructions({ ...agent, provider }, "/shared", [], "/automation", DEFAULT_AGENT_DEFAULTS, {
-    computerUseInOwnChat: false,
     sideThread: false,
     passwordVault: false,
     storedMemoryCount: 0,

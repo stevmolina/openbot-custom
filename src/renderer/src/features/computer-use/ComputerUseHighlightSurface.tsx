@@ -1,5 +1,5 @@
 import type { ComputerUseHighlightPlacement } from "@openbot/contracts/ipc";
-import { createSignal, onSettled, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import { ComputerUseAgentCursor } from "./ComputerUseAgentCursor";
 import { ComputerUseWindowHighlight } from "./ComputerUseWindowHighlight";
 import { computerUsePort } from "./computer-use-port";
@@ -49,11 +49,17 @@ export function ComputerUseHighlightSurface() {
         )}
       </Show>
       {/*
-       * Outside the frame, because the cursor is placed on the overlay and not on the window: an
+       * Outside the frame, because a cursor is placed on the overlay and not on the window: an
        * agent aims at a point the window it works in does not always hold, and a cursor cut off at
        * the edge of that window would say the action stopped there.
+       *
+       * One cursor for each conversation, keyed by it, so each glides from its own last point.
        */}
-      <Show when={placement()?.cursor}>{(point) => <ComputerUseAgentCursor x={point().x} y={point().y} />}</Show>
+      <For each={placement()?.cursors ?? []} keyed={(cursor) => cursor.id}>
+        {(cursor) => (
+          <ComputerUseAgentCursor x={cursor().x} y={cursor().y} label={cursor().label} color={cursor().color} />
+        )}
+      </For>
     </div>
   );
 }

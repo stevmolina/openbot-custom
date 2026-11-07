@@ -12,4 +12,9 @@ export const messages = {
   // Computer Use progress on the agent's activity line.
   "status.computerUse.progressActing": "正在操作这台电脑上的应用…",
   "status.computerUse.progressDeciding": "正在决定应用中的下一步…",
+  "status.computerUse.ownChat": "自己的聊天",
+  "status.computerUse.anotherAgent": "另一个代理",
+  "status.computerUse.joinedServer": "已加入的服务器",
+  "status.computerUse.unnamedThread": "一个侧边线程",
+  "status.computerUse.thisApp": "此应用",
 } as const satisfies PartialTranslation<typeof source>;
