@@ -260,7 +260,7 @@ risks since the last release.
 Read [check design notes](docs/development-checks.md#lint-and-ui-rules) when changing these checks.
 They describe the enforced syntax, fixture behavior, and reasons for removed rules.
 
-## OpenBot Custom app
+## After merge: OpenBot Custom app
 
 This repository is Steven's fork. Steven uses the `OpenBot Custom` app in `/Applications`, which
 `electron-builder.custom.yml` builds. A merge to `main` does not update that app.
@@ -272,6 +272,9 @@ This repository is Steven's fork. Steven uses the `OpenBot Custom` app in `/Appl
   make sure that it stays up.
 - If the app runs, the script stops. Ask Steven to quit the app, then run the script again.
 - In the report, give the commit of the installed app and the result of the launch check.
+- To show the result, take a screenshot of the changed screen in the running app and show it inline
+  in the chat reply. Use `bun run dev:automation screenshot` (read-only) as `README.md` describes;
+  when it cannot reach the installed app, say so.
 
 ## Pull requests
 
