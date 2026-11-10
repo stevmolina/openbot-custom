@@ -11,6 +11,12 @@
 # Before it replaces the installed app, it copies it to `~/OpenBot/backups/`. After the install it
 # opens the app and checks that the process stays up, because macOS kills an ad hoc app with a bad
 # signature at launch.
+#
+# Signing: electron-builder signs ad hoc. The script then signs the app bundle again with the local
+# certificate "OpenBot Custom Local Signing" in the login keychain, and makes the certificate on the
+# first run. An ad hoc signature changes at each build, so macOS would drop the Screen Recording and
+# Accessibility grants at each install. With one certificate, the app keeps them. The certificate is
+# not trusted by macOS and does not need to be: the grants only compare the certificate.
 set -euo pipefail
 
 root="$(git rev-parse --show-toplevel)"
@@ -65,6 +71,33 @@ bunx electron-builder --dir --mac --arm64 --config electron-builder.custom.yml
 built="$(find dist-custom -maxdepth 2 -name '*.app' -type d | head -n 1)"
 [[ -n "$built" ]] || { echo "No app in dist-custom." >&2; exit 1; }
 echo "Built $built"
+
+# A stable signer, so macOS keeps the privacy grants from build to build.
+signing_name="OpenBot Custom Local Signing"
+if ! security find-certificate -c "$signing_name" >/dev/null 2>&1; then
+  echo "Making the local signing certificate \"$signing_name\" in the login keychain"
+  work="$(mktemp -d)"
+  printf '%s\n' '[req]' 'distinguished_name=dn' 'prompt=no' 'x509_extensions=ext' '[dn]' \
+    "CN=$signing_name" '[ext]' 'basicConstraints=critical,CA:false' \
+    'keyUsage=critical,digitalSignature' 'extendedKeyUsage=critical,codeSigning' >"$work/cfg"
+  openssl req -x509 -newkey rsa:2048 -nodes -keyout "$work/key.pem" -out "$work/cert.pem" \
+    -days 3650 -config "$work/cfg" 2>/dev/null
+  password="$(openssl rand -hex 12)"
+  openssl pkcs12 -export -legacy -inkey "$work/key.pem" -in "$work/cert.pem" -out "$work/id.p12" \
+    -passout "pass:$password" 2>/dev/null ||
+    openssl pkcs12 -export -inkey "$work/key.pem" -in "$work/cert.pem" -out "$work/id.p12" \
+      -passout "pass:$password"
+  security import "$work/id.p12" -k "$HOME/Library/Keychains/login.keychain-db" -P "$password" \
+    -T /usr/bin/codesign
+  rm -rf "$work"
+fi
+signing_hash="$(security find-identity -p codesigning | awk -v name="\"$signing_name\"" '$0 ~ name { print $2; exit }')"
+[[ -n "$signing_hash" ]] || { echo "No signing identity \"$signing_name\"." >&2; exit 1; }
+# Only the outer bundle: macOS checks the app that is responsible for the process, and the nested
+# code keeps its own signatures (the Cua driver keeps its vendor signature).
+codesign --force --sign "$signing_hash" --entitlements build/custom/entitlements.custom.plist "$built"
+codesign --verify --strict "$built"
+codesign -d -r - "$built" 2>&1 | grep designated
 [[ "$install" == 1 ]] || exit 0
 
 if pgrep -f "${target}/Contents/MacOS" >/dev/null; then
