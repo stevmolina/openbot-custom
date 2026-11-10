@@ -15,8 +15,14 @@
 # macOS kills an ad hoc app with restricted entitlements at launch ("The signature on the file is
 # invalid"), and the hardened runtime refuses to load the separately signed Electron Framework
 # ("different Team IDs"). `build/custom/entitlements.custom.plist` is the release list without them.
+# The app ID is `app.openbot.custom`, not the release `app.openbot.desktop`. macOS keeps Screen
+# Recording and Accessibility grants per app ID, with the signer that it saw. With the release ID,
+# the grant entry kept the official signer, so this build never matched it, and removing and adding
+# the app again did not help. `scripts/custom-build-install.sh` then signs the app again with a
+# local certificate, so the signer stays the same from build to build and a grant stays valid.
+# The data folder does not change: the app sets its name to "OpenBot" (`src/main/index.ts`).
 # Keep the rest of this file in step with `electron-builder.yml`.
-appId: app.openbot.desktop
+appId: app.openbot.custom
 productName: OpenBot
 copyright: Copyright © 2026 Synthetify Labs spółka z ograniczoną odpowiedzialnością
 asar: true
