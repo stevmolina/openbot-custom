@@ -53,7 +53,8 @@ body:has(.browser-full-view) .app-frame {
   font-size: var(--openbot-text-sm);
 }
 
-.browser-full-top svg {
+/* The avatar of a tab owner sizes its own drawing. */
+.browser-full-top svg:not(.agent-avatar *) {
   width: var(--openbot-icon-sm);
   height: var(--openbot-icon-sm);
 }
@@ -133,6 +134,8 @@ body:has(.browser-full-view) .app-frame {
 }
 
 .browser-full-owner-avatar {
+  --agent-avatar-optical-offset: calc(16px * -0.14);
+
   width: 16px;
   height: 16px;
   flex: none;
