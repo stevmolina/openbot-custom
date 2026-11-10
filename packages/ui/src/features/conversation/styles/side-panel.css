@@ -152,7 +152,8 @@
   opacity: 0.7;
 }
 
-.side-panel-tab-icon svg,
+/* An agent avatar sizes its own drawing, larger than its box for the fur, so the icon size skips it. */
+.side-panel-tab-icon svg:not(.agent-avatar *),
 .side-panel-tab-x {
   width: var(--openbot-icon-sm);
   height: var(--openbot-icon-sm);
