@@ -15,6 +15,7 @@ import {
   CircleQuestionMark,
   DropdownMenu,
   Ellipsis,
+  GalleryVerticalEnd,
   ListChecks,
   MessageCircle,
   MotionTooltip,
@@ -217,7 +218,7 @@ export function SidebarPill(props: { pages: SidebarPages; vertical: boolean }) {
   /** The pages that this server has, in pill order. */
   const list = createMemo((): PillPage[] => {
     const pages: PillPage[] = [];
-    const { onRoutines, onWorkflows, onTasks, onSchedule, onUsage } = props.pages;
+    const { onRoutines, onWorkflows, onTasks, onSchedule, onUsage, onLibrary } = props.pages;
     if (onRoutines)
       pages.push({ id: "routines", label: t("sidebar.view.routines"), icon: Workflow, open: () => onRoutines() });
     if (onWorkflows) {
@@ -227,6 +228,8 @@ export function SidebarPill(props: { pages: SidebarPages; vertical: boolean }) {
     if (onSchedule)
       pages.push({ id: "schedule", label: t("app.rail.schedule"), icon: CalendarClock, open: onSchedule });
     pages.push({ id: "usage", label: t("app.rail.usage"), icon: ChartArea, open: onUsage });
+    if (onLibrary)
+      pages.push({ id: "library", label: t("app.rail.library"), icon: GalleryVerticalEnd, open: onLibrary });
     return pages;
   });
   return (

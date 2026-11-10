@@ -131,7 +131,6 @@ export const messages = defineMessages("mobile.agent", {
   "mobile.agent.info.reconnectToSave": "Reconnect to save changes.",
   "mobile.agent.info.noMemories": "No memories yet.",
   "mobile.agent.info.addMemory": "Add memory",
-  "mobile.agent.info.routineActive": "Active",
   "mobile.agent.info.routinePaused": "Paused",
   "mobile.agent.info.noRoutines": "No routines yet.",
   "mobile.agent.info.addRoutine": "Add routine",
@@ -306,6 +305,8 @@ export const messages = defineMessages("mobile.agent", {
   "mobile.agent.runtime.retryModels": "Retry models",
   "mobile.agent.runtime.loadingModels": "Loading models…",
   "mobile.agent.runtime.noModels": "No models available for this provider.",
+  "mobile.agent.runtime.searchModels": "Search models",
+  "mobile.agent.runtime.noMatches": "No models match your search.",
   "mobile.agent.runtime.usageLimit": "Usage limit reached",
   "mobile.agent.runtime.usageLimitWindow": "{window} limit",
   "mobile.agent.runtime.usageLimitResets": "{limit} · Resets {time}",
@@ -343,7 +344,7 @@ export const messages = defineMessages("mobile.agent", {
   "mobile.agent.backupModels.intro":
     "When {model} reaches its usage limit before {name} starts to write, {name} asks you which model to use.",
   "mobile.agent.backupModels.introAutomatic":
-    "When {model} reaches its usage limit or fails with a provider error before {name} starts to write, {name} switches to the first available model in the order.",
+    "When {model} reaches its usage limit, {name} switches to the first available model in the order. {name} also switches when {model} fails with a provider error before {name} starts to write.",
   "mobile.agent.backupModels.ask": "Ask before switching",
   "mobile.agent.backupModels.order": "Order",
   "mobile.agent.backupModels.empty": "No order set. {name} offers each available model.",
@@ -519,6 +520,7 @@ export const messages = defineMessages("mobile.agent", {
   "mobile.agent.list.openPinnedWithTitle": "Open pinned chat with {name}, {title}",
   "mobile.agent.list.withState": "{label}. {state}",
   "mobile.agent.list.unread": { one: "{count} unread message", other: "{count} unread messages" },
+  "mobile.agent.list.unreadThreads": "Unread messages in threads",
   "mobile.agent.list.waiting.title": "Needs you",
   "mobile.agent.list.waiting.label": { one: "Needs you, {count} agent", other: "Needs you, {count} agents" },
   "mobile.agent.list.waiting.action.question": "Answer",

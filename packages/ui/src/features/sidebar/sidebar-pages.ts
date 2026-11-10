@@ -12,6 +12,7 @@ export type SidebarPage =
   | "tasks"
   | "schedule"
   | "usage"
+  | "library"
   | "marketplace"
   | "settings";
 
@@ -22,6 +23,7 @@ export const SIDEBAR_PINNABLE_PAGES = [
   "tasks",
   "schedule",
   "usage",
+  "library",
 ] as const satisfies readonly SidebarPage[];
 export type SidebarPinnablePage = (typeof SIDEBAR_PINNABLE_PAGES)[number];
 
@@ -56,6 +58,8 @@ export interface SidebarPages {
   /** Absent where there is no schedule page. */
   onSchedule?: ((button: HTMLElement) => void) | undefined;
   onUsage: (button: HTMLElement) => void;
+  /** Absent where the server keeps no files, such as the web client. */
+  onLibrary?: ((button: HTMLElement) => void) | undefined;
   /** Absent while Marketplace cannot open. */
   onMarketplace?: (() => void) | undefined;
   onSettings: (button: HTMLElement) => void;

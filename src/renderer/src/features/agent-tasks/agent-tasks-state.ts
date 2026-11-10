@@ -1,10 +1,4 @@
-import type {
-  AgentEvent,
-  AgentTask,
-  AgentTaskBranch,
-  AgentTasksSnapshot,
-  ConversationSnapshot,
-} from "@openbot/contracts/ipc";
+import type { AgentEvent, AgentTask, AgentTasksSnapshot, ConversationSnapshot } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { currentText } from "@openbot/ui/text";
 import { createEffect, createMemo, createStore, untrack } from "solid-js";
@@ -34,14 +28,54 @@ interface AgentTasksState {
   conversations: Record<string, ConversationSnapshot>;
   /** The number of agent messages that the person has not read in each open thread, by agent id and task id. */
   unread: Record<string, Record<string, number>>;
+  /** What each opened thread knows of its messages before the loaded ones, by task id. */
+  history: Record<string, TaskHistory>;
+}
+
+/**
+ * A thread's messages before the loaded ones. The read of a thread gives only its newest messages,
+ * so a long thread reads the older ones page by page.
+ */
+interface TaskHistory {
+  /** The server has messages before the oldest loaded one. */
+  hasOlder: boolean;
+  /** A page read is in progress. */
+  loading: boolean;
+  /** The thread holds pages that it read, before the newest messages. */
+  paged: boolean;
+}
+
+/** The most messages that one press of Load older messages reads. */
+const OLDER_PAGE_SIZE = 50;
+
+/**
+ * The most loaded conversations of threads that no tab shows. The conversation of a thread that was
+ * shown longer ago goes, and the thread reads it again when its tab opens.
+ */
+const HIDDEN_CONVERSATION_LIMIT = 5;
+
+/**
+ * A new conversation of a thread that read older pages keeps the messages before its first message.
+ * The newest messages move on as messages arrive, so without them a gap opens between the pages. Null
+ * when the new conversation does not start inside the held messages: the pages no longer join it.
+ */
+function withOlderMessages(held: ConversationSnapshot, snapshot: ConversationSnapshot): ConversationSnapshot | null {
+  const first = snapshot.messages[0];
+  if (!first) return snapshot;
+  const index = held.messages.findIndex((message) => message.id === first.id);
+  if (index < 0) return null;
+  if (index === 0) return snapshot;
+  const ids = new Set(snapshot.messages.map((message) => message.id));
+  const older = held.messages.slice(0, index).filter((message) => !ids.has(message.id));
+  return { ...snapshot, messages: [...older, ...snapshot.messages] };
 }
 
 export interface AgentTasksOptions {
   /** Read on each call: tests and stories replace the port per case. */
   port: () => AgentTasksPort;
   activeAgentId: () => string | undefined;
-  /** The server is this computer. Only this computer moves a queued message to a new thread. */
-  local: () => boolean;
+  /** The server moves a queued message to a new thread: this computer, or the `agent-queue-task-v1` route. */
+  queuedMessageMovable: () => boolean;
   /** The server has side threads: the `agent-tasks-v1` routes. */
   available: () => boolean;
   /** The server renames and deletes side threads: the `agent-threads-v1` routes. */
@@ -59,6 +93,8 @@ export interface AgentTasksOptions {
   repliable: () => boolean;
   /** The server deletes a message of a side thread: this computer, or the `message-delete-v1` routes. */
   messageDeletable: () => boolean;
+  /** The server reads the older messages of a side thread: this computer, or the `agent-thread-pages-v1` route. */
+  pageable: () => boolean;
   /**
    * A change of this value reads the lists of the active agent and of each agent with a running thread
    * again, for example when the agent starts again.
@@ -76,7 +112,7 @@ export function createAgentTasks(options: AgentTasksOptions) {
   const {
     port,
     activeAgentId,
-    local,
+    queuedMessageMovable,
     available,
     editable,
     readable,
@@ -84,9 +120,10 @@ export function createAgentTasks(options: AgentTasksOptions) {
     filesAccepted,
     repliable,
     messageDeletable,
+    pageable,
   } = options;
   const scopeIsCurrent = createScopeGuard();
-  const [state, setState] = createStore<AgentTasksState>({ snapshots: {}, conversations: {}, unread: {} });
+  const [state, setState] = createStore<AgentTasksState>({ snapshots: {}, conversations: {}, unread: {}, history: {} });
   const listRequests = new Map<string, number>();
   const readRequests = new Map<string, number>();
   const unreadRequests = new Map<string, number>();
@@ -94,46 +131,188 @@ export function createAgentTasks(options: AgentTasksOptions) {
   const readMarks = new Map<string, string>();
   /** The threads whose mark move did not answer yet. A list read can be older than the move. */
   const marking = new Set<string>();
+  /** The threads that a tab shows now. Their conversations stay loaded. */
+  let shown: ReadonlySet<string> = new Set();
+  /** The threads with a loaded conversation that no tab shows, the one shown longest ago first. */
+  const hidden = new Set<string>();
+
+  /** Removes the conversations of the hidden threads over the limit, the one shown longest ago first. */
+  function dropHiddenConversations(): void {
+    const dropped = [...hidden].slice(0, Math.max(0, hidden.size - HIDDEN_CONVERSATION_LIMIT));
+    if (dropped.length === 0) return;
+    for (const taskId of dropped) {
+      hidden.delete(taskId);
+      // A read in progress no longer stores the conversation.
+      readRequests.set(taskId, (readRequests.get(taskId) ?? 0) + 1);
+    }
+    setState((current) => {
+      for (const taskId of dropped) {
+        delete current.conversations[taskId];
+        delete current.history[taskId];
+      }
+    });
+  }
+
+  /** Counts a loaded conversation that no tab shows. An event can load the conversation of such a thread. */
+  function keepHiddenConversation(taskId: string): void {
+    if (shown.has(taskId) || hidden.has(taskId) || !untrack(() => state.conversations[taskId])) return;
+    hidden.add(taskId);
+    dropHiddenConversations();
+  }
+
+  /**
+   * Sets the threads that a tab shows. A thread that a tab no longer shows keeps its conversation until
+   * more than the limit of other hidden threads were shown after it.
+   */
+  function showConversations(taskIds: readonly string[]): void {
+    const next = new Set(taskIds);
+    for (const taskId of shown) {
+      if (next.has(taskId) || !untrack(() => state.conversations[taskId])) continue;
+      hidden.delete(taskId);
+      hidden.add(taskId);
+    }
+    for (const taskId of next) hidden.delete(taskId);
+    shown = next;
+    dropHiddenConversations();
+  }
 
   /**
    * Stores a thread list. A conversation of a thread that the list no longer has goes with it. A task
    * without `branch` keeps the link that the stored list has: an `agent-tasks-changed` event of a joined
-   * server does not carry it, and a link does not change.
+   * server does not carry it, and a link does not change. A task without `queue` keeps the stored queue
+   * in the same way, but only the messages that still wait. Returns true when a waiting message changed
+   * and the stored list had a queue: then only a new read of the list gives the full queue.
    */
-  function setSnapshot(snapshot: AgentTasksSnapshot): void {
+  function setSnapshot(snapshot: AgentTasksSnapshot): boolean {
     const ids = new Set(snapshot.tasks.map((task) => task.id));
     // An event handler runs this too: the stored list is input here, not a dependency.
-    const links = untrack(() => {
-      const stored = new Map<string, AgentTaskBranch>();
-      for (const task of state.snapshots[snapshot.agentId]?.tasks ?? []) {
-        if (task.branch) stored.set(task.id, { ...task.branch });
-      }
-      return stored;
+    const stored = untrack(() => {
+      const byId = new Map<string, AgentTask>();
+      for (const task of state.snapshots[snapshot.agentId]?.tasks ?? []) byId.set(task.id, task);
+      return byId;
     });
+    let staleQueue = false;
     const tasks = snapshot.tasks.map((task) => {
-      const branch = task.branch === undefined ? links.get(task.id) : undefined;
-      return branch ? { ...task, branch } : task;
+      const held = stored.get(task.id);
+      if (!held) return task;
+      const next = { ...task };
+      if (task.branch === undefined && held.branch) next.branch = { ...held.branch };
+      if (task.queue === undefined && held.queue) {
+        const waiting = new Set(task.queuedMessages.map((message) => message.deliveryId));
+        next.queue = held.queue.filter((delivery) => waiting.has(delivery.id)).map((delivery) => ({ ...delivery }));
+        if (queuedKey(task) !== queuedKey(held)) staleQueue = true;
+      }
+      return next;
     });
     setState((current) => {
       current.snapshots[snapshot.agentId] = { ...snapshot, tasks };
       for (const [taskId, conversation] of Object.entries(current.conversations)) {
-        if (conversation.agentId === snapshot.agentId && !ids.has(taskId)) delete current.conversations[taskId];
+        if (conversation.agentId === snapshot.agentId && !ids.has(taskId)) {
+          delete current.conversations[taskId];
+          delete current.history[taskId];
+          hidden.delete(taskId);
+        }
       }
     });
+    return staleQueue;
   }
 
-  function applySnapshot(snapshot: AgentTasksSnapshot): void {
+  /** What the waiting messages of a task are, as each list of the task gives them. */
+  function queuedKey(task: AgentTask): string {
+    return JSON.stringify(task.queuedMessages.map((message) => [message.deliveryId, message.text]));
+  }
+
+  function applySnapshot(snapshot: AgentTasksSnapshot): boolean {
     listRequests.set(snapshot.agentId, (listRequests.get(snapshot.agentId) ?? 0) + 1);
-    setSnapshot(snapshot);
+    return setSnapshot(snapshot);
   }
 
-  /** Keeps the newest conversation of a task. A delta raises the revision, so an older snapshot loses. */
+  /**
+   * Keeps the newest conversation of a task. A delta raises the revision, so an older snapshot loses. A
+   * thread that read older pages keeps them. When its first messages leave the newest ones, the thread
+   * has older messages from then on.
+   */
   function applyConversation(taskId: string, snapshot: ConversationSnapshot): void {
     const stored = state.conversations[taskId];
     if (stored && snapshot.revision < stored.revision) return;
     setState((current) => {
+      const held = current.conversations[taskId];
+      const history = current.history[taskId];
+      if (held && history?.paged) {
+        const joined = withOlderMessages(held, snapshot);
+        current.conversations[taskId] = joined ?? snapshot;
+        if (joined) return;
+        // The thread reads its older messages again from the new first message.
+        history.paged = false;
+        history.hasOlder = true;
+        return;
+      }
       current.conversations[taskId] = snapshot;
+      const first = snapshot.messages[0];
+      const moved = held && first ? held.messages.findIndex((message) => message.id === first.id) > 0 : false;
+      if (!moved || !pageable()) return;
+      if (history) history.hasOlder = true;
+      else current.history[taskId] = { hasOlder: true, loading: false, paged: false };
     });
+    keepHiddenConversation(taskId);
+  }
+
+  /**
+   * Asks the server whether a thread has messages before the loaded ones, once its tab has read the
+   * newest. A server without the page route shows only the newest messages.
+   */
+  function readHistory(agentId: string, taskId: string, snapshot: ConversationSnapshot): void {
+    const read = port().readTaskPage;
+    const oldest = snapshot.messages[0];
+    if (!read || !pageable() || !oldest || state.history[taskId]) return;
+    void read({ agentId, taskId, beforeMessageId: oldest.id, limit: 0 })
+      .then((page) => {
+        if (!scopeIsCurrent() || !state.conversations[taskId] || state.history[taskId]) return;
+        setState((current) => {
+          current.history[taskId] = { hasOlder: page.hasOlder, loading: false, paged: false };
+        });
+      })
+      // The thread still shows its newest messages.
+      .catch(() => undefined);
+  }
+
+  /** Reads the page of a thread's messages before the oldest loaded one, and puts it in front of them. */
+  async function loadOlderMessages(agentId: string, taskId: string): Promise<void> {
+    const read = port().readTaskPage;
+    const oldest = state.conversations[taskId]?.messages[0];
+    const history = state.history[taskId];
+    if (!read || !oldest || !history?.hasOlder || history.loading) return;
+    setState((current) => {
+      const entry = current.history[taskId];
+      if (entry) entry.loading = true;
+    });
+    try {
+      const page = await read({ agentId, taskId, beforeMessageId: oldest.id, limit: OLDER_PAGE_SIZE });
+      if (!scopeIsCurrent()) return;
+      setState((current) => {
+        const conversation = current.conversations[taskId];
+        const entry = current.history[taskId];
+        if (!conversation || !entry) return;
+        entry.loading = false;
+        // A new conversation can have come in meanwhile. The page goes before the message that it was read for.
+        if (conversation.messages[0]?.id !== oldest.id) return;
+        const ids = new Set(conversation.messages.map((message) => message.id));
+        conversation.messages = [
+          ...page.conversation.messages.filter((message) => !ids.has(message.id)),
+          ...conversation.messages,
+        ];
+        entry.hasOlder = page.hasOlder;
+        entry.paged = true;
+      });
+    } catch (error) {
+      if (!scopeIsCurrent()) return;
+      setState((current) => {
+        const entry = current.history[taskId];
+        if (entry) entry.loading = false;
+      });
+      const { t, errorMessage } = currentText();
+      actionToast.error(errorMessage(error, t("chat.history.olderFailed")));
+    }
   }
 
   function applyDelta(event: Extract<AgentTaskEvent, { type: "agent-task-conversation-delta" }>): void {
@@ -162,16 +341,17 @@ export function createAgentTasks(options: AgentTasksOptions) {
   }
 
   /**
-   * A list from an event of a joined server has no branch links. When it has a task that the stored list
-   * does not have, the list is read again: the new task can be a branch from another device.
+   * A list from an event of a joined server has no branch links and no full queue. When it has a task
+   * that the stored list does not have, the list is read again: the new task can be a branch from
+   * another device. When a waiting message of a thread changed, the list is read again for its queue.
    */
   function applyTasksChanged(snapshot: AgentTasksSnapshot): void {
     const stored = untrack(() => state.snapshots[snapshot.agentId]);
     const known = stored && untrack(branchable) ? new Set(stored.tasks.map((task) => task.id)) : undefined;
     // Each progress line sends a list too. Only a saved message or an end of a turn changes a count.
     const before = stored ? untrack(() => unreadKey(stored)) : undefined;
-    applySnapshot(snapshot);
-    if (known && snapshot.tasks.some((task) => task.branch === undefined && !known.has(task.id)))
+    const staleQueue = applySnapshot(snapshot);
+    if (staleQueue || (known && snapshot.tasks.some((task) => task.branch === undefined && !known.has(task.id))))
       void loadTasks(snapshot.agentId);
     // The host sends no event when a read mark moves, so a changed list reads the marks again.
     else if (unreadKey(snapshot) !== before) loadUnread(snapshot.agentId);
@@ -293,6 +473,7 @@ export function createAgentTasks(options: AgentTasksOptions) {
       .then((snapshot) => {
         if (!scopeIsCurrent() || readRequests.get(taskId) !== request) return;
         applyConversation(taskId, snapshot);
+        readHistory(agentId, taskId, snapshot);
       })
       .catch((error) => {
         if (!scopeIsCurrent() || readRequests.get(taskId) !== request) return;
@@ -472,7 +653,9 @@ export function createAgentTasks(options: AgentTasksOptions) {
     if (done === null || !scopeIsCurrent()) return false;
     setState((current) => {
       delete current.conversations[taskId];
+      delete current.history[taskId];
     });
+    hidden.delete(taskId);
     return true;
   }
 
@@ -522,6 +705,27 @@ export function createAgentTasks(options: AgentTasksOptions) {
       });
   }
 
+  /** The messages of a thread: the loaded conversation, else a read of it. */
+  async function taskMessages(agentId: string, taskId: string): Promise<ConversationSnapshot["messages"]> {
+    return state.conversations[taskId]?.messages ?? (await port().readTask({ agentId, taskId })).messages;
+  }
+
+  /** Whether a thread has a message. */
+  async function taskHasMessage(agentId: string, taskId: string, messageId: string): Promise<boolean> {
+    return (await taskMessages(agentId, taskId)).some((message) => message.id === messageId);
+  }
+
+  /** Moves the read mark of each open thread of an agent with unread messages to its latest message. */
+  async function markAllTasksRead(agentId: string): Promise<void> {
+    const unread = (state.snapshots[agentId]?.tasks ?? []).filter((task) => unreadCount(task) > 0);
+    await Promise.all(
+      unread.map(async (task) => {
+        const latestMessageId = (await taskMessages(agentId, task.id)).at(-1)?.id;
+        if (latestMessageId && scopeIsCurrent()) markTaskRead(agentId, task.id, latestMessageId);
+      }),
+    );
+  }
+
   /**
    * Reads the lists of the active agent, of each agent with a running thread and of each loaded
    * conversation again, after the server was away. Then it reads each loaded conversation. The lists
@@ -548,15 +752,22 @@ export function createAgentTasks(options: AgentTasksOptions) {
   return {
     available,
     editable,
-    local,
+    queuedMessageMovable,
     filesAccepted,
     repliable,
     snapshot: (agentId: string): AgentTasksSnapshot | undefined => state.snapshots[agentId],
     conversation: (taskId: string): ConversationSnapshot | undefined => state.conversations[taskId],
+    /** The thread has messages before the loaded ones, and whether it reads them now. Undefined while it is not known. */
+    olderMessages: (taskId: string): { loading: boolean } | undefined => {
+      const history = state.history[taskId];
+      return history?.hasOlder ? { loading: history.loading } : undefined;
+    },
+    loadOlderMessages,
     applyEvent,
     reload,
     loadTasks,
     openTask,
+    showConversations,
     startTask,
     runQueuedMessageAsTask,
     canBranch,
@@ -574,6 +785,8 @@ export function createAgentTasks(options: AgentTasksOptions) {
     canDeleteMessage,
     deleteTaskMessage,
     markTaskRead,
+    markAllTasksRead,
+    taskHasMessage,
     unreadCount,
     unreadTotals,
     loadUnread,

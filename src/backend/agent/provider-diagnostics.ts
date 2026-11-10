@@ -8,9 +8,9 @@
  * list. That belongs in the log, not in an error the user is asked to read.
  *
  * OpenBot's own bridge servers carry its name, and stay visible: a failure there is a failure of
- * this app. So does a server this app configured - the user asked for it here, and the reason it
- * does not start is something only they can fix. `configuredNames` is what separates the two: a
- * server the user configured in their own provider files is still nobody's failure but theirs.
+ * this app. A server this app configured is an MCP line too. The caller finds that server and
+ * reports it as the server's failure, not the provider's: the user asked for it here, and only they
+ * can fix it.
  *
  * Grok's CLI also loads the servers in `~/.claude.json`, `~/.cursor/mcp.json` and `.mcp.json`. One
  * there that asks for OAuth ends its transport with the `rmcp` worker's own sentence,
@@ -18,16 +18,23 @@
  * nor the server. The session opens without that server, and the user read the line as a "Provider
  * error" toast (#1199). The worker's sentence is matched as it stands, because no other part of a
  * provider writes it.
- *
- * A name is looked for outside the web addresses in the message. That sentence quotes the server's
- * `resource_metadata` address, so a server configured here as `composio` matched every unsigned
- * `connect.composio.dev` server in the Grok files, and each of them came back as a toast.
  */
-export function isMcpSubsystemDiagnostic(message: string, configuredNames: readonly string[] = []): boolean {
+export function isMcpSubsystemDiagnostic(message: string): boolean {
   if (/openbot/i.test(message)) return false;
-  const withoutAddresses = message.replace(/\bhttps?:\/\/[^\s"'\\)]+/giu, " ");
-  if (configuredNames.some((name) => name && withoutAddresses.includes(name))) return false;
   return /\b(mcp|rmcp)\b|\bworker quit with (?:fatal|join error|reason):/i.test(message);
+}
+
+/**
+ * Whether an MCP diagnostic says that the server refused the provider for want of a sign-in.
+ *
+ * Grok's `rmcp` worker writes `AuthRequired(…)` for an http server that answers 401 with an OAuth
+ * challenge. Other CLIs write the status next to `HTTP` or `status`, or the word. A bare `401` is
+ * not enough: a port, an id or a line number can be 401.
+ */
+export function isMcpSignInDiagnostic(message: string): boolean {
+  return /\bAuthRequired\b|\bunauthori[sz]ed\b|\bnot authenticated\b|\b(?:HTTP|status(?:\s+code)?)\W{0,3}401\b/i.test(
+    message,
+  );
 }
 
 /**
@@ -323,4 +330,32 @@ export function providerResetDelayMs(message: string): number | null {
 /** Whether a provider's text names money or a quota, which no wait gives back. */
 export function isBalanceDiagnostic(message: string): boolean {
   return /\b(?:credits?|balance|quota|billing)\b/iu.test(message);
+}
+
+/**
+ * Whether a model endpoint refused an image in the request because a side is too short. The image
+ * stays in the provider session, which sends it on each turn, so each turn fails the same way until
+ * a new session (#6188). xAI writes "Image dimensions 6x8 are too small. Both width and height must
+ * be at least 8 pixels.", vLLM's Qwen vision models "height:22 or width:1568 must be larger than
+ * factor:28", and DashScope "The image length and width do not meet the model restrictions".
+ */
+export function isImageTooSmallDiagnostic(message: string): boolean {
+  return (
+    /\bimage\b[^.\n]{0,80}\btoo small\b/iu.test(message) ||
+    (/\bimage\b/iu.test(message) &&
+      /\b(?:height|width)\b[^.\n]{0,60}\bmust be at least \d+ ?(?:px|pixels?)\b/iu.test(message)) ||
+    /\bmust be larger than factor\b/iu.test(message) ||
+    /\bimage length and width do not meet the model restrictions\b/iu.test(message)
+  );
+}
+
+/**
+ * Whether a model endpoint refused an image in the request because it is too large. As for a too
+ * small image, the provider session keeps the image and sends it on each turn, so each turn fails
+ * the same way until a new session (#6429). A model behind OpenCode writes "Inline image exceeds
+ * maximum dimensions of 1024px on its longest side.", and Anthropic "At least one of the image
+ * dimensions exceed max allowed size for many-image requests: 2000 pixels".
+ */
+export function isImageTooLargeDiagnostic(message: string): boolean {
+  return /\bimage\b[^.\n]{0,80}\bexceeds? (?:the )?max(?:imum)? (?:allowed size|dimensions?)\b/iu.test(message);
 }

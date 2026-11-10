@@ -104,7 +104,8 @@ socket_ready() {
 start_xvfb() {
   local display=$1 dir=$2 size
   size=${OPENBOT_DISPLAY_SIZE:-1280x800}
-  nohup Xvfb "$display" -screen 0 "${size}x24" -nolisten tcp >/dev/null 2>&1 &
+  # A white root (`-wr`): remote desktop shows it, and the default black root looks like no video.
+  nohup Xvfb "$display" -screen 0 "${size}x24" -nolisten tcp -wr >/dev/null 2>&1 &
   echo $! >"$dir/xvfb.pid"
   wait_for_display "$display"
 }

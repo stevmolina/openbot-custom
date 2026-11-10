@@ -13,14 +13,15 @@ export type WindowPage =
   | "schedule"
   | "workflows"
   | "usage"
+  | "library"
   | "marketplace"
   | "settings"
   | "server-settings";
 
 /**
  * How a page sits in the window. The tasks page shows in the middle pane, as the agents do. A settings
- * page starts below the top row. The title of a schedule, workflows, usage or Marketplace page goes in
- * the top row of the card. The chat sidebar stays beside every page.
+ * page starts below the top row. The title of a schedule, workflows, usage, Library or Marketplace page
+ * goes in the top row of the card. The chat sidebar stays beside every page.
  */
 export type WindowPageKind = "agents" | "settings" | "titled";
 
@@ -51,6 +52,10 @@ const context = createSimpleContext({
     const { activeServerId } = useServers();
     /** The elements of the settings page that the settings panel shows in. The page sets them. */
     const [settingsMounts, setSettingsMounts] = createSignal<SettingsPagePlacement | undefined>();
+    /** The search of the server settings page. The server settings show only the sections that match it. */
+    const [serverSettingsQuery, setServerSettingsQuery] = createSignal("");
+    /** Each Enter in the server settings search adds one. The server settings then open the first match. */
+    const [openFirstServerSectionRequest, setOpenFirstServerSectionRequest] = createSignal(0);
 
     const page = createMemo<WindowPage>(() => {
       if (serverSettings.serverSettingsOpen()) return "server-settings";
@@ -129,6 +134,10 @@ const context = createSimpleContext({
       conversationCovered: () => page() !== "agents",
       setSettingsMounts,
       settingsPlacement,
+      serverSettingsQuery,
+      setServerSettingsQuery: (query: string) => setServerSettingsQuery(query),
+      openFirstServerSectionRequest,
+      openFirstServerSection: () => setOpenFirstServerSectionRequest((request) => request + 1),
       pageBack,
       /** Shows the agents and closes the other pages. */
       showAgents() {
@@ -152,6 +161,10 @@ const context = createSimpleContext({
       openUsage(source: HTMLElement | null) {
         const serverId = activeServerId();
         if (serverId) usage.openUsage(serverId, source);
+      },
+      openLibrary(source: HTMLElement | null) {
+        const serverId = activeServerId();
+        if (serverId) usage.openLibrary(serverId, source);
       },
       openSettings(source: HTMLElement | null) {
         settings.openAppSettings(source);

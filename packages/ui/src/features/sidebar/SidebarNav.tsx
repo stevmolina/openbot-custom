@@ -8,12 +8,13 @@ import { Bot, CheckCheck, ContextMenu, FolderPlus, Hash } from "@openbot/ui";
 import { For, Show } from "solid-js";
 import { useText } from "../../text";
 import { SidebarChannelRow } from "./SidebarChannelRow";
+import { SidebarChatOrderSubmenu } from "./SidebarChatOrderSubmenu";
 import { SidebarEmptyState } from "./SidebarEmptyState";
 import { SidebarHiddenGroup } from "./SidebarHiddenGroup";
 import { SidebarPinnedGroup } from "./SidebarPinnedGroup";
 import { SidebarSectionList } from "./SidebarSectionList";
 import { SidebarThreadLanes } from "./SidebarThreadLanes";
-import { SidebarWaitingGroup } from "./SidebarWaitingGroup";
+import { SidebarUnreadGroup, SidebarWaitingGroup } from "./SidebarWaitingGroup";
 import { useSidebarScope } from "./sidebar-scope";
 
 export function SidebarNav() {
@@ -31,6 +32,7 @@ export function SidebarNav() {
     scrollFades,
     setAgentListElement,
     startCreateSection,
+    unreadChats,
     updateSidebarNativeDrag,
     userHiddenAgentList,
     waitingChats,
@@ -41,17 +43,19 @@ export function SidebarNav() {
       ref={setAgentListElement}
       aria-label={t("sidebar.nav.label")}
       class={["agent-list", scrollFades.classes()]}
+      style={{ "--agent-list-stuck-height": `${scrollFades.stuckHeight()}px` }}
       data-sidebar-dragging={draggingKind()}
       onDragOver={updateSidebarNativeDrag}
       onDragLeave={handleListDragLeave}
       onDrop={dropSidebarNativeDrag}
       onScroll={scrollFades.measure}
     >
-      <div class="agent-list-content">
+      <div ref={scrollFades.watch} class="agent-list-content">
         <Show
           when={
             resolvedPinnedItems().length === 0 &&
             waitingChats().length === 0 &&
+            unreadChats().length === 0 &&
             filteredChats().length === 0 &&
             userHiddenAgentList().length === 0 &&
             (props.showPeople === false || orderedPeople().length === 0) &&
@@ -66,6 +70,7 @@ export function SidebarNav() {
           fallback={
             <>
               <SidebarWaitingGroup />
+              <SidebarUnreadGroup />
               <SidebarSectionList />
             </>
           }
@@ -91,6 +96,7 @@ export function SidebarNav() {
           props.onCreateChannel ||
           (layoutMutable() && !props.threadLanes) ||
           props.onMarkAllRead ||
+          (props.onChatOrderChange && !props.threadLanes) ||
           props.onToggleArchivedChannels
         }
       >
@@ -122,6 +128,9 @@ export function SidebarNav() {
                   <CheckCheck class="agent-context-icon size-4" aria-hidden="true" />
                   <span>{t("sidebar.markAllRead")}</span>
                 </ContextMenu.Item>
+              </Show>
+              <Show when={props.onChatOrderChange && !props.threadLanes}>
+                <SidebarChatOrderSubmenu />
               </Show>
               <Show when={props.onToggleArchivedChannels}>
                 <ContextMenu.Item onSelect={() => props.onToggleArchivedChannels?.()}>

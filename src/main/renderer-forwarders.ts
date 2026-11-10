@@ -339,9 +339,12 @@ export function createRendererForwarders({
 
   async function notifyAgentEvent(serverId: string, received: AgentEvent): Promise<void> {
     withdrawResolvedNotification(serverId, received);
+    // A turn of a side thread that is not a routine thread shows no desktop notification, as before.
+    // The phone notifies about it (`PushNotificationService`).
+    if (received.type === "thread-turn-completed" && !received.routine) return;
     // A routine thread's turn notifies as a turn of the chat does. Its answer is in the routine thread.
-    const routineTaskId = received.type === "routine-thread-turn-completed" ? received.taskId : null;
-    const event = received.type === "routine-thread-turn-completed" ? received.turn : received;
+    const routineTaskId = received.type === "thread-turn-completed" ? received.taskId : null;
+    const event = received.type === "thread-turn-completed" ? received.turn : received;
     // Most events stream while an agent works. Only these can notify, so the others skip the server list.
     if (!agentEventCanNotify(event) && event.type !== "usage-limit-reached" && event.type !== "subagent-failed") return;
     // Like Discord, nothing pops up while the user is looking at the app. The level is read again
@@ -568,7 +571,9 @@ export function createRendererForwarders({
     for (const window of appWindows()) sendToRenderer(window, IPC_ENDPOINTS.voice.streamTranscript, transcript);
   }
 
-  function forwardVoiceLiveEvent(event: VoiceLiveEvent): void {
+  /** `memberId` is null for a session of this computer. A member's session never goes to these windows. */
+  function forwardVoiceLiveEvent(event: VoiceLiveEvent, memberId: string | null = null): void {
+    if (memberId !== null) return;
     for (const window of appWindows()) sendToRenderer(window, IPC_ENDPOINTS.voice.liveEvent, event);
   }
 

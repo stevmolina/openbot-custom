@@ -198,10 +198,16 @@ function FreeAreaMenu() {
   );
 }
 
-/** The chats of the list, newest first. The pinned and the hidden chats show in their own groups. */
+/**
+ * The chats of the list, newest first. The pinned and the hidden chats show in their own groups. The
+ * list has no "Unread" group, so the chats that the "unread-group" order takes out of the sections
+ * come back here.
+ */
 function useRecentChats() {
-  const { filteredChats, waitingChats, props } = useSidebarScope();
-  return createMemo(() => sidebarRecentChats([...waitingChats(), ...filteredChats()], props.threadLanes?.threads));
+  const { filteredChats, waitingChats, unreadChats, props } = useSidebarScope();
+  return createMemo(() =>
+    sidebarRecentChats([...waitingChats(), ...unreadChats(), ...filteredChats()], props.threadLanes?.threads),
+  );
 }
 
 /** The open list. */

@@ -14,6 +14,7 @@ import {
 import { type DynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import {
   normalizeUiBlockSpec,
+  UI_API_KEY_SCOPE_FIELD_ID,
   UI_VAULT_REQUEST_FIELDS,
   UI_VAULT_SECRET_FIELDS,
   type UiBlockResponse,
@@ -39,7 +40,7 @@ export function secretElicitationField(id: string, property: DynamicRecord | und
   return SECRET_FIELD_PATTERN.test(`${id} ${getString(property, "title") ?? ""}`);
 }
 
-export function elicitationOptions(property: DynamicRecord): Array<{ label: string; description: string }> | null {
+function elicitationOptions(property: DynamicRecord): Array<{ label: string; description: string }> | null {
   if (Array.isArray(property.oneOf)) {
     return property.oneOf.filter(isRecord).flatMap((option) => {
       const value = getString(option, "const");
@@ -132,18 +133,24 @@ function elicitationConsentQuestion(params: unknown, serverName: string | null):
   };
 }
 
-/** One question per requested field, so a plugin can collect an API key or any other value. */
-function elicitationFieldQuestions(params: unknown, subject: string): AgentPromptQuestion[] {
+/**
+ * One question per requested field, so a plugin can collect an API key or any other value. When a
+ * field has its own text, the request message goes under the first question, so it is not lost.
+ */
+export function elicitationFieldQuestions(params: unknown, subject: string): AgentPromptQuestion[] {
   const properties = getRecord(getRecord(params, "requestedSchema"), "properties") ?? {};
-  const message = getString(params, "message")?.trim();
-  return Object.entries(properties).flatMap(([id, property]) => {
+  const message = getString(params, "message")?.trim() || undefined;
+  return Object.entries(properties).flatMap(([id, property], index) => {
     if (!isRecord(property)) return [];
-    const question = getString(property, "description") ?? message ?? `${subject} needs more information.`;
+    const description = getString(property, "description");
+    const question = description ?? message ?? `${subject} needs more information.`;
+    const detail = index === 0 && description && message && message !== description ? message : undefined;
     return [
       {
         id,
         header: (getString(property, "title") ?? id).slice(0, INPUT_LIMITS.promptHeader),
         question: question.slice(0, INPUT_LIMITS.promptQuestion),
+        ...(detail ? { detail: detail.slice(0, INPUT_LIMITS.promptQuestion) } : {}),
         isSecret: secretElicitationField(id, property),
         options: elicitationOptions(property),
       },
@@ -232,28 +239,41 @@ function elicitationFieldResult(
   return { action: "accept", content, _meta: null };
 }
 
+/**
+ * Why the questions make no card, or null when they make one. The text names the question and the
+ * limit, so the agent can correct its call: the advertised schema has no limits (#6268).
+ */
+export function promptQuestionsProblem(questions: AgentPromptQuestion[]): string | null {
+  if (questions.length === 0) return "questions must be a non-empty array of question objects, not text.";
+  if (questions.length > INPUT_LIMITS.promptQuestions)
+    return `questions has ${questions.length} items; the limit is ${INPUT_LIMITS.promptQuestions}.`;
+  const ids = new Set<string>();
+  for (const [index, question] of questions.entries()) {
+    const at = `questions[${index}]`;
+    if (question.id.length === 0 || question.id.length > INPUT_LIMITS.identifier)
+      return `${at}.id must have 1 to ${INPUT_LIMITS.identifier} characters. Leave id out to get one.`;
+    if (ids.has(question.id))
+      return `${at}.id is the id of an earlier question. Give each question a different id, or leave id out.`;
+    ids.add(question.id);
+    if (question.header.length > INPUT_LIMITS.promptHeader)
+      return `${at}.header has ${question.header.length} characters; the limit is ${INPUT_LIMITS.promptHeader}.`;
+    if (question.question.length === 0 || question.question.length > INPUT_LIMITS.promptQuestion)
+      return `${at}.question must have 1 to ${INPUT_LIMITS.promptQuestion} characters.`;
+    if (question.options === null) continue;
+    if (question.options.length > INPUT_LIMITS.promptOptions)
+      return `${at}.options has ${question.options.length} options; the limit is ${INPUT_LIMITS.promptOptions}. Keep the most likely options: the user can also type an answer.`;
+    for (const [position, option] of question.options.entries()) {
+      if (option.label.length === 0 || option.label.length > INPUT_LIMITS.promptOptionLabel)
+        return `${at}.options[${position}].label must have 1 to ${INPUT_LIMITS.promptOptionLabel} characters.`;
+      if (option.description.length > INPUT_LIMITS.promptOptionDescription)
+        return `${at}.options[${position}].description has ${option.description.length} characters; the limit is ${INPUT_LIMITS.promptOptionDescription}.`;
+    }
+  }
+  return null;
+}
+
 export function validPromptQuestions(questions: AgentPromptQuestion[]): boolean {
-  return (
-    questions.length > 0 &&
-    questions.length <= INPUT_LIMITS.promptQuestions &&
-    new Set(questions.map((question) => question.id)).size === questions.length &&
-    questions.every(
-      (question) =>
-        question.id.length > 0 &&
-        question.id.length <= INPUT_LIMITS.identifier &&
-        question.header.length <= INPUT_LIMITS.promptHeader &&
-        question.question.length > 0 &&
-        question.question.length <= INPUT_LIMITS.promptQuestion &&
-        (question.options === null ||
-          (question.options.length <= INPUT_LIMITS.promptOptions &&
-            question.options.every(
-              (option) =>
-                option.label.length > 0 &&
-                option.label.length <= INPUT_LIMITS.promptOptionLabel &&
-                option.description.length <= INPUT_LIMITS.promptOptionDescription,
-            ))),
-    )
-  );
+  return promptQuestionsProblem(questions) === null;
 }
 
 export function questionPromptText(questions: AgentPromptQuestion[], resolution: AgentPromptResolution | null): string {
@@ -307,6 +327,24 @@ export function expiredPromptResult(
   };
 }
 
+/**
+ * The answer for a question or block that the user did not answer because they wrote a new message
+ * in the chat. Only the model reads it. The message reaches the agent as a steer or as the next turn.
+ */
+export function userMessagePromptResult(
+  responseKind: "dynamic-tool" | "user-input" | "ui-block",
+  blockId: string | undefined,
+): DynamicToolResult | { answers: Record<string, never> } {
+  // `request_user_input` has no field for a note: empty answers are what a skip gives.
+  if (responseKind === "user-input") return { answers: {} };
+  const value = {
+    status: "skipped",
+    ...(blockId ? { blockId } : {}),
+    next: "The user wrote a new message in this chat instead of answering. Follow that message. If it is not in your input, end your turn: it starts next. Ask again only if you still need the answer.",
+  };
+  return { success: true, contentItems: [{ type: "inputText", text: JSON.stringify(value) }] };
+}
+
 /** What a blocking UI block (`ask_ui`) ended with. */
 export type UiBlockPromptOutcome =
   | { status: "answered"; blockId: string; response: UiBlockResponse }
@@ -334,7 +372,7 @@ export function uiBlockPromptResult(outcome: UiBlockPromptOutcome): DynamicToolR
 export const API_KEY_FIELD_ID = "key";
 
 /** The id of the field of the `request_api_key` form that selects who can use the key. */
-export const API_KEY_SCOPE_FIELD_ID = "scope";
+export const API_KEY_SCOPE_FIELD_ID = UI_API_KEY_SCOPE_FIELD_ID;
 
 /** The option of the scope field that keeps the key for the asking agent only. */
 export const API_KEY_SCOPE_AGENT = sourceText("status.agent.apiKeyScope.agent");

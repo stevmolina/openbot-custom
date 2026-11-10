@@ -52,6 +52,7 @@ import {
   type PasteMessageLinkInput,
   type PreviewSharedFileInput,
   type PreviewWorkspaceFileInput,
+  type ReadAgentTaskPageInput,
   type ReadConversationPageInput,
   type RenameAgentTaskInput,
   type ReorderQueueInput,
@@ -251,6 +252,10 @@ export function parseCreateAgent(value: unknown): CreateAgentInput {
   if (value.reasoningEffort !== undefined) {
     if (!isReasoningEffort(value.reasoningEffort)) throw new Error("Invalid reasoning effort.");
     result.reasoningEffort = value.reasoningEffort;
+  }
+  if (value.providerAccountId !== undefined) {
+    if (!isProviderAccountId(value.providerAccountId)) throw new Error("Invalid provider account.");
+    result.providerAccountId = value.providerAccountId;
   }
   return result;
 }
@@ -620,6 +625,17 @@ export function parseAgentTask(value: unknown): AgentTaskInput {
   };
 }
 
+export function parseReadAgentTaskPage(value: unknown): ReadAgentTaskPageInput {
+  if (!isObject(value)) throw new Error("Invalid task request.");
+  return {
+    agentId: requireString(value.agentId, "agentId", INPUT_LIMITS.identifier),
+    taskId: requireString(value.taskId, "taskId", INPUT_LIMITS.identifier),
+    beforeMessageId: requireString(value.beforeMessageId, "beforeMessageId", INPUT_LIMITS.identifier),
+    // 0 asks only whether the thread has older messages.
+    limit: value.limit === 0 ? 0 : parsePageLimit(value.limit),
+  };
+}
+
 export function parseBranchAgentTask(value: unknown): BranchAgentTaskInput {
   if (!isObject(value)) throw new Error("Invalid branch request.");
   return {
@@ -757,6 +773,10 @@ export function parseUpdateAgent(value: unknown): UpdateAgentInput {
   if (value.fastMode !== undefined) {
     if (!isBoolean(value.fastMode)) throw new Error("Invalid fast mode value.");
     result.fastMode = value.fastMode;
+  }
+  if (value.ultrafast !== undefined) {
+    if (!isBoolean(value.ultrafast)) throw new Error("Invalid fast mode value.");
+    result.ultrafast = value.ultrafast;
   }
   if (value.providerAccountId !== undefined) {
     if (value.providerAccountId !== null && !isProviderAccountId(value.providerAccountId))

@@ -130,8 +130,9 @@ export function useChatAttachments(
   // The same checks as desktop, named per file: one selection can hold several, and the user
   // needs to know which one to fix.
   function assertSupported(name: string) {
-    if (!isSupportedAttachmentName(name)) throw new Error(t("mobile.chat.attachment.unsupported", { name }));
-    if (support && !isSupportedAttachmentNameFor(name, support())) {
+    if (!support) {
+      if (!isSupportedAttachmentName(name)) throw new Error(t("mobile.chat.attachment.unsupported", { name }));
+    } else if (!isSupportedAttachmentNameFor(name, support())) {
       const type = attachmentFileExtension(name)?.toUpperCase();
       throw new Error(
         type
@@ -187,7 +188,15 @@ export function useChatAttachments(
   }
   function photoName(asset: ImagePicker.ImagePickerAsset) {
     const extension = asset.uri.split(".").at(-1)?.toLowerCase();
-    return asset.fileName && isSupportedAttachmentName(asset.fileName) ? asset.fileName : `photo.${extension ?? "jpg"}`;
+    const video = asset.type === "video";
+    return asset.fileName && isSupportedAttachmentName(asset.fileName)
+      ? asset.fileName
+      : `${video ? "video" : "photo"}.${extension ?? (video ? "mov" : "jpg")}`;
+  }
+  /** The library offers videos only to a host that takes MOV or MP4, as the desktop picker filter does. */
+  function libraryMediaTypes(): ImagePicker.MediaType[] {
+    const accepted = support?.();
+    return !accepted || accepted.media || accepted.mp4 || accepted.anyFile ? ["images", "videos"] : ["images"];
   }
   /** Swap one file in place. The rest keep their order, and a cancelled picker changes nothing. */
   async function replaceItem(id: string) {
@@ -252,7 +261,7 @@ export function useChatAttachments(
   async function choosePhotos() {
     if (itemsRef.current.length >= INPUT_LIMITS.attachments) throw new Error(limitMessage());
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: libraryMediaTypes(),
       allowsMultipleSelection: true,
       quality: 1,
       preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,

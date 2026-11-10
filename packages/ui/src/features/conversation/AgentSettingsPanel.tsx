@@ -80,6 +80,7 @@ import {
   type SupportedAvatarSilhouetteId,
 } from "@openbot/ui/bloub-avatar";
 import { ProviderModelPicker } from "@openbot/ui/components/ProviderModelPicker";
+import { findModelOption } from "@openbot/ui/components/provider-accounts";
 import { ResizableTextarea } from "@openbot/ui/components/ResizableTextarea";
 import {
   SettingsField,
@@ -114,6 +115,7 @@ import { useText } from "../../text";
 import { avatarColorChoiceLabel } from "../agents/avatar-hue-label";
 import { SERVER_NOTIFICATION_LEVEL_LABELS } from "../servers/ServerActionItems";
 import { AgentChatColorRow } from "../settings/ChatColorSetting";
+import { AgentDeleteHistoryDialog } from "./AgentDeleteHistoryDialog";
 import { type AgentFolderCalls, AgentFoldersPage, AgentFoldersRow, createAgentFolders } from "./AgentFolders";
 import { AgentNewChatDialog } from "./AgentNewChatDialog";
 import { BackupModelsPage } from "./BackupModels";
@@ -149,8 +151,10 @@ export interface AgentSettingsPanelProps {
   quickAcknowledgementEditable?: boolean;
   /** Fast mode, as the model picker of the chat header shows it. */
   fastMode?: boolean | undefined;
-  /** Without it, the model picker shows no Fast switch. The picker shows it only for a model with a fast tier. */
-  onFastModeChange?: ((fastMode: boolean) => void) | undefined;
+  /** With `fastMode`, the Ultrafast tier in place of Fast. */
+  ultrafast?: boolean | undefined;
+  /** Without it, the model picker shows no Speed control. The picker shows it only for a model with a fast tier. */
+  onFastModeChange?: ((fastMode: boolean, ultrafast: boolean) => void) | undefined;
   /** The browser profile of the agent's tabs. Left out when the host cannot change it. */
   browserProfiles?: AgentBrowserProfileOptions | undefined;
   /** The user's own notification level for the agent. Left out when the server cannot keep it. */
@@ -167,6 +171,8 @@ export interface AgentSettingsPanelProps {
   folders?: AgentFolderCalls | undefined;
   /** Whether a usage limit holds this model and account now, for the backup models page. */
   usageLimited?: ((choice: AgentModelChoice) => boolean) | undefined;
+  /** Whether a provider error holds this model and account now, for the backup models page. */
+  providerFailed?: ((choice: AgentModelChoice) => boolean) | undefined;
   /** The app or host default an agent without its own busy-message setting follows. */
   defaultBusyMessageMode?: BusyMessageMode | undefined;
   /** The account defaults an agent without its own value follows. Absent for a remote agent. */
@@ -199,10 +205,20 @@ export interface AgentSettingsPanelProps {
   ) => Promise<boolean>;
   onSetAgentAvatar: (agentId: string, image: AvatarImageInput | null) => Promise<void>;
   /**
+   * Shows a failed save that the panel cannot show, because it closed or shows a different agent
+   * before the save ended. Without it, that failure shows nowhere.
+   */
+  onUnshownSaveError?: ((message: string) => void) | undefined;
+  /**
    * Starts a new chat with the agent after the user confirms. The agent forgets the messages before
    * it and keeps its setup. Left out when the host cannot do it.
    */
   onStartNewChat?: (() => Promise<void>) | undefined;
+  /**
+   * Deletes the messages of the agent's own chat after the user confirms, and the agent forgets them.
+   * Left out when the host cannot do it.
+   */
+  onDeleteHistory?: (() => Promise<void>) | undefined;
 }
 
 export interface AgentBrowserProfileOptions {
@@ -308,6 +324,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
   const { t, errorMessage, format } = useText();
   const agentDefaults = () => props.agentDefaults ?? DEFAULT_AGENT_DEFAULTS;
   const [newChatOpen, setNewChatOpen] = createSignal(false);
+  const [deleteHistoryOpen, setDeleteHistoryOpen] = createSignal(false);
   const [draft, setDraft] = createStore<AgentSettingsDraft>({
     avatar: {
       hue: null,
@@ -554,8 +571,10 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
   });
 
   onCleanup(() => {
-    if (lastAgentId) flushDirtyTextFields(lastAgentId);
+    // First, so the saves below do not read `props.agent`: the parent's <Show> that holds it is
+    // already closed and throws on the read, which lost an edit closed with Escape (#6205).
     disposed = true;
+    if (lastAgentId) flushDirtyTextFields(lastAgentId);
   });
 
   async function saveAgentPatch(
@@ -567,11 +586,16 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
       await props.onUpdateAgent(agentId, updates);
       return true;
     } catch (error) {
-      if (!disposed && props.agent.id === agentId) {
-        setSaveError(errorMessage(error, t("agentSettings.saveFailed")), error);
-      }
+      reportSaveError(agentId, error);
       return false;
     }
+  }
+
+  /** Shows a failed save under the form, or outside the panel when the form shows something else now. */
+  function reportSaveError(agentId: string, error: unknown, fallback = t("agentSettings.saveFailed")): void {
+    const message = errorMessage(error, fallback);
+    if (!disposed && props.agent.id === agentId) setSaveError(message, error);
+    else props.onUnshownSaveError?.(message);
   }
 
   function textSaveRequest(
@@ -676,14 +700,14 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
       if (!saved && props.agent.id === agentId) setSaveError(t("agentSettings.saveFailed"));
       return saved;
     } catch (error) {
-      if (props.agent.id === agentId) {
-        setSaveError(errorMessage(error, t("agentSettings.saveFailed")), error);
-      }
+      reportSaveError(agentId, error);
       return false;
     }
   }
 
+  // The blur that a closing panel causes comes after its cleanup, which saved the field already.
   function saveName(): void {
+    if (disposed) return;
     const value = draft.fields.name.trim() || t("agent.setup.nameFallback");
     setDraft((state) => {
       state.fields.name = value;
@@ -692,6 +716,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
   }
 
   function saveTitle(): void {
+    if (disposed) return;
     const value = draft.fields.title.trim();
     setDraft((state) => {
       state.fields.title = value;
@@ -700,6 +725,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
   }
 
   function saveDescription(): void {
+    if (disposed) return;
     cancelInstructionsSaveTimer();
     queueTextSave(textSaveRequest("description", props.agent.id));
   }
@@ -710,11 +736,12 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
       state.avatar.uploadBusy = true;
       state.saveError = null;
     });
+    const agentId = props.agent.id;
     try {
-      await props.onSetAgentAvatar(props.agent.id, image);
+      await props.onSetAgentAvatar(agentId, image);
       return true;
     } catch (error) {
-      setSaveError(errorMessage(error, t("agentSettings.avatar.saveFailed")), error);
+      reportSaveError(agentId, error, t("agentSettings.avatar.saveFailed"));
       return false;
     } finally {
       setDraft((state) => {
@@ -729,11 +756,12 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
       state.avatar.uploadBusy = true;
       state.saveError = null;
     });
+    const agentId = props.agent.id;
     try {
       const image = await normalizeAvatarFile(file);
-      await props.onSetAgentAvatar(props.agent.id, image);
+      await props.onSetAgentAvatar(agentId, image);
     } catch (error) {
-      setSaveError(errorMessage(error, t("agentSettings.avatar.processFailed")), error);
+      reportSaveError(agentId, error, t("agentSettings.avatar.processFailed"));
     } finally {
       setDraft((state) => {
         state.avatar.uploadBusy = false;
@@ -790,9 +818,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
     accountId: string | null | undefined,
     preferredEffort?: AgentReasoningEffort,
   ): Promise<void> {
-    const option = props.modelOptions.find(
-      (candidate) => candidate.provider === nextProvider && candidate.id === nextModel,
-    );
+    const option = findModelOption(props.modelOptions, props.agentStatus.providers, nextProvider, nextModel);
     if (!option) return;
     // A plain copy, not `snapshot`: a snapshot of an unmodified subtree is the store's own object,
     // which the write below would mutate, leaving nothing to roll back to.
@@ -926,10 +952,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
     };
   const ownModelName = () => {
     const own = ownModel();
-    return (
-      props.modelOptions.find((option) => option.provider === own.provider && option.id === own.model)?.name ??
-      own.model
-    );
+    return findModelOption(props.modelOptions, props.agentStatus.providers, own.provider, own.model)?.name ?? own.model;
   };
 
   const backupModelsSummary = () => {
@@ -1390,6 +1413,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
                     if (effort !== draft.runtime.reasoningEffort) void selectReasoning(effort);
                   }}
                   fastMode={props.fastMode}
+                  ultrafast={props.ultrafast}
                   onFastModeChange={props.onFastModeChange}
                 />
               </SettingsLinkGroup>
@@ -1556,6 +1580,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
                   modelOptions: props.modelOptions,
                   providers: props.agentStatus.providers,
                   limited: props.usageLimited,
+                  failed: props.providerFailed,
                 }}
                 onChange={(next) => void saveBackupModels(next)}
               />
@@ -1662,6 +1687,24 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
                   </Button>
                 </div>
               </Show>
+              <Show when={props.onDeleteHistory}>
+                <div class="agent-settings-notifications">
+                  <div>
+                    <strong>{t("agentSettings.deleteHistory.title")}</strong>
+                    <span>{t("agentSettings.deleteHistory.description")}</span>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    type="button"
+                    aria-label={t("agentSettings.deleteHistory.confirm")}
+                    aria-haspopup="dialog"
+                    disabled={props.working}
+                    onClick={() => setDeleteHistoryOpen(true)}
+                  >
+                    {t("agentSettings.deleteHistory.button")}
+                  </Button>
+                </div>
+              </Show>
               <Show when={props.newChatEditable}>
                 <div class="agent-settings-notifications">
                   <div>
@@ -1725,6 +1768,16 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
               open={newChatOpen()}
               onClose={() => setNewChatOpen(false)}
               start={() => start()()}
+            />
+          )}
+        </Show>
+        <Show when={props.onDeleteHistory}>
+          {(remove) => (
+            <AgentDeleteHistoryDialog
+              agent={props.agent}
+              open={deleteHistoryOpen()}
+              onClose={() => setDeleteHistoryOpen(false)}
+              remove={() => remove()()}
             />
           )}
         </Show>

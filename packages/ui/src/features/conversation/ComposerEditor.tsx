@@ -104,11 +104,6 @@ interface ComposerEditorProps {
   skillPickerRequest?: number;
   /** A new id puts a quote chip for the text at the caret, or at the end when the caret is unknown. */
   quoteRequest?: QuoteRequest | undefined;
-  /**
-   * When false, a new quote belongs to another box, such as a side thread. This one leaves it alone.
-   * Absent, the box takes the quote, as the agent's own chat does.
-   */
-  applyQuote?: boolean;
   /** Opens the passage that a quote chip in the draft points to. */
   onOpenQuote?: ((messageId: string, text: string) => void) | undefined;
   /** The last skill list request failed, so an empty picker says so instead of "no skills". */
@@ -406,7 +401,6 @@ export function ComposerEditor(props: ComposerEditorProps) {
       focusRequest: props.focusRequest ?? 0,
       skillPickerRequest: props.skillPickerRequest ?? 0,
       quoteRequest: props.quoteRequest,
-      applyQuote: props.applyQuote !== false,
       disabled: props.disabled,
     }),
     ({
@@ -421,7 +415,6 @@ export function ComposerEditor(props: ComposerEditorProps) {
       focusRequest,
       skillPickerRequest,
       quoteRequest,
-      applyQuote,
       disabled,
     }) => {
       // An owner can set its counter back to 0 after this editor read it, for example when the chat that it
@@ -452,7 +445,13 @@ export function ComposerEditor(props: ComposerEditorProps) {
       const skillsChanged = skillKey !== lastSkillKey;
       const mcpChanged = mcpKey !== lastMcpKey;
       const referencesChanged = referenceKey !== lastReferenceKey;
-      const editorChanges = contentChanged || attachmentsChanged || skillsChanged || mcpChanged || referencesChanged;
+      // A list change redraws only its own tags in the draft. With none of them, the draft does not change.
+      const tagsChange =
+        (attachmentsChanged && renderedAttachments.size > 0) ||
+        (skillsChanged && editor.querySelector("[data-skill-id]") !== null) ||
+        (mcpChanged && editor.querySelector("[data-mcp-id]") !== null) ||
+        (referencesChanged && editor.querySelector("[data-tab-id], [data-thread-id]") !== null);
+      const editorChanges = contentChanged || tagsChange;
       // Only a change of the editor's content can move its caret or scroll position. A read of either
       // lays out the page, and this effect runs for each list that loads while a conversation opens.
       const selection =
@@ -500,9 +499,8 @@ export function ComposerEditor(props: ComposerEditorProps) {
         lastSkillPickerRequest = skillPickerRequest;
         openSkillPicker();
       }
-      // A locked composer keeps the quote until it opens again. A box that is not the quote's
-      // destination leaves the id unseen, so a later quote for this box still lands here.
-      if (quoteRequest && quoteRequest.id > lastQuoteRequest && !disabled && applyQuote) {
+      // A locked composer keeps the quote until it opens again.
+      if (quoteRequest && quoteRequest.id > lastQuoteRequest && !disabled) {
         lastQuoteRequest = quoteRequest.id;
         insertQuote(quoteRequest.messageId, quoteRequest.text);
       }

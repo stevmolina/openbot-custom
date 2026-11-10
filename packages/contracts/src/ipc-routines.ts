@@ -30,8 +30,9 @@ export type RoutineSchedule =
   | { kind: "custom"; expression: string }
   /**
    * One run at a date and time in the routine timezone. After that run the host pauses the
-   * routine, and it cannot resume until the date moves to the future. It stays on this computer's
-   * host: the released Team API routes do not list it, and they refuse it on a save.
+   * routine, and it cannot resume until the date moves to the future. The released Team API routes
+   * do not list it, and they refuse it on a save; a joined host with `routines-once-v1` lists and
+   * saves it on the routes of that capability.
    */
   | { kind: "once"; date: string; time: string };
 
@@ -81,8 +82,8 @@ export type ReleasedRoutineSchedule = Exclude<RoutineSchedule, { kind: "once" }>
 
 /**
  * A schedule that the released Team API, channel, event, canvas and template formats can carry.
- * Their frozen decoders reject the whole list for an unknown kind, so a `once` schedule stays on
- * this computer's host.
+ * Their frozen decoders reject the whole list for an unknown kind, so a `once` schedule stays off
+ * them: a joined host sends it only on the `routines-once-v1` routes.
  */
 export function isReleasedRoutineSchedule(value: unknown): value is ReleasedRoutineSchedule {
   return isRoutineSchedule(value) && value.kind !== "once";
@@ -176,8 +177,8 @@ export interface RoutineFields {
   /** Absent from a host that does not store it, for the same reason as `limitPolicy`. */
   missedPolicy?: RoutineMissedPolicy;
   /**
-   * Set only on an agent routine of this computer's host. A channel routine and the released Team
-   * API leave it out.
+   * Set on an agent routine of this computer's host, and of a remote host with `routine-run-place-v1`.
+   * A channel routine and the released Team API routes leave it out.
    */
   runIn?: RoutineRunPlace;
   createdAt: string;

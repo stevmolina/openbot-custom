@@ -1,10 +1,10 @@
 {
-  "version": "0.62.0",
+  "version": "0.66.0",
   "highlights": [
-    "Give each browser profile its own proxy, or send its pages out through your own computer.",
-    "Connect Proton Pass in the Marketplace, and the browser fills the logins of its shared vault.",
-    "Type @ in a chat to give the agent one of its browser tabs or side threads.",
-    "Settings → Voice has two new local dictation models: Parakeet Unified EN and Cohere Transcribe.",
-    "Routines run in the agent's chat again. A new switch keeps a routine in its own thread."
+    "Agents now learn new skills by themselves after you correct them, and fix their own skills while they work.",
+    "Save two-step codes in the Vault, and let agents sign in with them.",
+    "The Dynamic Island and the agent dock now work on Windows, and the dock can hold channels.",
+    "Agents can watch public videos, such as YouTube or TikTok links, and read what is said in them.",
+    "Channel members answer while they work, and a greeting or an unclear message goes to the lead."
   ]
 }

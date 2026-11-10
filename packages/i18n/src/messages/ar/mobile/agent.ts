@@ -152,7 +152,6 @@ export const messages = {
   "mobile.agent.info.reconnectToSave": "أعد الاتصال لحفظ التغييرات.",
   "mobile.agent.info.noMemories": "لا ذكريات بعد.",
   "mobile.agent.info.addMemory": "إضافة ذكرى",
-  "mobile.agent.info.routineActive": "نشطة",
   "mobile.agent.info.routinePaused": "متوقفة مؤقتًا",
   "mobile.agent.info.noRoutines": "لا مهام دورية بعد.",
   "mobile.agent.info.addRoutine": "إضافة مهمة دورية",
@@ -340,6 +339,8 @@ export const messages = {
   "mobile.agent.runtime.retryModels": "إعادة محاولة النماذج",
   "mobile.agent.runtime.loadingModels": "جارٍ تحميل النماذج…",
   "mobile.agent.runtime.noModels": "لا نماذج متاحة لهذا المزوّد.",
+  "mobile.agent.runtime.searchModels": "البحث في النماذج",
+  "mobile.agent.runtime.noMatches": "لا نماذج تطابق بحثك.",
   "mobile.agent.runtime.usageLimit": "تم بلوغ حد الاستخدام",
   "mobile.agent.runtime.usageLimitWindow": "حد {window}",
   "mobile.agent.runtime.usageLimitResets": "{limit} · يُعاد التعيين {time}",
@@ -383,7 +384,7 @@ export const messages = {
   "mobile.agent.backupModels.intro":
     "عندما يبلغ {model} حد استخدامه قبل أن يبدأ {name} الكتابة، يسألك {name} عن النموذج الذي يستخدمه.",
   "mobile.agent.backupModels.introAutomatic":
-    "عندما يبلغ {model} حد استخدامه أو يفشل بخطأ من المزوّد قبل أن يبدأ {name} الكتابة، ينتقل {name} إلى أول نموذج متاح في الترتيب.",
+    "عندما يبلغ {model} حد الاستخدام، ينتقل {name} إلى أول نموذج متاح في الترتيب. وينتقل {name} أيضًا عندما يفشل {model} بخطأ من المزوّد قبل أن يبدأ {name} بالكتابة.",
   "mobile.agent.backupModels.ask": "السؤال قبل التبديل",
   "mobile.agent.backupModels.order": "الترتيب",
   "mobile.agent.backupModels.empty": "لم يُحدَّد ترتيب. يعرض {name} كل نموذج متاح.",
@@ -585,6 +586,7 @@ export const messages = {
     many: "{count} رسالة غير مقروءة",
     other: "{count} رسالة غير مقروءة",
   },
+  "mobile.agent.list.unreadThreads": "رسائل غير مقروءة في السلاسل",
   "mobile.agent.list.waiting.title": "يحتاج إليك",
   "mobile.agent.list.waiting.label": {
     zero: "يحتاج إليك، لا وكلاء",

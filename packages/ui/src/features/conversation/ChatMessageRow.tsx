@@ -53,7 +53,13 @@ export interface ChatMessageRowProps {
   showAuthor?: boolean | undefined;
   /** Whether the time stands beside the author name. Without a name, the time is in the action row. */
   showTime?: boolean | undefined;
+  /** Draws a long message in full, with no fold: in-chat search and a quote jump read the drawn text. */
+  showFull?: boolean | undefined;
+  /** Opens a folded long message, as its "Show full message" button does. The reader can fold it again. */
+  open?: boolean | undefined;
   animate?: boolean;
+  /** An entering agent message shows its text at once instead of fading its words in. */
+  textAtOnce?: boolean | undefined;
   agents: AgentProfile[];
   skills?: InstalledSkill[] | undefined;
   referencedMessage?: AgentMessage | undefined;
@@ -77,14 +83,21 @@ export interface ChatMessageRowProps {
   steps?: JSX.Element;
   /** True when the actions and steps stand beside the bubble, as a channel shows an agent's answer. They go under it when the line has no room. */
   actionsBeside?: boolean | undefined;
+  /**
+   * False draws no row under the bubble: a progress update has no actions, and the answer of its turn
+   * carries the time, so the updates of a turn stand close together.
+   */
+  actionRow?: boolean | undefined;
+  /** False keeps the time out of the action row, when the separators of the chat show the time. */
+  actionTime?: boolean | undefined;
   class?: string | undefined;
   "data-chat-search-message"?: string | undefined;
   onSelectAgent: (agentId: string) => void;
   onOpenLink: (url: string) => void;
   onPreview: (attachment: AttachmentSummary) => void;
   onAttachmentAction: (attachment: AttachmentSummary, action: "open" | "reveal" | "download") => void;
-  onOpenSharedFile?: (path: string) => void;
-  onOpenWorkspaceFile?: ((path: string) => void) | undefined;
+  onOpenSharedFile?: (path: string, asWritten?: string) => void;
+  onOpenWorkspaceFile?: ((path: string, asWritten?: string) => void) | undefined;
   onOpenQuote?: ((messageId: string, text: string) => void) | undefined;
   onOpenTag?: ((kind: "tab" | "thread", id: string) => void) | undefined;
   onDownload?: ((attachment: AttachmentSummary) => void) | undefined;
@@ -147,7 +160,7 @@ export function ChatMessageRow(props: ChatMessageRowProps): JSX.Element {
     },
     props.class,
   ];
-  // The native menu copies selected text and links, and Shift opens Inspect Element. These cases
+  // The native menu copies selected text, links and images, and Shift opens Inspect Element. These cases
   // stop the event before the trigger's delegated handler, which would prevent its default, so the
   // native menu still opens. The keyboard opens the menu with a synthetic event, which always opens it.
   const onSelection = (event: MouseEvent) => {
@@ -182,8 +195,15 @@ export function ChatMessageRow(props: ChatMessageRowProps): JSX.Element {
         const selected = pressOnSelection ?? onSelection(event);
         pressOnSelection = undefined;
         if (!event.isTrusted) return;
-        const link = event.target instanceof Element && event.target.closest("a[href]") !== null;
-        if (event.shiftKey || link || selected) event.stopPropagation();
+        const target = event.target instanceof Element ? event.target : null;
+        const link = Boolean(target?.closest("a[href]"));
+        // The native menu copies only a loaded image, and icons and avatars keep the message menu.
+        const image =
+          target instanceof HTMLImageElement &&
+          target.complete &&
+          target.naturalWidth > 0 &&
+          target.closest(".message-author-avatar, [aria-hidden='true']") === null;
+        if (event.shiftKey || link || image || selected) event.stopPropagation();
       },
       { capture: true },
     );
@@ -194,7 +214,9 @@ export function ChatMessageRow(props: ChatMessageRowProps): JSX.Element {
   const messageBody = (frame?: (content: JSX.Element, imagesOnly: () => boolean) => JSX.Element) => (
     <MessageBody
       frame={frame}
-      animate={props.animate}
+      showFull={props.showFull}
+      open={props.open}
+      animate={props.animate === true && props.textAtOnce !== true}
       message={props.message}
       referencedMessage={props.referencedMessage}
       referencedAuthorName={props.referencedAuthorName}
@@ -277,12 +299,13 @@ export function ChatMessageRow(props: ChatMessageRowProps): JSX.Element {
     </Bubble>
   );
   // The actions, the time and the steps stand under the bubble. A named author shows the time beside
-  // the name. A row beside the bubble goes under it only when the line has no room.
-  const beside = () => props.actionsBeside === true && !person();
+  // the name. A row beside the bubble goes under it only when the line has no room. The reader's own
+  // row can stand beside the bubble too, before it; another person's row stays under it.
+  const beside = () => props.actionsBeside === true && !member();
   const actionRow = (): JSX.Element => (
     <div class="message-action-row">
       {props.actions}
-      <Show when={!props.showAuthor || own()}>
+      <Show when={props.actionTime !== false && (!props.showAuthor || own())}>
         <time class="message-time" datetime={props.message.createdAt}>
           {props.message.time}
         </time>
@@ -346,9 +369,9 @@ export function ChatMessageRow(props: ChatMessageRowProps): JSX.Element {
               ))}
             </div>
           </Show>
-          <Show when={beside()}>{actionRow()}</Show>
+          <Show when={props.actionRow !== false && beside()}>{actionRow()}</Show>
         </div>
-        <Show when={!beside()}>{actionRow()}</Show>
+        <Show when={props.actionRow !== false && !beside()}>{actionRow()}</Show>
       </MessageContent>
     </>
   );

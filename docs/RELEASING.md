@@ -318,6 +318,18 @@ that release, and check its SHA-256 against the asset `digest`. Set `url`, `asse
 `downloadBytes`, `installedBytes` (the size of the extracted `copilot` or `copilot.exe`) and the
 SHA-256 of `bin/copilot` (`bin/copilot.exe` on Windows).
 
+## Pin Mistral Vibe
+
+`native-runtime.lock.json` pins Mistral Vibe's ACP server by hand. Read the tag of
+`https://api.github.com/repos/mistralai/mistral-vibe/releases/latest` and set `version` without its
+`v`, and `licenseUrl` to `LICENSE` at that tag. For each target, download
+`vibe-acp-<triple>-<version>.tar.gz` (`.zip` on Windows) from that release, and check its SHA-256
+against the asset `digest`. Set `url`, `assetSha256`, `downloadBytes`, `installedBytes` above the
+extracted size, and the SHA-256 of each file in `files`: `bin/vibe-acp` (`bin/vibe-acp.exe` on
+Windows), `bin/_internal/base_library.zip`, the Python library, and
+`bin/_internal/mistral_vibe-<version>.dist-info/licenses/LICENSE`. Do not follow or copy the symbolic
+links in the archive.
+
 ## Pin the OpenCode CLI
 
 `native-runtime.lock.json` also pins the OpenCode CLI that OpenBot downloads for the OpenCode
@@ -432,9 +444,18 @@ it, `bun run mobile:release:published ios` (or `android`) writes the date of tha
 `## [x.y.z] - 2026-10-14 (Android)`. Run it again for the other store:
 `## [x.y.z] - 2026-10-14 (Android), 2026-10-16 (iOS)`. A date with no store is the date of both
 stores. `/changelog` shows each store, and a store that does not have the version as "In review".
+A store that a newer version replaced is `Skipped (Android)`, and `/changelog` shows it as skipped.
+`bun run mobile:release` does each step from a menu and opens the pull request
+(`apps/mobile/README.md#release-menu`).
 
-When a store makes a version available, also set that version for the store in
-`MOBILE_LATEST_VERSIONS` in `apps/auth-api/src/server/mobile-features-config.ts` and deploy the account
+A fix with no native change can go to the phones of a store version with no store review, as an
+over-the-air update: `bun run mobile:ota:publish`. Its notes get a section with a fourth number, such
+as `1.5.0.1`, from `bun run mobile:release:ota`; the store version and `app.json` do not change. The
+steps, the limits and the rollback are in
+[the mobile README](../apps/mobile/README.md#over-the-air-updates).
+
+The same step sets that version for the store in `MOBILE_LATEST_VERSIONS` and in the `upTo` of each
+feature in `apps/auth-api/src/server/mobile-features-config.ts`. The merge deploys the account
 service. An app with an older version then shows the update header on home. Set it only after the
 store has the build: before, Update opens a store page that cannot install the version.
 
@@ -460,6 +481,16 @@ Use short, plain sentences that explain what the user can do. Put required upgra
 `notices`. Use `added`, `changed`, and `fixed` for the other entries. Do not copy commit messages,
 developer setup, internal paths, credentials, or unpublished plans. Review this text with the
 release notes before tagging. A release can have no dialog entry when it has nothing to show.
+
+The dialog shows the notes in the app language. Each translated language has
+`src/renderer/src/features/updates/whats-new/<locale>.json` in the shape of the English file. When
+you add a release to the English file, add its translation to each of these files: the same version
+and date, the same notices, groups and item order, and one item for each English item. Write the
+first sentence of each item as its headline, as in English; Chinese and Japanese end it with `。`.
+Use the tone, the terms, and the screen names of the app catalogs in [i18n.md](i18n.md#terms).
+`bun scripts/whats-new-translations.ts <version>` checks the files; `release:preflight` and the
+tag workflow run it and stop a release that has no translation. A release that a file does not
+have shows in English, so an older release that was never translated keeps its English text.
 
 The app bundles this text and loads it when needed, so reading it does not send data or require
 network access. The full changelog button opens the existing public page. Changing the bundled
@@ -718,14 +749,15 @@ Before creating the first tag or any later release:
 14. confirm `CHANGELOG.md` and `.github/release-announcement.json` describe the version and the
     working tree is clean;
 15. create and push the version commit, and create the tag locally, only after CI passes on `main`;
-16. read the running Signal commit from `curl -fsS https://signal.openbot.run/health/live`. If it is
-    missing or `unknown`, or if `git diff --quiet <running commit> <new tag> -- remote packages/contracts/src/signal-protocol`
-    finds changes, deploy Signal from the local tag before you push the tag. Compare with the running
+16. read the running Signal commit of both machines from `curl -fsS https://signal1.openbot.run/health/live`
+    and `curl -fsS https://signal2.openbot.run/health/live`, not from `signal.openbot.run`, which reaches only
+    the entry machine. If a commit is missing or `unknown`, or if `git diff --quiet <running commit> <new tag> -- remote packages/contracts/src/signal-protocol`
+    finds changes for either commit, deploy Signal from the local tag before you push the tag. Compare with the running
     commit, not with the previous tag: an earlier release can have left Signal behind. Pushing the tag starts the
     release workflow, and nothing in it waits for Signal. Use the Signal-only procedure in
     [remote-session-deployment.md](remote-session-deployment.md#deployment-procedure--requires-separate-approval);
     the `.agents/skills/signal-deploy/` skill adds the checks before and after it.
-    Confirm that `curl -fsS https://signal.openbot.run/health/live` shows the tag commit. A client
+    Confirm that `/health/live` of `signal1.openbot.run` and of `signal2.openbot.run` shows the tag commit. A client
     that needs a newer Signal fails until then: v0.33.0 shipped webhook routines while Signal was older
     than #1520, so every webhook route answered 404 (#1661);
 17. push the tag.
