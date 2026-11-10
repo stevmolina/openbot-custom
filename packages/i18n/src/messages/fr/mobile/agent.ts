@@ -134,7 +134,6 @@ export const messages = {
   "mobile.agent.info.reconnectToSave": "Reconnectez-vous pour enregistrer les modifications.",
   "mobile.agent.info.noMemories": "Aucun souvenir pour l’instant.",
   "mobile.agent.info.addMemory": "Ajouter un souvenir",
-  "mobile.agent.info.routineActive": "Active",
   "mobile.agent.info.routinePaused": "En pause",
   "mobile.agent.info.noRoutines": "Aucune routine pour l’instant.",
   "mobile.agent.info.addRoutine": "Ajouter une routine",
@@ -322,6 +321,8 @@ export const messages = {
   "mobile.agent.runtime.retryModels": "Recharger les modèles",
   "mobile.agent.runtime.loadingModels": "Chargement des modèles…",
   "mobile.agent.runtime.noModels": "Aucun modèle disponible pour ce fournisseur.",
+  "mobile.agent.runtime.searchModels": "Rechercher des modèles",
+  "mobile.agent.runtime.noMatches": "Aucun modèle ne correspond à votre recherche.",
   "mobile.agent.runtime.usageLimit": "Limite d’utilisation atteinte",
   "mobile.agent.runtime.usageLimitWindow": "Limite ({window})",
   "mobile.agent.runtime.usageLimitResets": "{limit} · Réinitialisation le {time}",
@@ -361,7 +362,7 @@ export const messages = {
   "mobile.agent.backupModels.intro":
     "Quand {model} atteint sa limite d’utilisation avant que {name} commence à écrire, {name} vous demande quel modèle utiliser.",
   "mobile.agent.backupModels.introAutomatic":
-    "Quand {model} atteint sa limite d’utilisation ou échoue sur une erreur du fournisseur avant que {name} commence à écrire, {name} passe au premier modèle disponible dans l’ordre.",
+    "Quand {model} atteint sa limite d’utilisation, {name} passe au premier modèle disponible dans l’ordre. {name} change aussi de modèle quand {model} échoue sur une erreur du fournisseur avant que {name} commence à écrire.",
   "mobile.agent.backupModels.ask": "Demander avant de changer",
   "mobile.agent.backupModels.order": "Ordre",
   "mobile.agent.backupModels.empty": "Aucun ordre défini. {name} propose chaque modèle disponible.",
@@ -542,6 +543,7 @@ export const messages = {
   "mobile.agent.list.openPinnedWithTitle": "Ouvrir la discussion épinglée avec {name}, {title}",
   "mobile.agent.list.withState": "{label}. {state}",
   "mobile.agent.list.unread": { one: "{count} message non lu", other: "{count} messages non lus" },
+  "mobile.agent.list.unreadThreads": "Messages non lus dans les fils",
   "mobile.agent.list.waiting.title": "Besoin de vous",
   "mobile.agent.list.waiting.label": { one: "Besoin de vous, {count} agent", other: "Besoin de vous, {count} agents" },
   "mobile.agent.list.waiting.action.question": "Répondre",

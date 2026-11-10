@@ -7,6 +7,7 @@ import { appPort } from "../../app-port";
 import { useLayout } from "../../layout";
 import { useChannels } from "../channels/channels-context";
 import { useCustomAgents } from "../custom-agents/custom-agents-context";
+import { serverHasStorage } from "../files/storage-usage";
 import { serverSupportsCapability } from "../servers/server-capabilities";
 import { useServers } from "../servers/servers-context";
 import { useSettings } from "../settings/settings-context";
@@ -18,8 +19,8 @@ import { useWindowPage } from "./window-page-context";
 
 /**
  * The pages of the desktop window, for the pill of the chat sidebar. Chats and Routines show the same
- * page with a different middle pane. Workflows, Tasks, Schedule, Usage, Marketplace and Settings
- * change the page in the card.
+ * page with a different middle pane. Workflows, Tasks, Schedule, Usage, Library, Marketplace and
+ * Settings change the page in the card.
  */
 export function useWorkspaceSidebarPages(): () => SidebarPages {
   const text = useText();
@@ -75,6 +76,8 @@ export function useWorkspaceSidebarPages(): () => SidebarPages {
     onSchedule: windowPage.openSchedule,
     onTasks: tasksAvailable() ? windowPage.openTasks : undefined,
     onUsage: windowPage.openUsage,
+    // An older joined server has no storage routes, so it has no Library.
+    onLibrary: serverHasStorage(activeServer()) ? windowPage.openLibrary : undefined,
     onMarketplace: () => setSkillsMarketplaceOpen(true),
     onSettings: (button) => (updateNotice() ? openAppSettings(button, "updates") : windowPage.openSettings(button)),
     settingsNotice: updateNotice(),

@@ -150,7 +150,6 @@ export const messages = {
   "mobile.agent.info.reconnectToSave": "Переподключитесь, чтобы сохранить изменения.",
   "mobile.agent.info.noMemories": "Записей в памяти пока нет.",
   "mobile.agent.info.addMemory": "Добавить в память",
-  "mobile.agent.info.routineActive": "Активна",
   "mobile.agent.info.routinePaused": "Приостановлена",
   "mobile.agent.info.noRoutines": "Регулярных задач пока нет.",
   "mobile.agent.info.addRoutine": "Добавить регулярную задачу",
@@ -337,6 +336,8 @@ export const messages = {
   "mobile.agent.runtime.retryModels": "Повторить загрузку моделей",
   "mobile.agent.runtime.loadingModels": "Загрузка моделей…",
   "mobile.agent.runtime.noModels": "Для этого провайдера нет доступных моделей.",
+  "mobile.agent.runtime.searchModels": "Поиск моделей",
+  "mobile.agent.runtime.noMatches": "Моделей по вашему запросу не найдено.",
   "mobile.agent.runtime.usageLimit": "Лимит использования исчерпан",
   "mobile.agent.runtime.usageLimitWindow": "Лимит ({window})",
   "mobile.agent.runtime.usageLimitResets": "{limit} · Сброс: {time}",
@@ -380,7 +381,7 @@ export const messages = {
   "mobile.agent.backupModels.intro":
     "Если {model} достигнет лимита использования до того, как {name} начнёт писать, {name} спросит вас, какую модель использовать.",
   "mobile.agent.backupModels.introAutomatic":
-    "Если {model} достигнет лимита использования или завершится с ошибкой провайдера до того, как {name} начнёт писать, {name} переключится на первую доступную модель по порядку.",
+    "Если {model} достигнет лимита использования, {name} переключится на первую доступную модель по порядку. {name} также переключится, если {model} завершится с ошибкой провайдера до того, как {name} начнёт писать.",
   "mobile.agent.backupModels.ask": "Спрашивать перед переключением",
   "mobile.agent.backupModels.order": "Порядок",
   "mobile.agent.backupModels.empty": "Порядок не задан. {name} предлагает каждую доступную модель.",
@@ -577,6 +578,7 @@ export const messages = {
     many: "{count} непрочитанных сообщений",
     other: "{count} непрочитанных сообщения",
   },
+  "mobile.agent.list.unreadThreads": "Непрочитанные сообщения в ветках",
   "mobile.agent.list.waiting.title": "Нужны вы",
   "mobile.agent.list.waiting.label": {
     one: "Нужны вы: {count} агент",

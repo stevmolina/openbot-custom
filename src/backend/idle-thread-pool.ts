@@ -209,6 +209,28 @@ export class IdleThreadPool<Thread extends IdleThread, Released> {
     return this.#releaseIdleOver(0);
   }
 
+  /**
+   * Closes each thread with no turn that `stale` names, also one that `canRelease` keeps from the
+   * timer. The caller owns that choice. Its next turn opens it again from its session. Returns the
+   * closed threads.
+   */
+  readonly releaseWhere = Effect.fn("IdleThreadPool.releaseWhere")(function* (
+    this: IdleThreadPool<Thread, Released>,
+    stale: (thread: Thread) => boolean,
+  ) {
+    const closed = [...this.#threads.values()].filter((thread) => this.#isIdle(thread) && stale(thread));
+    for (const thread of closed) yield* this.#release(thread);
+    return closed;
+  });
+
+  /** Closes the thread now, also during a turn, and keeps its snapshot so that its next turn opens it again. */
+  readonly releaseNow = Effect.fn("IdleThreadPool.releaseNow")(function* (
+    this: IdleThreadPool<Thread, Released>,
+    thread: Thread,
+  ) {
+    if (this.#threads.get(thread.id) === thread) yield* this.#release(thread);
+  });
+
   /** An armed release timer marks a thread that is idle and can be opened again. */
   readonly #releaseIdleOver = Effect.fn("IdleThreadPool.releaseIdleOver")(function* (
     this: IdleThreadPool<Thread, Released>,

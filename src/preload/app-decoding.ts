@@ -13,6 +13,8 @@ import {
   parseHostedServerCatalog,
   parseHostedServerList,
   parseHostedServerSummary,
+  parseServerClaim,
+  type ServerClaim,
 } from "@openbot/contracts/hosted-servers";
 import { parseHostedSiteList, parseHostedSiteSummary } from "@openbot/contracts/hosted-sites";
 import {
@@ -23,6 +25,7 @@ import {
   type AnalyticsPreference,
   type AppAppearancePreference,
   type AppBehaviorPreference,
+  type AppFontFamily,
   type AppInfo,
   type AppInterfaceSizePreference,
   type AppLanguagePreference,
@@ -35,6 +38,7 @@ import {
   type CentralAuthIssue,
   type CentralAuthState,
   type CentralAuthUser,
+  type ChatBackgroundColor,
   type ChatWindowTarget,
   CUSTOM_AGENT_LIMITS,
   type CustomAgentCheckResult,
@@ -64,14 +68,17 @@ import {
   isAgentModel,
   isAgentProvider,
   isAppAppearance,
+  isAppFontFamily,
   isAppInterfaceSize,
   isAppLanguage,
   isAppLogoColor,
   isApprovalAutomationPreference,
   isAppThemePalette,
   isAppThemePaletteId,
+  isAutomationRunsPerHour,
   isAvatarColor,
   isBusyMessageMode,
+  isChatBackgroundColor,
   isCodexLiveVoice,
   isCustomAgentCheckResult,
   isCustomAgentResult,
@@ -82,16 +89,20 @@ import {
   isDetectedAcpAgent,
   isDetectedModelServer,
   isDiscoverModelsResult,
+  isElevenLabsSpeechVoice,
+  isPlanStartAfterMs,
   isProviderDetectionSettings,
   isRemoteDesktopSetupStatus,
   isRemoteDesktopTestStatus,
   isRemoteNetworkRoute,
+  isSpeechModelId,
   isSpeechSpeed,
   isSpeechVoice,
   isVoiceLanguage,
   isVoiceModelId,
   isVoiceServerProbe,
   isVoiceServerSettings,
+  isXaiSpeechVoice,
   type LinkAccountStatus,
   type MobileConnectedDevice,
   type MobileConnectLink,
@@ -104,12 +115,12 @@ import {
   parseGitHubConnectorStatus,
   parseLinkAccountStatus,
   parseOnePasswordConnectorStatus,
+  QUIT_GUARDS,
   type RemoteDesktopSetupStatus,
   type RemoteDesktopTestStatus,
   type RemoteNetworkRouteState,
   type RemoteSessionReusePreference,
   type SentMessageStats,
-  SPEECH_MODEL_ID,
   type SpeechAudio,
   type SpeechModelStatus,
   type SpeechSettings,
@@ -156,7 +167,8 @@ import {
 
 export function decodeAppInfo(value: unknown): AppInfo {
   const info = decodeRecord(value, "app info");
-  const { platform, variant, analyticsCaptureUrl, analyticsInstallId, softwareRendering } = info;
+  const { platform, variant, analyticsCaptureUrl, analyticsInstallId, softwareRendering, hourCycle, aboveAppsSupport } =
+    info;
   if (!isOneOf(["darwin", "win32", "linux"] as const, platform)) throw new Error("Invalid platform.");
   if (!isOneOf(["production", "dev", "preview"] as const, variant)) throw new Error("Invalid variant.");
   if (analyticsCaptureUrl !== undefined && !isString(analyticsCaptureUrl))
@@ -165,6 +177,9 @@ export function decodeAppInfo(value: unknown): AppInfo {
     throw new Error("Invalid analytics install ID.");
   if (softwareRendering !== undefined && !isBoolean(softwareRendering))
     throw new Error("Invalid software rendering flag.");
+  if (hourCycle !== undefined && !isOneOf(["h12", "h23"] as const, hourCycle)) throw new Error("Invalid hour cycle.");
+  if (aboveAppsSupport !== undefined && !isOneOf(["restart", "unsupported"] as const, aboveAppsSupport))
+    throw new Error("Invalid agent dock screen support.");
   return {
     name: requiredString(info, "name"),
     version: requiredString(info, "version"),
@@ -173,6 +188,8 @@ export function decodeAppInfo(value: unknown): AppInfo {
     ...(analyticsCaptureUrl === undefined ? {} : { analyticsCaptureUrl }),
     ...(analyticsInstallId === undefined ? {} : { analyticsInstallId }),
     ...(softwareRendering === undefined ? {} : { softwareRendering }),
+    ...(hourCycle === undefined ? {} : { hourCycle }),
+    ...(aboveAppsSupport === undefined ? {} : { aboveAppsSupport }),
   };
 }
 
@@ -210,6 +227,11 @@ export function decodeAgentDefaults(value: unknown): AgentDefaults {
   const defaults = decodeRecord(value, "agent defaults");
   const decoded = { ...DEFAULT_AGENT_DEFAULTS };
   for (const key of AGENT_DEFAULT_KEYS) decoded[key] = requiredBoolean(defaults, key);
+  if (!isPlanStartAfterMs(defaults.planStartAfterMs)) throw new Error("Invalid plan start time.");
+  decoded.planStartAfterMs = defaults.planStartAfterMs;
+  if (!isAutomationRunsPerHour(defaults.automationRunsPerHour)) throw new Error("Invalid local script limit.");
+  decoded.automationRunsPerHour = defaults.automationRunsPerHour;
+  decoded.commitCoAuthor = requiredBoolean(defaults, "commitCoAuthor");
   return decoded;
 }
 
@@ -237,17 +259,39 @@ function decodeThemePalette(palette: DynamicRecord): AppThemePalette {
   return { id: palette.id, name: palette.name, scheme: palette.scheme, colors: { ...palette.colors } };
 }
 
+/** A chat background becomes a CSS property value in the page, so only a hex color or null passes. */
+function decodeChatBackground(value: unknown): ChatBackgroundColor | null {
+  if (value !== null && !isChatBackgroundColor(value)) throw new Error("Invalid chat background.");
+  return value;
+}
+
+/** A font name becomes part of a CSS font list in the page, so only a name that can go there passes. */
+function decodeFontFamily(value: unknown): AppFontFamily | null {
+  if (value !== null && !isAppFontFamily(value)) throw new Error("Invalid font.");
+  return value;
+}
+
+export function decodeInstalledFonts(value: unknown): AppFontFamily[] {
+  if (!Array.isArray(value) || !value.every(isAppFontFamily)) throw new Error("Invalid installed fonts.");
+  return [...value];
+}
+
 export function decodeAppAppearancePreference(value: unknown): AppAppearancePreference {
   const preference = decodeRecord(value, "appearance preference");
   if (!isAppAppearance(preference.appearance)) throw new Error("Invalid appearance.");
   if (typeof preference.transparentWindow !== "boolean") throw new Error("Invalid transparent window.");
   if (preference.palette !== null && !isAppThemePaletteId(preference.palette))
     throw new Error("Invalid theme palette.");
+  const palettes = decodeList(preference.palettes, "theme palettes", decodeThemePalette);
   return {
     appearance: preference.appearance,
     transparentWindow: preference.transparentWindow,
     palette: preference.palette,
-    palettes: decodeList(preference.palettes, "theme palettes", decodeThemePalette),
+    palettes,
+    chatBackgroundLight: decodeChatBackground(preference.chatBackgroundLight),
+    chatBackgroundDark: decodeChatBackground(preference.chatBackgroundDark),
+    interfaceFont: decodeFontFamily(preference.interfaceFont),
+    codeFont: decodeFontFamily(preference.codeFont),
   };
 }
 
@@ -434,7 +478,14 @@ export function decodeAppBehaviorPreference(value: unknown): AppBehaviorPreferen
     keepRunningInBackground: nullableBoolean(preference, "keepRunningInBackground"),
     keepAwake: nullableBoolean(preference, "keepAwake"),
     keepAwakeOnBattery: nullableBoolean(preference, "keepAwakeOnBattery"),
+    quitGuard: decodeQuitGuard(preference.quitGuard),
   };
+}
+
+function decodeQuitGuard(value: unknown): AppBehaviorPreference["quitGuard"] {
+  if (value === null) return null;
+  if (!isOneOf(QUIT_GUARDS, value)) throw new Error("Invalid quitGuard.");
+  return value;
 }
 
 export function decodeExternalLinkPreference(value: unknown): ExternalLinkPreference {
@@ -532,11 +583,7 @@ export function decodeVoiceStreamTranscript(value: unknown): VoiceStreamTranscri
 export function decodeSpeechModelStatus(value: unknown): SpeechModelStatus {
   const status = decodeRecord(value, "speech model status");
   const { modelId, phase, progress } = status;
-  if (
-    modelId !== SPEECH_MODEL_ID ||
-    !isOneOf(VOICE_MODEL_PHASES, phase) ||
-    (progress !== null && !isNumber(progress))
-  ) {
+  if (!isSpeechModelId(modelId) || !isOneOf(VOICE_MODEL_PHASES, phase) || (progress !== null && !isNumber(progress))) {
     throw new Error("Invalid speech model status.");
   }
   return { modelId, phase, progress, message: nullableString(status, "message") };
@@ -544,12 +591,22 @@ export function decodeSpeechModelStatus(value: unknown): SpeechModelStatus {
 
 export function decodeSpeechSettings(value: unknown): SpeechSettings {
   const settings = decodeRecord(value, "speech settings");
-  const { voice, speed, codexLiveVoice } = settings;
-  if (!isSpeechVoice(voice) || !isSpeechSpeed(speed) || !(codexLiveVoice === null || isCodexLiveVoice(codexLiveVoice)))
+  const { modelId, voice, elevenLabsVoice, xaiVoice, speed, codexLiveVoice } = settings;
+  if (
+    !isSpeechModelId(modelId) ||
+    !isSpeechVoice(voice) ||
+    !isElevenLabsSpeechVoice(elevenLabsVoice) ||
+    !isXaiSpeechVoice(xaiVoice) ||
+    !isSpeechSpeed(speed) ||
+    !(codexLiveVoice === null || isCodexLiveVoice(codexLiveVoice))
+  )
     throw new Error("Invalid speech settings.");
   return {
     readReplies: requiredBoolean(settings, "readReplies"),
+    modelId,
     voice,
+    elevenLabsVoice,
+    xaiVoice,
     speed,
     codexLive: requiredBoolean(settings, "codexLive"),
     codexLiveVoice,
@@ -633,12 +690,6 @@ export function decodeAgentImportSkill(value: unknown): string {
 
 export const decodeVoid = emptyDecoder("IPC returned unexpected data.");
 
-/** True shows the hint that `Cmd + Q` must be held or pressed twice, and false removes it. */
-export function decodeQuitShortcutHint(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  throw new Error("Invalid quit shortcut hint.");
-}
-
 export function decodeHostedSite(value: unknown): HostedSiteSummary {
   const site = parseHostedSiteSummary(value);
   if (!site) throw new Error("Invalid hosted site response.");
@@ -691,6 +742,12 @@ export function decodeHostedServer(value: unknown): HostedServerSummary {
   const server = parseHostedServerSummary(value);
   if (!server) throw new Error("Invalid hosted server response.");
   return server;
+}
+
+export function decodeServerClaim(value: unknown): ServerClaim {
+  const claim = parseServerClaim(value);
+  if (!claim) throw new Error("Invalid server claim response.");
+  return claim;
 }
 
 export function decodeHostedServerCatalog(value: unknown): HostedServerCatalog {

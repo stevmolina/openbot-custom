@@ -2,6 +2,7 @@ import { type AvatarColor, isAvatarColor } from "./ipc-agent-identity";
 import type { AvatarImageInput } from "./ipc-agents";
 import type { IceServer } from "./signal-protocol/messages";
 import type { HostRestartEvent, HostRestartState } from "./team-protocol/host-update-v1";
+import type { LiveVoiceEvent } from "./team-protocol/live-voice-v1";
 import type { MachineAlertEvent } from "./team-protocol/machine-resources-v1";
 import type { RemoteComputerCallEvent } from "./team-protocol/remote-computer-use-v1";
 
@@ -93,6 +94,11 @@ export interface ServerSummary {
   memberLimit?: number;
   /** A hosted server, which its owner and its admins can restart. Absent when the account server did not say. */
   hosted?: boolean;
+  /**
+   * The storage, in GB, that the plan of a hosted server gives for the files of its users. The base image of
+   * the server is not in it. Absent for a server that is not hosted, or when the account server did not say.
+   */
+  storageGb?: number;
   /**
    * When the host last changed its key, in milliseconds since the epoch. Only a change that both the
    * previous and the new key signed. Absent when the server list has no such change.
@@ -319,6 +325,7 @@ export type TeamRealtimeEvent =
       typing: boolean;
     }
   | HostRestartEvent
+  | LiveVoiceEvent
   | MachineAlertEvent
   | RemoteComputerCallEvent;
 
@@ -512,6 +519,31 @@ export const REMOTE_DESKTOP_ERROR_CODES = [
 
 export type RemoteDesktopErrorCode = (typeof REMOTE_DESKTOP_ERROR_CODES)[number];
 
+/**
+ * Who may control this computer through remote desktop. `members` is every member, as before the
+ * setting existed; `admins` is the owner and the admins; `owner` is only the owner.
+ */
+export const REMOTE_CONTROL_ACCESS_LEVELS = ["owner", "admins", "members"] as const;
+export type RemoteControlAccess = (typeof REMOTE_CONTROL_ACCESS_LEVELS)[number];
+
+/** The host owner's remote control choices, as they are stored and as they cross IPC. */
+export interface RemoteControlPolicy {
+  access: RemoteControlAccess;
+  /** Ask the person at this computer to allow each remote control session before it starts. */
+  askOnHost: boolean;
+}
+
+export const DEFAULT_REMOTE_CONTROL_POLICY: RemoteControlPolicy = { access: "members", askOnHost: false };
+
+export function isRemoteControlAccess(value: unknown): value is RemoteControlAccess {
+  return isOneOf(REMOTE_CONTROL_ACCESS_LEVELS, value);
+}
+
+export function remoteControlAllowsRole(access: RemoteControlAccess, role: TeamRole): boolean {
+  if (access === "members") return true;
+  return access === "admins" ? canAdministerServer(role) : role === "owner";
+}
+
 export interface RemoteDesktopSession {
   id: string;
   serverId: string;
@@ -550,4 +582,4 @@ export interface RemoteDesktopSelectDisplayInput {
 }
 
 import { INPUT_LIMITS } from "./input-limits";
-import { isBoolean, isDynamicRecord, isNumber, isString } from "./runtime-values";
+import { isBoolean, isDynamicRecord, isNumber, isOneOf, isString } from "./runtime-values";

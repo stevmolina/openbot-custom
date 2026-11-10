@@ -2,13 +2,14 @@ import type { HelpMenuNews, HelpMenuProps } from "@openbot/ui/features/updates/H
 import { whatsNewEntry } from "@openbot/ui/features/updates/whats-new";
 import { createSignal } from "solid-js";
 import { desktopAnalytics } from "../../analytics";
+import { useI18n } from "../../i18n-context";
 import { compareReleaseVersions } from "../updates/whats-new-history";
 import { loadWhatsNewReleases } from "../updates/whats-new-releases";
 
 /** The newest releases that the Help menu lists, one line each. */
 const HELP_NEWS_COUNT = 3;
 
-export type HelpDestination = "changelog" | "guides" | "discord" | "feedback";
+export type HelpDestination = "changelog" | "guides" | "discord" | "report-problem" | "feedback";
 
 /**
  * The Help menu of the sidebar's More menu, on desktop and on the web. The first time it opens, it
@@ -20,19 +21,26 @@ export function createHelpMenu(options: {
   onOpenWhatsNew: () => void;
   onOpenLink: (destination: HelpDestination) => void;
 }): Omit<HelpMenuProps, "triggerClass"> {
+  const i18n = useI18n();
   const [news, setNews] = createSignal<readonly HelpMenuNews[]>([]);
+  // The list is read again after a language change, so it never stays in the previous language.
+  let newsLocale: string | null = null;
   const openLink = (destination: HelpDestination) => {
     desktopAnalytics.track("help_link_opened", { destination });
     options.onOpenLink(destination);
   };
-  let loading = false;
+  // A load for a different language replaces this one, and the result of the old load is dropped.
+  let loadingLocale: string | null = null;
 
   async function loadNews() {
-    if (loading || news().length > 0) return;
-    loading = true;
+    const locale = i18n.locale();
+    if (loadingLocale === locale || (news().length > 0 && newsLocale === locale)) return;
+    loadingLocale = locale;
+    if (newsLocale !== locale) setNews([]);
     try {
       const version = options.version();
-      const releases = await loadWhatsNewReleases(AbortSignal.timeout(10_000));
+      const releases = await loadWhatsNewReleases(AbortSignal.timeout(10_000), locale);
+      if (loadingLocale !== locale) return;
       setNews(
         releases
           .filter((release) => !version || compareReleaseVersions(release.version, version) <= 0)
@@ -43,10 +51,11 @@ export function createHelpMenu(options: {
           })
           .slice(0, HELP_NEWS_COUNT),
       );
+      newsLocale = locale;
     } catch {
       // The menu shows its links without the list. The next opening tries again.
     } finally {
-      loading = false;
+      if (loadingLocale === locale) loadingLocale = null;
     }
   }
 
@@ -59,6 +68,7 @@ export function createHelpMenu(options: {
     onOpenChangelog: () => openLink("changelog"),
     onOpenGuides: () => openLink("guides"),
     onOpenDiscord: () => openLink("discord"),
+    onReportProblem: () => openLink("report-problem"),
     onSendFeedback: () => openLink("feedback"),
   };
 }

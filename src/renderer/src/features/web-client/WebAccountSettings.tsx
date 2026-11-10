@@ -32,11 +32,13 @@ import { useText } from "@openbot/ui/text";
 import { createEffect, createSignal, onCleanup } from "solid-js";
 import { readActionSoundChoice, setActionSoundChoice } from "../../action-sounds";
 import { setShowAgentSteps, useShowAgentSteps } from "../../agent-steps-preference";
+import { setCompactMessageActions, useCompactMessageActions } from "../../compact-message-actions-preference";
 import { playSoundChoice, readTaskSound, setTaskSound } from "../../completion-sound";
 import { webReportsEnabled } from "../../error-reports";
 import { currentDevicePlatform, setSendShortcutMode, useSendShortcutMode } from "../../send-shortcut-preference";
 import type { WebAccountCalls } from "./web-account";
 import { sendWebAnalyticsChoice, setWebAnalyticsEnabled } from "./web-analytics";
+import { setWebLiveVoice, useWebLiveVoice } from "./web-live-voice";
 import type { WebNotificationSettings } from "./web-notification-settings";
 
 const TABS = ["profile", "preferences"] as const;
@@ -94,6 +96,8 @@ export default function WebAccountSettings(props: WebAccountSettingsProps) {
   const [taskSound, setTaskSoundChoice] = createSignal(readTaskSound());
   const sendShortcutMode = useSendShortcutMode();
   const showAgentSteps = useShowAgentSteps();
+  const compactMessageActions = useCompactMessageActions();
+  const webLiveVoice = useWebLiveVoice();
   // Playback reads the stored value on each event, so the menus follow a change from another tab.
   const [soundChoice, setSoundChoice] = createSignal(readActionSoundChoice());
   const readSoundSettings = () => {
@@ -215,6 +219,12 @@ export default function WebAccountSettings(props: WebAccountSettingsProps) {
                 label={t("settings.showAgentSteps.title")}
                 description={t("settings.showAgentSteps.description")}
               />
+              <SwitchField
+                checked={compactMessageActions()}
+                onChange={(checked) => setCompactMessageActions(checked)}
+                label={t("settings.compactMessageActions.title")}
+                description={t("settings.compactMessageActions.description")}
+              />
               <Item class="settings-modal-row">
                 <ItemContent>
                   <ItemTitle>{t("settings.language.title")}</ItemTitle>
@@ -253,6 +263,17 @@ export default function WebAccountSettings(props: WebAccountSettingsProps) {
                   <OwnChatColorTrigger value={props.account.chatColor ?? null} onChange={saveChatColor} />
                 </ItemActions>
               </Item>
+            </ItemGroup>
+          </SettingsSection>
+          {/* The choice is kept in this browser and holds for each server that serves live voice. */}
+          <SettingsSection title={t("settings.voice.live.section")}>
+            <ItemGroup class="settings-modal-card">
+              <SwitchField
+                checked={webLiveVoice()}
+                onChange={(checked) => setWebLiveVoice(checked)}
+                label={t("settings.voice.speech.codexLive.title")}
+                description={t("settings.voice.speech.codexLive.serverDescription")}
+              />
             </ItemGroup>
           </SettingsSection>
           <SettingsSection title={t("settings.analytics.title")}>

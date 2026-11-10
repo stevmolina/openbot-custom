@@ -29,6 +29,8 @@ interface PiModelPayload {
   readonly maxTokens: number;
   /** Absent: the model does not reason. */
   readonly thinkingLevelMap?: PiThinkingLevelMap;
+  /** Pi's `input`: text, and images when the user says the model takes them. */
+  readonly input: readonly ("text" | "image")[];
 }
 
 type PiThinkingLevelMap = Readonly<
@@ -80,7 +82,7 @@ const SOURCE = `export default function (pi) {
         name: model.name,
         reasoning: model.thinkingLevelMap !== undefined,
         ...(model.thinkingLevelMap ? { thinkingLevelMap: model.thinkingLevelMap } : {}),
-        input: ["text"],
+        input: model.input,
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: model.contextWindow,
         maxTokens: model.maxTokens,
@@ -108,9 +110,21 @@ function payload(endpoint: CustomProviderConfig): EndpointPayload {
         contextWindow,
         maxTokens: customModelOutputLimit(model, contextWindow),
         ...(model.reasoningEfforts ? { thinkingLevelMap: thinkingLevelMap(model.reasoningEfforts) } : {}),
+        // Pi's model `input` is `("text" | "image")[]` (Pi 1.1.0 `packages/ai/src/types.ts`), so it has no PDF.
+        input: model.inputs?.includes("image") ? ["text", "image"] : ["text"],
       };
     }),
   };
+}
+
+/** The keys and non-empty header values of the endpoints with a model, which output must not show. */
+export function piCustomEndpointSecrets(endpoints: readonly CustomProviderConfig[]): string[] {
+  return endpoints
+    .filter((endpoint) => endpoint.models.length > 0)
+    .flatMap((endpoint) => [
+      ...(endpoint.apiKey ? [endpoint.apiKey] : []),
+      ...endpoint.headers.map((header) => header.value).filter((value) => value.length > 0),
+    ]);
 }
 
 /**
@@ -130,14 +144,10 @@ export const createPiCustomEndpointExtension = Effect.fn("PiCustomEndpoints.crea
   yield* providerCall(() => writeFile(path, SOURCE, { mode: 0o600 })).pipe(
     Effect.onError(() => providerCall(() => rm(folder, { recursive: true, force: true })).pipe(Effect.orDie)),
   );
-  const secrets = usable.flatMap((endpoint) => [
-    ...(endpoint.apiKey ? [endpoint.apiKey] : []),
-    ...endpoint.headers.map((header) => header.value).filter((value) => value.length > 0),
-  ]);
   return {
     path,
     environment: { [VARIABLE]: JSON.stringify(usable.map(payload)) },
-    secrets,
+    secrets: piCustomEndpointSecrets(usable),
     close: () => providerCall(() => rm(folder, { recursive: true, force: true })),
   } satisfies PiMcpExtension;
 });

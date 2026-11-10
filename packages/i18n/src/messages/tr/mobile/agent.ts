@@ -140,7 +140,6 @@ export const messages = {
   "mobile.agent.info.reconnectToSave": "Değişiklikleri kaydetmek için yeniden bağlanın.",
   "mobile.agent.info.noMemories": "Henüz bellek yok.",
   "mobile.agent.info.addMemory": "Bellek ekle",
-  "mobile.agent.info.routineActive": "Etkin",
   "mobile.agent.info.routinePaused": "Duraklatıldı",
   "mobile.agent.info.noRoutines": "Henüz rutin yok.",
   "mobile.agent.info.addRoutine": "Rutin ekle",
@@ -324,6 +323,8 @@ export const messages = {
   "mobile.agent.runtime.retryModels": "Modelleri tekrar dene",
   "mobile.agent.runtime.loadingModels": "Modeller yükleniyor…",
   "mobile.agent.runtime.noModels": "Bu sağlayıcı için kullanılabilir model yok.",
+  "mobile.agent.runtime.searchModels": "Modellerde ara",
+  "mobile.agent.runtime.noMatches": "Aramanızla eşleşen model yok.",
   "mobile.agent.runtime.usageLimit": "Kullanım sınırına ulaşıldı",
   "mobile.agent.runtime.usageLimitWindow": "{window} sınırı",
   "mobile.agent.runtime.usageLimitResets": "{limit} · {time} tarihinde sıfırlanır",
@@ -362,7 +363,7 @@ export const messages = {
   "mobile.agent.backupModels.intro":
     "{model}, {name} yazmaya başlamadan önce kullanım sınırına ulaşırsa {name} hangi modelin kullanılacağını size sorar.",
   "mobile.agent.backupModels.introAutomatic":
-    "{model}, {name} yazmaya başlamadan önce kullanım sınırına ulaşırsa veya bir sağlayıcı hatasıyla başarısız olursa {name} sıradaki ilk uygun modele geçer.",
+    "{model} kullanım sınırına ulaşırsa {name} sıradaki ilk uygun modele geçer. {name} yazmaya başlamadan önce {model} bir sağlayıcı hatasıyla başarısız olursa da {name} geçiş yapar.",
   "mobile.agent.backupModels.ask": "Değiştirmeden önce sor",
   "mobile.agent.backupModels.order": "Sıra",
   "mobile.agent.backupModels.empty": "Sıra ayarlanmadı. {name} uygun her modeli sunar.",
@@ -544,6 +545,7 @@ export const messages = {
     one: "{count} okunmamış mesaj",
     other: "{count} okunmamış mesaj",
   },
+  "mobile.agent.list.unreadThreads": "Mesaj dizilerinde okunmamış mesajlar",
   "mobile.agent.list.waiting.title": "Size ihtiyacı var",
   "mobile.agent.list.waiting.label": {
     one: "Size ihtiyacı var, {count} ajan",

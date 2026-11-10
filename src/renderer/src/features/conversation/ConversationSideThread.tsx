@@ -11,18 +11,15 @@ import { createEffect, createProjection, Show } from "solid-js";
 import { actionToast } from "../../action-toast";
 import { useShowAgentSteps } from "../../agent-steps-preference";
 import { toAgentMessages } from "../../app-message-projection";
+import { useCompactMessageActions } from "../../compact-message-actions-preference";
 import { usePlatform } from "../../platform";
+import { deviceQuoteShortcut } from "../../send-shortcut-preference";
 import { latestVisibleAgentMessageId } from "./conversation-read-state";
-import { type QuoteDestination, useConversationViewScope } from "./conversation-scope";
+import { useConversationViewScope } from "./conversation-scope";
 import type { SideThread } from "./conversation-types";
 import { useCustomThreadExtras } from "./custom-thread-extras";
 import { useThreadMcpSignInCard } from "./McpSignInChatCard";
 import { createTurnSteps } from "./turn-steps";
-
-/** Custom: a quote goes to the box of the side thread that the person quoted from. */
-function sideQuote(destination: QuoteDestination, threadId: string): boolean {
-  return destination.kind === "side" && destination.threadId === threadId;
-}
 
 /**
  * A side thread in the side panel, beside the agent's own chat. Its message box takes text only:
@@ -47,8 +44,6 @@ export function ConversationSideThread(props: { threadId: string }) {
     movePanelThreadToChat,
     copyMessage,
     copiedMessageId,
-    quoteRequest,
-    quoteDestination,
     openQuote,
     branchThread,
   } = useConversationViewScope();
@@ -80,6 +75,7 @@ export function ConversationSideThread(props: { threadId: string }) {
     activeTurnId: () => thread()?.task.activeTurnId,
   });
   const showAgentSteps = useShowAgentSteps();
+  const compactMessageActions = useCompactMessageActions();
   const { appFocused } = usePlatform();
   // The person reads the thread in the side panel while the window has focus.
   createEffect(
@@ -142,6 +138,11 @@ export function ConversationSideThread(props: { threadId: string }) {
     const id = view.threads?.acceptsReplies ? draft()?.replyToMessageId : null;
     return id ? messages.find((message) => message.id === id) : undefined;
   };
+  /** Text selected in this thread goes to this thread, as a reply where the server takes one. */
+  const selectionActions = (side: SideThread) => ({
+    onSend: (messageId: string, body: string) => side.onSend(body, [], view.threads?.acceptsReplies ? messageId : null),
+    quoteShortcut: deviceQuoteShortcut(view.platform),
+  });
   /** Where this thread came from, when it is a branch. The agent's own chat shows the agent's name. */
   const branchSource = (side: SideThread, agentName: string): AgentThreadBranchSource | undefined => {
     const source = view.threads?.branchSource(side.task);
@@ -193,6 +194,7 @@ export function ConversationSideThread(props: { threadId: string }) {
             onSend={(text) => sendSide(current().thread, text)}
             onStop={() => current().thread.onStop()}
             onOpenLink={(url) => void openExternalMessageUrl(url)}
+            onSelectAgent={view.onSelectAgent}
             onPreview={(attachment) => void previewAttachment(attachment)}
             onAttachmentAction={attachmentAction}
             approval={current().thread.approval}
@@ -205,17 +207,17 @@ export function ConversationSideThread(props: { threadId: string }) {
             attention={answerCard()}
             messageCard={(message) => extras.visualCard(message) ?? mcpSignInCard(message)}
             aboveComposer={extras.aboveComposer()}
+            olderMessages={current().thread.olderMessages}
             stepsAbove={turnSteps.stepsAbove}
             factsAbove={turnSteps.factsAbove}
             activeSteps={turnSteps.activeSteps()}
             stepsOpenByDefault={showAgentSteps()}
-            quoteRequest={quoteRequest()}
-            applyQuote={sideQuote(quoteDestination(), props.threadId)}
             onOpenQuote={openQuote}
             onReact={extras.onReact}
             readAloud={extras.readAloud}
             onCopyMessage={(message) => void copyMessage(message)}
             copiedMessageId={copiedMessageId()}
+            compactMessageActions={compactMessageActions()}
             onBranch={branch()}
             onDeleteMessage={deleteMessage()}
             canDeleteMessage={view.canDeleteMessage}
@@ -224,6 +226,7 @@ export function ConversationSideThread(props: { threadId: string }) {
             replyTo={replyTo()}
             onCancelReply={() => threadComposer.setReply(draftKey(), null)}
             queue={threadQueue.view(current().thread.task, draftKey())}
+            selectionActions={selectionActions(current().thread)}
           />
         )}
       </Show>

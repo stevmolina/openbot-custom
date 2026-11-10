@@ -132,6 +132,22 @@ export class CustomEndpoints {
     return !this.#released[provider].has(modelId.slice(0, separator));
   }
 
+  /**
+   * Whether a saved endpoint of `harness` waits for a process that reads it. Its models stay out of
+   * the catalogue until then. A removed id does not count: no model of it is to come.
+   */
+  pending(harness: CustomProviderHarness): boolean {
+    for (const providerId of this.#released[harness].keys()) {
+      if (this.#hooks.endpointHarness(providerId) === harness) return true;
+    }
+    return false;
+  }
+
+  /** Whether the endpoint `providerId` of `harness` waits for a process that reads it. */
+  waits(harness: CustomProviderHarness, providerId: string): boolean {
+    return this.#released[harness].has(providerId);
+  }
+
   /** The newest revision a spawning process can read, taken when a provider client starts. */
   committedRevision(): number {
     return this.#committedRevision;
@@ -594,6 +610,27 @@ export class CustomEndpoints {
     }
   }, Effect.uninterruptible);
 
+  /** Whether an agent of `provider` is on a model that the provider's catalogue lacks. */
+  hasAgentsOffList(provider: AgentProvider): boolean {
+    const models = this.available().filter((model) => model.provider === provider);
+    return models.length > 0 && this.#agentsOffList(provider, models).length > 0;
+  }
+
+  #agentsOffList(
+    provider: AgentProvider,
+    models: readonly AgentModelOption[],
+    agentIds?: ReadonlySet<string>,
+  ): AgentSummary[] {
+    return this.#store.list().filter(
+      (agent) =>
+        providerForAgent(agent) === provider &&
+        (agentIds === undefined || agentIds.has(agent.id)) &&
+        !models.some((model) => model.id === agent.model) &&
+        // An agent whose endpoint moved waits for `moveAgentsToHarness`, which keeps its model.
+        this.#pendingMove(agent) === null,
+    );
+  }
+
   /**
    * Moves each agent of `provider` whose model the provider no longer lists to the provider's default,
    * or to the first model it lists when the default is gone too. A saved model that is a listed model
@@ -614,15 +651,7 @@ export class CustomEndpoints {
     const models = this.available().filter((model) => model.provider === provider);
     const providerFallback = models.find((model) => model.id === defaultProviderModel(provider)) ?? models[0];
     if (!providerFallback) return;
-    const affected = this.#store.list().filter(
-      (agent) =>
-        providerForAgent(agent) === provider &&
-        (agentIds === undefined || agentIds.has(agent.id)) &&
-        !models.some((model) => model.id === agent.model) &&
-        // An agent whose endpoint moved waits for `moveAgentsToHarness`, which keeps its model.
-        this.#pendingMove(agent) === null,
-    );
-    for (const agent of affected) {
+    for (const agent of this.#agentsOffList(provider, models, agentIds)) {
       // A custom agent is a program of its own, not a model: an agent moves only to another model of
       // the same custom agent. One that listed nothing, or did not answer, keeps its model. The router
       // lists `<agent>/default` for an agent that answered with an empty list, which a slow start

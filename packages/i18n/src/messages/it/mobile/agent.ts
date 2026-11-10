@@ -134,7 +134,6 @@ export const messages = {
   "mobile.agent.info.reconnectToSave": "Riconnettiti per salvare le modifiche.",
   "mobile.agent.info.noMemories": "Ancora nessuna memoria.",
   "mobile.agent.info.addMemory": "Aggiungi memoria",
-  "mobile.agent.info.routineActive": "Attiva",
   "mobile.agent.info.routinePaused": "In pausa",
   "mobile.agent.info.noRoutines": "Ancora nessuna routine.",
   "mobile.agent.info.addRoutine": "Aggiungi routine",
@@ -312,6 +311,8 @@ export const messages = {
   "mobile.agent.runtime.retryModels": "Riprova a caricare i modelli",
   "mobile.agent.runtime.loadingModels": "Caricamento dei modelli…",
   "mobile.agent.runtime.noModels": "Nessun modello disponibile per questo provider.",
+  "mobile.agent.runtime.searchModels": "Cerca modelli",
+  "mobile.agent.runtime.noMatches": "Nessun modello corrisponde alla ricerca.",
   "mobile.agent.runtime.usageLimit": "Limite di utilizzo raggiunto",
   "mobile.agent.runtime.usageLimitWindow": "Limite ({window})",
   "mobile.agent.runtime.usageLimitResets": "{limit} · Si azzera il {time}",
@@ -350,7 +351,7 @@ export const messages = {
   "mobile.agent.backupModels.intro":
     "Quando {model} raggiunge il limite di utilizzo prima che {name} inizi a scrivere, {name} ti chiede quale modello usare.",
   "mobile.agent.backupModels.introAutomatic":
-    "Quando {model} raggiunge il limite di utilizzo o fallisce per un errore del provider prima che {name} inizi a scrivere, {name} passa al primo modello disponibile nell'ordine.",
+    "Quando {model} raggiunge il limite di utilizzo, {name} passa al primo modello disponibile nell'ordine. {name} cambia modello anche quando {model} fallisce per un errore del provider prima che {name} inizi a scrivere.",
   "mobile.agent.backupModels.ask": "Chiedi prima di cambiare",
   "mobile.agent.backupModels.order": "Ordine",
   "mobile.agent.backupModels.empty": "Nessun ordine impostato. {name} propone ogni modello disponibile.",
@@ -529,6 +530,7 @@ export const messages = {
   "mobile.agent.list.openPinnedWithTitle": "Apri la chat fissata con {name}, {title}",
   "mobile.agent.list.withState": "{label}. {state}",
   "mobile.agent.list.unread": { one: "{count} messaggio non letto", other: "{count} messaggi non letti" },
+  "mobile.agent.list.unreadThreads": "Messaggi non letti nei thread",
   "mobile.agent.list.waiting.title": "Ha bisogno di te",
   "mobile.agent.list.waiting.label": {
     one: "Ha bisogno di te, {count} agente",

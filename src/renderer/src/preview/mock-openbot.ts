@@ -3,6 +3,7 @@ import type {
   AcpRegistryEntry,
   AgentProviderRef,
   AgentSessionSettings,
+  CreateAgentInput,
   HiddenAgentsSnapshot,
   McpSignInApp,
   McpSignInAppState,
@@ -13,6 +14,7 @@ import {
   AGENT_DEFAULT_KEYS,
   AGENT_FOLDER_LIMIT,
   AGENT_INSTRUCTIONS_CHANGE_ITEM_TYPE,
+  AGENT_WELCOME_ITEM_TYPE,
   type AgentAccessChange,
   type AgentBrowserProfile,
   type AgentDefaults,
@@ -56,9 +58,11 @@ import {
   type BackgroundProcess,
   type BrowserProfileSummary,
   type BrowserProxySummary,
+  type BrowsingMemoryPreference,
   type BusyMessageModePreference,
   browserProxyAddressText,
   type CentralAuthState,
+  type ClaudeUserSetupSetting,
   type ClientAgentModelOption,
   type ClientAgentSummary,
   CONTEXT_RESET_ITEM_TYPE,
@@ -79,7 +83,9 @@ import {
   DEFAULT_APP_INTERFACE_SIZE,
   DEFAULT_APP_LOGO_COLOR,
   DEFAULT_APPROVAL_AUTOMATION_PREFERENCE,
+  DEFAULT_BROWSING_MEMORY_PREFERENCE,
   DEFAULT_BUSY_MESSAGE_MODE,
+  DEFAULT_CLAUDE_USER_SETUP,
   DEFAULT_CUSTOM_PROVIDER_HARNESS,
   DEFAULT_DYNAMIC_ISLAND_PREFERENCE,
   DEFAULT_EXTERNAL_LINK_PREFERENCE,
@@ -90,6 +96,7 @@ import {
   DEFAULT_PROVIDER_DETECTION_SETTINGS,
   DEFAULT_REMOTE_NETWORK_ROUTE,
   DEFAULT_REMOTE_SESSION_REUSE_PREFERENCE,
+  DEFAULT_SKILL_LEARNING_MODE,
   DEFAULT_TRANSPARENT_WINDOW,
   type DirectConversationSnapshot,
   type DirectMessageRealtimeEvent,
@@ -105,12 +112,15 @@ import {
   type HostedSiteSummary,
   type HostStatus,
   hostAgentMemoryLimit,
+  hostBrowsingMemory,
   hostMemoryReview,
+  hostSkillLearning,
   isAgentMemoryLimit,
   isAgentSummary,
   isMemoryReviewInterval,
   isPromptCacheTtl,
   isReleasedRoutineSchedule,
+  isSkillLearningMode,
   LOCAL_SERVER_ID,
   type MachineAlertSettings,
   type MacPermissionId,
@@ -152,6 +162,7 @@ import {
   SIDEBAR_UNASSIGNED_SECTION_ID,
   type SidebarLayoutSnapshot,
   type SidebarPinsSnapshot,
+  type SkillLearningPreference,
   type SteerQueuedMessageInput,
   sameCustomProviderOrigin,
   type TeamPresenceSnapshot,
@@ -207,6 +218,7 @@ import { createMockBrowser, type MockBrowserOptions } from "./mock-browser";
 import { createMockChannels, type MockChannelSeed } from "./mock-channels";
 import { createMockEvents } from "./mock-events";
 import { createMockGitHubConnector } from "./mock-github-connector";
+import { createMockHostPersonality } from "./mock-host-personality";
 import { createMockHostTimezone } from "./mock-host-timezone";
 import { createMockHostUpdate, type MockHostUpdateOptions } from "./mock-host-update";
 import { createMockHostedServers } from "./mock-hosted-servers";
@@ -289,7 +301,8 @@ export interface MockSentMessage {
 
 /**
  * The trace of a finished mock turn that ends at `endedAt`, as a host records it: a thought, three
- * tool steps with the progress text that `turn-progress` sent (the web search failed), and the answer.
+ * tool steps with the progress text that `turn-progress` sent (the web search failed, with its error), and the
+ * answer.
  */
 function mockTurnTrace(turnId: string, endedAt: Date): ConversationTurnTrace {
   const end = endedAt.getTime();
@@ -313,6 +326,7 @@ function mockTurnTrace(turnId: string, endedAt: Date): ConversationTurnTrace {
         startedAt: at(2_340),
         endedAt: at(3_910),
         failed: true,
+        error: "fetch failed: getaddrinfo ENOTFOUND search.example.com",
       },
       {
         id: `${turnId}:edit`,
@@ -409,6 +423,24 @@ function mockWorkspaceDirectory(path: string): WorkspaceDirectory {
   };
 }
 
+/** Fonts that most Macs have, so the preview draws each choice in its real font. */
+const STORY_INSTALLED_FONTS = [
+  "Al Bayan",
+  "Arial",
+  "Avenir Next",
+  "Baghdad",
+  "Courier New",
+  "Geeza Pro",
+  "Georgia",
+  "Helvetica Neue",
+  "Menlo",
+  "Monaco",
+  "Noto Nastaliq Urdu",
+  "Tahoma",
+  "Times New Roman",
+  "Verdana",
+];
+
 /** What each story server answers with when it is tested, so a story reads the same way twice. */
 const PREVIEW_BROWSERS: ExternalLinkBrowsers = {
   defaultBrowser: { name: "Safari", path: "/Applications/Safari.app" },
@@ -470,9 +502,12 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
   let agentDefaults: AgentDefaults = { ...DEFAULT_AGENT_DEFAULTS };
   let agentMemoryLimit: AgentMemoryLimitPreference = { limit: DEFAULT_AGENT_MEMORY_LIMIT };
   let memoryReview: MemoryReviewPreference = { interval: DEFAULT_MEMORY_REVIEW_INTERVAL };
+  let skillLearning: SkillLearningPreference = { mode: DEFAULT_SKILL_LEARNING_MODE };
+  let browsingMemory: BrowsingMemoryPreference = { ...DEFAULT_BROWSING_MEMORY_PREFERENCE };
   // The disk level is below the preview disk use (82%), so Storage shows a passed level.
   let machineAlerts: MachineAlertSettings = { ...DEFAULT_MACHINE_ALERT_SETTINGS, diskPercent: 80 };
   let promptCacheTtl: PromptCacheTtlSetting = { ...DEFAULT_PROMPT_CACHE_TTL };
+  let claudeUserSetup: ClaudeUserSetupSetting = { ...DEFAULT_CLAUDE_USER_SETUP };
   /** The models each provider's picker shows, after the user changed the list. Unchanged providers show all. */
   const shownModels = new Map<string, readonly string[]>();
   let agentAccess: AgentAccessChange = { revision: 0, everyone: {}, roles: [] };
@@ -487,6 +522,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
     keepRunningInBackground: false,
     keepAwake: false,
     keepAwakeOnBattery: false,
+    quitGuard: "working",
   };
   let languagePreference = clone<AppLanguagePreference>(options.languagePreference ?? { language: "system" });
   const languageListeners = new Set<(preference: AppLanguagePreference) => void>();
@@ -497,6 +533,10 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
     transparentWindow: DEFAULT_TRANSPARENT_WINDOW,
     palette: null,
     palettes: [],
+    chatBackgroundLight: null,
+    chatBackgroundDark: null,
+    interfaceFont: null,
+    codeFont: null,
   };
   const appearanceListeners = new Set<(preference: AppAppearancePreference) => void>();
   let interfaceSizePreference: AppInterfaceSizePreference = { percent: DEFAULT_APP_INTERFACE_SIZE };
@@ -1172,6 +1212,40 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
   );
   const billingPlans = previewBillingServers();
 
+  async function createMockAgent(input: CreateAgentInput, welcome: boolean): Promise<ClientAgentSummary> {
+    const agent = createAgentSummary({
+      name: input.name,
+      title: "",
+      description: input.description,
+      avatarSeed: input.avatarSeed,
+      avatarHue: input.avatarHue,
+      ...(input.provider === undefined ? {} : { provider: input.provider }),
+      ...(input.model === undefined ? {} : { model: input.model }),
+      ...(input.reasoningEffort === undefined ? {} : { reasoningEffort: input.reasoningEffort }),
+    });
+    if (input.provider && input.model && input.providerAccountId) agent.providerAccountId = input.providerAccountId;
+    agents = [...agents, agent];
+    queues.set(agent.id, emptyQueue(agent.id));
+    emitAgentEvent({ type: "agents-changed", agents });
+    try {
+      await api.agent.sendMessage({ agentId: agent.id, text: input.initialMessage, attachmentDraftIds: [] });
+      // As on a host: the renderer sends a setup message, which the chat does not show.
+      if (welcome)
+        updateSnapshot(agent.id, (snapshot) => {
+          snapshot.messages = snapshot.messages.map((message) =>
+            message.author === "user" ? { ...message, itemType: AGENT_WELCOME_ITEM_TYPE } : message,
+          );
+        });
+      return clone(agent);
+    } catch (error) {
+      agents = agents.filter((candidate) => candidate.id !== agent.id);
+      queues.delete(agent.id);
+      delete snapshots[agent.id];
+      emitAgentEvent({ type: "agents-changed", agents });
+      throw error;
+    }
+  }
+
   const api: OpenBotDesktopApi = {
     getAppInfo: async () => clone(appInfo),
     getSetupState: async () => clone(setupState),
@@ -1266,6 +1340,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       for (const listener of appearanceListeners) listener(clone(appearancePreference));
       return clone(appearancePreference);
     },
+    listInstalledFonts: async () => [...STORY_INSTALLED_FONTS],
     onAppAppearancePreference: (listener) => {
       appearanceListeners.add(listener);
       return () => appearanceListeners.delete(listener);
@@ -1298,6 +1373,20 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       setFrame: async () => undefined,
       onShown: () => () => undefined,
     },
+    agentDock: {
+      publishPresentation: async () => undefined,
+      getPresentation: async () => null,
+      onPresentation: () => () => undefined,
+      performAction: async () => undefined,
+      onAction: () => () => undefined,
+      setInteractive: async () => undefined,
+      setInputRegion: async () => undefined,
+      setXWayland: async () => undefined,
+      onCloseChat: () => () => undefined,
+      listDisplays: async () => [{ id: 1, label: "Built-in Retina Display", primary: true, internal: true }],
+      drag: async () => undefined,
+      onMoved: () => () => undefined,
+    },
     dynamicIsland: {
       getPreference: async () => clone(dynamicIslandPreference),
       setPreference: async (preference) => {
@@ -1316,6 +1405,8 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       performHaptic: async () => undefined,
       onAction: () => () => undefined,
       setInteractive: async () => undefined,
+      setInputRegion: async () => undefined,
+      setXWayland: async () => undefined,
     },
     // The preview has no Apple apps to ask, so every app answers as allowed.
     macAutomation: {
@@ -1789,7 +1880,12 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       checkRuntimeUpdates: () => api.providerRuntimes.checkForUpdates(),
       listCustomProviders: () => api.customProviders.list(),
       saveCustomProvider: (input) => api.customProviders.save(input),
+      updateCustomProvider: (input) => api.customProviders.update(input),
       deleteCustomProvider: (input) => api.customProviders.delete(input),
+      // The preview host's switch is the one of this computer.
+      providerUse: async () => (agentStatus.providers ?? []).filter((row) => row.off).map((row) => row.id),
+      setProviderUse: async (input) =>
+        ((await api.setProviderOn(input)).providers ?? []).filter((row) => row.off).map((row) => row.id),
     },
     agentTemplates: {
       // One published template per local agent. The preview shows the agent's own identity with the
@@ -2424,10 +2520,12 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
         sectionId: input.draft?.sectionId ?? null,
       }),
       askSideQuestion: async (input) => `You asked: ${input.question}`,
+      // The preview has no writer, so the card sends the yes to the agent.
+      saveSkillSuggestion: async () => ({ saved: false }),
       saveProfile: async (input) => {
         const agent = input.agentId
           ? await api.agent.updateAgent({ agentId: input.agentId, ...input.draft })
-          : await api.agent.createAgent({ ...input.draft, initialMessage: input.initialMessage ?? "Hello" });
+          : await createMockAgent({ ...input.draft, initialMessage: input.initialMessage ?? "Hello" }, false);
         const updated = await api.agent.updateAgent({ agentId: agent.id, ...input.draft });
         await api.agent.setAvatar({ agentId: agent.id, image: null });
         const layout = await api.agent.mutateSidebarLayout({
@@ -2439,31 +2537,8 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
         if (!isAgentSummary(updated)) throw new Error("Mock profile agent has an unknown provider.");
         return { agent: { ...updated, avatarUrl: null }, layout };
       },
-      createAgent: async (input) => {
-        const agent = createAgentSummary({
-          name: input.name,
-          title: "",
-          description: input.description,
-          avatarSeed: input.avatarSeed,
-          avatarHue: input.avatarHue,
-          ...(input.provider === undefined ? {} : { provider: input.provider }),
-          ...(input.model === undefined ? {} : { model: input.model }),
-          ...(input.reasoningEffort === undefined ? {} : { reasoningEffort: input.reasoningEffort }),
-        });
-        agents = [...agents, agent];
-        queues.set(agent.id, emptyQueue(agent.id));
-        emitAgentEvent({ type: "agents-changed", agents });
-        try {
-          await api.agent.sendMessage({ agentId: agent.id, text: input.initialMessage, attachmentDraftIds: [] });
-          return clone(agent);
-        } catch (error) {
-          agents = agents.filter((candidate) => candidate.id !== agent.id);
-          queues.delete(agent.id);
-          delete snapshots[agent.id];
-          emitAgentEvent({ type: "agents-changed", agents });
-          throw error;
-        }
-      },
+      // The renderer's create sends a setup message; a saved profile sends a visible first message.
+      createAgent: (input) => createMockAgent(input, true),
       duplicateAgent: async (agentId) => {
         const source = agents.find((agent) => agent.id === agentId);
         if (!source) throw new Error("Agent not found");
@@ -2476,6 +2551,10 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
             preview: "",
             updatedAt: null,
           }),
+          // Only a named profile carries over, as in the agent store.
+          ...(source.browserProfileId === undefined
+            ? {}
+            : { ownBrowserSession: true, browserProfileId: source.browserProfileId }),
           threadId: null,
         };
         agents = [...agents, agent];
@@ -2530,6 +2609,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       updateAgent: async (input: UpdateAgentInput) => {
         const current = agents.find((agent) => agent.id === input.agentId);
         if (!current) throw new Error("Agent not found");
+        if (input.ultrafast !== undefined && input.fastMode === undefined) throw new Error("Invalid fast mode value.");
         const {
           agentId: _agentId,
           busyMessageMode,
@@ -2562,6 +2642,9 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
         else if (taskLimit) updated.taskLimit = taskLimit;
         if (chatColor === null) delete updated.chatColor;
         else if (chatColor) updated.chatColor = chatColor;
+        // As the store does: each fast mode change names the tier, and Ultrafast needs fast mode.
+        if (updates.fastMode !== undefined && !(updates.fastMode && updates.ultrafast)) delete updated.ultrafast;
+        if (!updated.fastMode) delete updated.ultrafast;
         agents = agents.map((agent) => (agent.id === updated.id ? updated : agent));
         emitAgentEvent({ type: "agents-changed", agents });
         emitTasks(updated.id);
@@ -2953,6 +3036,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
           threadId: getSnapshot(input.agentId).threadId ?? `thread-${input.agentId}`,
           turnId,
           detail: "Reviewing your request…",
+          activity: "reading",
         });
         emitAgentEvent({
           type: "turn-progress",
@@ -3066,7 +3150,20 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
       listWaits: async (agentId) => ({ agentId, waits: [] }),
       cancelWait: async () => undefined,
       listTasks: async (agentId) => taskList(agentId),
-      readTask: async (input) => clone(taskConversation(findTask(input.agentId, input.taskId))),
+      // As the host: the read has the newest 100 messages, and the page route the ones before.
+      readTask: async (input) => {
+        const conversation = taskConversation(findTask(input.agentId, input.taskId));
+        return clone({ ...conversation, messages: conversation.messages.slice(-100) });
+      },
+      readTaskPage: async (input) => {
+        const conversation = taskConversation(findTask(input.agentId, input.taskId));
+        const index = conversation.messages.findIndex((message) => message.id === input.beforeMessageId);
+        const start = Math.max(0, index - input.limit);
+        return clone({
+          conversation: { ...conversation, messages: index > 0 ? conversation.messages.slice(start, index) : [] },
+          hasOlder: start > 0,
+        });
+      },
       startTask: async (input) => {
         const task = createTask(input.agentId, input.text);
         runTaskTurn(task, input.text);
@@ -3288,6 +3385,11 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
           });
         });
       },
+      deleteHistory: async (agentId: string) => {
+        updateSnapshot(agentId, (snapshot) => {
+          snapshot.messages = [];
+        });
+      },
       compactContext: async () => undefined,
       compactTaskContext: async () => undefined,
       respondToPrompt: async (input: RespondToPromptInput) => {
@@ -3406,8 +3508,12 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
         if (!server) throw new Error("Server not found");
         return server;
       },
+      rotateHostKey: async () => {
+        await mockTeam.host.rotateIdentityKey();
+      },
       ...createMockHostUpdate(options),
       ...createMockHostTimezone(),
+      ...createMockHostPersonality(),
       // Preview has one host, so every server shares one limit. Main tells the window, as here.
       getAgentMemoryLimit: async () => hostAgentMemoryLimit(agentMemoryLimit),
       setAgentMemoryLimit: async (limit) => {
@@ -3422,6 +3528,17 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
         memoryReview = { interval };
         return hostMemoryReview(memoryReview);
       },
+      getSkillLearning: async () => hostSkillLearning(skillLearning),
+      setSkillLearning: async (mode) => {
+        if (!isSkillLearningMode(mode)) throw new Error("Skill learning mode is required.");
+        skillLearning = { mode };
+        return hostSkillLearning(skillLearning);
+      },
+      getBrowsingMemory: async () => hostBrowsingMemory(browsingMemory),
+      setBrowsingMemory: async (enabled) => {
+        browsingMemory = { enabled };
+        return hostBrowsingMemory(browsingMemory);
+      },
       // Preview has one host, so every server shares one set of machine alerts.
       getMachineAlerts: async () => clone(machineAlerts),
       setMachineAlerts: async (settings) => {
@@ -3434,6 +3551,13 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
         if (!isPromptCacheTtl(ttl)) throw new Error("Prompt cache time is required.");
         promptCacheTtl = { ttl };
         return clone(promptCacheTtl);
+      },
+      // Preview has one host, so every server shares one switch.
+      getClaudeUserSetup: async () => clone(claudeUserSetup),
+      setClaudeUserSetup: async (enabled) => {
+        if (typeof enabled !== "boolean") throw new Error("Invalid Claude setup setting.");
+        claudeUserSetup = { enabled };
+        return clone(claudeUserSetup);
       },
       // Preview has one host, so every server shares one model list.
       getModelVisibility: async (provider) => modelVisibility(provider),

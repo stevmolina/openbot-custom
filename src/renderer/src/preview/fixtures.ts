@@ -184,6 +184,7 @@ export const STORY_MODELS: ClientAgentModelOption[] = [
     defaultReasoningEffort: "high",
     supportedReasoningEfforts: ["medium", "high", "xhigh"],
     fastServiceTier: "priority",
+    ultrafastServiceTier: "ultrafast",
   },
   {
     provider: "claude",
@@ -223,6 +224,14 @@ export const STORY_MODELS: ClientAgentModelOption[] = [
     name: "Claude Sonnet 5",
     description: "Balanced Claude model for general agent work.",
     defaultReasoningEffort: "high",
+    supportedReasoningEfforts: ["low", "medium", "high"],
+  },
+  {
+    provider: "grok",
+    id: "grok-4.7",
+    name: "Grok 4.7",
+    description: "Discovered from Grok CLI over ACP.",
+    defaultReasoningEffort: "medium",
     supportedReasoningEfforts: ["low", "medium", "high"],
   },
   {

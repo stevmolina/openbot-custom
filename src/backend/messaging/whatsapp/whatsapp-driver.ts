@@ -37,6 +37,7 @@ import {
 } from "./whatsapp-events";
 import { whatsAppChunks, whatsAppText } from "./whatsapp-render";
 import type { WhatsAppConnectionHandle, WhatsAppRuntime } from "./whatsapp-runtime";
+import { allowsContact } from "./whatsapp-senders";
 import { WhatsAppTransport } from "./whatsapp-transport";
 
 /** WhatsApp takes larger files, but a phone on mobile data should not have to. */
@@ -64,6 +65,12 @@ const IMAGE_TYPES: Record<string, string> = {
   ".jpeg": "image/jpeg",
   ".png": "image/png",
   ".webp": "image/webp",
+};
+
+/** WhatsApp opens a document by its type, so a generic type makes a ".bin" file. Attachments store HTML as plain text. */
+const DOCUMENT_TYPES: Record<string, string> = {
+  ".htm": "text/html",
+  ".html": "text/html",
 };
 
 /** The stored values of one linked number. `whatsappStoreKey` opens its store, the others name it. */
@@ -209,23 +216,26 @@ class WhatsAppAdapter implements MessagingAdapter {
   ) {
     yield* this.#checkPlace(target.platformChannelId);
     const [first = "", ...rest] = whatsAppChunks(markdown).map((chunk) => this.#layout(target, chunk));
+    const firstMentions = this.#mentions(first);
     let firstId: string | null = null;
-    if (replaceMessageId) {
-      const sentAt = this.#sentAt.get(replaceMessageId);
-      if (sentAt !== undefined && Date.now() - sentAt <= EDIT_WINDOW_MS) {
-        const edited = yield* Effect.result(
-          this.#session().send(target.platformChannelId, { text: first, edit: this.#ownKey(target, replaceMessageId) }),
-        );
-        if (Result.isSuccess(edited)) firstId = replaceMessageId;
-      }
-      if (firstId === null)
-        // The status post would stay as "Working on it…" above the answer, so it goes.
+    const sentAt = replaceMessageId ? this.#sentAt.get(replaceMessageId) : undefined;
+    // An edit notifies nobody, so an answer that mentions a person replaces the status post with a new one.
+    if (replaceMessageId && !firstMentions.mentions && sentAt !== undefined && Date.now() - sentAt <= EDIT_WINDOW_MS) {
+      const edited = yield* Effect.result(
+        this.#session().send(target.platformChannelId, { text: first, edit: this.#ownKey(target, replaceMessageId) }),
+      );
+      if (Result.isSuccess(edited)) firstId = replaceMessageId;
+    }
+    if (firstId === null) {
+      firstId = yield* this.#send(target, { text: first, ...firstMentions });
+      // The status post would stay as "Working on it…" above the answer, so it goes. After the post:
+      // when the post fails, the status post stays for the next attempt.
+      if (replaceMessageId)
         yield* this.#session()
           .send(target.platformChannelId, { delete: this.#ownKey(target, replaceMessageId) })
           .pipe(Effect.catch(() => Effect.void));
     }
-    firstId ??= yield* this.#send(target, { text: first });
-    for (const chunk of rest) yield* this.#send(target, { text: chunk });
+    for (const chunk of rest) yield* this.#send(target, { text: chunk, ...this.#mentions(chunk) });
     return firstId;
   });
 
@@ -250,7 +260,7 @@ class WhatsAppAdapter implements MessagingAdapter {
             : {
                 document: { url: file.path },
                 fileName: file.name.slice(0, 255) || "file",
-                mimetype: "application/octet-stream",
+                mimetype: DOCUMENT_TYPES[extname(file.name).toLowerCase()] ?? file.mimeType,
               };
           yield* this.#send(target, content);
           return true;
@@ -403,7 +413,7 @@ class WhatsAppAdapter implements MessagingAdapter {
       const user = isJidGroup(chatJid) ? null : userPart(chatJid);
       const allowed = isJidGroup(chatJid)
         ? rules.groups.has(chatJid)
-        : user === identity.number || (user !== null && rules.contacts.has(user));
+        : user === identity.number || (user !== null && allowsContact(rules, user));
       return allowed ? Effect.void : Effect.fail(new MessagingAdapterError({ cause: new Error("place_not_allowed") }));
     });
   }
@@ -443,9 +453,13 @@ class WhatsAppAdapter implements MessagingAdapter {
     return [whatsAppText(body.text), ...menu].join("\n\n");
   }
 
-  /** The people that host text mentions as `@<number>`, so WhatsApp shows them as mentions. */
+  /**
+   * The people that a post or an answer mentions as `@<number>` outside code, so WhatsApp shows them
+   * as mentions and notifies them. An email address mentions nobody.
+   */
   #mentions(text: string): { mentions?: string[] } {
-    const numbers = [...text.matchAll(/@([0-9]{5,20})\b/gu)].map((match) => userJid(match[1] ?? ""));
+    const prose = text.replace(/```[\s\S]*?(?:```|$)|`[^`\n]+`/gu, "");
+    const numbers = [...prose.matchAll(/(?<![\w@])@([0-9]{5,20})\b/gu)].map((match) => userJid(match[1] ?? ""));
     return numbers.length ? { mentions: [...new Set(numbers)] } : {};
   }
 }

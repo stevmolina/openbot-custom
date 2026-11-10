@@ -56,6 +56,8 @@ import { useDirectMessages } from "./direct-messages-context";
 import { noteAgentMessageSent } from "./github-star-prompt";
 import { noteSocialFollowMessageSent } from "./social-follow-prompt";
 
+type ConversationDeltaEvent = Extract<AgentEvent, { type: "conversation-delta" }>;
+
 const LATEST_PAGE_SIZE = 50;
 /**
  * How much of a snapshot an agent that is not open converts. Commentary of one turn becomes one
@@ -147,8 +149,17 @@ const Conversation = createSimpleContext({
       setTurnProgress,
     } = useTurns();
 
-    const [conversations, setConversations] = createStore<Record<string, ConversationState>>({});
+    const [conversations, writeConversations] = createStore<Record<string, ConversationState>>({});
     const rawAgentMessageBodies = new Map<string, string>();
+    /** The streamed text that arrived since the last frame, in arrival order. */
+    let queuedDeltas: ConversationDeltaEvent[] = [];
+    let cancelDeltaFrame: (() => void) | undefined;
+
+    /** Each change of the conversations applies the queued text first, so the changes keep their order. */
+    function setConversations(update: (current: Record<string, ConversationState>) => void): void {
+      flushConversationDeltas();
+      writeConversations(update);
+    }
 
     function updateConversation(agentId: string, update: (conversation: ConversationState) => void): void {
       setConversations((current) => {
@@ -182,7 +193,20 @@ const Conversation = createSimpleContext({
     /** The chats that the user marked unread. They stay unread until the user opens them again. */
     const heldUnreadAgentChats = new Set<string>();
 
-    let conversationFrame: number | undefined;
+    let cancelConversationFrame: (() => void) | undefined;
+
+    /**
+     * Runs `run` at the next frame. A hidden or minimized window gets no frames, but the agent dock above
+     * other apps shows these chats, so there a timer runs it.
+     */
+    function onNextFrame(run: () => void): () => void {
+      if (document.visibilityState === "hidden") {
+        const timer = setTimeout(run);
+        return () => clearTimeout(timer);
+      }
+      const frame = requestAnimationFrame(run);
+      return () => cancelAnimationFrame(frame);
+    }
 
     /** The key of the wait in an agent's own chat: the conversations here are those chats. */
     function ownChatAttentionKey(agentId: string): string {
@@ -211,7 +235,20 @@ const Conversation = createSimpleContext({
         serverState: activeServer()?.state,
         sequence: activeServer()?.connectionSequence,
       }),
-      ({ agentId }) => {
+      (next, previous) => {
+        // Each provider status update gives a new source, also when these values do not change. A read
+        // of the latest page replaces the older pages that the reader scrolled up to load.
+        if (
+          previous &&
+          next.agentId === previous.agentId &&
+          next.agentPhase === previous.agentPhase &&
+          next.openRevision === previous.openRevision &&
+          next.serverState === previous.serverState &&
+          next.sequence === previous.sequence
+        ) {
+          return;
+        }
+        const { agentId } = next;
         if (!agentId) return;
         const serverId = untrack(activeServerId);
         const trackingKey = agentConversationKey(serverId, agentId);
@@ -293,11 +330,12 @@ const Conversation = createSimpleContext({
         const currentMessages = Object.fromEntries(
           Object.entries(current).map(([id, conversation]) => [id, conversation.messages]),
         );
+        const next = appendLatestRuntimeMessages(currentMessages, messages);
         for (const message of messages) {
           if (currentMessages[message.agentId]?.some((candidate) => candidate.id === message.id)) continue;
+          if (!next[message.agentId]?.some((candidate) => candidate.id === message.id)) continue;
           rawAgentMessageBodies.set(agentMessageKey(message.agentId, message.id), "");
         }
-        const next = appendLatestRuntimeMessages(currentMessages, messages);
         for (const agentId of agentIds) {
           current[agentId] ??= { messages: [] };
           current[agentId].messages = next[agentId] ?? [];
@@ -344,6 +382,7 @@ const Conversation = createSimpleContext({
     }
 
     function scheduleConversation(snapshot: ConversationSnapshot) {
+      flushConversationDeltas();
       const agentId = snapshot.agentId;
       const appliedRevision = conversations[agentId]?.revision ?? -1;
       const pending = pendingConversationSnapshots.get(agentId);
@@ -355,15 +394,19 @@ const Conversation = createSimpleContext({
         else rawAgentMessageBodies.delete(key);
       }
       pendingConversationSnapshots.set(agentId, snapshot);
-      if (conversationFrame !== undefined) return;
-      conversationFrame = requestAnimationFrame(() => {
-        conversationFrame = undefined;
-        const snapshots = [...pendingConversationSnapshots.values()];
-        pendingConversationSnapshots.clear();
-        for (const pendingSnapshot of snapshots) {
-          applyConversation(pendingSnapshot, isAgentChatReadable(pendingSnapshot.agentId));
-        }
-      });
+      cancelConversationFrame ??= onNextFrame(applyPendingConversations);
+    }
+
+    function applyPendingConversations(): void {
+      cancelConversationFrame?.();
+      cancelConversationFrame = undefined;
+      // Text that came after a snapshot applies that snapshot first.
+      flushConversationDeltas();
+      const snapshots = [...pendingConversationSnapshots.values()];
+      pendingConversationSnapshots.clear();
+      for (const pendingSnapshot of snapshots) {
+        applyConversation(pendingSnapshot, isAgentChatReadable(pendingSnapshot.agentId));
+      }
     }
 
     // A rail page, such as Usage or Settings, covers the workspace content, so the chat under it is not the
@@ -401,6 +444,7 @@ const Conversation = createSimpleContext({
      * the open's page is still on the wire, which is a race, not a rare case.
      */
     function markLatestVisibleAgentMessageRead(agentId: string, serverId: string): void {
+      flushConversationDeltas();
       const latestMessageId = latestVisibleAgentMessageId(conversations[agentId]?.messages);
       if (!latestMessageId) return;
       if (autoReadAgentMessages.get(agentConversationKey(serverId, agentId))?.messageId === latestMessageId) return;
@@ -416,6 +460,7 @@ const Conversation = createSimpleContext({
       minimumRevision: number,
       fallbackState: ConversationReadState | null,
     ): void {
+      flushConversationDeltas();
       const trackingKey = agentConversationKey(serverId, agentId);
       const conversationAtStart = conversations[agentId];
       const applyFallback = () => {
@@ -444,6 +489,7 @@ const Conversation = createSimpleContext({
     }
 
     function autoMarkAgentMessageRead(agentId: string, messageId: string, optimisticallyClearUnread = false): void {
+      flushConversationDeltas();
       const serverId = activeServerId();
       const trackingKey = agentConversationKey(serverId, agentId);
       if (heldUnreadAgentChats.has(trackingKey)) return;
@@ -486,7 +532,50 @@ const Conversation = createSimpleContext({
       });
     }
 
-    function applyConversationDelta(event: Extract<AgentEvent, { type: "conversation-delta" }>) {
+    /**
+     * Queues streamed text. Each frame applies the queued text once per message, so a fast stream does
+     * not make a full message body and a new message object for each delta.
+     */
+    function applyConversationDelta(event: ConversationDeltaEvent) {
+      queuedDeltas.push(event);
+      cancelDeltaFrame ??= onNextFrame(flushConversationDeltas);
+    }
+
+    /** Whether a delta changes the conversation now: an applied or waiting snapshot can already hold it. */
+    function deltaApplies(event: ConversationDeltaEvent): boolean {
+      if (event.revision <= (conversations[event.agentId]?.revision ?? -1)) return false;
+      const pendingSnapshot = pendingConversationSnapshots.get(event.agentId);
+      return !pendingSnapshot || event.revision > pendingSnapshot.revision;
+    }
+
+    /**
+     * Applies the queued text in arrival order. The next deltas of the same message join the first one
+     * that applies: each of them has a higher revision, so each would apply after it.
+     */
+    function flushConversationDeltas(): void {
+      cancelDeltaFrame?.();
+      cancelDeltaFrame = undefined;
+      if (queuedDeltas.length === 0) return;
+      const events = queuedDeltas;
+      queuedDeltas = [];
+      let joined: ConversationDeltaEvent | undefined;
+      for (const event of events) {
+        if (
+          joined &&
+          joined.agentId === event.agentId &&
+          joined.messageId === event.messageId &&
+          event.revision > joined.revision
+        ) {
+          joined = { ...joined, revision: event.revision, delta: joined.delta + event.delta };
+          continue;
+        }
+        if (joined) applyDeltaNow(joined);
+        joined = deltaApplies(event) ? event : undefined;
+      }
+      if (joined) applyDeltaNow(joined);
+    }
+
+    function applyDeltaNow(event: ConversationDeltaEvent) {
       if (event.revision <= (conversations[event.agentId]?.revision ?? -1)) return;
       const pendingSnapshot = pendingConversationSnapshots.get(event.agentId);
       if (pendingSnapshot) {
@@ -569,6 +658,8 @@ const Conversation = createSimpleContext({
         inactive && windowMode === "latest" && snapshot.messages.length > INACTIVE_SNAPSHOT_TAIL
           ? snapshot.messages.slice(-INACTIVE_SNAPSHOT_TAIL)
           : snapshot.messages;
+      // A snapshot that comes after the turn's end event can still name the turn as active.
+      const activeTurnId = completedTurnByAgent.get(agentId) === snapshot.activeTurnId ? null : snapshot.activeTurnId;
       updateConversation(agentId, (conversation) => {
         conversation.revision = snapshot.revision;
         conversation.loaded = true;
@@ -583,11 +674,15 @@ const Conversation = createSimpleContext({
             capped:
               snapshot.messages.length >= CONVERSATION_SNAPSHOT_MESSAGE_LIMIT || conversation.page?.hasOlder === true,
           }),
+          activeTurnId,
         );
         const next = mappedMessages.map((mapped) => {
           const existing = previousById.get(mapped.id);
           if (!existing) return createStoredMessage({ ...mapped, animate: !initialLoad });
-          if (!agentMessagesEqual(existing, mapped)) updateStored(existing, mapped);
+          // A turn's thinking message gets its progress updates as changes, and each one enters as the
+          // message did, so a change keeps the message's entrance.
+          if (!agentMessagesEqual(existing, mapped))
+            updateStored(existing, existing.animate === undefined ? mapped : { ...mapped, animate: existing.animate });
           return existing;
         });
         if (previous.length === next.length && previous.every((message, index) => message === next[index])) {
@@ -630,7 +725,7 @@ const Conversation = createSimpleContext({
       }
       setActiveTurns((current) => ({
         ...current,
-        [agentId]: completedTurnByAgent.get(agentId) === snapshot.activeTurnId ? null : snapshot.activeTurnId,
+        [agentId]: activeTurnId,
       }));
       setTurnProgress((current) => {
         const progress = current[agentId];
@@ -652,6 +747,7 @@ const Conversation = createSimpleContext({
       merge: "replace" | "older" | "latest",
       windowMode?: "latest" | "around",
     ): boolean {
+      flushConversationDeltas();
       if (page.revision < (conversations[page.agentId]?.revision ?? -1)) return false;
       for (const message of page.messages) {
         const key = agentMessageKey(page.agentId, message.id);
@@ -763,6 +859,7 @@ const Conversation = createSimpleContext({
     }
 
     function pruneInactiveAgentHistory(agentId: string): void {
+      flushConversationDeltas();
       const messages = conversations[agentId]?.messages;
       if (!messages || messages.length <= LATEST_PAGE_SIZE) return;
       updateConversation(agentId, trimToLatestPage);
@@ -898,6 +995,7 @@ const Conversation = createSimpleContext({
       onSuccess?: (state: ConversationReadState) => void,
     ): Promise<void> {
       if (!agentId || !scopeIsCurrent()) return;
+      flushConversationDeltas();
       const requestKey = agentConversationKey(serverId, agentId);
       // Automatic reads stop before this for a chat marked unread, so this read is the user's.
       heldUnreadAgentChats.delete(requestKey);
@@ -923,6 +1021,7 @@ const Conversation = createSimpleContext({
             serverId,
           );
           agentChatsToRetryRead.delete(requestKey);
+          flushConversationDeltas();
           const nextState = isAgentChatReadable(agentId)
             ? state
             : preserveKnownAgentUnread(state, boundary, conversations[agentId]?.messages ?? []);
@@ -943,6 +1042,7 @@ const Conversation = createSimpleContext({
             latestMessageId !== visibleMessageIdAtStart
           ) {
             queueMicrotask(() => {
+              flushConversationDeltas();
               const latestVisibleMessageId = latestVisibleAgentMessageId(conversations[agentId]?.messages);
               if (
                 scopeIsCurrent() &&
@@ -1013,6 +1113,7 @@ const Conversation = createSimpleContext({
         serverId,
       );
       if (taskId !== undefined || !scopeIsCurrent() || !conversations[agentId]) return;
+      flushConversationDeltas();
       rawAgentMessageBodies.delete(agentMessageKey(agentId, messageId));
       updateConversation(agentId, (conversation) => {
         conversation.messages = conversation.messages.filter((message) => message.id !== messageId);
@@ -1023,27 +1124,51 @@ const Conversation = createSimpleContext({
       });
     }
 
-    /** Marks each unread agent chat read through its newest message, which may not be loaded yet. */
+    /**
+     * Marks an agent's chat read through its newest message, which may not be loaded yet, and its side
+     * threads read. The sidebar badge also counts the side threads, such as a routine's thread.
+     */
+    async function markAgentChatRead(agentId: string, serverId = activeServerId()): Promise<void> {
+      const reportFailure = (error: unknown) =>
+        appendUiError(agentId, error, currentText().t("chat.errorStatus.readState"), serverId);
+      const readOwnChat = async () => {
+        const page = await conversationPort().agent.readConversationPage(
+          { agentId, anchor: { type: "latest" }, limit: 1 },
+          serverId,
+        );
+        const latestMessageId = page.messages.at(-1)?.id;
+        if (latestMessageId) await markAgentMessagesRead(agentId, latestMessageId, serverId);
+      };
+      await Promise.all([
+        (unreadReplies()[agentId] ?? 0) > 0 ? readOwnChat().catch(reportFailure) : undefined,
+        (agentTasks.unreadTotals()[agentId] ?? 0) > 0
+          ? agentTasks.markAllTasksRead(agentId).catch(reportFailure)
+          : undefined,
+      ]);
+    }
+
+    /** Marks each unread agent chat read, as `markAgentChatRead` does. */
     async function markAllAgentMessagesRead(): Promise<void> {
       const serverId = activeServerId();
       // Only listed agents: a read of an id the host no longer knows creates that agent again.
-      const unread = agentList()
-        .map((agent) => agent.id)
-        .filter((agentId) => (unreadReplies()[agentId] ?? 0) > 0);
-      await Promise.all(
-        unread.map(async (agentId) => {
-          try {
-            const page = await conversationPort().agent.readConversationPage(
-              { agentId, anchor: { type: "latest" }, limit: 1 },
-              serverId,
-            );
-            const latestMessageId = page.messages.at(-1)?.id;
-            if (latestMessageId) await markAgentMessagesRead(agentId, latestMessageId, serverId);
-          } catch (error) {
-            appendUiError(agentId, error, currentText().t("chat.errorStatus.readState"), serverId);
-          }
-        }),
-      );
+      await Promise.all(agentList().map((agent) => markAgentChatRead(agent.id, serverId)));
+    }
+
+    /**
+     * Marks the newest agent reply of a chat unread, from the sidebar. The reply may not be loaded yet,
+     * so this reads the latest page. The chat stays unread until the user opens it again.
+     */
+    async function markAgentChatUnread(agentId: string, serverId = activeServerId()): Promise<void> {
+      try {
+        const page = await conversationPort().agent.readConversationPage(
+          { agentId, anchor: { type: "latest" }, limit: LATEST_PAGE_SIZE },
+          serverId,
+        );
+        const latestReply = latestIncomingConversationMessage(page.messages);
+        if (latestReply) await markAgentMessagesUnread(agentId, latestReply.id, serverId);
+      } catch (error) {
+        appendUiError(agentId, error, currentText().t("chat.errorStatus.readState"), serverId);
+      }
     }
 
     function presentPromptResolution(agentId: string, turnId: string, requestId: string | number): void {
@@ -1057,6 +1182,7 @@ const Conversation = createSimpleContext({
       ) {
         return;
       }
+      flushConversationDeltas();
       const persisted = (conversations[agentId]?.messages ?? []).some(
         (message) => messagePromptRequestKey(message) === requestKey && message.questionPrompt?.resolution !== null,
       );
@@ -1069,10 +1195,13 @@ const Conversation = createSimpleContext({
       setPresentedPromptResolutions((current) => ({ ...current, [agentId]: requestKey }));
     }
 
-    // The scheduler holds a frame handle across the microtask boundary, so the
-    // provider owns cancelling it. Nothing else here needs teardown.
+    // A frame asked for before the window hid comes only when it shows again, so the change of
+    // visibility applies what waits for it.
+    document.addEventListener("visibilitychange", applyPendingConversations);
     onCleanup(() => {
-      if (conversationFrame !== undefined) cancelAnimationFrame(conversationFrame);
+      document.removeEventListener("visibilitychange", applyPendingConversations);
+      cancelConversationFrame?.();
+      cancelDeltaFrame?.();
     });
 
     return {
@@ -1094,6 +1223,7 @@ const Conversation = createSimpleContext({
       isAgentChatReadable,
       autoMarkAgentMessageRead,
       applyConversationDelta,
+      flushConversationDeltas,
       applyConversationPage,
       loadOlderAgentMessages,
       loadLatestAgentMessages,
@@ -1106,6 +1236,8 @@ const Conversation = createSimpleContext({
       markAgentMessagesRead,
       markAgentMessagesUnread,
       deleteAgentMessage,
+      markAgentChatRead,
+      markAgentChatUnread,
       markAllAgentMessagesRead,
       presentPromptResolution,
       // See `AppProviders`: a chat window sends no typing state.

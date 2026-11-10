@@ -135,7 +135,6 @@ export const messages = {
   "mobile.agent.info.reconnectToSave": "Verbinde dich erneut, um Änderungen zu speichern.",
   "mobile.agent.info.noMemories": "Noch keine Erinnerungen.",
   "mobile.agent.info.addMemory": "Erinnerung hinzufügen",
-  "mobile.agent.info.routineActive": "Aktiv",
   "mobile.agent.info.routinePaused": "Pausiert",
   "mobile.agent.info.noRoutines": "Noch keine Routinen.",
   "mobile.agent.info.addRoutine": "Routine hinzufügen",
@@ -320,6 +319,8 @@ export const messages = {
   "mobile.agent.runtime.retryModels": "Modelle erneut laden",
   "mobile.agent.runtime.loadingModels": "Modelle werden geladen…",
   "mobile.agent.runtime.noModels": "Für diesen Anbieter sind keine Modelle verfügbar.",
+  "mobile.agent.runtime.searchModels": "Modelle suchen",
+  "mobile.agent.runtime.noMatches": "Keine Modelle entsprechen deiner Suche.",
   "mobile.agent.runtime.usageLimit": "Nutzungslimit erreicht",
   "mobile.agent.runtime.usageLimitWindow": "Limit ({window})",
   "mobile.agent.runtime.usageLimitResets": "{limit} · Wird am {time} zurückgesetzt",
@@ -359,7 +360,7 @@ export const messages = {
   "mobile.agent.backupModels.intro":
     "Wenn {model} sein Nutzungslimit erreicht, bevor {name} zu schreiben beginnt, fragt {name} dich, welches Modell verwendet werden soll.",
   "mobile.agent.backupModels.introAutomatic":
-    "Wenn {model} sein Nutzungslimit erreicht oder mit einem Anbieterfehler scheitert, bevor {name} zu schreiben beginnt, wechselt {name} zum ersten verfügbaren Modell in der Reihenfolge.",
+    "Wenn {model} sein Nutzungslimit erreicht, wechselt {name} zum ersten verfügbaren Modell in der Reihenfolge. {name} wechselt auch, wenn {model} mit einem Anbieterfehler scheitert, bevor {name} zu schreiben beginnt.",
   "mobile.agent.backupModels.ask": "Vor dem Wechsel fragen",
   "mobile.agent.backupModels.order": "Reihenfolge",
   "mobile.agent.backupModels.empty": "Keine Reihenfolge festgelegt. {name} bietet jedes verfügbare Modell an.",
@@ -538,6 +539,7 @@ export const messages = {
   "mobile.agent.list.openPinnedWithTitle": "Angehefteten Chat mit {name} öffnen, {title}",
   "mobile.agent.list.withState": "{label}. {state}",
   "mobile.agent.list.unread": { one: "{count} ungelesene Nachricht", other: "{count} ungelesene Nachrichten" },
+  "mobile.agent.list.unreadThreads": "Ungelesene Nachrichten in Threads",
   "mobile.agent.list.waiting.title": "Braucht dich",
   "mobile.agent.list.waiting.label": { one: "Braucht dich, {count} Agent", other: "Braucht dich, {count} Agenten" },
   "mobile.agent.list.waiting.action.question": "Antworten",

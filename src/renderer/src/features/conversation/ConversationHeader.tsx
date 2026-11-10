@@ -8,7 +8,7 @@ import {
   providerDisplayName,
 } from "@openbot/contracts/ipc";
 import { reasoningLabel } from "@openbot/ui/components/ProviderModelPicker";
-import { providerAccountName } from "@openbot/ui/components/provider-accounts";
+import { findModelOption, providerAccountName } from "@openbot/ui/components/provider-accounts";
 import { ConversationHeader as SharedConversationHeader } from "@openbot/ui/features/conversation/ConversationHeader";
 import { ThreadHeader } from "@openbot/ui/features/conversation/threads/ThreadHeader";
 import { MAIN_THREAD_ID, parseThreadTabKey } from "@openbot/ui/features/conversation/threads/thread-types";
@@ -36,6 +36,7 @@ export function ConversationHeader() {
     browserControlAgent,
     channel,
     fastMode,
+    ultrafast,
     fastModeChange,
     props,
     runningTurnRuntime,
@@ -79,7 +80,7 @@ export function ConversationHeader() {
   /** Each part shows only where the two runtimes differ, so a model change alone names only the models. */
   const runtimeLabel = (runtime: BadgeRuntime, other: BadgeRuntime) => {
     const parts = [
-      props.modelOptions.find((option) => option.provider === runtime.provider && option.id === runtime.model)?.name ??
+      findModelOption(props.modelOptions, props.agentStatus?.providers, runtime.provider, runtime.model)?.name ??
         runtime.model,
     ];
     if (runtime.provider !== other.provider) parts.unshift(providerName(runtime.provider));
@@ -141,6 +142,7 @@ export function ConversationHeader() {
           void selectAndConfirmModel(model, provider, accountId, effort),
         onReasoningEffortChange: (effort) => void selectAndConfirmReasoning(effort),
         fastMode: fastMode(),
+        ultrafast: ultrafast(),
         onFastModeChange: fastModeChange(),
       }}
       remoteControl={

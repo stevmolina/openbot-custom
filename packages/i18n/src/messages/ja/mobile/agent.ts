@@ -133,7 +133,6 @@ export const messages = {
   "mobile.agent.info.reconnectToSave": "変更を保存するには再接続してください。",
   "mobile.agent.info.noMemories": "メモリーはまだありません。",
   "mobile.agent.info.addMemory": "メモリーを追加",
-  "mobile.agent.info.routineActive": "有効",
   "mobile.agent.info.routinePaused": "一時停止中",
   "mobile.agent.info.noRoutines": "ルーティンはまだありません。",
   "mobile.agent.info.addRoutine": "ルーティンを追加",
@@ -315,6 +314,8 @@ export const messages = {
   "mobile.agent.runtime.retryModels": "モデルを再読み込み",
   "mobile.agent.runtime.loadingModels": "モデルを読み込んでいます…",
   "mobile.agent.runtime.noModels": "このプロバイダーで利用できるモデルはありません。",
+  "mobile.agent.runtime.searchModels": "モデルを検索",
+  "mobile.agent.runtime.noMatches": "検索に一致するモデルはありません。",
   "mobile.agent.runtime.usageLimit": "使用量の上限に達しました",
   "mobile.agent.runtime.usageLimitWindow": "{window}の上限",
   "mobile.agent.runtime.usageLimitResets": "{limit} · {time} にリセット",
@@ -353,7 +354,7 @@ export const messages = {
   "mobile.agent.backupModels.intro":
     "{name} が書き始める前に {model} が使用量の上限に達した場合、{name} はどのモデルを使うかを確認します。",
   "mobile.agent.backupModels.introAutomatic":
-    "{name} が書き始める前に {model} が使用量の上限に達した場合、またはプロバイダーのエラーで失敗した場合、{name} は順番の中で最初に使えるモデルに切り替えます。",
+    "{model} が使用量の上限に達した場合、{name} は順番の中で最初に使えるモデルに切り替えます。{name} が書き始める前に {model} がプロバイダーのエラーで失敗した場合も切り替えます。",
   "mobile.agent.backupModels.ask": "切り替える前に確認",
   "mobile.agent.backupModels.order": "順番",
   "mobile.agent.backupModels.empty": "順番は設定されていません。{name} は使えるモデルをすべて表示します。",
@@ -532,6 +533,7 @@ export const messages = {
   "mobile.agent.list.openPinnedWithTitle": "ピン留めした {name} とのチャットを開く、{title}",
   "mobile.agent.list.withState": "{label}。{state}",
   "mobile.agent.list.unread": { other: "未読メッセージ {count} 件" },
+  "mobile.agent.list.unreadThreads": "スレッドに未読メッセージ",
   "mobile.agent.list.waiting.title": "対応が必要",
   "mobile.agent.list.waiting.label": { other: "対応が必要なエージェント {count} 件" },
   "mobile.agent.list.waiting.action.question": "回答",

@@ -22,9 +22,10 @@ import { currentText } from "@openbot/ui/text";
 import type { VirtualItem } from "@tanstack/virtual-core";
 import { createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js";
 import { formatMessageTime } from "../../../app-message-projection";
-import { groupAgentMessageMarkers, markOpenAgentMessages } from "../agent-message-timeline";
+import { groupAgentMessageMarkers, markOpenAgentMessages, teammateUpdateAnswers } from "../agent-message-timeline";
 import type { ConversationProps, ConversationTarget } from "../conversation-types";
 import { summarizeHostedSiteMessages } from "../hosted-site-timeline";
+import { narrationRows, placeTurnRowsByTime } from "../narration-rows";
 import {
   expandRoutineRunGroups,
   groupRoutineRunMarkers,
@@ -47,6 +48,8 @@ interface ScrollStickyState {
   getStickToLatest: () => boolean;
   setStickToLatest: (value: boolean) => void;
   getCurrentUnreadCount: () => number;
+  /** Moves a following reader to the newest message. */
+  followLatest: (element: HTMLDivElement) => void;
 }
 
 export interface ScrollStoreDeps {
@@ -76,20 +79,92 @@ export function createScrollStore(deps: ScrollStoreDeps) {
 
   const [openRoutineRuns, setOpenRoutineRuns] = createSignal<RoutineRunOpenState>(new Map());
   // The thinking and the memory changes of a turn show in the steps above its answer. A turn with
-  // no answer shows its memory changes in a row of their own.
+  // no answer shows its memory changes in a row of their own. A turn with no answer and no memory
+  // changes, such as a stopped one, shows its thinking in that row. A running turn shows its steps
+  // under the activity line, and a turn that ends with no text on purpose shows none.
   const answeredTurns = createMemo(
     () => new Set(deps.props.messages.flatMap((message) => (isTurnAnswer(message) ? [message.turnId] : []))),
   );
-  const shownMessages = createMemo(() => {
-    const shown = deps.props.messages.filter(
-      (message) =>
-        message.kind !== "thinking" &&
-        !(message.kind === "memory-changes" && answeredTurns().has(message.turnId)) &&
-        !silentAgentAnswer(message),
+  const thinkingRowHiddenTurns = createMemo(
+    () =>
+      new Set([
+        ...answeredTurns(),
+        ...deps.props.messages.flatMap((message) =>
+          message.kind === "memory-changes" || silentAgentAnswer(message) ? [message.turnId] : [],
+        ),
+        deps.props.activeTurnId ?? undefined,
+        ...(deps.props.channel?.workingTurns() ?? []),
+      ]),
+  );
+  // A channel folds the text that a member writes after its answer into the steps, such as a "Done."
+  // (channel-service). It is not progress, so it stays in the steps. A file that the agent attaches
+  // while it works has no text and does not end the turn.
+  const channelAnswerTimes = createMemo(() => {
+    const times = new Map<string, string>();
+    if (!deps.props.channel) return times;
+    for (const message of deps.props.messages)
+      if (
+        message.turnId &&
+        message.createdAt &&
+        message.body.trim() &&
+        isTurnAnswer(message) &&
+        !times.has(message.turnId)
+      )
+        times.set(message.turnId, message.createdAt);
+    return times;
+  });
+  /*
+   * In Natural, a member's progress notes show as its own messages, as in an agent chat: a member can
+   * say "I'll check the shared folder first" and then answer. Each note waits until it is complete
+   * (`held`), so it enters as one bubble and does not grow.
+   */
+  const progressRows = (thinking: AgentMessage): AgentMessage[] => {
+    const channel = deps.props.channel;
+    if (!channel) return narrationRows(thinking, deps.props.agent?.provider);
+    // A channel row names its member, so the member's provider tells its narration from its thinking.
+    const answeredAt = thinking.turnId ? channelAnswerTimes().get(thinking.turnId) : undefined;
+    return narrationRows(thinking, channel.author(thinking).agent?.provider).filter(
+      (row) => !answeredAt || !row.createdAt || row.createdAt <= answeredAt,
     );
-    // A channel row has the id of its channel entry and an author of its own, so this is for an agent's chat.
+  };
+  /** The agents that write in the channel now. Their text that still arrives waits until it is complete. */
+  const channelWriters = createMemo(() => new Set(deps.props.channel?.workers().map((worker) => worker.id) ?? []));
+  /*
+   * Only the text of a member that works waits. A view keeps the copy of an older message that it
+   * loaded, so a copy loaded while it streamed can stay "streaming" after its task ends (#4846), and
+   * it must not stay hidden.
+   */
+  const held = (message: AgentMessage): boolean =>
+    heldWhileWritten(message) &&
+    (!deps.props.channel || (message.senderAgentId !== undefined && channelWriters().has(message.senderAgentId)));
+  /* The quiet answers of a teammate update show under its marker, so they have no row of their own. */
+  const updateAnswers = createMemo(() => teammateUpdateAnswers(deps.props.messages));
+  const foldedAnswerIds = createMemo(
+    () => new Set([...updateAnswers().values()].flatMap((answers) => answers.map((answer) => answer.id))),
+  );
+  const shownMessages = createMemo(() => {
+    const progressUpdates = deps.props.responseStyle === "natural";
+    const channelTurnRows: AgentMessage[][] = [];
+    const listed = deps.props.messages.flatMap((message) => {
+      if (message.kind === "thinking") {
+        const rows = progressUpdates ? progressRows(message) : [];
+        const showsSteps =
+          message.turnId && !thinkingRowHiddenTurns().has(message.turnId) && message.items?.some((item) => item.trim());
+        const turnRows = showsSteps ? [...rows, message] : rows;
+        if (!deps.props.channel) return turnRows;
+        channelTurnRows.push(turnRows);
+        return [];
+      }
+      if (message.kind === "memory-changes" && answeredTurns().has(message.turnId)) return [];
+      return silentAgentAnswer(message) || foldedAnswerIds().has(message.id) ? [] : [message];
+    });
+    // Members of a channel work at the same time, so each update goes where its time puts it.
+    const shown = deps.props.channel ? placeTurnRowsByTime(listed, channelTurnRows) : listed;
+    // Natural shows an agent's text once it is complete, as one bubble, while the activity line
+    // names the step. A bubble that grows as the text arrives moves the chat at each line.
+    const complete = progressUpdates ? shown.filter((message) => !held(message)) : shown;
     const questionTurnId = deps.props.channel ? undefined : deps.props.prompt?.turnId;
-    return summarizeHostedSiteMessages(withQuestionContext(shown, deps.props.messages, questionTurnId));
+    return summarizeHostedSiteMessages(withQuestionContext(complete, deps.props.messages, questionTurnId));
   });
   const routineRunTurns = createMemo(() => routineRunTurnMessages(deps.props.messages, shownMessages()));
   /* The messages of a routine run follow its row and open and close with it. */
@@ -141,7 +216,7 @@ export function createScrollStore(deps: ScrollStoreDeps) {
       state?.agentId === deps.props.agent?.id && state?.threadId === deps.props.agent?.threadId
         ? state?.compaction?.startedAt
         : undefined;
-    const messages = markOpenAgentMessages(drawnMessages(), openAgentMessages());
+    const messages = markOpenAgentMessages(drawnMessages(), openAgentMessages(), updateAnswers());
     const boundary =
       startedAt === undefined
         ? -1
@@ -235,6 +310,7 @@ export function createScrollStore(deps: ScrollStoreDeps) {
     },
     scrollMargin: virtualScrollMargin,
     stickToLatest: deps.sticky.getStickToLatest,
+    followLatest: deps.sticky.followLatest,
     onChange: (instance) => {
       const first = instance.getVirtualItems()[0];
       if (!first) return;
@@ -253,7 +329,9 @@ export function createScrollStore(deps: ScrollStoreDeps) {
     scrollFades.measure();
     updateHistoryBoundary(element);
     const remaining = element.scrollHeight - element.scrollTop - element.clientHeight;
-    setShowScrollToLatest(remaining > 80);
+    // A chat that follows the latest message is on its way down: a new row is taller than 80px for
+    // the frames before the follow lands, and the button must not flash over it.
+    setShowScrollToLatest(remaining > 80 && !deps.sticky.getStickToLatest());
     if (remaining <= 80) clearNewMessages();
   }
 
@@ -357,6 +435,7 @@ export function createScrollStore(deps: ScrollStoreDeps) {
     timelineMessages,
     toggleRoutineRun,
     toggleAgentMessage,
+    updateAnswers,
     timelineIndexById,
     unreadBoundaryMessageId,
     updateScrollFade,
@@ -367,6 +446,13 @@ export function createScrollStore(deps: ScrollStoreDeps) {
     jumpToUnreadMessages,
     jumpToLatestMessage,
   };
+}
+
+/** Agent text that the host still writes. A plan, the subagents, a card and an image show while they run. */
+function heldWhileWritten(message: AgentMessage): boolean {
+  return (
+    message.author === "agent" && message.streaming === true && message.kind === "text" && !message.imageGeneration
+  );
 }
 
 /** The ids Claude and the ACP agents give a turn's thinking, beside its narration, as `REASONING_ID` in the backend. */
@@ -385,7 +471,8 @@ function withQuestionContext(
   if (!turnId) return shown;
   const thinking = messages.find((message) => message.kind === "thinking" && message.turnId === turnId);
   const context = thinking ? lastNarration(thinking) : null;
-  if (!context) return shown;
+  // With progress updates on, the narration is already a row of its own.
+  if (!context || shown.some((message) => message.id === context.id)) return shown;
   const turnEnd = shown.findLastIndex((message) => message.turnId === turnId) + 1;
   const at = turnEnd > 0 ? turnEnd : shown.length;
   return [...shown.slice(0, at), context, ...shown.slice(at)];

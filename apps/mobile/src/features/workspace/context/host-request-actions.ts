@@ -17,6 +17,7 @@ import {
   decodeChannelRoutines,
   decodeChannelSummaries,
   decodeInstalledSkills,
+  decodeMachineMetrics,
   decodeStorageUsage,
   type HiddenAgent,
   isAgentMemory,
@@ -56,7 +57,8 @@ import {
   AGENT_HOST_SETTINGS_CAPABILITY,
   AGENT_HOST_SETTINGS_ROUTES,
 } from "@openbot/contracts/team-protocol/agent-host-settings-v1";
-import { AGENT_IMPORT_CAPABILITY } from "@openbot/contracts/team-protocol/agent-import-v1";
+import { AGENT_IMPORT_CAPABILITY, AGENT_IMPORT_UPLOAD_BYTES } from "@openbot/contracts/team-protocol/agent-import-v1";
+import { AGENT_IMPORT_V2_CAPABILITY } from "@openbot/contracts/team-protocol/agent-import-v2";
 import { AGENT_INSTALL_CAPABILITY } from "@openbot/contracts/team-protocol/agent-install-v1";
 import {
   AGENT_INSTRUCTIONS_CAPABILITY,
@@ -87,6 +89,7 @@ import { AGENT_THREADS_CAPABILITY } from "@openbot/contracts/team-protocol/agent
 import { AGENT_UPDATE_CAPABILITY } from "@openbot/contracts/team-protocol/agent-update-v1";
 import { BITWARDEN_CONNECTOR_CAPABILITY } from "@openbot/contracts/team-protocol/bitwarden-connector-v1";
 import { BROWSER_PROFILES_CAPABILITY } from "@openbot/contracts/team-protocol/browser-profiles-v1";
+import { BROWSER_PROXIES_CAPABILITY } from "@openbot/contracts/team-protocol/browser-proxies-v1";
 import { CHANNEL_ROUTES } from "@openbot/contracts/team-protocol/channels-v1";
 import { CONNECTORS_CAPABILITY } from "@openbot/contracts/team-protocol/connectors-v1";
 import {
@@ -103,6 +106,7 @@ import {
 import { CONVERSATION_UNREAD_FROM_CAPABILITY } from "@openbot/contracts/team-protocol/conversation-unread-from-v1";
 import {
   TEAM_AGENT_CREATE_MODEL_CAPABILITY,
+  TEAM_ANY_FILE_ATTACHMENTS_CAPABILITY,
   TEAM_EML_ATTACHMENTS_CAPABILITY,
   TEAM_MEDIA_ATTACHMENTS_CAPABILITY,
   TEAM_MESSAGE_CLIENT_ID_CAPABILITY,
@@ -118,6 +122,11 @@ import { HOST_TIMEZONE_CAPABILITY } from "@openbot/contracts/team-protocol/host-
 import { HOST_UPDATE_CAPABILITY } from "@openbot/contracts/team-protocol/host-update-v1";
 import { HOSTED_SITES_CAPABILITY } from "@openbot/contracts/team-protocol/hosted-sites-v1";
 import { INSTANCE_TRANSFER_CAPABILITY } from "@openbot/contracts/team-protocol/instance-transfer-v1";
+import { LIVE_VOICE_CAPABILITY } from "@openbot/contracts/team-protocol/live-voice-v1";
+import {
+  MACHINE_RESOURCES_CAPABILITY,
+  MACHINE_RESOURCES_ROUTES,
+} from "@openbot/contracts/team-protocol/machine-resources-v1";
 import { MCP_SIGN_IN_CAPABILITY } from "@openbot/contracts/team-protocol/mcp-sign-in-v1";
 import { MESSAGE_DELETE_CAPABILITY, MESSAGE_DELETE_ROUTES } from "@openbot/contracts/team-protocol/message-delete-v1";
 import { ONEPASSWORD_CONNECTOR_CAPABILITY } from "@openbot/contracts/team-protocol/onepassword-connector-v1";
@@ -132,6 +141,7 @@ import { SHARED_TABLES_CAPABILITY } from "@openbot/contracts/team-protocol/share
 import { SIGN_IN_RELAY_CAPABILITY } from "@openbot/contracts/team-protocol/sign-in-relay-v1";
 import { SKILLS_ADMIN_CAPABILITY } from "@openbot/contracts/team-protocol/skills-admin-v1";
 import { STORAGE_ROUTES } from "@openbot/contracts/team-protocol/storage-v1";
+import type { TeamProtocolV1Capability } from "@openbot/contracts/team-protocol/v1";
 import type { TeamProtocolV2Json } from "@openbot/contracts/team-protocol/v2";
 import { VAULT_IMPORT_CAPABILITY } from "@openbot/contracts/team-protocol/vault-import-v1";
 import { VAULT_CAPABILITY } from "@openbot/contracts/team-protocol/vault-v1";
@@ -141,6 +151,7 @@ import { WORKFLOWS_CHATS_CAPABILITY } from "@openbot/contracts/team-protocol/wor
 import { WORKFLOWS_GITHUB_CAPABILITY } from "@openbot/contracts/team-protocol/workflows-github-v1";
 import { WORKFLOWS_CAPABILITY } from "@openbot/contracts/team-protocol/workflows-v1";
 import type { MobileTextKey } from "@openbot/i18n/mobile";
+import { sourceText } from "@openbot/i18n/source";
 import { readHostAnalytics } from "@openbot/team-client";
 import { readPlanLimits } from "@openbot/team-client/plan-limits";
 import type { RemoteFileUpload } from "@openbot/team-client/remote-peer";
@@ -159,6 +170,7 @@ import {
   createHostBrowserProfile,
   deleteEventRoutine,
   deleteHostBrowserProfile,
+  deleteHostBrowserProxy,
   deleteHostedSite,
   deleteHostVaultItem,
   deleteSharedTable,
@@ -184,6 +196,7 @@ import {
   listEventRoutines,
   listHiddenAgents,
   listHostBrowserProfiles,
+  listHostBrowserProxies,
   listHostedSites,
   listHostVault,
   listMcpServers,
@@ -210,6 +223,7 @@ import {
   resetAgentSessionSetting,
   rotateEventRoutineSecret,
   saveEventRoutine,
+  saveHostBrowserProxy,
   saveHostVaultItem,
   saveMcpServer,
   setAgentHidden,
@@ -219,6 +233,7 @@ import {
   setAgentSkillEnabled,
   setHostAgentAccess,
   setHostAgentMemoryLimit,
+  setHostBrowserProfileProxy,
   setHostTimezone,
   setHostUpdateSettings,
   setMcpServerEnabled,
@@ -271,8 +286,11 @@ import {
   sendAgentTaskMessage,
   setAgentMemoryInclusion,
   stageAgentImport,
+  stageAgentImportInParts,
   stageInstanceTransfer,
   startAgentTask,
+  startLiveVoice,
+  stopLiveVoice,
   type TeamApiRequest,
   TeamRequestError,
 } from "@openbot/team-client/team-api-requests";
@@ -310,6 +328,9 @@ export type WorkspaceRequest = <T>(
 ) => Promise<T>;
 
 /** The capability checks that only read what a host advertised. */
+/** The host shares its screen through Sunshine and Moonlight Web. */
+const REMOTE_DESKTOP_CAPABILITY = "remote-desktop" satisfies TeamProtocolV1Capability;
+
 type HostRequestChecks = Pick<MobileWorkspaceState, Exclude<MobileWorkspaceCapabilityCheck, "browserViewSupport">>;
 
 type HostRequestActions = Pick<
@@ -355,6 +376,7 @@ type HostRequestActions = Pick<
   | "uninstallAgentSkill"
   | "loadAgentStorage"
   | "loadServerStorage"
+  | "loadMachineMetrics"
   | "clearServerStorage"
   | "loadAgentAdminSettings"
   | "updateAgentAdminSettings"
@@ -376,6 +398,8 @@ type HostRequestActions = Pick<
   | "loadPlanLimits"
   | "setAgentProviderAccount"
   | "startNewChat"
+  | "startLiveVoice"
+  | "stopLiveVoice"
   | "compactContext"
   | "loadAgentSessionSettings"
   | "loadAgentFolders"
@@ -410,6 +434,7 @@ type HostRequestActions = Pick<
   | "saveVaultItem"
   | "deleteVaultItem"
   | "importVaultCsv"
+  | "checkAgentExport"
   | "stageAgentImport"
   | "applyAgentImport"
   | "discardAgentImport"
@@ -425,6 +450,10 @@ type HostRequestActions = Pick<
   | "deleteBrowserProfile"
   | "loadAgentBrowserProfile"
   | "updateAgentBrowserProfile"
+  | "loadBrowserProxies"
+  | "saveBrowserProxy"
+  | "deleteBrowserProxy"
+  | "setBrowserProfileProxy"
   | "loadMessagingConnections"
   | "connectMessaging"
   | "completeMessagingInstall"
@@ -481,7 +510,15 @@ type HostRequestActions = Pick<
   | "setMessageReaction"
   | "deleteMessage"
   | "downloadAttachment"
+  | "downloadMessageFile"
 >;
+
+/** A file that the host sends, such as an attachment or a workspace file. */
+function decodeHostFile(value: unknown): RemoteFileUpload {
+  if (!isDynamicRecord(value) || !isString(value.name) || !isString(value.mimeType) || !isString(value.base64))
+    throw new Error("The host returned an invalid file.");
+  return { name: value.name, mimeType: value.mimeType, base64: value.base64 };
+}
 
 /** A host that serves `agent-hidden-v1` owns the hidden agents of its members. */
 function hidesAgentsOnHost(capabilities: readonly string[] | undefined): boolean {
@@ -642,6 +679,8 @@ export function createHostRequestActions({
   const phoneTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
   const browserProfilesAdmin = (serverId: string) =>
     capabilityApi(serverId, BROWSER_PROFILES_CAPABILITY, "mobile.server.browserProfiles.unsupported");
+  const browserProxiesAdmin = (serverId: string) =>
+    capabilityApi(serverId, BROWSER_PROXIES_CAPABILITY, "mobile.server.browserProxies.unsupported");
   /** The OpenBot update of the host: the admin route set, or the member set that only checks and starts. */
   const updateApi = (serverId: string, access: ServerUpdateAccess) =>
     capabilityApi(
@@ -680,6 +719,7 @@ export function createHostRequestActions({
       has(serverId, WORKFLOWS_CHATS_CAPABILITY) &&
       has(serverId, ROUTINE_RESULTS_CAPABILITY),
     canReadServerStorage: (serverId) => has(serverId, STORAGE_CAPABILITY),
+    canControlComputer: (serverId) => has(serverId, REMOTE_DESKTOP_CAPABILITY),
     canSetAgentNotificationLevel: (serverId) => has(serverId, AGENT_NOTIFICATION_LEVELS_CAPABILITY),
     canStartNewChat: (serverId) => has(serverId, CONTEXT_RESET_CAPABILITY),
     canCompactContext: (serverId) => has(serverId, CONTEXT_COMPACT_CAPABILITY),
@@ -689,6 +729,7 @@ export function createHostRequestActions({
     canRetryMessage: (serverId) => has(serverId, TEAM_MESSAGE_CLIENT_ID_CAPABILITY),
     canDeleteMessages: (serverId) => has(serverId, MESSAGE_DELETE_CAPABILITY),
     canMarkUnreadFrom: (serverId) => has(serverId, CONVERSATION_UNREAD_FROM_CAPABILITY),
+    canUseLiveVoice: (serverId) => has(serverId, LIVE_VOICE_CAPABILITY),
     attachmentSupport: (serverId) => {
       const advertised = capabilities.get(serverId) ?? [];
       return {
@@ -697,6 +738,7 @@ export function createHostRequestActions({
         zip: advertised.includes(TEAM_ZIP_ATTACHMENTS_CAPABILITY),
         mp4: advertised.includes(TEAM_MP4_ATTACHMENTS_CAPABILITY),
         svg: advertised.includes(TEAM_SVG_ATTACHMENTS_CAPABILITY),
+        anyFile: advertised.includes(TEAM_ANY_FILE_ATTACHMENTS_CAPABILITY),
       };
     },
   };
@@ -745,8 +787,26 @@ export function createHostRequestActions({
     deleteVaultItem: async (id, serverId) =>
       runTeamRequest(deleteHostVaultItem(vaultAdmin(serverId), id, has(serverId, VAULT_V2_CAPABILITY))),
     importVaultCsv: async (csv, serverId) => runTeamRequest(importHostVaultCsv(vaultImportAdmin(serverId), csv)),
-    stageAgentImport: async (upload, serverId, onProgress) =>
-      runTeamRequest(stageAgentImport(agentImportApi(serverId, onProgress), upload)),
+    checkAgentExport: (size, serverId) => {
+      if (!has(serverId, AGENT_IMPORT_V2_CAPABILITY) && size > AGENT_IMPORT_UPLOAD_BYTES)
+        throw new Error(sourceText("error.import.remoteZipTooLargeOldHost"));
+    },
+    stageAgentImport: async (file, serverId, onProgress) => {
+      if (has(serverId, AGENT_IMPORT_V2_CAPABILITY)) {
+        // The progress of each part's upload, as a fraction of the whole export.
+        let part = { offset: 0, length: 0 };
+        const request = agentImportApi(serverId, (fraction) =>
+          onProgress?.((part.offset + fraction * part.length) / file.size),
+        );
+        const readPart = (offset: number, length: number) => {
+          part = { offset, length };
+          return file.readPart(offset, length);
+        };
+        return runTeamRequest(stageAgentImportInParts(request, { name: file.name, size: file.size, readPart }));
+      }
+      const upload = { name: file.name, mimeType: "application/zip", base64: await file.readAll() };
+      return runTeamRequest(stageAgentImport(agentImportApi(serverId, onProgress), upload));
+    },
     applyAgentImport: async (input, serverId) =>
       runTeamRequest(applyAgentImport(agentImportApi(serverId), input, phoneTimezone())),
     discardAgentImport: async (token, serverId) => runTeamRequest(discardAgentImport(agentImportApi(serverId), token)),
@@ -773,6 +833,13 @@ export function createHostRequestActions({
       runTeamRequest(getHostAgentBrowserProfile(browserProfilesAdmin(serverId), agentId)),
     updateAgentBrowserProfile: async (input, serverId) =>
       runTeamRequest(updateHostAgentBrowserProfile(browserProfilesAdmin(serverId), input)),
+    loadBrowserProxies: async (serverId) => runTeamRequest(listHostBrowserProxies(browserProxiesAdmin(serverId))),
+    saveBrowserProxy: async (input, serverId) =>
+      runTeamRequest(saveHostBrowserProxy(browserProxiesAdmin(serverId), input)),
+    deleteBrowserProxy: async (input, serverId) =>
+      runTeamRequest(deleteHostBrowserProxy(browserProxiesAdmin(serverId), input)),
+    setBrowserProfileProxy: async (input, serverId) =>
+      runTeamRequest(setHostBrowserProfileProxy(browserProxiesAdmin(serverId), input)),
     loadMessagingConnections: async (platform, serverId) =>
       runTeamRequest(messagingConnectorOverview(connectorsAdmin(serverId), { platform })),
     connectMessaging: async (input, serverId) =>
@@ -1085,6 +1152,10 @@ export function createHostRequestActions({
         input,
       );
     },
+    loadMachineMetrics: async (serverId) => {
+      requireCapability(capabilities, serverId, MACHINE_RESOURCES_CAPABILITY, "mobile.server.machine.unsupported");
+      return request("POST", MACHINE_RESOURCES_ROUTES.metrics, decodeMachineMetrics, {}, serverId);
+    },
     clearServerStorage: async (category, serverId) => {
       requireCapability(capabilities, serverId, STORAGE_CAPABILITY, "mobile.workspace.error.filesUnsupported");
       await request("POST", STORAGE_ROUTES.clear, ignoreResponse, { category }, serverId);
@@ -1207,6 +1278,17 @@ export function createHostRequestActions({
       requireCapability(capabilities, serverId, CONTEXT_RESET_CAPABILITY, "mobile.agent.newChat.unsupported");
       await runTeamRequest(clearAgentContext(teamApi(serverId), agentId));
     },
+    startLiveVoice: async (input, serverId) =>
+      runTeamRequest(
+        startLiveVoice(capabilityApi(serverId, LIVE_VOICE_CAPABILITY, "mobile.chat.liveVoice.gptUnsupported"), input),
+      ),
+    stopLiveVoice: async (sessionId, serverId) =>
+      runTeamRequest(
+        stopLiveVoice(
+          capabilityApi(serverId, LIVE_VOICE_CAPABILITY, "mobile.chat.liveVoice.gptUnsupported"),
+          sessionId,
+        ),
+      ),
     compactContext: async (agentId, serverId) => {
       requireCapability(capabilities, serverId, CONTEXT_COMPACT_CAPABILITY, "mobile.agent.compact.unsupported");
       await request("POST", CONTEXT_COMPACT_ROUTES.compact, ignoreResponse, { agentId }, serverId);
@@ -1317,22 +1399,7 @@ export function createHostRequestActions({
     },
     downloadAttachment: (serverId, attachmentId) => {
       const download = () =>
-        request(
-          "GET",
-          TEAM_API_ROUTES.attachment(attachmentId),
-          (value) => {
-            if (
-              !isDynamicRecord(value) ||
-              !isString(value.name) ||
-              !isString(value.mimeType) ||
-              !isString(value.base64)
-            )
-              throw new Error("The host returned an invalid file.");
-            return { name: value.name, mimeType: value.mimeType, base64: value.base64 };
-          },
-          undefined,
-          serverId,
-        );
+        request("GET", TEAM_API_ROUTES.attachment(attachmentId), decodeHostFile, undefined, serverId);
       // Limit native/DOM copies when a message contains several large images.
       const result = attachmentDownloads.current.then(download);
       attachmentDownloads.current = result.then(
@@ -1341,6 +1408,18 @@ export function createHostRequestActions({
       );
       return result;
     },
+    // The user waits for this one file, so it does not wait behind the images of the chat.
+    downloadMessageFile: (serverId, file) =>
+      request(
+        "GET",
+        file.kind === "shared"
+          ? `${TEAM_API_ROUTES.sharedFiles}?${new URLSearchParams({ path: file.path })}`
+          : // The released URL spells the agent `botId`.
+            `${TEAM_API_ROUTES.workspaceFiles}?${new URLSearchParams({ botId: file.agentId, path: file.path })}`,
+        decodeHostFile,
+        undefined,
+        serverId,
+      ),
   };
   return { checks, actions };
 }

@@ -85,6 +85,17 @@ There is no configuration for a developer or for a packaged build:
   to.
 - `describeUnusableRedirectUrl` refuses an address that cannot receive a grant: an `https` address,
   or a plain-text address that is not on this machine.
+- A registration endpoint that refuses the `127.0.0.1` address with `invalid_redirect_uri` or
+  `invalid_client_metadata` gets one more registration with the `localhost` form of the same
+  address (#5584). The MCP authorization specification names `localhost` redirects, and some
+  servers accept only that name. The listener answers both names. A stored registration that names
+  the `localhost` form keeps it: `redirectUrl` in `src/backend/mcp-oauth-provider.ts` sends that
+  form at `/authorize` and at `/token`.
+- A firewall can refuse an authorization page that names `127.0.0.1`, in the browser, where the
+  app cannot see it (#6149). So when a sign-in opened the browser and no grant came back (a timeout
+  or a cancel), the next sign-in of that server registers the other name of the same listener.
+  The record is kept in memory, for one attempt. A refusal of that name at registration gets the
+  first name again. Sign-in apps and the client metadata document keep `127.0.0.1`.
 
 ## Remote services and released protocols
 
