@@ -57,6 +57,7 @@
 @import "@openbot/ui/styles/chart.css";
 @import "@openbot/ui/features/files/files.css";
 @import "@openbot/ui/features/servers/machines.css";
+@import "./features/servers/machines-panel.css";
 @import "@openbot/ui/features/import/agent-import.css";
 @import "@openbot/ui/features/transfer/instance-transfer.css";
 @import "@openbot/ui/features/settings/settings-modal.css";

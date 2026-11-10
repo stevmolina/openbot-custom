@@ -50,11 +50,13 @@ export function MachinesPanel() {
   }
 
   return (
-    <MachinesPage
-      machines={store.machines()}
-      onOpenAgent={(serverId, agentId) => void openAgent(serverId, agentId)}
-      onRetry={retry}
-      onOpenSettings={(serverId, trigger) => openServerSettings(serverId, trigger)}
-    />
+    <div class="machines-panel">
+      <MachinesPage
+        machines={store.machines()}
+        onOpenAgent={(serverId, agentId) => void openAgent(serverId, agentId)}
+        onRetry={retry}
+        onOpenSettings={(serverId, trigger) => openServerSettings(serverId, trigger)}
+      />
+    </div>
   );
 }
