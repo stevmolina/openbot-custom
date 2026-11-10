@@ -8,6 +8,12 @@ import type { BrowserFullViewProps } from "./browser-full-view-types";
 import { browserDisplayUrl } from "./browser-suggestions";
 import { type BrowserShortcutName, browserShortcutGlyph } from "./browser-view-shortcuts";
 
+/**
+ * The owner avatar is 16px. At that size the usual eyes are two thin slivers, so they are drawn
+ * larger, as the face choices of the first agent setup are.
+ */
+export const BROWSER_OWNER_EYE_SCALE = 1.6;
+
 /** The agent of a tab, or a globe for a tab of the user. A ring shows that the agent acts on the page now. */
 export function BrowserOwnerIcon(props: { agent: AgentProfile | undefined; acting?: boolean }) {
   return (
@@ -15,6 +21,7 @@ export function BrowserOwnerIcon(props: { agent: AgentProfile | undefined; actin
       {(agent) => (
         <AgentAvatar
           agent={agent()}
+          eyeScale={BROWSER_OWNER_EYE_SCALE}
           class={props.acting ? "browser-full-owner-avatar browser-full-owner-acting" : "browser-full-owner-avatar"}
         />
       )}

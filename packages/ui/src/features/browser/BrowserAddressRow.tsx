@@ -22,7 +22,7 @@ import { useText } from "@openbot/ui/text";
 import { createMemo, createStore, createUniqueId, flush, Show } from "solid-js";
 import { BrowserPageMenu } from "./BrowserPageMenu";
 import { BrowserProfileDot } from "./BrowserProfileColor";
-import { BrowserOwnerIcon } from "./BrowserTabIcon";
+import { BROWSER_OWNER_EYE_SCALE, BrowserOwnerIcon } from "./BrowserTabIcon";
 import { browserActionLabel } from "./browser-action-labels";
 import { type BrowserFullViewProps, browserTabProfileLabel, browserTabStoppable } from "./browser-full-view-types";
 import { useBrowserPageCover } from "./browser-page-cover";
@@ -255,7 +255,11 @@ export function BrowserAddressRow(props: {
                 action: t(browserActionLabel(control().session)),
               })}
             >
-              <AgentAvatar agent={control().agent} class="browser-full-owner-avatar" />
+              <AgentAvatar
+                agent={control().agent}
+                eyeScale={BROWSER_OWNER_EYE_SCALE}
+                class="browser-full-owner-avatar"
+              />
             </span>
           )}
         </Show>
