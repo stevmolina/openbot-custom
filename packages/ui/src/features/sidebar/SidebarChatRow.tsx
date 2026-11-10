@@ -17,6 +17,7 @@ import { useText } from "../../text";
 import { AgentAvatar } from "../agents/AgentAvatar";
 import { ChannelAvatar } from "../channels/ChannelAvatar";
 import { MAIN_THREAD_ID } from "../conversation/threads/thread-types";
+import { ServerMark } from "../servers/ServerRail";
 import { SidebarAgentContextMenu } from "./SidebarAgentContextMenu";
 import { SidebarAgentIndicator } from "./SidebarAgentIndicator";
 import { SidebarChannelContextMenu } from "./SidebarChannelContextMenu";
@@ -166,6 +167,7 @@ export function SidebarChatRow(rowProps: { chat: SidebarChatItem; look: SidebarC
 
 function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
   const { t } = useText();
+  const { props } = useSidebarScope();
   const [menuOpen, setMenuOpen] = createSignal(false);
   const view = viewProps.view;
   // The preview can end with its own full stop, so the label does not add a second one.
@@ -174,6 +176,7 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
       view.name,
       view.preview.replace(/[.!?…]\s*$/u, ""),
       view.extraLabel || (view.unread ? t("sidebar.chat.unread") : ""),
+      props.chatServer ? t("sidebar.chat.server", { name: props.chatServer.name }) : "",
     ]
       .filter(Boolean)
       .join(". ");
@@ -204,6 +207,13 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
         </Show>
         <Show when={view.unread}>
           <span class="sidebar-chat-unread" aria-hidden="true" />
+        </Show>
+        <Show when={viewProps.look === "row" ? props.chatServer : undefined}>
+          {(server) => (
+            <span class="sidebar-chat-server" title={server().name} aria-hidden="true">
+              <ServerMark server={server()} />
+            </span>
+          )}
         </Show>
       </ContextMenu.Trigger>
       {view.menu()}

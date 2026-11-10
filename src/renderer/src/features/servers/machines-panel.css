@@ -1,0 +1,27 @@
+/* The Machines page of the desktop window. */
+.machines-panel {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.machines-panel > * {
+  min-height: 0;
+}
+
+@media (min-width: 721px) {
+  /* The top row stays empty and lets clicks through to the window drag area, as on the other titled pages. */
+  .app-frame-edge[data-window-page-kind="titled"] > .window-page > .machines-panel {
+    grid-template-rows: var(--left-header-height) minmax(0, 1fr);
+  }
+
+  .app-frame-edge[data-window-page-kind="titled"] > .window-page > .machines-panel > * {
+    grid-row: 2;
+    pointer-events: auto;
+  }
+
+  .app-frame-edge[data-window-page-kind="titled"] > .window-page > .machines-panel > .machines-page {
+    padding-top: var(--openbot-space-2);
+  }
+}

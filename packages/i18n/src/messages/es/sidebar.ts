@@ -33,6 +33,7 @@ export const messages = {
   "sidebar.chat.search": "Buscar",
   "sidebar.chat.newMenu": "Nuevo agente o canal",
   "sidebar.chat.unread": "No leído",
+  "sidebar.chat.server": "En {name}",
   "sidebar.usage.label": "Proveedores de IA",
   "sidebar.pill.chats": "Chats",
   "sidebar.pill.pinPage": "Fijar {name} en la barra lateral",

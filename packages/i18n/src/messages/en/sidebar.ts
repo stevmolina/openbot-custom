@@ -32,6 +32,7 @@ export const messages = defineMessages("sidebar", {
   "sidebar.chat.search": "Search",
   "sidebar.chat.newMenu": "New agent or channel",
   "sidebar.chat.unread": "Unread",
+  "sidebar.chat.server": "On {name}",
   "sidebar.usage.label": "AI providers",
   "sidebar.pill.chats": "Chats",
   "sidebar.pill.pinPage": "Pin {name} to the sidebar",

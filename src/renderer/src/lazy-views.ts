@@ -22,6 +22,9 @@ export const AgentUsagePanel = lazy(() =>
 export const LibraryPanel = lazy(() =>
   import("./features/files/LibraryPanel").then((module) => ({ default: module.LibraryPanel })),
 );
+export const MachinesPanel = lazy(() =>
+  import("./features/servers/MachinesPanel").then((module) => ({ default: module.MachinesPanel })),
+);
 export const AccountLogin = lazy(() =>
   import("@openbot/ui/features/account/AccountLogin").then((module) => ({ default: module.AccountLogin })),
 );
