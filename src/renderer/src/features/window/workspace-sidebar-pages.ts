@@ -19,7 +19,7 @@ import { useWindowPage } from "./window-page-context";
 
 /**
  * The pages of the desktop window, for the pill of the chat sidebar. Chats and Routines show the same
- * page with a different middle pane. Workflows, Tasks, Schedule, Usage, Library, Marketplace and
+ * page with a different middle pane. Workflows, Tasks, Schedule, Usage, Library, Machines, Marketplace and
  * Settings change the page in the card.
  */
 export function useWorkspaceSidebarPages(): () => SidebarPages {
@@ -78,6 +78,7 @@ export function useWorkspaceSidebarPages(): () => SidebarPages {
     onUsage: windowPage.openUsage,
     // An older joined server has no storage routes, so it has no Library.
     onLibrary: serverHasStorage(activeServer()) ? windowPage.openLibrary : undefined,
+    onMachines: windowPage.openMachines,
     onMarketplace: () => setSkillsMarketplaceOpen(true),
     onSettings: (button) => (updateNotice() ? openAppSettings(button, "updates") : windowPage.openSettings(button)),
     settingsNotice: updateNotice(),

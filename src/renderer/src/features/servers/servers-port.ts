@@ -14,6 +14,7 @@ export interface ServersPort {
     | "listHiddenAgents"
     | "listMcpServers"
     | "listModels"
+    | "onScopedEvent"
     | "removeMcpServer"
     | "saveMcpServer"
     | "setMcpServerEnabled"

@@ -232,6 +232,8 @@
     "./features/servers/server-update-dialog.css": "./src/features/servers/server-update-dialog.css",
     "./features/servers/ServerConnectionNotice": "./src/features/servers/ServerConnectionNotice.tsx",
     "./features/servers/ServerRail": "./src/features/servers/ServerRail.tsx",
+    "./features/servers/MachinesPage": "./src/features/servers/MachinesPage.tsx",
+    "./features/servers/machines.css": "./src/features/servers/machines.css",
     "./features/servers/ServerRoles": "./src/features/servers/ServerRoles.tsx",
     "./features/servers/server-roles.css": "./src/features/servers/server-roles.css",
     "./features/servers/ServerAuditLog": "./src/features/servers/ServerAuditLog.tsx",

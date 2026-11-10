@@ -253,6 +253,13 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
               }
             : undefined
         }
+        chatServer={(() => {
+          // One server needs no mark: every chat is on it.
+          const server = activeServer();
+          return server && serverActions.orderedServers().length > 1
+            ? { id: server.id, name: server.name, logoUrl: server.logoUrl }
+            : undefined;
+        })()}
         agents={agentList()}
         activeAgentId={activeDirectMember() || channels.state.selectedId ? "" : (activeAgent()?.id ?? "")}
         showPeople={props.peopleEnabled}

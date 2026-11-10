@@ -175,6 +175,29 @@
   background: var(--openbot-accent);
 }
 
+/* The server of the chat: small and faint, so it tells servers apart without a new color in the row. */
+.sidebar-chat-server {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--openbot-radius-sm);
+  opacity: 0.55;
+  transition: opacity var(--openbot-duration-fast) var(--openbot-ease-out);
+}
+
+.sidebar-chat-server > * {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--openbot-radius-sm);
+  outline: none;
+}
+
+.sidebar-chat-row:is(:hover, :focus-visible, .sidebar-chat-active) .sidebar-chat-server {
+  opacity: 1;
+}
+
 .sidebar-chat-footer:empty {
   display: none;
 }

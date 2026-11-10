@@ -85,6 +85,11 @@ export interface SidebarProps {
   /** Brings a deleted channel back to the list. Without it, a row in Deleted channels has no menu. */
   onRestoreChannel?: ((channelId: string) => void) | undefined;
   serverName: string;
+  /**
+   * The server of the chats, as a small mark at the end of each row, with its name on hover. Set it
+   * only while the user has more than one server, where the mark tells them apart.
+   */
+  chatServer?: { id: string; name: string; logoUrl: string | null } | undefined;
   onOpenServerSettings?: ((trigger: HTMLElement) => void) | undefined;
   /** The desktop server menu. Without it, the server name opens the server settings. */
   serverMenu?: Omit<ServerMenuProps, "serverName" | "compact"> | undefined;

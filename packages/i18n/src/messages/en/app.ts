@@ -55,6 +55,7 @@ export const messages = defineMessages("app", {
   "app.rail.workflows": "Workflows",
   "app.rail.usage": "Usage",
   "app.rail.library": "Library",
+  "app.rail.machines": "Machines",
   "app.rail.marketplace": "Marketplace",
   "app.rail.settings": "Settings",
   "app.rail.more": "More",
