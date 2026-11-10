@@ -649,8 +649,8 @@ export const messages = {
   "server.settings.personalityLoadFailed": "No se pudo cargar la personalidad del servidor.",
   "server.machines.title": "Máquinas",
   "server.machines.summary": {
-    one: "{count} agente en {machines} máquinas",
-    other: "{count} agentes en {machines} máquinas",
+    one: "{agents} en {count} máquina",
+    other: "{agents} en {count} máquinas",
   },
   "server.machines.search": "Buscar agentes",
   "server.machines.noMatch": "Ningún agente coincide con la búsqueda.",
@@ -665,6 +665,7 @@ export const messages = {
   "server.machines.current": "Abierto ahora",
   "server.machines.settings": "Ajustes de {name}",
   "server.machines.connectingNotice": "Conectando con esta máquina.",
+  "server.machines.sleepingNotice": "Esta máquina está en reposo. Reintenta para activarla y ver sus agentes.",
   "server.machines.unreachable": "Esta máquina no responde. Sus agentes aparecen cuando vuelva a estar en línea.",
   "server.machines.loadFailed": "No se pudieron leer los agentes de esta máquina.",
   "server.machines.retry": "Reintentar",

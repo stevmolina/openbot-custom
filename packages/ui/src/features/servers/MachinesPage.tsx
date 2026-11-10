@@ -99,7 +99,10 @@ export function MachinesPage(props: MachinesPageProps) {
         <div class="machines-heading">
           <h2 class="machines-title">{t("server.machines.title")}</h2>
           <p class="machines-summary">
-            {t("server.machines.summary", { count: agentCount(), machines: props.machines.length })}
+            {t("server.machines.summary", {
+              count: props.machines.length,
+              agents: t("server.machines.agentCount", { count: agentCount() }),
+            })}
           </p>
         </div>
         <FileSearch class="machines-search" label={t("server.machines.search")} value={search()} onChange={setSearch} />
@@ -131,7 +134,8 @@ function MachineSection(props: {
   onOpenSettings: MachinesPageProps["onOpenSettings"];
 }) {
   const { t } = useText();
-  const reachable = () => props.machine.state === "online" || props.machine.state === "sleeping";
+  /** A sleeping hosted server does not answer until it wakes; the retry wakes it. */
+  const reachable = () => props.machine.state === "online";
   const agents = createMemo(() => {
     const list = props.machine.agents;
     if (list.status !== "ready") return [];
@@ -184,9 +188,11 @@ function MachineSection(props: {
               {t(
                 props.machine.state === "connecting"
                   ? "server.machines.connectingNotice"
-                  : reachable()
-                    ? "server.machines.loadFailed"
-                    : "server.machines.unreachable",
+                  : props.machine.state === "sleeping"
+                    ? "server.machines.sleepingNotice"
+                    : reachable()
+                      ? "server.machines.loadFailed"
+                      : "server.machines.unreachable",
               )}
             </span>
             <Show when={props.machine.state !== "connecting"}>

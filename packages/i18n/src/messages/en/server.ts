@@ -787,8 +787,8 @@ export const messages = defineMessages("server", {
   "server.settings.personalityLoadFailed": "Could not load the server personality.",
   "server.machines.title": "Machines",
   "server.machines.summary": {
-    one: "{count} agent on {machines} machines",
-    other: "{count} agents on {machines} machines",
+    one: "{agents} on {count} machine",
+    other: "{agents} on {count} machines",
   },
   "server.machines.search": "Search agents",
   "server.machines.noMatch": "No agent matches the search.",
@@ -803,6 +803,7 @@ export const messages = defineMessages("server", {
   "server.machines.current": "Open now",
   "server.machines.settings": "{name} settings",
   "server.machines.connectingNotice": "Connecting to this machine.",
+  "server.machines.sleepingNotice": "This machine sleeps. Retry to wake it and see its agents.",
   "server.machines.unreachable": "This machine does not answer. Its agents show when it is online again.",
   "server.machines.loadFailed": "Could not read the agents of this machine.",
   "server.machines.retry": "Retry",

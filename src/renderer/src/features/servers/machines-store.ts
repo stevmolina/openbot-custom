@@ -10,8 +10,11 @@ interface MachineEntry {
   reads: Record<string, ConversationReadState>;
 }
 
-/** A change of the agents of a server reads its list again after this wait, so a burst reads once. */
-const RELOAD_DELAY_MS = 400;
+/**
+ * A new message reads the list of its server again after this wait. The wait does not restart, so a
+ * busy server is read at most once in this time and its list does not stay old while it works.
+ */
+const RELOAD_DELAY_MS = 2000;
 
 /** A joined server must be online to answer. The server of this computer always answers. */
 function serverReachable(server: ServerSummary): boolean {
@@ -65,8 +68,7 @@ export function createMachinesStore(options: { servers: () => readonly ServerSum
   }
 
   function scheduleReload(serverId: string): void {
-    const pending = reloads.get(serverId);
-    if (pending) clearTimeout(pending);
+    if (reloads.has(serverId)) return;
     reloads.set(
       serverId,
       setTimeout(() => {
@@ -79,6 +81,8 @@ export function createMachinesStore(options: { servers: () => readonly ServerSum
   onSettled(() =>
     serversPort().agent.onScopedEvent(({ serverId, event }) => {
       if (event.type === "agents-changed") {
+        // The event is newer than a read that is still on its way, so that read is dropped.
+        generations.set(serverId, (generations.get(serverId) ?? 0) + 1);
         setEntries((draft) => {
           const entry = draft[serverId];
           if (entry) {
