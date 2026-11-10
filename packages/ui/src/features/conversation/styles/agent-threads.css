@@ -335,9 +335,15 @@
   border-color: var(--openbot-bg-control-active);
 }
 
+/* The copy word can be a long role title. It takes only the space that the thread title leaves, so
+   the title keeps its width and the word never runs under the next tab. */
 .agent-threads-tab-copy {
-  flex: none;
+  /* Room for a whole "…", so a long title leaves a mark rather than a cut letter. */
+  min-width: 1.5em;
+  flex: 1 1 0;
+  overflow: hidden;
   color: var(--openbot-text-muted);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
