@@ -12,6 +12,8 @@ const TURN_RESERVE_BYTES = 300 * MIB;
 const TURN_RESERVE_MS = 60_000;
 /** A low level goes back to "ok" only this far above the low threshold, so it does not flap. */
 const RECOVER_MARGIN_BYTES = 256 * MIB;
+/** The page cache and the reclaimable slab of a cgroup that do not count as free: see `reclaimableBytes`. */
+const RECLAIM_WORKING_SET_BYTES = 128 * MIB;
 /**
  * `openbot.service` starts main at -500, and a container starts it at 0. Each process that main starts
  * gets this value, so the OOM killer picks a provider CLI, an MCP server or an agent tool before main.
@@ -283,14 +285,38 @@ const readUnitMemory = Effect.fn("ServerMemory.readUnit")(function* () {
   ))?.trim();
   if (max === undefined) return "unknown";
   if (max === "max") return "unlimited";
+  // The two files are not read at one instant. The statistics come first: a cache that grows between
+  // the reads then counts as used. Program memory (`anon`) is never free, also when a cache that the
+  // kernel took back between the reads makes the difference smaller.
+  const stat = yield* memoryIO(() => readFile(`${root}/memory.stat`, "utf8"));
   const current = Number((yield* memoryIO(() => readFile(`${root}/memory.current`, "utf8"))).trim());
-  // `memory.current` counts the file cache too. The kernel takes the inactive part back before the
-  // OOM killer acts, so it is free memory, as it is in `MemAvailable`.
-  const inactiveFile = /^inactive_file (\d+)$/m.exec(
-    yield* memoryIO(() => readFile(`${root}/memory.stat`, "utf8")),
-  )?.[1];
-  return { max: Number(max), current: current - Number(inactiveFile ?? 0) };
+  return { max: Number(max), current: Math.max(current - reclaimableBytes(stat), statBytes(stat, "anon")) };
 });
+
+function statBytes(memoryStat: string, name: string): number {
+  return Number(new RegExp(`^${name} (\\d+)$`, "m").exec(memoryStat)?.[1] ?? 0);
+}
+
+/**
+ * The part of a cgroup's `memory.current` that the kernel takes back before the OOM killer acts, with
+ * the rule of `MemAvailable` (`si_mem_available` in `mm/show_mem.c`): the page cache on both file
+ * LRU lists and the reclaimable slab, each less the smaller of its half and a working-set floor. The
+ * kernel moves active file pages to the inactive list when the cgroup reaches its limit, so the
+ * active part is reclaimable too. Counting only `inactive_file` made a cgroup with a warm cache stay
+ * "low" with little program memory in use. Tmpfs and shared memory (`shmem`) are on the anon lists,
+ * not the file lists, so they never count. A cgroup has no low watermark of its own, so the floor is
+ * fixed; it keeps the binaries and libraries that the processes read from being counted as free.
+ */
+function reclaimableBytes(memoryStat: string): number {
+  const pageCache = statBytes(memoryStat, "active_file") + statBytes(memoryStat, "inactive_file");
+  const slab = statBytes(memoryStat, "slab_reclaimable");
+  return (
+    pageCache -
+    Math.min(pageCache / 2, RECLAIM_WORKING_SET_BYTES) +
+    slab -
+    Math.min(slab / 2, RECLAIM_WORKING_SET_BYTES)
+  );
+}
 
 interface ProcessEntry {
   pid: number;

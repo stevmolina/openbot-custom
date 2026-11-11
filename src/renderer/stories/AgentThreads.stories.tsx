@@ -2,7 +2,7 @@ import { LOCAL_SERVER_ID } from "@openbot/contracts/ipc";
 import { onSettled } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import type { MockOpenBotOptions } from "../src/preview/mock-openbot";
-import { AGENT_ID, TABS_KEY, THREAD_OPTIONS, UNREAD_OPTIONS } from "./agent-threads-fixtures";
+import { AGENT_ID, SERVER_BUSY_OPTIONS, TABS_KEY, THREAD_OPTIONS, UNREAD_OPTIONS } from "./agent-threads-fixtures";
 import { createAppDom, openChat, PrototypeApp } from "./prototype-support";
 import "./agent-threads-story.css";
 
@@ -77,6 +77,11 @@ export const SideThread: Story = {
 /** A thread that the agent started, held by the limit of parallel threads. */
 export const QueuedThread: Story = {
   render: () => <AgentThreadsApp open={["links"]} active="links" />,
+};
+
+/** A thread held while the server is low on memory: the reason, and the messages that wait. */
+export const ServerBusyThread: Story = {
+  render: () => <AgentThreadsApp open={["hackathon-bot"]} active="hackathon-bot" options={SERVER_BUSY_OPTIONS} />,
 };
 
 /**

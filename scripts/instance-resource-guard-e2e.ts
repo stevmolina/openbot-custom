@@ -7,7 +7,8 @@
 //   marked agent processes nice 10 and an OOM value of 500, also after they leave its tree; leave an
 //   unmarked orphan (as Xvfb is) and itself alone; and when a marked detached job fills the memory,
 //   stop the job's largest leaf with SIGTERM before the kernel OOM killer acts, so the shell of the
-//   job still runs its next command, which reports exit status 143.
+//   job still runs its next command, which reports exit status 143. A warm page cache of 512 MiB
+//   must count as free memory, so the level stays "ok", and the stop must still come with that cache.
 //
 //   bun scripts/instance-resource-guard-e2e.ts
 //
@@ -26,6 +27,7 @@ const root = resolve(import.meta.dirname, "..");
 const reportRoot = join(root, ".openbot-build/instance-resource-guard-e2e");
 const INSIDE = "--inside";
 const WAKE_FILE = "/tmp/openbot-e2e-wake";
+const CACHE_FILE = "/tmp/openbot-e2e-cache";
 interface CheckResult {
   name: string;
   ok: boolean;
@@ -238,6 +240,40 @@ async function inside(): Promise<void> {
       "main keeps its values",
       nice(process.pid) === 0 && (await procValue(process.pid, "oom_score_adj")) === "0",
       `nice ${nice(process.pid)}, OOM ${await procValue(process.pid, "oom_score_adj")}`,
+    );
+
+    // A warm page cache is not used memory. On the Personal VPS a 2 GiB container had 341 MiB of
+    // program memory and 849 MiB of active file cache, and the guard counted only the inactive cache
+    // as free: 705 MiB, under the 768 MiB that brings it back to "ok", so it held every queued message.
+    // The file stays for the check below: the cache counted as free must not keep the guard from
+    // stopping a job before the kernel OOM killer acts. A kernel with multi-gen LRU can keep the
+    // re-read pages on the inactive list, so this checks the cache as a whole.
+    const cache = spawnSync(
+      "sh",
+      [
+        "-c",
+        `head -c ${512 * 1024 * 1024} /dev/zero > ${CACHE_FILE} && sync && cat ${CACHE_FILE} ${CACHE_FILE} > /dev/null`,
+      ],
+      { stdio: "ignore" },
+    );
+    // A tick that started before the file can hold a reading from before it, so the second one counts.
+    await Effect.runPromise(memory.tick());
+    await Effect.runPromise(memory.tick());
+    const stat = await readFile("/sys/fs/cgroup/memory.stat", "utf8");
+    const statField = (name: string) => Number(new RegExp(`^${name} (\\d+)$`, "m").exec(stat)?.[1] ?? 0);
+    const max = Number((await readFile("/sys/fs/cgroup/memory.max", "utf8")).trim());
+    const mib = (bytes: number) => Math.round(bytes / 1024 / 1024);
+    const fileCache = statField("active_file") + statField("inactive_file");
+    const available = memory.sample()?.available ?? 0;
+    report(
+      "a warm page cache counts as free memory",
+      cache.status === 0 &&
+        fileCache > 480 * 1024 * 1024 &&
+        available > max - statField("anon") - fileCache &&
+        available <= max &&
+        memory.level() === "ok",
+      `file cache ${mib(fileCache)} MiB (active ${mib(statField("active_file"))}), anon ${mib(statField("anon"))} MiB, ` +
+        `free ${mib(available)} of ${mib(max)} MiB, level ${memory.level()}`,
     );
 
     // A detached job whose leaf, `tail`, holds all it reads: about 50 MB a second, until it is stopped.
