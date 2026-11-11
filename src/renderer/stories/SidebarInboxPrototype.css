@@ -1,0 +1,185 @@
+/* Prototype only: the sidebar with "Needs you" on top and the other groups docked at the bottom. */
+
+/* The app's own list stays in the DOM, hidden, so a click on a prototype row opens the real chat. */
+.inbox-proto-swapped aside.sidebar.sidebar-chat > nav.sidebar-chat-list {
+  display: none;
+}
+
+.inbox-proto aside.sidebar.sidebar-chat > .sidebar-chat-top {
+  order: 0;
+}
+
+.inbox-proto aside.sidebar.sidebar-chat > :has(> .inbox-proto-list),
+.inbox-proto aside.sidebar.sidebar-chat > .inbox-proto-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  order: 1;
+}
+
+.inbox-proto aside.sidebar.sidebar-chat > .sidebar-chat-footer {
+  order: 2;
+}
+
+.inbox-proto aside.sidebar.sidebar-chat > .sidebar-chat-bottom {
+  order: 3;
+}
+
+.inbox-proto-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.inbox-proto-top {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--openbot-space-2) var(--openbot-space-3);
+}
+
+.inbox-proto-top-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline-end: var(--openbot-space-3);
+  margin-bottom: var(--openbot-space-1);
+}
+
+.inbox-proto-count {
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.inbox-proto-count-warn {
+  color: var(--openbot-warning, var(--openbot-text-secondary));
+  font-weight: var(--openbot-weight-medium);
+}
+
+/* The dock sits on the pill side, under a hairline. */
+.inbox-proto-dock {
+  flex: none;
+  border-top: 1px solid var(--openbot-border);
+  padding: var(--openbot-space-2) var(--openbot-space-3);
+}
+
+/* A. */
+.inbox-proto-dock-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  border: 0;
+  border-radius: var(--openbot-radius-md);
+  background: transparent;
+  padding: var(--openbot-space-2) var(--openbot-space-3);
+  color: var(--openbot-text-secondary);
+  font: inherit;
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+  cursor: pointer;
+}
+
+.inbox-proto-dock-head:is(:hover, :focus-visible) {
+  background: var(--openbot-hover);
+  color: var(--openbot-text-primary);
+}
+
+.inbox-proto-dock-name {
+  flex: 1;
+  text-align: start;
+}
+
+.inbox-proto-chevron,
+.inbox-proto-folder {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.inbox-proto-chevron {
+  transition: transform 150ms ease;
+}
+
+.inbox-proto-dock-head[aria-expanded="true"] .inbox-proto-chevron {
+  transform: rotate(90deg);
+}
+
+.inbox-proto-dock-body {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-bottom: var(--openbot-space-1);
+}
+
+/* B. */
+.inbox-proto-tabs {
+  width: 100%;
+  margin-bottom: var(--openbot-space-2);
+}
+
+.inbox-proto-tabs .ui-sliding-tabs-trigger {
+  min-width: 0;
+  flex: 1;
+  padding-inline: var(--openbot-space-1);
+  font-size: var(--openbot-text-sm);
+}
+
+.inbox-proto-drawer {
+  height: 156px;
+  overflow-y: auto;
+}
+
+.inbox-proto-subhead {
+  margin: var(--openbot-space-2) 0 var(--openbot-space-1);
+}
+
+/* C. */
+.inbox-proto-shelf {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--openbot-space-2);
+  padding-block: 2px;
+}
+
+.inbox-proto-shelf-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--openbot-space-1);
+  padding-inline-start: var(--openbot-space-3);
+  overflow: hidden;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-proto-faces {
+  --sidebar-chat-face: 34px;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--openbot-space-1);
+}
+
+.sidebar-chat .inbox-proto-faces .sidebar-chat-face.ui-button {
+  width: 42px;
+  height: 42px;
+  min-width: 0;
+  padding: 0;
+}
+
+/* The window: the app fills it, as the desktop window does. */
+.inbox-proto {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.inbox-proto > * {
+  height: 100%;
+}
