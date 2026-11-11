@@ -302,6 +302,15 @@ export const messages = {
   "mobile.chat.browserSecret.takeoverTitle": "Prise de contrôle du navigateur",
   "mobile.chat.browserSecret.takeoverBody":
     "Terminez cette étape dans le navigateur de l’ordinateur qui exécute OpenBot.",
+  "mobile.chat.mcpSignIn.marker": "Vous a demandé de vous connecter à un serveur MCP",
+  "mobile.chat.mcpSignIn.signIn": "Se connecter",
+  "mobile.chat.mcpSignIn.signInNamed": "Se connecter à {name}",
+  "mobile.chat.mcpSignIn.signedIn": "Connecté",
+  "mobile.chat.mcpSignIn.continue": "Continuer",
+  "mobile.chat.mcpSignIn.continueNamed": "Demander à l'agent de tester {name} à nouveau",
+  "mobile.chat.mcpSignIn.message": "Je me suis connecté au serveur MCP {name}. Teste-le à nouveau.",
+  "mobile.chat.mcpSignIn.unavailable":
+    "Connectez-vous à {name} dans OpenBot sur votre ordinateur, dans Réglages du serveur, MCP.",
   "mobile.chat.browserSecret.takeoverReload": "Rechargez ensuite la page avant de choisir « J’ai terminé ».",
   "mobile.chat.browserSecret.takeoverFailed": "La demande n’a pas pu aboutir.",
   "mobile.chat.browserSecret.done": "J’ai terminé",

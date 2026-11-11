@@ -922,6 +922,13 @@ export function ChatView({
     );
   }
 
+  /** A card in the chat sends its text as a new message, as Continue after a sign-in on desktop. */
+  function sendCardText(text: string): boolean {
+    if (!writable || !serverOnline) return false;
+    deliver(text, null, []);
+    return true;
+  }
+
   /** Explain, Improve and the other selection actions send at once, as on desktop. */
   function sendSelectionAction(instruction: string): void {
     if (!canSend || !selection) return;
@@ -1160,6 +1167,7 @@ export function ChatView({
               unreadLineMessageIds={unreadLineMessageIds}
               sendChannels={sendToChannel?.channels}
               onSendToChannel={sendToChannel && !readOnly ? sendMessageToChannel : undefined}
+              onSendCardText={readOnly ? undefined : sendCardText}
               selectingMessageId={selection?.message.id ?? null}
               onSelectText={selectText}
               onSelectionChange={changeSelection}

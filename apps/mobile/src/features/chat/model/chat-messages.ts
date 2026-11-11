@@ -19,6 +19,7 @@ import {
   CONVERSATION_PLAN_ITEM_TYPE,
   channelRoutingConversationEvent,
   isContextResetMarker,
+  mcpSignInEvent,
   parseConversationPlanText,
   routineConversationEvent,
   routineRunConversationEvent,
@@ -52,6 +53,8 @@ export type ChatMessage =
     }
   /** Where a new chat started: the agent does not see the messages above it. */
   | { id: string; kind: "context-reset" }
+  /** A saved MCP server of the host that an agent asked the user to sign in to, as the desktop card. */
+  | { id: string; kind: "mcp-sign-in"; mcpServerId: string }
   /** A routine created, changed, deleted, or run by the agent. The label matches the desktop marker. */
   | {
       id: string;
@@ -188,6 +191,7 @@ const projectedExchanges = new WeakMap<ConversationMessage, ChatMessage>();
 const projectedQuestions = new WeakMap<ConversationMessage, ChatMessage>();
 const projectedRoutines = new WeakMap<ConversationMessage, ChatMessage>();
 const projectedResets = new WeakMap<ConversationMessage, ChatMessage>();
+const projectedSignIns = new WeakMap<ConversationMessage, ChatMessage>();
 
 const ROUTINE_RUN_LABELS = {
   queued: "mobile.chat.routine.invoked",
@@ -363,6 +367,18 @@ export function projectChatMessages(
     if (isContextResetMarker(message)) {
       result.push(
         projectedMarker(projectedResets, message, () => ({ id: `context-reset:${message.id}`, kind: "context-reset" })),
+      );
+      continue;
+    }
+    // A sign-in request is a system message too. Like desktop, it shows as its card.
+    const signIn = mcpSignInEvent(message);
+    if (signIn) {
+      result.push(
+        projectedMarker(projectedSignIns, message, () => ({
+          id: message.id,
+          kind: "mcp-sign-in",
+          mcpServerId: signIn.mcpServerId,
+        })),
       );
       continue;
     }

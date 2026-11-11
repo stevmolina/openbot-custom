@@ -49,6 +49,7 @@ import { ChatActivityRow, type ChatActivitySpec } from "@/features/chat/componen
 import { type ApprovalDecision, approvalTitle, ChatApprovalCard } from "@/features/chat/components/chat-approval-card";
 import { ChatExchangeGroup, ChatExchangeMarker } from "@/features/chat/components/chat-exchange-marker";
 import { ChatMarkdown, chatMarkdownHasTable } from "@/features/chat/components/chat-markdown";
+import { ChatMcpSignInCard } from "@/features/chat/components/chat-mcp-sign-in-card";
 import { ChatPlan } from "@/features/chat/components/chat-plan";
 import { ChatQuestionPrompt } from "@/features/chat/components/chat-question-prompt";
 import {
@@ -318,6 +319,8 @@ interface ChatMessageListProps {
   /** The open channels that the text of a message can go to. Keep the list stable while it stays the same. */
   sendChannels?: readonly { id: string; name: string }[];
   onSendToChannel?: (message: ChatBubbleMessage, channelId: string) => void;
+  /** Sends a message that a card in the chat writes, such as Continue after a sign-in. False when it could not be sent. */
+  onSendCardText?: (text: string) => boolean;
   /** The messages that offer a branch. Keep the set stable while its ids stay the same. */
   branchPoints?: ReadonlySet<string>;
   /**
@@ -413,6 +416,8 @@ interface MessageRowShared {
     /** Whether Mark unread is on this message. */
     marksUnread: (message: ChatBubbleMessage) => boolean;
     sendToChannel: (message: ChatBubbleMessage, channelId: string) => void;
+    /** Sends the text of a card. False when it could not be sent. */
+    sendCardText: (text: string) => boolean;
     selectText: (message: ChatBubbleMessage) => void;
     selectionChange: (selected: string) => void;
     /** The row of the selected message. A tap outside it ends the selection. */
@@ -805,6 +810,15 @@ const MessageRow = memo(function MessageRow({
       <ChatExchangeMarker key={message.id} message={message} agents={agents} agentsById={agentsById} muted={muted} />
     ) : message.kind === "plan" ? (
       <ChatPlan key={message.id} message={message} />
+    ) : message.kind === "mcp-sign-in" ? (
+      <ChatMcpSignInCard
+        key={message.id}
+        serverId={serverId}
+        mcpServerId={message.mcpServerId}
+        canSend={canSend}
+        muted={muted}
+        onContinue={actions.sendCardText}
+      />
     ) : message.kind === "question" ? (
       <ChatQuestionPrompt
         key={message.id}
@@ -1227,6 +1241,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   unreadLineMessageIds = null,
   sendChannels = NO_CHANNELS,
   onSendToChannel,
+  onSendCardText,
   branchPoints = NO_IDS,
   branchDivider = null,
   onOpenBranchSource,
@@ -1417,6 +1432,7 @@ export const ChatMessageList = memo(function ChatMessageList({
     onMarkUnread,
     markUnreadMessageIds,
     onSendToChannel,
+    onSendCardText,
     onSelectText,
     onSelectionChange,
     onSelectQuestion,
@@ -1429,6 +1445,7 @@ export const ChatMessageList = memo(function ChatMessageList({
     onMarkUnread,
     markUnreadMessageIds,
     onSendToChannel,
+    onSendCardText,
     onSelectText,
     onSelectionChange,
     onSelectQuestion,
@@ -1443,6 +1460,7 @@ export const ChatMessageList = memo(function ChatMessageList({
       markUnread: (message) => actionHandlers.current.onMarkUnread?.(message),
       marksUnread: (message) => actionHandlers.current.markUnreadMessageIds?.has(message.id) ?? true,
       sendToChannel: (message, channelId) => actionHandlers.current.onSendToChannel?.(message, channelId),
+      sendCardText: (text) => actionHandlers.current.onSendCardText?.(text) ?? false,
       selectText: (message) => actionHandlers.current.onSelectText?.(message),
       selectionChange: (selected) => actionHandlers.current.onSelectionChange?.(selected),
       selectionArea: (view) => {

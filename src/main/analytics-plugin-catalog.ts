@@ -13,6 +13,8 @@ export interface CatalogPluginServer {
   name: string;
   transport: "http" | "stdio";
   url: string;
+  /** The addresses that earlier versions of the listing saved, such as Composio's before its sign-in. */
+  earlierUrls: string[];
   command: string;
   args: string[];
   /** The listing's steps to start a server that runs on this computer, such as Figma's. */
@@ -49,7 +51,7 @@ export const loadCatalogPluginServers = Effect.fn("Analytics.loadPluginCatalog")
 
 function catalogServer(slug: string, app: unknown): CatalogPluginServer[] {
   if (!isDynamicRecord(app) || !isDynamicRecord(app.server)) return [];
-  const { name, transport, url, command, args, auth } = app.server;
+  const { name, transport, url, earlierUrls, command, args, auth } = app.server;
   if (!isString(name) || (transport !== "http" && transport !== "stdio")) return [];
   return [
     {
@@ -57,6 +59,7 @@ function catalogServer(slug: string, app: unknown): CatalogPluginServer[] {
       name,
       transport,
       url: isString(url) ? url : "",
+      earlierUrls: Array.isArray(earlierUrls) ? earlierUrls.filter(isString) : [],
       command: isString(command) ? command : "",
       args: Array.isArray(args) ? args.filter(isString) : [],
       setupSteps: Array.isArray(auth) ? auth.flatMap(localSetupSteps) : [],
@@ -96,7 +99,8 @@ export function catalogPluginSlug(
     if (config.name !== server.name || config.transport !== server.transport) continue;
     if (
       server.transport === "http"
-        ? isListingAddress(config.url, server.url)
+        ? // A row that an earlier version of the listing saved is still the app's row, as the listing's own matcher says.
+          [server.url, ...server.earlierUrls].some((listed) => isListingAddress(config.url, listed))
         : isListingCommand(config, server, homeDirectory)
     ) {
       return server.slug;
