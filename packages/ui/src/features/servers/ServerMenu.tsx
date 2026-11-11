@@ -122,8 +122,9 @@ export function ServerMenu(props: ServerMenuProps) {
   const stack = () => props.look === "stack";
   /** The server behind the active one in the stacked logo. */
   const otherServer = () => props.servers.find((server) => !server.active);
+  /** The trigger names "All machines" while the view is on, so it shows no sleep of one server. */
   const activeSleep = () => {
-    const server = activeServer();
+    const server = allMachinesOn() ? undefined : activeServer();
     return server ? serverHostedSleep(server) : null;
   };
   /** The name, or why the server does not answer while it sleeps or wakes. */

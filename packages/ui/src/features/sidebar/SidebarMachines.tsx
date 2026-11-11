@@ -126,11 +126,16 @@ function SidebarMachineAgentRow(rowProps: {
 
 /** The folder of one server: a heading that opens and closes it, then its agents or its state. */
 function SidebarMachineFolder(folderProps: { view: SidebarAllMachines; machine: Machine }) {
+  const { props } = useSidebarScope();
   const { t } = useText();
   const machine = () => folderProps.machine;
   const collapsed = () => folderProps.view.collapsedServerIds.has(machine().id);
   const agents = createMemo(() => machineAgents(machine()));
-  const unread = () => agents().filter((agent) => agent.unread > 0).length;
+  /** The open server counts from its live rows, which see each read at once. */
+  const unread = () =>
+    machine().id === folderProps.view.activeServerId
+      ? agents().filter((agent) => props.unreadAgentIds?.has(agent.id) ?? agent.unread > 0).length
+      : agents().filter((agent) => agent.unread > 0).length;
   const notice = () => machineUnavailableNotice(machine());
   const bodyId = () => `sidebar-machine-body-${machine().id}`;
   return (
@@ -146,11 +151,13 @@ function SidebarMachineFolder(folderProps: { view: SidebarAllMachines; machine: 
           class="sidebar-machine-toggle"
           aria-expanded={collapsed() ? "false" : "true"}
           aria-controls={bodyId()}
-          aria-label={
-            collapsed()
-              ? t("server.allMachines.showAgents", { name: machine().name })
-              : t("server.allMachines.hideAgents", { name: machine().name })
-          }
+          aria-label={[
+            machine().name,
+            machine().state !== "online" ? t(MACHINE_STATE_LABEL[machine().state]) : "",
+            unread() > 0 ? t("sidebar.chat.unread") : "",
+          ]
+            .filter(Boolean)
+            .join(". ")}
           onClick={() => folderProps.view.onToggleServer(machine().id)}
         >
           <span class="sidebar-machine-mark" aria-hidden="true">

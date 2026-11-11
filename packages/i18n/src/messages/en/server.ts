@@ -813,6 +813,4 @@ export const messages = defineMessages("server", {
   "server.allMachines.title": "All machines",
   "server.allMachines.newAgentOn": "New agent on",
   "server.allMachines.serverScoped": "Open one server to add folders or channels",
-  "server.allMachines.showAgents": "Show the agents of {name}",
-  "server.allMachines.hideAgents": "Hide the agents of {name}",
 });

@@ -194,7 +194,7 @@ function AccountSwitch(props: { vertical: boolean; onOpenAppSettings: (trigger: 
           >
             <span class="sidebar-account-stack" aria-hidden="true">
               <span class="sidebar-account-logo sidebar-account-logo-front">
-                <ServerMark server={{ id: sidebar.serverName, logoUrl: null }} />
+                <ServerMark server={{ id: sidebar.serverName, name: sidebar.serverName, logoUrl: null }} />
               </span>
             </span>
           </Button>

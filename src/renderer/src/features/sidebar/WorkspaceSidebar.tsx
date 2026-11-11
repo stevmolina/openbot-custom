@@ -219,7 +219,11 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
       return;
     }
     allMachines.setPendingCreateServerId(serverId);
-    if (!(await machineAgents.switchTo(serverId))) allMachines.setPendingCreateServerId(null);
+    // A second click can start a newer switch to the same server; this one then fails, and the
+    // request stays for the newer switch.
+    if (!(await machineAgents.switchTo(serverId)) && allMachines.pendingCreateServerId() === serverId) {
+      allMachines.setPendingCreateServerId(null);
+    }
   }
   createEffect(
     () => allMachines.pendingCreateServerId() !== null && allMachines.pendingCreateServerId() === activeServerId(),

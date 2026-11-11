@@ -8,6 +8,16 @@ interface MachineEntry {
   status: "loading" | "failed" | "ready";
   agents: readonly ClientAgentSummary[];
   reads: Record<string, ConversationReadState>;
+  /**
+   * The agents that a user hid on this server. A joined server tells them apart only through
+   * `agent-hidden-v1`; `hiddenAt` on the agent is set on this computer's server alone.
+   */
+  hiddenIds: readonly string[];
+}
+
+/** Whether the store shows an agent: one that nobody hid, on this computer or on its joined server. */
+function agentShown(entry: MachineEntry, agent: ClientAgentSummary): boolean {
+  return !agent.hiddenAt && !entry.hiddenIds.includes(agent.id);
 }
 
 /**
@@ -52,23 +62,27 @@ export function createMachinesStore(options: {
     setEntries((draft) => {
       const previous = draft[serverId];
       // A read again keeps the agents on screen; only the first read shows the loading line.
-      draft[serverId] = previous?.status === "ready" ? previous : { status: "loading", agents: [], reads: {} };
+      draft[serverId] =
+        previous?.status === "ready" ? previous : { status: "loading", agents: [], reads: {}, hiddenIds: [] };
     });
     const port = serversPort().agent;
     try {
-      const [agents, reads] = await Promise.all([
+      const [agents, reads, hidden] = await Promise.all([
         port.listAgents(serverId),
         // The unread counts are extra: a server that cannot give them still shows its agents.
         port.listConversationReads(serverId).catch(() => ({})),
+        // An older host has no hidden agents to give.
+        port.listHiddenAgents(serverId).catch(() => ({ agents: [] })),
       ]);
       if (generations.get(serverId) !== generation) return;
+      const hiddenIds = hidden.agents.map((agent) => agent.agentId);
       setEntries((draft) => {
-        draft[serverId] = { status: "ready", agents, reads };
+        draft[serverId] = { status: "ready", agents, reads, hiddenIds };
       });
     } catch {
       if (generations.get(serverId) !== generation) return;
       setEntries((draft) => {
-        draft[serverId] = { status: "failed", agents: [], reads: {} };
+        draft[serverId] = { status: "failed", agents: [], reads: {}, hiddenIds: [] };
       });
     }
   }
@@ -127,7 +141,7 @@ export function createMachinesStore(options: {
     return {
       status: "ready",
       agents: entry.agents
-        .filter((agent) => !agent.hiddenAt)
+        .filter((agent) => agentShown(entry, agent))
         .map((agent) => ({
           id: agent.id,
           name: agent.name,
@@ -156,27 +170,36 @@ export function createMachinesStore(options: {
   );
 
   /**
+   * The read servers that the app still lists, but `skipServerId`. A server the user left keeps its
+   * entry, and its old unread counts must not count.
+   */
+  function listedEntries(skipServerId: string | null): [string, MachineEntry][] {
+    const listed = new Set(options.servers().map((server) => server.id));
+    return Object.entries(entries).filter(
+      ([serverId, entry]) => serverId !== skipServerId && listed.has(serverId) && entry.status === "ready",
+    );
+  }
+
+  /**
    * Marks each unread agent chat of the servers read through its newest message, then reads those
    * servers again. The open server is left out: its own read state marks it, so its rows change at once.
    */
   async function markAllRead(skipServerId: string | null): Promise<void> {
     const port = serversPort().agent;
-    const marked = Object.entries(entries).flatMap(([serverId, entry]) =>
-      serverId === skipServerId || entry.status !== "ready"
-        ? []
-        : entry.agents
-            .filter((agent) => !agent.hiddenAt && (entry.reads[agent.id]?.unreadCount ?? 0) > 0)
-            .map(async (agent) => {
-              const page = await port.readConversationPage(
-                { agentId: agent.id, anchor: { type: "latest" }, limit: 1 },
-                serverId,
-              );
-              const latestMessageId = page.messages.at(-1)?.id;
-              if (latestMessageId) {
-                await port.markConversationRead({ agentId: agent.id, throughMessageId: latestMessageId }, serverId);
-              }
-              return serverId;
-            }),
+    const marked = listedEntries(skipServerId).flatMap(([serverId, entry]) =>
+      entry.agents
+        .filter((agent) => agentShown(entry, agent) && (entry.reads[agent.id]?.unreadCount ?? 0) > 0)
+        .map(async (agent) => {
+          const page = await port.readConversationPage(
+            { agentId: agent.id, anchor: { type: "latest" }, limit: 1 },
+            serverId,
+          );
+          const latestMessageId = page.messages.at(-1)?.id;
+          if (latestMessageId) {
+            await port.markConversationRead({ agentId: agent.id, throughMessageId: latestMessageId }, serverId);
+          }
+          return serverId;
+        }),
     );
     const results = await Promise.allSettled(marked);
     const serverIds = new Set(results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : [])));
@@ -185,11 +208,8 @@ export function createMachinesStore(options: {
 
   /** Whether an agent of a server other than `skipServerId` has a message that the user did not read. */
   function hasUnread(skipServerId: string | null): boolean {
-    return Object.entries(entries).some(
-      ([serverId, entry]) =>
-        serverId !== skipServerId &&
-        entry.status === "ready" &&
-        entry.agents.some((agent) => !agent.hiddenAt && (entry.reads[agent.id]?.unreadCount ?? 0) > 0),
+    return listedEntries(skipServerId).some(([, entry]) =>
+      entry.agents.some((agent) => agentShown(entry, agent) && (entry.reads[agent.id]?.unreadCount ?? 0) > 0),
     );
   }
 

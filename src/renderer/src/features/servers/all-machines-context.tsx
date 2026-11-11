@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal } from "solid-js";
 import { usePlatform } from "../../platform";
 import { createSimpleContext } from "../../simple-context";
 import { createMachinesStore } from "./machines-store";
@@ -46,7 +46,7 @@ const AllMachines = createSimpleContext({
   name: "All machines",
   init: () => {
     const platform = usePlatform();
-    const { servers, localServerHidden, retryServerConnection } = useServers();
+    const { servers, activeServerId, localServerHidden, retryServerConnection } = useServers();
     const [chosen, setChosen] = createSignal(readActive());
     const [collapsedServerIds, setCollapsedServerIds] = createSignal<ReadonlySet<string>>(readCollapsed());
     /**
@@ -57,6 +57,13 @@ const AllMachines = createSimpleContext({
     const active = () => chosen() && platform.chatWindow === null;
     const orderedServers = createMemo(() => orderServers(servers(), localServerHidden()));
     const store = createMachinesStore({ servers: orderedServers, enabled: active });
+    /**
+     * A chat marked read sends no event, so the store does not see the reads made on the open server.
+     * The server the user leaves is read again, so its rows and its count show those reads.
+     */
+    createEffect(activeServerId, (serverId, previousId) => {
+      if (previousId && previousId !== serverId && active()) store.reload(previousId);
+    });
 
     function setActive(on: boolean): void {
       setChosen(on);
