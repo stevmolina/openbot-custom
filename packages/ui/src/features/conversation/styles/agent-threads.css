@@ -887,17 +887,45 @@
   white-space: nowrap;
 }
 
+/*
+ * Why the thread waits, as the first card of the stack above the message box: where the person looks
+ * after a send. A wait is not a fault, so the card keeps the stack's surface and a muted spinner.
+ */
+.composer-notice.agent-thread-hold {
+  --notice-accent: var(--openbot-text-muted);
+  --notice-surface: transparent;
+}
+
+.composer-notice.agent-thread-hold .composer-notice-icon {
+  width: var(--openbot-icon-md);
+  height: var(--openbot-icon-md);
+  stroke-width: var(--openbot-icon-stroke);
+}
+
+.agent-thread-hold-copy {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The messages that wait, under the hold, when the queue panel does not list them. */
 .agent-thread-queued {
   display: flex;
   flex-direction: column;
   gap: var(--openbot-space-1);
-  padding-top: var(--openbot-chat-entry-gap);
+  padding: var(--openbot-space-2) var(--openbot-space-3);
 }
 
 .agent-thread-queued-text {
   margin: 0;
   overflow: hidden;
-  color: var(--openbot-text-secondary);
+  color: var(--openbot-text-primary);
   font-size: var(--openbot-text-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
