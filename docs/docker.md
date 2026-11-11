@@ -191,9 +191,13 @@ after `setup`. A restart of LXCFS breaks its files in the containers that run, s
 restart it while a container uses it; each `setup` prints a warning until LXCFS runs with
 `--enable-cfs`. Docker starts after LXCFS (`docker-openbot.conf`).
 
-`start` also checks that the container cannot swap (`memory.swap.max` is 0), and prints a warning if
-it can, or if it cannot read the value. A container that swaps stops for seconds at a time when its memory is full, and its clients
-lose the connection.
+The containers cannot swap. A container that swaps stops for seconds at a time when its memory is
+full, and its clients lose the connection. Docker writes the swap limit of a container to its
+systemd scope, but each `systemctl daemon-reload` sets that limit back to none, and `create` and
+package upgrades run one. So `setup` installs `openbot.slice` with `MemorySwapMax=0`, and each
+container is in that slice (`cgroup_parent`). `start` checks that the container is in the slice and
+that the slice cannot swap, and prints a warning if not, or if it cannot read the value. An instance
+made before this release moves to the slice after `setup` and `openbot-instance up <name>`.
 
 ### Logs
 
