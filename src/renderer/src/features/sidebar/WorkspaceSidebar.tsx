@@ -23,6 +23,8 @@ import { useAgents } from "../agents/agents-context";
 import { useChannels } from "../channels/channels-context";
 import { useConversation } from "../conversation/conversation-context";
 import { useDirectMessages } from "../conversation/direct-messages-context";
+import { useAllMachines } from "../servers/all-machines-context";
+import { useOpenMachineAgent } from "../servers/machine-agent-open";
 import { useServerActions } from "../servers/server-actions";
 import { serverRoleCanAdminister } from "../servers/server-capabilities";
 import { useServerScope } from "../servers/server-scope";
@@ -107,6 +109,8 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
   });
   const pages = useWorkspaceSidebarPages();
   const windowPage = useWindowPage();
+  const allMachines = useAllMachines();
+  const machineAgents = useOpenMachineAgent();
   // The agent menu offers Mark read for these. The count also holds the side threads, as the badge does.
   const unreadAgentIds = createMemo(
     () => new Set(agentList().flatMap((agent) => ((agentUnreadReplies()[agent.id] ?? 0) > 0 ? [agent.id] : []))),
@@ -197,6 +201,38 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
     });
   });
 
+  /** Opens the new agent form of the open server, on the agents page. */
+  const createAgentHere = () => {
+    // New shows on every page now, so the agent form opens on the agents page.
+    windowPage.showAgents();
+    channels.close();
+    openAgentSetup();
+  };
+
+  /**
+   * New in the "All machines" view names a server. The form of another server opens after the switch
+   * to it, in the sidebar of that server, which reads the request here.
+   */
+  async function createAgentOn(serverId: string): Promise<void> {
+    if (serverId === activeServerId()) {
+      createAgentHere();
+      return;
+    }
+    allMachines.setPendingCreateServerId(serverId);
+    if (!(await machineAgents.switchTo(serverId))) allMachines.setPendingCreateServerId(null);
+  }
+  createEffect(
+    () => allMachines.pendingCreateServerId() !== null && allMachines.pendingCreateServerId() === activeServerId(),
+    (landed) => {
+      if (!landed) return;
+      allMachines.setPendingCreateServerId(null);
+      createAgentHere();
+    },
+  );
+
+  /** Folders, channels and the layout belong to one server, so the "All machines" view has none of them. */
+  const allMachinesOn = () => allMachines.active();
+
   return (
     <>
       <Sidebar
@@ -208,19 +244,25 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         onDeleteChannel={channels.deletionSupported() ? channels.remove : undefined}
         onRestoreChannel={channels.deletionSupported() ? channels.restore : undefined}
         showingArchivedChannels={channelsListed() && channels.state.archived}
-        onToggleArchivedChannels={channelsListed() ? channels.toggleArchived : undefined}
-        onCreateChannel={channelsListed() ? channels.create : undefined}
+        onToggleArchivedChannels={channelsListed() && !allMachinesOn() ? channels.toggleArchived : undefined}
+        onCreateChannel={channelsListed() && !allMachinesOn() ? channels.create : undefined}
         onMarkAllRead={() => {
           void markAllAgentMessagesRead();
           void channels.markAllRead();
+          // The view lists every server, so Mark all read reads the chats of every server.
+          if (allMachinesOn()) void allMachines.markAllRead(activeServerId());
         }}
         hasUnread={
           agentList().some(
             (agent) => !userHiddenAgentIds().has(agent.id) && (agentUnreadReplies()[agent.id] ?? 0) > 0,
-          ) || channels.hasUnread()
+          ) ||
+          channels.hasUnread() ||
+          (allMachinesOn() && allMachines.hasUnread(activeServerId()))
         }
         view={layout.sidebarView()}
-        serverName={activeServer()?.name ?? t("sidebar.topbar.localServer")}
+        serverName={
+          allMachinesOn() ? t("server.allMachines.title") : (activeServer()?.name ?? t("sidebar.topbar.localServer"))
+        }
         onOpenServerSettings={(trigger) => {
           const server = activeServer();
           if (server) openServerSettings(server.id, trigger);
@@ -243,7 +285,12 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
                 servers: serverActions.orderedServers(),
                 view: layout.serverView(),
                 onViewChange: layout.setServerView,
-                onSelect: serverActions.select,
+                // A server row leaves the "All machines" view, the row of the open server too.
+                onSelect: (serverId: string) => {
+                  allMachines.setActive(false);
+                  if (serverId !== activeServerId()) serverActions.select(serverId);
+                },
+                allMachines: { active: allMachinesOn(), onSelect: () => allMachines.setActive(true) },
                 onAdd: serverActions.add,
                 onCreateLocal: serverActions.addMenuCreateLocal(),
                 onInstallServer: serverActions.addMenuInstallServer(),
@@ -257,9 +304,28 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
           // One server needs no mark: every chat is on it.
           const server = activeServer();
           return server && serverActions.orderedServers().length > 1
-            ? { id: server.id, name: server.name, logoUrl: server.logoUrl }
+            ? {
+                id: server.id,
+                name: server.name,
+                logoUrl: server.logoUrl,
+                kind: server.kind,
+                thisComputer: server.thisComputer === true,
+              }
             : undefined;
         })()}
+        allMachines={
+          allMachinesOn()
+            ? {
+                machines: allMachines.machines(),
+                activeServerId: activeServerId(),
+                collapsedServerIds: allMachines.collapsedServerIds(),
+                onToggleServer: allMachines.toggleServer,
+                onOpenAgent: (serverId, agentId) => void machineAgents.openAgent(serverId, agentId),
+                onRetry: allMachines.retry,
+                onCreateAgent: (serverId) => void createAgentOn(serverId),
+              }
+            : undefined
+        }
         agents={agentList()}
         activeAgentId={activeDirectMember() || channels.state.selectedId ? "" : (activeAgent()?.id ?? "")}
         showPeople={props.peopleEnabled}
@@ -271,7 +337,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         channelPreviewsPending={!channels.state.listed}
         agentMoods={agentMoods()}
         layout={sidebarLayout()}
-        layoutMutable={activeServerSupportsCapability("sidebar-layout")}
+        layoutMutable={!allMachinesOn() && activeServerSupportsCapability("sidebar-layout")}
         chatOrder={layout.sidebarChatOrder()}
         onChatOrderChange={layout.setSidebarChatOrder}
         foldersSupported={activeServerSupportsCapability("sidebar-folders-v1")}
@@ -292,12 +358,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         onSelectAgent={selectAgent}
         onSelectPerson={(memberId) => void selectDirectMember(memberId)}
         onPreloadDirectConversation={props.peopleEnabled ? () => void DirectConversation.preload() : undefined}
-        onCreateAgent={() => {
-          // New shows on every page now, so the agent form opens on the agents page.
-          windowPage.showAgents();
-          channels.close();
-          openAgentSetup();
-        }}
+        onCreateAgent={createAgentHere}
         onEditAgent={editAgent}
         duplicateSupported={activeServerSupportsCapability("agent-duplication")}
         duplicatingAgentIds={duplicatingAgentIds()}

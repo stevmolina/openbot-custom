@@ -1,21 +1,12 @@
 import type { HostedServerSleep, ServerConnectionState, ServerSummary } from "@openbot/contracts/ipc";
 import type { AppTextKey, AppTranslate } from "@openbot/i18n";
-import {
-  BellOff,
-  buttonVariants,
-  ContextMenu,
-  DropdownMenu,
-  Eye,
-  Plus,
-  Server,
-  ServerGradientLogo,
-  Tooltip,
-} from "@openbot/ui";
+import { BellOff, buttonVariants, ContextMenu, DropdownMenu, Eye, Plus, Server, Tooltip } from "@openbot/ui";
 import { createEffect, createSignal, createStore, For, onCleanup, Show } from "solid-js";
 import { createScrollFades } from "../../components/createScrollFades";
 import { createVerticalDragPreview } from "../../components/createVerticalDragPreview";
 import { useText } from "../../text";
 import { type ServerActionCallbacks, ServerActionItems, serverMuteDescription } from "./ServerActionItems";
+import { ServerMonogram } from "./ServerMonogram";
 
 const SERVER_RAIL_TOOLTIP_OPEN_DELAY = 150;
 
@@ -616,7 +607,12 @@ function ServerRailButton(
   );
 }
 
-export function ServerMark(props: { server: Pick<ServerSummary, "id" | "logoUrl"> }) {
+/** What a server mark needs: the logo, or else the name and place for the monogram. */
+export type ServerMarkServer = Pick<ServerSummary, "id" | "logoUrl"> &
+  Partial<Pick<ServerSummary, "name" | "kind">> & { thisComputer?: boolean | undefined };
+
+/** The server logo, or the monogram of the server when it has none or the logo does not load. */
+export function ServerMark(props: { server: ServerMarkServer }) {
   const [failed, setFailed] = createSignal(false);
   createEffect(
     () => props.server.logoUrl,
@@ -625,7 +621,15 @@ export function ServerMark(props: { server: Pick<ServerSummary, "id" | "logoUrl"
     },
   );
   return (
-    <Show when={!failed() ? props.server.logoUrl : null} fallback={<ServerGradientLogo seed={props.server.id} />}>
+    <Show
+      when={!failed() ? props.server.logoUrl : null}
+      fallback={
+        <ServerMonogram
+          name={props.server.name}
+          thisComputer={props.server.kind === "local" || props.server.thisComputer === true}
+        />
+      }
+    >
       {(url) => <img class="server-rail-logo" src={url()} alt="" draggable={false} onError={() => setFailed(true)} />}
     </Show>
   );

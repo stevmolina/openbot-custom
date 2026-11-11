@@ -12,7 +12,9 @@ import type { AppTextKey } from "@openbot/i18n";
 import type { JSX } from "@solidjs/web";
 import type { AvatarMood } from "../../bloub-avatar";
 import type { AgentProfile } from "../../data";
+import type { Machine } from "../servers/MachinesPage";
 import type { ServerMenuProps } from "../servers/ServerMenu";
+import type { ServerMarkServer } from "../servers/ServerRail";
 import type { SidebarPages } from "./sidebar-pages";
 import type { SidebarPinnedItem } from "./sidebar-pins";
 
@@ -72,6 +74,26 @@ export const SIDEBAR_CHAT_ORDER_LABEL = {
   "unread-first": "sidebar.order.unreadFirst",
 } as const satisfies Record<SidebarChatOrder, AppTextKey>;
 
+/**
+ * The "All machines" view of the chat sidebar: one folder per server, each with the agents of that
+ * server. Folders, channels, pins and people belong to one server, so the view has none of them.
+ */
+export interface SidebarAllMachines {
+  /** The servers in the order of the server menu, with their agents. */
+  machines: readonly Machine[];
+  /** The server that the window has open. Its agents show with their full rows and menus. */
+  activeServerId: string;
+  /** The servers whose folder the user closed. */
+  collapsedServerIds: ReadonlySet<string>;
+  onToggleServer: (serverId: string) => void;
+  /** Opens the chat of an agent on its server, and switches to that server first when needed. */
+  onOpenAgent: (serverId: string, agentId: string) => void;
+  /** Connects to a server again, or reads its agents again. */
+  onRetry: (serverId: string) => void;
+  /** Opens the new agent form of a server. New asks for the server, as no server is the one open in the view. */
+  onCreateAgent: (serverId: string) => void;
+}
+
 export interface SidebarProps {
   /** The switch over the list is shown only when the caller handles `onViewChange`. */
   view?: SidebarView | undefined;
@@ -97,7 +119,9 @@ export interface SidebarProps {
    * The server of the chats, as a small mark at the end of each row, with its name on hover. Set it
    * only while the user has more than one server, where the mark tells them apart.
    */
-  chatServer?: { id: string; name: string; logoUrl: string | null } | undefined;
+  chatServer?: (ServerMarkServer & { name: string }) | undefined;
+  /** The "All machines" view. With it, the chat list shows the agents of every server, by server. */
+  allMachines?: SidebarAllMachines | undefined;
   onOpenServerSettings?: ((trigger: HTMLElement) => void) | undefined;
   /** The desktop server menu. Without it, the server name opens the server settings. */
   serverMenu?: Omit<ServerMenuProps, "serverName" | "compact"> | undefined;

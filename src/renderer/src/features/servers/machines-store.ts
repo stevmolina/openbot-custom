@@ -27,11 +27,17 @@ function machineState(server: ServerSummary): MachineState {
 }
 
 /**
- * The agents of every server, for the Machines page. Main keeps one connection to each joined server,
- * so the page reads each one without a switch. A server is read when it comes online and again when
- * its agents change; one that does not answer keeps its state, and the other servers still show.
+ * The agents of every server, for the Machines page and the "All machines" view of the sidebar. Main
+ * keeps one connection to each joined server, so the store reads each one without a switch. A server
+ * is read when it comes online and again when its agents change; one that does not answer keeps its
+ * state, and the other servers still show. While `enabled` is false the store reads nothing; it reads
+ * every server again when it turns on.
  */
-export function createMachinesStore(options: { servers: () => readonly ServerSummary[] }) {
+export function createMachinesStore(options: {
+  servers: () => readonly ServerSummary[];
+  enabled?: (() => boolean) | undefined;
+}) {
+  const enabled = () => options.enabled?.() !== false;
   const [entries, setEntries] = createStore<Record<string, MachineEntry>>({});
   /** Bumped for each read of a server, so an answer of an earlier read is dropped. */
   const generations = new Map<string, number>();
@@ -93,17 +99,19 @@ export function createMachinesStore(options: { servers: () => readonly ServerSum
         return;
       }
       // A new message moves the agent up and can change its unread count.
-      if (event.type === "conversation" && entries[serverId]) scheduleReload(serverId);
+      if (event.type === "conversation" && enabled() && entries[serverId]) scheduleReload(serverId);
     }),
   );
 
   // Each server that is reachable is read once; one that comes online again is read again.
   const reachableIds = createMemo(() =>
-    options
-      .servers()
-      .filter(serverReachable)
-      .map((server) => server.id)
-      .join("\n"),
+    enabled()
+      ? options
+          .servers()
+          .filter(serverReachable)
+          .map((server) => server.id)
+          .join("\n")
+      : "",
   );
   createEffect(reachableIds, (ids, previous) => {
     const before = new Set(previous ? previous.split("\n") : []);
@@ -130,6 +138,7 @@ export function createMachinesStore(options: { servers: () => readonly ServerSum
           avatarUrl: agent.avatarUrl,
           updatedAt: agent.updatedAt,
           unread: entry.reads[agent.id]?.unreadCount ?? 0,
+          preview: agent.preview,
         })),
     };
   }
@@ -146,9 +155,49 @@ export function createMachinesStore(options: { servers: () => readonly ServerSum
     })),
   );
 
+  /**
+   * Marks each unread agent chat of the servers read through its newest message, then reads those
+   * servers again. The open server is left out: its own read state marks it, so its rows change at once.
+   */
+  async function markAllRead(skipServerId: string | null): Promise<void> {
+    const port = serversPort().agent;
+    const marked = Object.entries(entries).flatMap(([serverId, entry]) =>
+      serverId === skipServerId || entry.status !== "ready"
+        ? []
+        : entry.agents
+            .filter((agent) => !agent.hiddenAt && (entry.reads[agent.id]?.unreadCount ?? 0) > 0)
+            .map(async (agent) => {
+              const page = await port.readConversationPage(
+                { agentId: agent.id, anchor: { type: "latest" }, limit: 1 },
+                serverId,
+              );
+              const latestMessageId = page.messages.at(-1)?.id;
+              if (latestMessageId) {
+                await port.markConversationRead({ agentId: agent.id, throughMessageId: latestMessageId }, serverId);
+              }
+              return serverId;
+            }),
+    );
+    const results = await Promise.allSettled(marked);
+    const serverIds = new Set(results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : [])));
+    for (const serverId of serverIds) void load(serverId);
+  }
+
+  /** Whether an agent of a server other than `skipServerId` has a message that the user did not read. */
+  function hasUnread(skipServerId: string | null): boolean {
+    return Object.entries(entries).some(
+      ([serverId, entry]) =>
+        serverId !== skipServerId &&
+        entry.status === "ready" &&
+        entry.agents.some((agent) => !agent.hiddenAt && (entry.reads[agent.id]?.unreadCount ?? 0) > 0),
+    );
+  }
+
   return {
     machines,
     /** Reads the agents of a server again. */
     reload: (serverId: string) => void load(serverId),
+    markAllRead,
+    hasUnread,
   };
 }

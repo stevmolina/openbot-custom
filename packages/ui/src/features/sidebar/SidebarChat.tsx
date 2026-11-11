@@ -34,10 +34,12 @@ import {
 import type { JSX } from "@solidjs/web";
 import { createMemo, For, Show } from "solid-js";
 import { useText } from "../../text";
+import { ServerMark } from "../servers/ServerRail";
 import { SidebarChannelRow } from "./SidebarChannelRow";
 import { SidebarChatRow } from "./SidebarChatRow";
 import { SidebarEmptyState } from "./SidebarEmptyState";
 import { SidebarHiddenGroup } from "./SidebarHiddenGroup";
+import { SidebarMachinesDock, SidebarMachinesList } from "./SidebarMachines";
 import { SidebarPeopleSection } from "./SidebarPeopleSection";
 import { SidebarPill } from "./SidebarPill";
 import { SidebarPinnedGroup } from "./SidebarPinnedGroup";
@@ -68,44 +70,82 @@ function RoundButton(props: { label: string; onClick: () => void; children: JSX.
   );
 }
 
+/**
+ * New in the "All machines" view: no server is the one in view, so New asks for the server of the
+ * new agent. Only a server that answers can take one.
+ */
+function NewOnServerButton() {
+  const { props } = useSidebarScope();
+  const { t } = useText();
+  const online = () => props.allMachines?.machines.filter((machine) => machine.state === "online") ?? [];
+  return (
+    <DropdownMenu.Root placement="bottom-end" gutter={6}>
+      <MotionTooltip content={t("server.allMachines.newAgentOn")}>
+        <DropdownMenu.Trigger class="sidebar-chat-round no-drag" aria-label={t("server.allMachines.newAgentOn")}>
+          <Plus aria-hidden="true" />
+        </DropdownMenu.Trigger>
+      </MotionTooltip>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content class="agent-context-menu" aria-label={t("server.allMachines.newAgentOn")}>
+          <div class="ui-menu-label" aria-hidden="true">
+            {t("server.allMachines.newAgentOn")}
+          </div>
+          <For each={online()} keyed={(machine) => machine.id}>
+            {(machine) => (
+              <DropdownMenu.Item onSelectAfterClose={() => props.allMachines?.onCreateAgent(machine().id)}>
+                <span class="server-menu-mark" aria-hidden="true">
+                  <ServerMark server={machine()} />
+                </span>
+                <span>{machine().name}</span>
+              </DropdownMenu.Item>
+            )}
+          </For>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
 /** New: a new agent, or a menu with a new agent and a new channel when the server has channels. */
 function NewButton() {
   const { props } = useSidebarScope();
   const { t } = useText();
   return (
-    <Show
-      when={props.onCreateChannel}
-      fallback={
-        <Show when={props.createSupported !== false}>
-          <RoundButton label={t("sidebar.new.agent")} onClick={props.onCreateAgent}>
-            <Plus aria-hidden="true" />
-          </RoundButton>
-        </Show>
-      }
-    >
-      {(createChannel) => (
-        <DropdownMenu.Root placement="bottom-end" gutter={6}>
-          <MotionTooltip content={t("sidebar.chat.newMenu")}>
-            <DropdownMenu.Trigger class="sidebar-chat-round no-drag" aria-label={t("sidebar.chat.newMenu")}>
+    <Show when={!props.allMachines} fallback={<NewOnServerButton />}>
+      <Show
+        when={props.onCreateChannel}
+        fallback={
+          <Show when={props.createSupported !== false}>
+            <RoundButton label={t("sidebar.new.agent")} onClick={props.onCreateAgent}>
               <Plus aria-hidden="true" />
-            </DropdownMenu.Trigger>
-          </MotionTooltip>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content>
-              <Show when={props.createSupported !== false}>
-                <DropdownMenu.Item onSelectAfterClose={props.onCreateAgent}>
-                  <Bot aria-hidden="true" />
-                  {t("sidebar.new.agent")}
+            </RoundButton>
+          </Show>
+        }
+      >
+        {(createChannel) => (
+          <DropdownMenu.Root placement="bottom-end" gutter={6}>
+            <MotionTooltip content={t("sidebar.chat.newMenu")}>
+              <DropdownMenu.Trigger class="sidebar-chat-round no-drag" aria-label={t("sidebar.chat.newMenu")}>
+                <Plus aria-hidden="true" />
+              </DropdownMenu.Trigger>
+            </MotionTooltip>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content>
+                <Show when={props.createSupported !== false}>
+                  <DropdownMenu.Item onSelectAfterClose={props.onCreateAgent}>
+                    <Bot aria-hidden="true" />
+                    {t("sidebar.new.agent")}
+                  </DropdownMenu.Item>
+                </Show>
+                <DropdownMenu.Item onSelectAfterClose={() => createChannel()()}>
+                  <Hash aria-hidden="true" />
+                  {t("sidebar.new.channel")}
                 </DropdownMenu.Item>
-              </Show>
-              <DropdownMenu.Item onSelectAfterClose={() => createChannel()()}>
-                <Hash aria-hidden="true" />
-                {t("sidebar.new.channel")}
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-      )}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        )}
+      </Show>
     </Show>
   );
 }
@@ -169,6 +209,7 @@ function FreeAreaMenu() {
     <Show
       when={
         props.createSupported !== false ||
+        props.allMachines ||
         props.onCreateChannel ||
         layoutMutable() ||
         props.onMarkAllRead ||
@@ -179,7 +220,7 @@ function FreeAreaMenu() {
         <ContextMenu.Trigger class="sidebar-list-context-trigger" aria-label={t("sidebar.nav.freeArea")} />
         <ContextMenu.Portal>
           <ContextMenu.Content class="agent-context-menu" aria-label={t("sidebar.nav.actions")}>
-            <Show when={props.createSupported !== false}>
+            <Show when={props.createSupported !== false && !props.allMachines}>
               <ContextMenu.Item onSelect={() => props.onCreateAgent()}>
                 <Bot class="agent-context-icon size-4" aria-hidden="true" />
                 <span>{t("sidebar.new.agent")}</span>
@@ -201,6 +242,13 @@ function FreeAreaMenu() {
               <ContextMenu.Item disabled={!props.hasUnread} onSelect={() => props.onMarkAllRead?.()}>
                 <CheckCheck class="agent-context-icon size-4" aria-hidden="true" />
                 <span>{t("sidebar.markAllRead")}</span>
+              </ContextMenu.Item>
+            </Show>
+            {/* Folders and channels belong to one server, so the view says where to add them. */}
+            <Show when={props.allMachines}>
+              <ContextMenu.Item disabled>
+                <FolderPlus class="agent-context-icon size-4" aria-hidden="true" />
+                <span>{t("server.allMachines.serverScoped")}</span>
               </ContextMenu.Item>
             </Show>
             <Show when={props.onToggleArchivedChannels}>
@@ -409,34 +457,37 @@ function SidebarChatList() {
       onScroll={scrollFades.measure}
     >
       <div class="agent-list-content">
-        <Show
-          when={
-            resolvedPinnedItems().length === 0 &&
-            recent().length === 0 &&
-            userHiddenAgentList().length === 0 &&
-            (props.showPeople === false || orderedPeople().length === 0) &&
-            pending.sectionEditor?.target.kind !== "create"
-          }
-        >
-          <SidebarEmptyState />
-        </Show>
-        <SidebarPinnedGroup />
-        {/* The draft of a first folder needs the folder view, or it would have nowhere to show. */}
-        <Show
-          when={props.layout.sections.length > 0 || pending.sectionEditor?.target.kind === "create"}
-          fallback={<SidebarChatRows chats={recent()} />}
-        >
-          <SidebarChatFolders chats={recent()} />
-        </Show>
-        <SidebarPeopleSection sectionId={SIDEBAR_PEOPLE_SECTION_ID} />
-        <SidebarHiddenGroup />
-        <Show when={props.showingArchivedChannels}>
-          <section class="sidebar-chat-group sidebar-section" aria-label={t("sidebar.deletedChannels.title")}>
-            <h2 class="sidebar-section-name">{t("sidebar.deletedChannels.title")}</h2>
-            <For each={props.deletedChannels} fallback={<p>{t("sidebar.deletedChannels.empty")}</p>}>
-              {(channel) => <SidebarChannelRow channel={channel} />}
-            </For>
-          </section>
+        <Show when={props.allMachines}>{(view) => <SidebarMachinesList view={view()} />}</Show>
+        <Show when={!props.allMachines}>
+          <Show
+            when={
+              resolvedPinnedItems().length === 0 &&
+              recent().length === 0 &&
+              userHiddenAgentList().length === 0 &&
+              (props.showPeople === false || orderedPeople().length === 0) &&
+              pending.sectionEditor?.target.kind !== "create"
+            }
+          >
+            <SidebarEmptyState />
+          </Show>
+          <SidebarPinnedGroup />
+          {/* The draft of a first folder needs the folder view, or it would have nowhere to show. */}
+          <Show
+            when={props.layout.sections.length > 0 || pending.sectionEditor?.target.kind === "create"}
+            fallback={<SidebarChatRows chats={recent()} />}
+          >
+            <SidebarChatFolders chats={recent()} />
+          </Show>
+          <SidebarPeopleSection sectionId={SIDEBAR_PEOPLE_SECTION_ID} />
+          <SidebarHiddenGroup />
+          <Show when={props.showingArchivedChannels}>
+            <section class="sidebar-chat-group sidebar-section" aria-label={t("sidebar.deletedChannels.title")}>
+              <h2 class="sidebar-section-name">{t("sidebar.deletedChannels.title")}</h2>
+              <For each={props.deletedChannels} fallback={<p>{t("sidebar.deletedChannels.empty")}</p>}>
+                {(channel) => <SidebarChannelRow channel={channel} />}
+              </For>
+            </section>
+          </Show>
         </Show>
         <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
           {reorderAnnouncement()}
@@ -455,11 +506,16 @@ function SidebarChatDockList() {
   const pinnedKeys = createMemo(() => new Set(props.pinnedItems.map(sidebarPinnedItemKey)));
   return (
     <nav aria-label={t("sidebar.nav.label")} class="sidebar-chat-dock-list">
-      <For each={resolvedPinnedItems()} keyed={(item) => sidebarPinnedItemKey(item.ref)}>
+      <Show when={props.allMachines}>{(view) => <SidebarMachinesDock view={view()} />}</Show>
+      <For each={props.allMachines ? [] : resolvedPinnedItems()} keyed={(item) => sidebarPinnedItemKey(item.ref)}>
         {(item) => <SidebarChatRow chat={item().chat} look="face" pinned />}
       </For>
       <For
-        each={recent().filter((chat) => !pinnedKeys().has(sidebarPinnedItemKey({ kind: chat.kind, id: chat.id })))}
+        each={
+          props.allMachines
+            ? []
+            : recent().filter((chat) => !pinnedKeys().has(sidebarPinnedItemKey({ kind: chat.kind, id: chat.id })))
+        }
         keyed={(chat) => `${chat.kind}:${chat.id}`}
       >
         {(chat) => <SidebarChatRow chat={chat()} look="face" />}

@@ -672,4 +672,9 @@ export const messages = {
   "server.machines.loading": "Cargando agentes.",
   "server.machines.noAgents": "No hay agentes en esta máquina.",
   "server.machines.noTitle": "Agente",
+  "server.allMachines.title": "Todas las máquinas",
+  "server.allMachines.newAgentOn": "Nuevo agente en",
+  "server.allMachines.serverScoped": "Abre un servidor para añadir carpetas o canales",
+  "server.allMachines.showAgents": "Mostrar los agentes de {name}",
+  "server.allMachines.hideAgents": "Ocultar los agentes de {name}",
 } as const satisfies PartialTranslation<typeof source>;

@@ -235,6 +235,107 @@
   opacity: 1;
 }
 
+/* "All machines": a folder per server. The heading is the server mark and name, like a folder name
+ * with the logo in front, and it opens and closes the folder. */
+.sidebar-chat .sidebar-machine-toggle.ui-button {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  padding-inline: var(--openbot-space-3);
+  border-radius: var(--openbot-radius-md);
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+}
+
+/* A ghost button marks itself while expanded; an open folder is the usual state, so it stays quiet. */
+.sidebar-chat .sidebar-machine-toggle.ui-button,
+.sidebar-chat .sidebar-machine-toggle.ui-button[aria-expanded="true"] {
+  background: transparent;
+}
+
+.sidebar-chat .sidebar-machine-toggle.ui-button:is(:hover, :focus-visible) {
+  background: transparent;
+  color: var(--openbot-text-primary);
+}
+
+.sidebar-machine-mark {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--openbot-radius-sm);
+}
+
+.sidebar-machine-mark > * {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--openbot-radius-sm);
+}
+
+.sidebar-machine-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-machine-state {
+  flex: none;
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-regular);
+}
+
+.sidebar-machine-folder[data-state="connecting"] .sidebar-machine-state,
+.sidebar-machine-folder[data-state="sleeping"] .sidebar-machine-state {
+  color: var(--openbot-warning);
+}
+
+.sidebar-machine-folder:is([data-state="error"], [data-state="incompatible"]) .sidebar-machine-state {
+  color: var(--openbot-danger);
+}
+
+.sidebar-machine-unread {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  flex: none;
+  place-items: center;
+  padding-inline: var(--openbot-space-1);
+  box-sizing: border-box;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-bg-control);
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+}
+
+.sidebar-machine-chevron {
+  margin-inline-start: auto;
+  flex: none;
+  color: var(--openbot-text-muted);
+  transition: transform var(--openbot-duration-fast) var(--openbot-ease-out);
+}
+
+.sidebar-machine-chevron-collapsed {
+  transform: rotate(-90deg);
+}
+
+.sidebar-machine-notice {
+  display: flex;
+  margin: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--openbot-space-2);
+  padding: var(--openbot-space-1) var(--openbot-space-3) var(--openbot-space-2);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+}
+
 .sidebar-chat-footer:empty {
   display: none;
 }
