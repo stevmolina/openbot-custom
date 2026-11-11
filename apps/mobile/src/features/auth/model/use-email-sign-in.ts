@@ -90,7 +90,7 @@ export function useEmailSignIn({
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<"send" | "resend" | "verify" | "company" | null>(null);
   // The address that signs in at its company provider. The send button opens that sign-in again.
-  const [companyEmail, setCompanyEmail] = useState<string | null>(null);
+  const [providerSignIn, setProviderSignIn] = useState<{ email: string; provider: "company" | "workos" } | null>(null);
   const [verified, setVerified] = useState(false);
   // The code expired or took too many attempts. Only a new code unlocks the field.
   const [needsNewCode, setNeedsNewCode] = useState(false);
@@ -129,8 +129,8 @@ export function useEmailSignIn({
       reject();
       return;
     }
-    if (kind === "send" && companyEmail === address) {
-      await signInWithCompany(address);
+    if (kind === "send" && providerSignIn?.email === address) {
+      await signInWithCompany(address, providerSignIn.provider);
       return;
     }
     // Back on the email step, the same address keeps the code that is already on its way.
@@ -163,7 +163,11 @@ export function useEmailSignIn({
         void haptics.notification("success");
       }
     } catch (error) {
-      if (error instanceof MobileEmailSignInError && error.code === "company_sign_in_required") {
+      if (
+        error instanceof MobileEmailSignInError &&
+        (error.code === "company_sign_in_required" || error.code === "workos_sign_in_required")
+      ) {
+        const provider = error.code === "workos_sign_in_required" ? "workos" : "company";
         scope.track("account_sign_in_started", {
           method: "email",
           result: "company_sign_in",
@@ -171,10 +175,10 @@ export function useEmailSignIn({
         });
         requestId.current = null;
         setPending(null);
-        setCompanyEmail(address);
+        setProviderSignIn({ email: address, provider });
         // A resend gets this answer when the company turned the sign-in on after the first code.
         go("email");
-        await signInWithCompany(address);
+        await signInWithCompany(address, provider);
         return;
       }
       scope.track("account_sign_in_started", {
@@ -208,15 +212,15 @@ export function useEmailSignIn({
   }
 
   /** Signs in at the company provider. A closed browser keeps the email step, with no issue. */
-  async function signInWithCompany(address: string) {
+  async function signInWithCompany(address: string, provider: "company" | "workos" = "company") {
     setPending("company");
     setEmailIssue(null);
     const scope = mobileAnalytics.scope();
     const started = performance.now();
     try {
-      const session = await signInMobileWithCompany(address).catch((error: unknown) => {
+      const session = await signInMobileWithCompany(address, provider).catch((error: unknown) => {
         scope.track("account_sign_in_completed", {
-          method: "company",
+          method: provider,
           result: "failed",
           failure_code: "operation_failed",
           cause_code: classifyFailure(error),
@@ -225,15 +229,18 @@ export function useEmailSignIn({
         throw error;
       });
       scope.track("account_sign_in_completed", {
-        method: "company",
+        method: provider,
         result: session ? "succeeded" : "cancelled",
         duration_ms: performance.now() - started,
       });
       if (session) await finish(session);
     } catch (error) {
-      const issue = issueFrom(error, t("error.auth.companySignInFailed"));
+      const issue = issueFrom(
+        error,
+        t(provider === "workos" ? "error.auth.workosSignInFailed" : "error.auth.companySignInFailed"),
+      );
       // The company turned the sign-in off: the next send asks for an email code again.
-      if (issue.code === "company_sign_in_not_found") setCompanyEmail(null);
+      if (issue.code === "company_sign_in_not_found") setProviderSignIn(null);
       if (issue.retryAfterSeconds) setBlockedUntil(Date.now() + issue.retryAfterSeconds * 1_000);
       setEmailIssue(issue);
       reject();
@@ -253,6 +260,13 @@ export function useEmailSignIn({
       );
       await finish(session);
     } catch (error) {
+      if (error instanceof MobileEmailSignInError && error.code === "workos_sign_in_required") {
+        setProviderSignIn({ email: challenge.email, provider: "workos" });
+        setPending(null);
+        go("email");
+        await signInWithCompany(challenge.email, "workos");
+        return;
+      }
       const issue = issueFrom(error, t("mobile.auth.email.error.verifyFailed"));
       setCodeIssue(issue);
       if (NEW_CODE_ISSUES.has(issue.code)) setNeedsNewCode(true);
@@ -300,7 +314,7 @@ export function useEmailSignIn({
     setEmail: (value: string) => {
       setEmail(value);
       setEmailIssue(null);
-      if (normalizeEmailAddress(value) !== companyEmail) setCompanyEmail(null);
+      if (normalizeEmailAddress(value) !== providerSignIn?.email) setProviderSignIn(null);
       setBlockedUntil(0);
       requestId.current = null;
     },
@@ -311,7 +325,8 @@ export function useEmailSignIn({
     /** The company provider page is open, or about to open. */
     companySignIn: pending === "company",
     /** The address signs in at its company provider: the send button opens that sign-in. */
-    usesCompanySignIn: companyEmail !== null && companyEmail === normalizeEmailAddress(email),
+    usesCompanySignIn: providerSignIn !== null && providerSignIn.email === normalizeEmailAddress(email),
+    usesWorkosSignIn: providerSignIn?.provider === "workos",
     resending: pending === "resend",
     retryIn,
     resendIn,

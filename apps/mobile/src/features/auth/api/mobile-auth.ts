@@ -12,6 +12,7 @@ import {
 } from "@openbot/contracts/mobile-connect";
 import { type DynamicRecord, isBoolean, isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { normalizeEmailAddress, normalizeOneTimeCode, validateProfileName } from "@openbot/contracts/validation";
+import { workosSignInErrorKey } from "@openbot/contracts/workos-sign-in";
 import type { MobileTextKey } from "@openbot/i18n/mobile";
 import * as Crypto from "expo-crypto";
 import * as Device from "expo-device";
@@ -209,7 +210,10 @@ export async function verifyMobileEmailCode(challengeId: string, code: string): 
  * `openbot://company-sign-in` with a one-time code. Only the verifier that stays here makes the code
  * a session. Resolves null when the user closed the browser.
  */
-export async function signInMobileWithCompany(email: string): Promise<MobileSession | null> {
+export async function signInMobileWithCompany(
+  email: string,
+  provider: "company" | "workos" = "company",
+): Promise<MobileSession | null> {
   if (mobileConnectInFlight) throw new Error(currentText().t("mobile.auth.error.connectionInProgress"));
   mobileConnectInFlight = true;
   try {
@@ -228,33 +232,46 @@ export async function signInMobileWithCompany(email: string): Promise<MobileSess
       }),
     );
     const start = await mobileEmailRequest(
-      "/v1/auth/company/start",
+      provider === "workos" ? "/v1/auth/workos/start" : "/v1/auth/company/start",
       { email: address, returnTo: MOBILE_COMPANY_SIGN_IN_RETURN, clientState, clientChallenge: challenge },
       {},
       MOBILE_COMPANY_START_TIMEOUT_MS,
     );
-    if (!start.response.ok) throw companySignInError(errorCode(start.body), start.response);
+    if (!start.response.ok) throw companySignInError(errorCode(start.body), start.response, provider);
     const authorizationUrl = start.body?.authorizationUrl;
     if (!isString(authorizationUrl) || !/^https?:\/\//u.test(authorizationUrl)) {
-      throw companySignInError("company_sign_in_failed");
+      throw companySignInError(
+        provider === "workos" ? "workos_sign_in_failed" : "company_sign_in_failed",
+        undefined,
+        provider,
+      );
     }
     const result = await openAuthSessionAsync(authorizationUrl, MOBILE_COMPANY_SIGN_IN_RETURN);
     if (result.type !== "success") return null;
     const params = companySignInReturnParams(result.url, clientState);
     const failure = params?.get("error");
-    if (failure) throw companySignInError(failure);
+    if (failure) throw companySignInError(failure, undefined, provider);
     const code = params?.get("code");
-    if (!code) throw companySignInError("company_sign_in_failed");
+    if (!code)
+      throw companySignInError(
+        provider === "workos" ? "workos_sign_in_failed" : "company_sign_in_failed",
+        undefined,
+        provider,
+      );
     const device = await mobileDeviceIdentity();
     const apiUrl = mobileAccountApiUrl();
-    const { response, body } = await mobileEmailRequest("/v1/mobile-auth/company/exchange", {
-      code,
-      codeVerifier: verifier,
-      deviceId: device.id,
-      deviceName: device.name,
-      platform: device.platform,
-    });
-    if (!response.ok) throw companySignInError(errorCode(body), response);
+    const { response, body } = await mobileEmailRequest(
+      provider === "workos" ? "/v1/mobile-auth/workos/exchange" : "/v1/mobile-auth/company/exchange",
+      {
+        code,
+        codeVerifier: verifier,
+        deviceId: device.id,
+        deviceName: device.name,
+        platform: device.platform,
+      },
+    );
+    if (!response.ok) throw companySignInError(errorCode(body), response, provider);
+    // Keep the released external-provider storage marker for WorkOS as well.
     const session = decodeMobileSession(body, apiUrl, "company");
     await saveMobileSession(session);
     return session;
@@ -274,7 +291,11 @@ function base64Url(base64: string): string {
   return base64.replace(/\+/gu, "-").replace(/\//gu, "_").replace(/=+$/u, "");
 }
 
-function companySignInError(code: string, response?: Response): MobileEmailSignInError {
+function companySignInError(
+  code: string,
+  response?: Response,
+  provider: "company" | "workos" = "company",
+): MobileEmailSignInError {
   const text = currentText();
   if (code === "rate_limited") {
     const retryAfter = Number(response?.headers.get("Retry-After"));
@@ -285,7 +306,10 @@ function companySignInError(code: string, response?: Response): MobileEmailSignI
     );
   }
   if (code === "invalid_email") return new MobileEmailSignInError(text.t("mobile.auth.email.error.invalidEmail"), code);
-  return new MobileEmailSignInError(text.t(companySignInErrorKey(code)), code || "company_sign_in_failed");
+  return new MobileEmailSignInError(
+    text.t(provider === "workos" ? workosSignInErrorKey(code) : companySignInErrorKey(code)),
+    code || (provider === "workos" ? "workos_sign_in_failed" : "company_sign_in_failed"),
+  );
 }
 
 async function mobileEmailRequest(

@@ -47,6 +47,7 @@ import {
   type RemoteMemberRole,
   type RemoteTicketClaims,
 } from "@openbot/contracts/signal-protocol/ticket";
+import { workosSignInErrorKey } from "@openbot/contracts/workos-sign-in";
 import { sourceText } from "@openbot/i18n/source";
 import { createOpenBotLogger, toLogValue } from "@openbot/logging";
 import { referenceFrom, safeReference } from "@openbot/user-errors";
@@ -1623,9 +1624,15 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
       .pipe(
         Effect.catch(({ cause: error }) =>
           Effect.sync(() => {
-            if (error instanceof AuthApiError && error.code === "company_sign_in_required") {
+            if (
+              error instanceof AuthApiError &&
+              (error.code === "company_sign_in_required" || error.code === "workos_sign_in_required")
+            ) {
               if (this.#emailCodeRequest === request) this.#emailCodeRequest = null;
-              return this.#startCompanySignIn(request.email);
+              return this.#startCompanySignIn(
+                request.email,
+                error.code === "workos_sign_in_required" ? "workos" : "company",
+              );
             }
             if (isDefinitiveEmailCodeRequestFailure(error) && this.#emailCodeRequest === request) {
               this.#emailCodeRequest = null;
@@ -1688,6 +1695,9 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
       }).pipe(
         Effect.catch(({ cause: error }) =>
           Effect.gen({ self: this }, function* () {
+            if (challenge && error instanceof AuthApiError && error.code === "workos_sign_in_required") {
+              return this.#startCompanySignIn(challenge.email, "workos");
+            }
             // A wrong code or a failed request for a challenge leaves the stored session as it was: the
             // user can still be signed in to another account, or have a session that only a startup
             // check failed on.
@@ -1712,7 +1722,9 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
   /** Opens the provider page again for the email that signs in with its company. */
   openCompanySignIn(): Effect.Effect<CentralAuthState> {
     return Effect.sync(() =>
-      this.#state.status === "company_sign_in" ? this.#startCompanySignIn(this.#state.email) : this.getState(),
+      this.#state.status === "company_sign_in"
+        ? this.#startCompanySignIn(this.#state.email, this.#state.provider ?? "company")
+        : this.getState(),
     );
   }
 
@@ -1736,20 +1748,26 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
   }
 
   /** Sets the state at once, and waits for the browser apart from the request that asked for it. */
-  #startCompanySignIn(email: string): CentralAuthState {
+  #startCompanySignIn(email: string, provider: "company" | "workos" = "company"): CentralAuthState {
     this.#endCompanySignIn();
     const browser = this.#options.companySignInBrowser;
     if (!browser) {
       return this.#setState({
         status: "company_sign_in",
         email,
-        issue: { code: "company_sign_in_unavailable", message: sourceText("error.auth.companySignInUnavailable") },
+        ...(provider === "workos" ? { provider } : {}),
+        issue: {
+          code: provider === "workos" ? "workos_sign_in_not_configured" : "company_sign_in_unavailable",
+          message: sourceText(
+            provider === "workos" ? "error.auth.workosSignInUnavailable" : "error.auth.companySignInUnavailable",
+          ),
+        },
       });
     }
     const cancel = Deferred.makeUnsafe<void>();
     this.#companySignInCancel = cancel;
-    const state = this.#setState({ status: "company_sign_in", email });
-    Effect.runFork(this.#owned(this.#runCompanySignIn(browser, email, cancel)));
+    const state = this.#setState({ status: "company_sign_in", email, ...(provider === "workos" ? { provider } : {}) });
+    Effect.runFork(this.#owned(this.#runCompanySignIn(browser, email, cancel, provider)));
     return state;
   }
 
@@ -1758,13 +1776,14 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
     browser: CompanySignInBrowser,
     email: string,
     cancel: Deferred.Deferred<void>,
+    provider: "company" | "workos",
   ): Effect.fn.Return<void, never, CentralAuthTransport> {
     const verifier = randomBytes(32).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
     const signedIn = yield* Effect.gen({ self: this }, function* () {
       const params = yield* awaitCompanySignIn(browser, cancel, (returnTo, clientState) =>
         this.#requestEffect(
-          "/v1/auth/company/start",
+          provider === "workos" ? "/v1/auth/workos/start" : "/v1/auth/company/start",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1774,9 +1793,12 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
         ),
       );
       const code = params.get("code");
-      if (!code) return yield* new CompanySignInBrowserError({ code: "company_sign_in_failed" });
+      if (!code)
+        return yield* new CompanySignInBrowserError({
+          code: provider === "workos" ? "workos_sign_in_failed" : "company_sign_in_failed",
+        });
       const session = yield* this.#requestEffect(
-        "/v1/auth/company/exchange",
+        provider === "workos" ? "/v1/auth/workos/exchange" : "/v1/auth/company/exchange",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1800,7 +1822,12 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
     const failure = signedIn.failure;
     if (failure instanceof CompanySignInBrowserError && failure.code === "cancelled") return;
     this.#companySignInCancel = null;
-    this.#setState({ status: "company_sign_in", email, issue: companySignInIssue(failure) });
+    this.#setState({
+      status: "company_sign_in",
+      email,
+      ...(provider === "workos" ? { provider } : {}),
+      issue: companySignInIssue(failure, provider),
+    });
   });
 
   /** The company sign-in setup of a server that the user owns. */
@@ -2650,7 +2677,15 @@ function companySignInError(code: string): AuthApiError {
   return new AuthApiError(400, code, sourceText(companySignInErrorKey(code)));
 }
 
-function companySignInIssue(failure: CentralAuthOperationError | CompanySignInBrowserError): CentralAuthIssue {
+function companySignInIssue(
+  failure: CentralAuthOperationError | CompanySignInBrowserError,
+  provider: "company" | "workos" = "company",
+): CentralAuthIssue {
+  if (provider === "workos") {
+    if (failure instanceof CompanySignInBrowserError)
+      return { code: failure.code, message: sourceText(workosSignInErrorKey(failure.code)) };
+    return centralAuthIssue(failure.cause, "workos_sign_in_failed", sourceText("error.auth.workosSignInFailed"));
+  }
   if (failure instanceof CompanySignInBrowserError) return authApiIssue(companySignInError(failure.code));
   return centralAuthIssue(failure.cause, "company_sign_in_failed", sourceText("error.auth.companySignInFailed"));
 }

@@ -92,4 +92,7 @@ export const messages = defineMessages("mobile.auth", {
   "mobile.auth.error.photoConflict": "Your photo changed on another device. Try again.",
   "mobile.auth.error.profileSaveFailed": "Could not save your profile. Check your connection and try again.",
   "mobile.auth.error.signOutUnconfirmed": "Could not confirm sign-out. Check your connection and try again.",
+  "mobile.auth.email.workosNotice": "Use your invited account to sign in with WorkOS.",
+  "mobile.auth.email.workosContinue": "Continue with WorkOS",
+  "mobile.auth.email.workosWaiting": "Waiting for browser sign-in...",
 });

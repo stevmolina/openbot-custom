@@ -256,6 +256,16 @@ const valid: [string, (value: unknown) => unknown, unknown][] = [
     decodeCentralAuthState,
     { status: "signed_out", reason: "keyring_changed" } satisfies CentralAuthState,
   ],
+  [
+    "company sign-in",
+    decodeCentralAuthState,
+    { status: "company_sign_in", email: "user@example.com" } satisfies CentralAuthState,
+  ],
+  [
+    "WorkOS sign-in",
+    decodeCentralAuthState,
+    { status: "company_sign_in", email: "user@example.com", provider: "workos" } satisfies CentralAuthState,
+  ],
   ["code sent", decodeCentralAuthState, codeSent],
   [
     "code sent with every option",
@@ -515,6 +525,16 @@ const malformed: [string, (value: unknown) => unknown, unknown][] = [
       chatBackgroundLight: "#f1f2ff00",
       chatBackgroundDark: null,
     },
+  ],
+  [
+    "provider with an unknown value",
+    decodeCentralAuthState,
+    { status: "company_sign_in", email: "user@example.com", provider: "other" },
+  ],
+  [
+    "provider with a non-string value",
+    decodeCentralAuthState,
+    { status: "company_sign_in", email: "user@example.com", provider: null },
   ],
   ["an unknown account status", decodeCentralAuthState, { status: "banned" }],
   ["signed out with an unknown reason", decodeCentralAuthState, { status: "signed_out", reason: "expired" }],

@@ -41,4 +41,15 @@ export const messages = defineMessages("error.auth", {
   "error.auth.companySignInProviderUnreachable": "The company sign-in provider did not answer.",
   "error.auth.companySignInDomainTaken": "One of these domains already signs in through another server.",
   "error.auth.companySignInNoServer": "Start this server before you set up company sign-in.",
+
+  "error.auth.workosSignInFailed": "The sign-in did not finish. Try again.",
+  "error.auth.workosSignInCancelled": "The sign-in was cancelled.",
+  "error.auth.workosSignInTimeout": "The sign-in took too long. Open the sign-in page again.",
+  "error.auth.workosSignInRefused": "WorkOS refused the sign-in.",
+  "error.auth.workosSignInUnavailable": "WorkOS sign-in is not configured.",
+  "error.auth.workosSignInEmailMissing": "WorkOS did not give a verified email address.",
+  "error.auth.workosSignInProviderRejected": "WorkOS could not complete the sign-in.",
+  "error.auth.workosSignInTokenInvalid": "OpenBot could not verify the sign-in.",
+  "error.auth.workosSignInProviderUnreachable": "WorkOS did not answer.",
+  "error.auth.workosSignInRequired": "Continue in the browser to sign in with WorkOS.",
 });

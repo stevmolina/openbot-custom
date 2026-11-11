@@ -44,6 +44,10 @@ export interface WorkerBindings {
   SITE_REPORT_HASH_SECRET?: string;
   /** Encrypts the client secrets of company sign-in and signs its DNS records. At least 32 bytes. */
   COMPANY_SIGN_IN_SECRET?: string;
+  /** Deployment-wide WorkOS account login, separate from server company-domain connections. */
+  WORKOS_OIDC_ISSUER?: string;
+  WORKOS_OIDC_CLIENT_ID?: string;
+  WORKOS_OIDC_CLIENT_SECRET?: string;
   SITE_COOKIE_ISOLATION_READY?: string;
   SITE_PUBLISH_ENABLED?: string;
   SITE_LOCAL_ORIGIN?: string;

@@ -112,4 +112,5 @@ export const messages = defineMessages("account", {
   "account.language.next": "Next language",
   "account.language.continue": "Continue",
   "account.language.change": "Change language",
+  "account.login.workosDescription": "Continue in your browser to sign in as {email}.",
 });

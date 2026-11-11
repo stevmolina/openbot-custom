@@ -88,6 +88,16 @@ function authRetentionOperations(now: number): AuthRetentionOperation[] {
       sql: "DELETE FROM company_sign_in_codes WHERE expires_at <= ? OR redeemed_at IS NOT NULL",
       cutoff: now,
     },
+    {
+      name: "companySignIn",
+      sql: "DELETE FROM workos_sign_in_flows WHERE expires_at <= ?",
+      cutoff: now,
+    },
+    {
+      name: "companySignIn",
+      sql: "DELETE FROM workos_sign_in_codes WHERE expires_at <= ? OR redeemed_at IS NOT NULL",
+      cutoff: now,
+    },
   ];
 }
 

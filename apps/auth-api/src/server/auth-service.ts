@@ -10,6 +10,7 @@ import {
   ONE_TIME_CODE_LENGTH,
   validateProfileName,
 } from "@openbot/contracts/validation";
+import { sourceText } from "@openbot/i18n/source";
 import { Context, Effect, Layer, Result, Schema } from "effect";
 import { type AccountAnalytics, type AccountSurface, NO_ACCOUNT_ANALYTICS } from "./account-analytics";
 import type { AccountAttribution } from "./account-attribution";
@@ -47,6 +48,7 @@ const RATE_WINDOW_MS = 15 * 60_000;
 const DELIVERY_RATE_LIMIT_RETRY_SECONDS = 5 * 60;
 
 interface AuthServiceOptions {
+  workosSignInRequired?: boolean;
   repository: AuthRepository;
   delivery: EmailCodeDelivery | null;
   exposeDevelopmentCode?: boolean;
@@ -115,8 +117,10 @@ export function readChatColor(body: DynamicRecord): AvatarColor | null | undefin
 export class AuthService {
   readonly #layer: Layer.Layer<AuthDependencies>;
   readonly #configured: boolean;
+  readonly #workosSignInRequired: boolean;
 
   constructor(options: AuthServiceOptions) {
+    this.#workosSignInRequired = options.workosSignInRequired ?? false;
     this.#configured = options.delivery !== null || (options.exposeDevelopmentCode ?? false);
     this.#layer = Layer.succeed(AuthDependencies)({
       repository: options.repository,
@@ -143,6 +147,13 @@ export class AuthService {
       idempotencyKey?: string,
     ): Effect.fn.Return<EmailSignInStart, AuthWorkflowFailure, AuthDependencies> {
       const dependencies = yield* AuthDependencies;
+      if (this.#workosSignInRequired) {
+        return yield* new AuthServiceError(
+          409,
+          "workos_sign_in_required",
+          sourceText("error.auth.workosSignInRequired"),
+        );
+      }
       if (!this.configured) {
         return yield* new AuthServiceError(
           503,
@@ -343,6 +354,9 @@ export class AuthService {
       device?: MobileAuthDeviceIdentity;
     },
   ): Effect.fn.Return<{ sessionToken: string; user: AuthUser }, AuthWorkflowFailure, AuthDependencies> {
+    if (this.#workosSignInRequired) {
+      return yield* new AuthServiceError(409, "workos_sign_in_required", sourceText("error.auth.workosSignInRequired"));
+    }
     const dependencies = yield* AuthDependencies;
     const now = dependencies.now();
     yield* this.#enforceRateLimit(`verify:ip:${normalizeSourceIp(input.sourceIp)}`, 30, now);

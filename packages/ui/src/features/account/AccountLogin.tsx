@@ -99,6 +99,7 @@ export function AccountLogin(props: AccountLoginProps) {
   const codeSent = () => props.state.status === "code_sent";
   const verified = () => props.state.status === "signed_in";
   const companySignIn = () => (props.state.status === "company_sign_in" ? props.state : undefined);
+  const workosSignIn = () => companySignIn()?.provider === "workos";
   const loginStep = (): LoginStep => (companySignIn() ? "company" : codeSent() || verified() ? "code" : "email");
   const challenge = () => (props.state.status === "code_sent" ? props.state : undefined);
   const connecting = () => props.state.status === "loading";
@@ -153,9 +154,10 @@ export function AccountLogin(props: AccountLoginProps) {
     return issue && NEW_CODE_ISSUES.has(issue.code) ? sourceText(issue.message) : null;
   };
   const companyDescriptionParts = () => {
-    const [before = "", after = ""] = t("account.login.companyDescription", { email: EMAIL_MARKER }).split(
-      EMAIL_MARKER,
-    );
+    const [before = "", after = ""] = t(
+      workosSignIn() ? "account.login.workosDescription" : "account.login.companyDescription",
+      { email: EMAIL_MARKER },
+    ).split(EMAIL_MARKER);
     return [before, after] as const;
   };
   const codeSentParts = () => {
