@@ -158,8 +158,8 @@ export class WorkosSignInService {
       webOrigin === new URL(requestUrl).origin;
     if ((!mobile && !loopback && !web) || target.username || target.password || target.search || target.hash)
       return yield* invalid();
+    // No per-email limit: the email is only a login hint, so a limit on it would let anyone block a person.
     yield* this.#enforceRateLimit(`workos:start:ip:${input.sourceIp}`, 20);
-    yield* this.#enforceRateLimit(`workos:start:email:${email}`, 5);
     const metadata = yield* this.#provider.discover(configuration.issuer).pipe(Effect.mapError(providerError));
     const state = randomToken(32);
     const verifier = randomToken(48);

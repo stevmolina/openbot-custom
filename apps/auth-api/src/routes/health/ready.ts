@@ -4,6 +4,7 @@ import { Effect } from "effect";
 import { runApiResponse } from "../../server/effect-runtime";
 import { apiError, json, requestAuthService } from "../../server/request-auth";
 import { requireWorkerBindings } from "../../server/types";
+import { workosSignInEnabled } from "../../server/workos-sign-in";
 
 export const Route = createFileRoute("/health/ready")({
   server: {
@@ -13,7 +14,8 @@ export const Route = createFileRoute("/health/ready")({
           Effect.gen(function* () {
             const bindings = requireWorkerBindings(env);
             yield* Effect.promise(() => bindings.DB.prepare("SELECT 1 AS ready").first());
-            if (!requestAuthService().configured) {
+            // In WorkOS mode WorkOS signs people in, so no email delivery is needed.
+            if (!workosSignInEnabled(bindings) && !requestAuthService().configured) {
               return apiError(503, "email_delivery_not_configured", "Email sign-in delivery is not configured.");
             }
             return json({ service: "openbot-auth-api", status: "ready" });
