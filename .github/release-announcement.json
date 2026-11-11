@@ -1,10 +1,9 @@
 {
-  "version": "0.66.0",
+  "version": "0.67.1",
   "highlights": [
-    "Agents now learn new skills by themselves after you correct them, and fix their own skills while they work.",
-    "Save two-step codes in the Vault, and let agents sign in with them.",
-    "The Dynamic Island and the agent dock now work on Windows, and the dock can hold channels.",
-    "Agents can watch public videos, such as YouTube or TikTok links, and read what is said in them.",
-    "Channel members answer while they work, and a greeting or an unclear message goes to the lead."
+    "Gemini installs and updates on Windows again.",
+    "An agent that sends a message to a busy teammate now knows if the message went into the running task, and can tell you why it waits.",
+    "During Computer Use, agents no longer say that their cursor is not available.",
+    "Agents can now use an n8n MCP server that you signed in to through OpenBot."
   ]
 }

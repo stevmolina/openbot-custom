@@ -29,6 +29,7 @@ export function serverSupportsCapability(
       capability === "channel-delete-v1" ||
       capability === "channel-attention-v1" ||
       capability === "channel-isolation-v1" ||
+      capability === "channel-browser-v1" ||
       capability === "agent-duplication" ||
       capability === "model-scoped-usage" ||
       capability === "browser-navigation" ||
@@ -138,6 +139,7 @@ export function serverSupportsCapability(
       capability === "routines-once-v1" ||
       capability === "routine-run-command-v1" ||
       capability === "claude-user-setup-v1" ||
+      capability === "claude-compact-window-v1" ||
       capability === "agent-usage-limit-v1" ||
       capability === "hermes-import-v1" ||
       capability === "provider-detection-v1") &&

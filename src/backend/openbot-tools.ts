@@ -5,13 +5,19 @@ import {
   CHAT_VISUAL_MIN_HEIGHT,
   CHAT_VISUAL_TITLE_LIMIT,
 } from "@openbot/contracts/chat-visual";
-import { BUG_REPORT_AREAS, BUG_REPORT_SEVERITIES, FEATURE_REQUEST_TYPES } from "@openbot/contracts/feedback";
+import {
+  BUG_REPORT_AREAS,
+  BUG_REPORT_SEVERITIES,
+  FEATURE_REQUEST_TYPES,
+  FEEDBACK_FINDERS,
+  FEEDBACK_SURFACES,
+} from "@openbot/contracts/feedback";
 import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
 import { API_KEY_NAME_PATTERN, CONNECTOR_IDS, VAULT_API_KEY_LIMIT, VAULT_NOTES_LIMIT } from "@openbot/contracts/ipc";
 import { isUiBlockId, UI_BLOCK_LIMITS } from "@openbot/contracts/ui-blocks";
 import { z } from "zod";
 import pluginCatalog from "../../resources/plugin-catalog/catalog.json";
-import { advertisedJsonSchema } from "./agent/advertised-json-schema";
+import { ADVERTISE_AS_UNION, advertisedJsonSchema } from "./agent/advertised-json-schema";
 import { interruptAgentToolSchema } from "./agent/agent-interrupt-tool";
 import { createChannelToolSchema, listChannelsToolSchema, updateChannelToolSchema } from "./agent/channel-agent-tools";
 import { DATA_TOOL_DEFINITIONS } from "./agent/data-tools";
@@ -198,72 +204,75 @@ export const acknowledgeRequestToolSchema = z.object({
 
 export const askUiToolSchema = z.object({
   blockId: uiBlockIdSchema.optional().describe("Your id for this block. OpenBot makes one when you omit it."),
-  block: z.discriminatedUnion("type", [
-    z.strictObject({
-      type: z.literal("confirm"),
-      title: uiTextSchema(UI_BLOCK_LIMITS.title),
-      danger: z.boolean().optional().describe("Draw the block as dangerous; its primary button is held to press."),
-      confirmHold: z.number().int().min(UI_BLOCK_LIMITS.holdMinMs).max(UI_BLOCK_LIMITS.holdMaxMs).optional(),
-      fields: z
-        .array(
-          z.union([
-            z.strictObject({ label: uiLabelSchema, value: z.string().max(UI_BLOCK_LIMITS.text) }),
+  // Each type has its own fields: one merged object would offer `preview` to a form, which then fails.
+  block: z
+    .discriminatedUnion("type", [
+      z.strictObject({
+        type: z.literal("confirm"),
+        title: uiTextSchema(UI_BLOCK_LIMITS.title),
+        danger: z.boolean().optional().describe("Draw the block as dangerous; its primary button is held to press."),
+        confirmHold: z.number().int().min(UI_BLOCK_LIMITS.holdMinMs).max(UI_BLOCK_LIMITS.holdMaxMs).optional(),
+        fields: z
+          .array(
+            z.union([
+              z.strictObject({ label: uiLabelSchema, value: z.string().max(UI_BLOCK_LIMITS.text) }),
+              z.strictObject({
+                label: uiLabelSchema,
+                select: uiBlockIdSchema.describe("The key of the chosen option in values. Not action."),
+                options: uiStringOptionsSchema(UI_BLOCK_LIMITS.selectOptions).describe("The first one is the default."),
+              }),
+            ]),
+          )
+          .max(UI_BLOCK_LIMITS.confirmFields)
+          .optional(),
+        preview: uiTextSchema(UI_BLOCK_LIMITS.preview).optional().describe("Markdown, such as the body of a letter."),
+        actions: z.array(uiActionSchema).min(1).max(UI_BLOCK_LIMITS.actions),
+      }),
+      z.strictObject({
+        type: z.literal("choice"),
+        title: uiTextSchema(UI_BLOCK_LIMITS.title),
+        multiple: z.boolean().optional(),
+        options: z
+          .array(
             z.strictObject({
+              id: uiBlockIdSchema,
               label: uiLabelSchema,
-              select: uiBlockIdSchema.describe("The key of the chosen option in values. Not action."),
-              options: uiStringOptionsSchema(UI_BLOCK_LIMITS.selectOptions).describe("The first one is the default."),
+              meta: uiTextSchema(UI_BLOCK_LIMITS.meta).optional(),
+              selected: z.boolean().optional(),
             }),
-          ]),
-        )
-        .max(UI_BLOCK_LIMITS.confirmFields)
-        .optional(),
-      preview: uiTextSchema(UI_BLOCK_LIMITS.preview).optional().describe("Markdown, such as the body of a letter."),
-      actions: z.array(uiActionSchema).min(1).max(UI_BLOCK_LIMITS.actions),
-    }),
-    z.strictObject({
-      type: z.literal("choice"),
-      title: uiTextSchema(UI_BLOCK_LIMITS.title),
-      multiple: z.boolean().optional(),
-      options: z
-        .array(
-          z.strictObject({
-            id: uiBlockIdSchema,
-            label: uiLabelSchema,
-            meta: uiTextSchema(UI_BLOCK_LIMITS.meta).optional(),
-            selected: z.boolean().optional(),
-          }),
-        )
-        .min(1)
-        .max(UI_BLOCK_LIMITS.choiceOptions),
-      submit: uiLabelSchema.optional().describe("The submit button label."),
-    }),
-    z.strictObject({
-      type: z.literal("form"),
-      title: uiTextSchema(UI_BLOCK_LIMITS.title),
-      fields: z
-        .array(
-          z.discriminatedUnion("kind", [
-            uiFormTextField("text"),
-            uiFormTextField("textarea"),
-            uiFormOptionsField("select", UI_BLOCK_LIMITS.selectOptions),
-            uiFormOptionsField("segmented", UI_BLOCK_LIMITS.segmentedOptions),
-            z.strictObject({
-              ...uiFormFieldBase,
-              kind: z.literal("date"),
-              label: uiLabelSchema,
-              value: z
-                .string()
-                .regex(/^\d{4}-\d{2}-\d{2}$/)
-                .optional()
-                .describe("YYYY-MM-DD."),
-            }),
-          ]),
-        )
-        .min(1)
-        .max(UI_BLOCK_LIMITS.formFields),
-      submit: uiLabelSchema.optional().describe("The submit button label."),
-    }),
-  ]),
+          )
+          .min(1)
+          .max(UI_BLOCK_LIMITS.choiceOptions),
+        submit: uiLabelSchema.optional().describe("The submit button label."),
+      }),
+      z.strictObject({
+        type: z.literal("form"),
+        title: uiTextSchema(UI_BLOCK_LIMITS.title),
+        fields: z
+          .array(
+            z.discriminatedUnion("kind", [
+              uiFormTextField("text"),
+              uiFormTextField("textarea"),
+              uiFormOptionsField("select", UI_BLOCK_LIMITS.selectOptions),
+              uiFormOptionsField("segmented", UI_BLOCK_LIMITS.segmentedOptions),
+              z.strictObject({
+                ...uiFormFieldBase,
+                kind: z.literal("date"),
+                label: uiLabelSchema,
+                value: z
+                  .string()
+                  .regex(/^\d{4}-\d{2}-\d{2}$/)
+                  .optional()
+                  .describe("YYYY-MM-DD."),
+              }),
+            ]),
+          )
+          .min(1)
+          .max(UI_BLOCK_LIMITS.formFields),
+        submit: uiLabelSchema.optional().describe("The submit button label."),
+      }),
+    ])
+    .meta(ADVERTISE_AS_UNION),
 });
 
 const apiKeyNameSchema = z
@@ -429,7 +438,7 @@ export const OPENBOT_TOOL_DEFINITIONS: readonly OpenBotToolDefinition[] = [
   },
   {
     name: "delete_section",
-    description: "Delete a custom sidebar section without deleting its agents; its agents become ungrouped.",
+    description: "Delete a custom sidebar section, not its agents; they and its folders move up one level.",
     shape: deleteSectionToolSchema.shape,
   },
   {
@@ -759,28 +768,35 @@ export const OPENBOT_TOOL_DEFINITIONS: readonly OpenBotToolDefinition[] = [
   },
   {
     name: "suggest_marketplace_app",
-    description: `Call this when the user needs a service in this list and you have no working tools for it: ${MARKETPLACE_APP_IDS.join(", ")}. It shows a card in the chat to connect the app; only the user connects it. For an installed app, it tests it and returns the fix, such as a Sign in card or setup steps.`,
+    /* The description does not list the apps: the catalog has more than 200, and each agent turn would
+       carry them. An unknown name returns the list. */
+    description:
+      "Call this when the user needs an outside service, such as Notion, Slack or Linear, and you have no working tools for it. It shows a card in the chat to connect the app; only the user connects it. For an installed app, it tests it and returns the fix, such as a Sign in card or setup steps. An unknown name returns the list of apps.",
     shape: {
-      app: z.string().min(1).max(63).describe("An app from the list, such as notion. Use github for GitHub."),
+      app: z.string().min(1).max(63).describe("The app id, such as notion or brave-search."),
     },
   },
   {
     name: "send_feedback",
     description:
-      "Send a bug report or a feature idea for OpenBot itself as a public GitHub issue. OpenBot adds the version, the system and your provider. The user reads the text and approves it before it is sent.",
+      "Send a bug report or a feature idea for OpenBot itself as a public GitHub issue. OpenBot adds the version, system, model and errors. The user reads the text and approves it before it is sent.",
     shape: {
       kind: z
         .enum(["bug", "idea"])
         .describe(
           "bug: something in OpenBot does not work. idea: a feature request or another change that the user wants.",
         ),
-      title: z.string().min(1).max(200).describe("A short summary in plain words, without a prefix."),
+      title: z
+        .string()
+        .min(1)
+        .max(200)
+        .describe("A short summary in plain English, without a prefix: the feature and the symptom."),
       text: z
         .string()
         .min(1)
         .max(1000)
         .describe(
-          "In one to three plain sentences. For a bug: what went wrong and what the user expected, with the exact error text. For an idea: what the user wants OpenBot to do.",
+          "In one to three plain sentences, in the user's language. For a bug: what went wrong and what the user expected, with the exact error text. For an idea: what the user wants OpenBot to do.",
         ),
       details: z
         .string()
@@ -791,13 +807,20 @@ export const OPENBOT_TOOL_DEFINITIONS: readonly OpenBotToolDefinition[] = [
         )
         .optional(),
       type: z.enum(FEATURE_REQUEST_TYPES).describe("Ideas only. Your choice from the chat.").optional(),
-      area: z
-        .enum(BUG_REPORT_AREAS)
-        .describe("Bugs only. Your choice from the chat. Leave it out when it is not clear.")
+      area: z.enum(BUG_REPORT_AREAS).describe("Bugs only, when the chat makes it clear.").optional(),
+      severity: z.enum(BUG_REPORT_SEVERITIES).describe("Bugs only, when the chat makes it clear.").optional(),
+      found_by: z
+        .enum(FEEDBACK_FINDERS)
+        .describe(
+          "Default user. agent: you found it yourself; send that unasked only when OpenBot fails again after one retry, not for the user's code, network, accounts or provider limits.",
+        )
         .optional(),
-      severity: z
-        .enum(BUG_REPORT_SEVERITIES)
-        .describe("Bugs only. Your choice from the chat. Leave it out when it is not clear.")
+      surface: z.enum(FEEDBACK_SURFACES).describe("Where the user saw it, when the chat makes it clear.").optional(),
+      same_as: z
+        .number()
+        .int()
+        .positive()
+        .describe("A similar issue that is the same problem. The report becomes a comment on it.")
         .optional(),
     },
   },

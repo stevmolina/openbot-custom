@@ -150,6 +150,9 @@ export const messages = defineMessages("error.backend", {
     "Mailbox state is corrupt or from a newer OpenBot version; refusing to overwrite it.",
   "error.backend.recipientDeleting": "The recipient is being deleted. Retry after deletion finishes.",
   "error.backend.recipientHidden": "This agent is hidden. Restore it to send messages.",
+  "error.backend.agentIdUnknown": "No agent has the id {id}. Get the ids from openbot.list_agents, then try again.",
+  "error.backend.agentIdNear":
+    "No agent has the id {id}. Agent {name} has the id {nearId}, which is almost the same. If you mean that agent, try again with its id.",
   "error.backend.replyReferenceUnknown":
     "replyToMessageId {id} names no message. Use the Message ID of the message that you answer, or leave replyToMessageId out.",
   "error.backend.replyReferenceRequests": "Messages from these recipients in this turn: {ids}.",
@@ -250,6 +253,8 @@ export const messages = defineMessages("error.backend", {
     "OpenBot could not start its local sign-in connection for this server. Restart OpenBot, then try again.",
   "error.backend.mcpOAuthSignInNeeded":
     "The sign-in to this MCP server has ended. The user must sign in to it again in OpenBot.",
+  "error.backend.mcpOAuthRequestRefused":
+    "The MCP server refused this request, but the sign-in to it is still active. Possibly the account cannot use this tool, or the sign-in did not give all the necessary access. The user can examine the plan and the access of the account at the service, or sign in to the server again in OpenBot and allow all the access that it asks for.",
   "error.backend.mcpServerUnreachable": "OpenBot could not reach the server. Check the URL and your network.",
   "error.backend.mcpLocalServerOff":
     "No server answers at {address} on this computer. Start the server, or turn it on in the app that runs it, then try again.",
