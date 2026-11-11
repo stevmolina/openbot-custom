@@ -316,7 +316,7 @@ function AllMachinesSidebar(props: { filter?: string | null; compact?: boolean }
           serverId: "personal-vps",
           agents: vpsAgents,
           agentStates: {
-            inbox: { kind: "waiting", reason: "question", detail: "Answer: Reply to Renzo today?" },
+            inbox: { kind: "waiting", reason: "question", detail: "Reply to Renzo today?" },
             "vps-writer": { kind: "working" },
             uba: { kind: "unread", count: 1 },
           },

@@ -29,9 +29,15 @@ export type MachineActivity = NonNullable<ReturnType<DynamicIslandCoordinator["s
  * of `activity` follows that version.
  *
  * A joined server sends its runtime snapshot on its event stream, so `refresh` asks main to send it
- * again; the coordinator takes it like any other event.
+ * again; the coordinator takes it like any other event. The server of this computer answers with its
+ * snapshot instead; the coordinator gets it once, while it holds nothing of that server, such as
+ * after the window loads again with another server open.
  */
-export function createMachineActivity(options: { coordinator: DynamicIslandCoordinator; enabled: () => boolean }) {
+export function createMachineActivity(options: {
+  coordinator: DynamicIslandCoordinator;
+  enabled: () => boolean;
+  activeServerId: () => string;
+}) {
   const [version, setVersion] = createSignal(0);
   let bumpScheduled = false;
   const bump = () => {
@@ -60,12 +66,22 @@ export function createMachineActivity(options: { coordinator: DynamicIslandCoord
       version();
       return options.coordinator.serverState(serverId);
     },
-    /** Asks a joined server for its runtime snapshot again. This computer's server sends its events live. */
+    /** Asks a server for its runtime snapshot again, so the view does not wait for its next turn. */
     refresh(serverId: string): void {
       void serversPort()
         .agent.getRuntimeSnapshot(serverId)
         .catch(() => null)
-        .then(() => bump());
+        .then((snapshot) => {
+          if (disposed) return;
+          // A joined server answers null and sends the snapshot as an event.
+          if (snapshot && options.coordinator.serverState(serverId) === null) {
+            options.coordinator.applyEvent(
+              { serverId, event: { type: "runtime-snapshot", snapshot } },
+              options.activeServerId(),
+            );
+          }
+          bump();
+        });
     },
   };
 }

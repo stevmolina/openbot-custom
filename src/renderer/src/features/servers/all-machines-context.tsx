@@ -64,7 +64,7 @@ const AllMachines = createSimpleContext({
     const active = () => chosen() && platform.chatWindow === null;
     const orderedServers = createMemo(() => orderServers(servers(), localServerHidden()));
     const store = createMachinesStore({ servers: orderedServers, enabled: active });
-    const activity = createMachineActivity({ coordinator: dynamicIslandCoordinator, enabled: active });
+    const activity = createMachineActivity({ coordinator: dynamicIslandCoordinator, enabled: active, activeServerId });
     /** The chosen machine. One that the app no longer lists shows all of them. */
     const filter = createMemo(() => {
       const serverId = chosenFilter();
@@ -79,17 +79,17 @@ const AllMachines = createSimpleContext({
       if (previousId && previousId !== serverId && active()) store.reload(previousId);
     });
 
-    // A joined server sends its runtime snapshot when it connects. The view asks for it again when it
-    // opens and when a server comes online, so its "Needs you" and "Working" do not wait for a turn.
-    const remoteOnline = createMemo(() =>
+    // The view asks each server for what its agents do now when it opens and when a server comes
+    // online, so its "Needs you" and "Working" do not wait for the next turn.
+    const reachable = createMemo(() =>
       active()
         ? orderedServers()
-            .filter((server) => server.kind === "remote" && server.state === "online")
+            .filter((server) => server.kind === "local" || server.state === "online")
             .map((server) => server.id)
             .join("\n")
         : "",
     );
-    createEffect(remoteOnline, (ids, previous) => {
+    createEffect(reachable, (ids, previous) => {
       const before = new Set(previous ? previous.split("\n") : []);
       for (const serverId of ids ? ids.split("\n") : []) if (!before.has(serverId)) activity.refresh(serverId);
     });

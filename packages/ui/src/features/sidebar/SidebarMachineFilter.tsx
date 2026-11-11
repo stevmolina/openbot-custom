@@ -172,7 +172,12 @@ export function SidebarMachineChips(chipsProps: { view: SidebarAllMachines }) {
 }
 
 /** Why a machine of the choice shows no chats, or null while its chats show. */
-function machineNotice(machine: Machine, single: boolean, t: ReturnType<typeof useText>["t"]): string | null {
+function machineNotice(
+  machine: Machine,
+  single: boolean,
+  hasRows: boolean,
+  t: ReturnType<typeof useText>["t"],
+): string | null {
   const name = machine.name;
   if (machine.state === "connecting") return t("server.allMachines.connecting", { name });
   if (machine.state === "sleeping") return t("server.allMachines.sleeping", { name });
@@ -181,7 +186,7 @@ function machineNotice(machine: Machine, single: boolean, t: ReturnType<typeof u
   // "All" shows the other machines while one loads or has no agents, so only one machine says so.
   if (!single) return null;
   if (machine.agents.status === "loading") return t("server.machines.loading");
-  return machine.agents.agents.length === 0 ? t("server.machines.noAgents") : null;
+  return hasRows ? null : t("server.machines.noAgents");
 }
 
 /** One muted line for each machine of the choice that shows no chats, with a retry where one helps. */
@@ -189,8 +194,10 @@ export function SidebarMachineNotices(noticeProps: { view: SidebarAllMachines })
   const { t } = useText();
   const notices = createMemo(() => {
     const single = noticeProps.view.filter !== null;
+    // The rows of the list are the agents that the machine shows, the open server's live ones too.
+    const withRows = new Set([...noticeProps.view.agentServers.values()].map((ref) => ref.serverId));
     return shownMachines(noticeProps.view).flatMap((machine) => {
-      const text = machineNotice(machine, single, t);
+      const text = machineNotice(machine, single, withRows.has(machine.id), t);
       return text === null ? [] : [{ machine, text }];
     });
   });
