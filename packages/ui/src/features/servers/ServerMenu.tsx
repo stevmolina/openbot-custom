@@ -20,6 +20,7 @@ import { SwapLabel } from "@openbot/ui/components/SwapLabel";
 import { createEffect, createSignal, For, Show, untrack } from "solid-js";
 import { useText } from "../../text";
 import { type ServerActionCallbacks, ServerActionItems } from "./ServerActionItems";
+import { AllMachinesMonogram } from "./ServerMonogram";
 import {
   addServerLabel,
   type HiddenLocalServer,
@@ -28,6 +29,16 @@ import {
   serverHostedSleep,
   serverStatusLabels,
 } from "./ServerRail";
+
+/**
+ * The "All machines" view of the sidebar: the agents of every server at once. The server list shows it
+ * as its first row. While it is on, it is the checked row, and a click on any server row, the open one
+ * too, leaves it for that server.
+ */
+export interface ServerMenuAllMachines {
+  active: boolean;
+  onSelect: () => void;
+}
 
 /** Where the desktop app lists servers: the rail beside the sidebar, or the menu on the server name. */
 export type ServerView = "rail" | "menu";
@@ -71,6 +82,8 @@ export interface ServerMenuProps extends ServerActionCallbacks {
   placement?: "bottom-start" | "top-start" | "right-end" | undefined;
   /** Opens the settings of the user. With it, the menu ends with a Settings item. */
   onOpenAppSettings?: ((trigger: HTMLElement) => void) | undefined;
+  /** The "All machines" view. Without it, the server list has no such row. */
+  allMachines?: ServerMenuAllMachines | undefined;
 }
 
 function isContextMenuKey(event: KeyboardEvent): boolean {
@@ -103,12 +116,15 @@ export function ServerMenu(props: ServerMenuProps) {
   let anchor: HTMLElement | undefined;
   let trigger: HTMLElement | undefined;
   const activeServer = () => props.servers.find((server) => server.active);
-  const activeServers = () => props.servers.filter((server) => server.active);
+  const allMachinesOn = () => props.allMachines?.active === true;
+  /** The server that the trigger shows. "All machines" shows its own mark in place of one server. */
+  const activeServers = () => (allMachinesOn() ? [] : props.servers.filter((server) => server.active));
   const stack = () => props.look === "stack";
   /** The server behind the active one in the stacked logo. */
   const otherServer = () => props.servers.find((server) => !server.active);
+  /** The trigger names "All machines" while the view is on, so it shows no sleep of one server. */
   const activeSleep = () => {
-    const server = activeServer();
+    const server = allMachinesOn() ? undefined : activeServer();
     return server ? serverHostedSleep(server) : null;
   };
   /** The name, or why the server does not answer while it sleeps or wakes. */
@@ -133,7 +149,13 @@ export function ServerMenu(props: ServerMenuProps) {
 
   function selectServer(server: ServerSummary): void {
     setMenuOpen(false);
-    if (!server.active) props.onSelect(server.id);
+    // While "All machines" is on, the open server is not the checked row: a click on it leaves the view.
+    if (!server.active || allMachinesOn()) props.onSelect(server.id);
+  }
+
+  function selectAllMachines(): void {
+    setMenuOpen(false);
+    if (!allMachinesOn()) props.allMachines?.onSelect();
   }
 
   // A row is a submenu trigger, and Kobalte opens the submenu on Enter and Space. This listener
@@ -186,6 +208,11 @@ export function ServerMenu(props: ServerMenuProps) {
             when={stack()}
             fallback={
               <>
+                <Show when={allMachinesOn()}>
+                  <span class="server-menu-mark sidebar-server-name-mark" aria-hidden="true">
+                    <AllMachinesMonogram />
+                  </span>
+                </Show>
                 {/* Keyed by server, so the logo of a newly selected server springs in. */}
                 <For each={activeServers()} keyed={(server) => server.id}>
                   {(server) => {
@@ -217,7 +244,7 @@ export function ServerMenu(props: ServerMenuProps) {
             }
           >
             <span class="sidebar-account-stack" aria-hidden="true">
-              <Show when={otherServer()}>
+              <Show when={!allMachinesOn() ? otherServer() : undefined}>
                 {(server) => (
                   <span class="sidebar-account-logo sidebar-account-logo-back">
                     <ServerMark server={server()} />
@@ -231,6 +258,11 @@ export function ServerMenu(props: ServerMenuProps) {
                   </span>
                 )}
               </For>
+              <Show when={allMachinesOn()}>
+                <span class="sidebar-account-logo sidebar-account-logo-front">
+                  <AllMachinesMonogram />
+                </span>
+              </Show>
             </span>
             <Show when={activeSleep()}>
               {(sleep) => <Moon class="sidebar-account-sleep" data-state={sleep()} aria-hidden="true" />}
@@ -267,18 +299,32 @@ export function ServerMenu(props: ServerMenuProps) {
               <div class="ui-menu-label" aria-hidden="true">
                 {t("server.rail.label")}
               </div>
+              <Show when={props.allMachines}>
+                <DropdownMenu.Item
+                  class="server-menu-row server-menu-all"
+                  aria-current={allMachinesOn() ? "true" : undefined}
+                  data-cuelume-navigate=""
+                  onSelect={selectAllMachines}
+                >
+                  <CheckCircle checked={allMachinesOn()} />
+                  <span class="server-menu-mark" aria-hidden="true">
+                    <AllMachinesMonogram />
+                  </span>
+                  <span class="server-menu-name">{t("server.allMachines.title")}</span>
+                </DropdownMenu.Item>
+              </Show>
               <For each={props.servers} keyed={(server) => server.id}>
                 {(server) => (
                   <DropdownMenu.Sub>
                     <DropdownMenu.SubTrigger
                       class="server-menu-row"
                       aria-label={[server().name, ...serverStatusLabels(server(), t)].join(", ")}
-                      aria-current={server().active ? "true" : undefined}
+                      aria-current={server().active && !allMachinesOn() ? "true" : undefined}
                       data-cuelume-navigate=""
                       onClick={() => selectServer(server())}
                       ref={(row) => selectOnKey(row, server)}
                     >
-                      <CheckCircle checked={server().active} />
+                      <CheckCircle checked={server().active && !allMachinesOn()} />
                       <span class="server-menu-mark" aria-hidden="true">
                         <ServerMark server={server()} />
                       </span>

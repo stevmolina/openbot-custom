@@ -5,6 +5,7 @@
  */
 
 import type { ServerConnectionState } from "@openbot/contracts/ipc";
+import type { AppTextKey } from "@openbot/i18n";
 import { Button, RefreshCw, Settings } from "@openbot/ui";
 import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
 import type { AgentProfile } from "../../data";
@@ -21,6 +22,8 @@ export interface MachineAgent
   updatedAt: string | null;
   /** The messages that the user did not read. */
   unread: number;
+  /** The last message, for the sidebar row. The Machines page shows the title instead. */
+  preview?: string | undefined;
 }
 
 /** The agents of one machine: still loading, not read, or read. */
@@ -54,7 +57,7 @@ export interface MachinesPageProps {
   onOpenSettings?: ((serverId: string, trigger: HTMLElement) => void) | undefined;
 }
 
-const STATE_LABEL = {
+export const MACHINE_STATE_LABEL = {
   online: "server.machines.state.online",
   connecting: "server.machines.state.connecting",
   offline: "server.machines.state.offline",
@@ -63,8 +66,20 @@ const STATE_LABEL = {
   sleeping: "server.machines.state.sleeping",
 } as const;
 
+/**
+ * Why a machine shows no agents: it connects, sleeps, does not answer, or did not give its agents.
+ * Null while it is online and its agents load or show. A sleeping hosted server does not answer until
+ * it wakes; the retry wakes it.
+ */
+export function machineUnavailableNotice(machine: Machine): AppTextKey | null {
+  if (machine.state === "connecting") return "server.machines.connectingNotice";
+  if (machine.state === "sleeping") return "server.machines.sleepingNotice";
+  if (machine.state !== "online") return "server.machines.unreachable";
+  return machine.agents.status === "failed" ? "server.machines.loadFailed" : null;
+}
+
 /** Newest chat first. An agent with no messages goes last, in name order. */
-function byActivity(a: MachineAgent, b: MachineAgent): number {
+export function byActivity(a: MachineAgent, b: MachineAgent): number {
   if (a.updatedAt && b.updatedAt) return b.updatedAt.localeCompare(a.updatedAt);
   if (a.updatedAt || b.updatedAt) return a.updatedAt ? -1 : 1;
   return a.name.localeCompare(b.name);
@@ -134,8 +149,6 @@ function MachineSection(props: {
   onOpenSettings: MachinesPageProps["onOpenSettings"];
 }) {
   const { t } = useText();
-  /** A sleeping hosted server does not answer until it wakes; the retry wakes it. */
-  const reachable = () => props.machine.state === "online";
   const agents = createMemo(() => {
     const list = props.machine.agents;
     if (list.status !== "ready") return [];
@@ -156,7 +169,7 @@ function MachineSection(props: {
           </h3>
           <p class="machines-section-meta">
             <span class="machines-state-dot" aria-hidden="true" />
-            <span>{t(STATE_LABEL[props.machine.state])}</span>
+            <span>{t(MACHINE_STATE_LABEL[props.machine.state])}</span>
             <Show when={props.machine.thisComputer}>
               <span>{t("server.machines.thisComputer")}</span>
             </Show>
@@ -182,26 +195,18 @@ function MachineSection(props: {
         </Show>
       </header>
       <Switch>
-        <Match when={!reachable() || props.machine.agents.status === "failed"}>
-          <div class="machines-notice">
-            <span>
-              {t(
-                props.machine.state === "connecting"
-                  ? "server.machines.connectingNotice"
-                  : props.machine.state === "sleeping"
-                    ? "server.machines.sleepingNotice"
-                    : reachable()
-                      ? "server.machines.loadFailed"
-                      : "server.machines.unreachable",
-              )}
-            </span>
-            <Show when={props.machine.state !== "connecting"}>
-              <Button type="button" variant="outline" size="sm" onClick={() => props.onRetry(props.machine.id)}>
-                <RefreshCw aria-hidden="true" />
-                {t("server.machines.retry")}
-              </Button>
-            </Show>
-          </div>
+        <Match when={machineUnavailableNotice(props.machine)}>
+          {(notice) => (
+            <div class="machines-notice">
+              <span>{t(notice())}</span>
+              <Show when={props.machine.state !== "connecting"}>
+                <Button type="button" variant="outline" size="sm" onClick={() => props.onRetry(props.machine.id)}>
+                  <RefreshCw aria-hidden="true" />
+                  {t("server.machines.retry")}
+                </Button>
+              </Show>
+            </div>
+          )}
         </Match>
         <Match when={props.machine.agents.status === "loading"}>
           <p class="machines-notice">{t("server.machines.loading")}</p>

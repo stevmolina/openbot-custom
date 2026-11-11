@@ -1,13 +1,8 @@
-import { classifyFailure } from "@openbot/telemetry";
 import { MachinesPage } from "@openbot/ui/features/servers/MachinesPage";
-import { useText } from "@openbot/ui/text";
-import { actionToast } from "../../action-toast";
-import { useNavigation } from "../../navigation";
+import { useOpenMachineAgent } from "./machine-agent-open";
 import { createMachinesStore } from "./machines-store";
 import { useServerActions } from "./server-actions";
-import { useServerSelection } from "./server-selection";
 import { useServerSettings } from "./server-settings";
-import { useServerSwitch } from "./server-switch";
 import { useServers } from "./servers-context";
 
 /**
@@ -16,32 +11,11 @@ import { useServers } from "./servers-context";
  * switch to that server.
  */
 export function MachinesPanel() {
-  const { t, errorMessage } = useText();
   const { servers, retryServerConnection } = useServers();
   const { orderedServers } = useServerActions();
-  const { selectServer } = useServerSelection();
-  // The switch rebuilds this scope, so the selection goes through the context above it.
-  const { setPendingAgentSelection } = useServerSwitch();
-  const { selectAgent } = useNavigation();
+  const { openAgent } = useOpenMachineAgent();
   const { openServerSettings } = useServerSettings();
   const store = createMachinesStore({ servers: orderedServers });
-
-  async function openAgent(serverId: string, agentId: string): Promise<void> {
-    if (servers().find((server) => server.active)?.id === serverId) {
-      selectAgent(agentId);
-      return;
-    }
-    try {
-      if (!(await selectServer(serverId))) return;
-    } catch (error) {
-      actionToast.error(t("server.select.failedTitle"), {
-        description: errorMessage(error, t("server.select.failedDescription")),
-        report: { operation: "team", source: "action", cause_code: classifyFailure(error) },
-      });
-      return;
-    }
-    setPendingAgentSelection(agentId);
-  }
 
   function retry(serverId: string): void {
     const server = servers().find((candidate) => candidate.id === serverId);

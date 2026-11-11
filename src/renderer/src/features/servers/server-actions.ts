@@ -6,6 +6,7 @@ import { useText } from "@openbot/ui/text";
 import { actionToast } from "../../action-toast";
 import { usePlatform } from "../../platform";
 import { useSettings } from "../settings/settings-context";
+import { hiddenLocalServerOf, orderServers } from "./server-order";
 import { useServerSelection } from "./server-selection";
 import { useServerSettings } from "./server-settings";
 import { useServers } from "./servers-context";
@@ -39,19 +40,12 @@ export function useServerActions() {
     return servers().filter((server) => server.kind === "remote");
   }
 
-  /**
-   * The server on this computer while the user hides it. An open server always shows, and without
-   * another server it is the only one.
-   */
   function hiddenLocalServer(): ServerSummary | undefined {
-    if (!localServerHidden() || remoteServers().length === 0) return undefined;
-    return servers().find((server) => server.kind === "local" && !server.active);
+    return hiddenLocalServerOf(servers(), localServerHidden());
   }
 
-  /** Local servers above the saved remote-server order, as the rail draws them. A hidden server is left out. */
   function orderedServers(): ServerSummary[] {
-    const hidden = hiddenLocalServer();
-    return [...servers().filter((server) => server.kind === "local" && server !== hidden), ...remoteServers()];
+    return orderServers(servers(), localServerHidden());
   }
 
   function selectFailed(error: unknown): void {
