@@ -62,7 +62,8 @@ export const ChatMcpSignInCard = memo(function ChatMcpSignInCard({
     );
   }
   const signedIn = Boolean(signIns.data?.some((state) => state.mcpServerId === config.id && state.signedIn));
-  const state = sent ? "sent" : !canRelay ? "unavailable" : signedIn ? "signed-in" : "sign-in";
+  // A server signed in on the computer can be tested again from here, also without the relay.
+  const state = sent ? "sent" : signedIn ? "signed-in" : !canRelay ? "unavailable" : "sign-in";
   return (
     <View
       className="max-w-[92%] self-start gap-2 rounded-[20px] bg-control/60 px-4 py-3"
