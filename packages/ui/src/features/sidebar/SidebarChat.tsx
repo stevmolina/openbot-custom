@@ -250,15 +250,27 @@ interface SidebarChatFolderGroups {
  * the section list; only the rows are the rows of the chat list.
  */
 function SidebarChatFolders(foldersProps: { chats: readonly SidebarChatItem[] }) {
-  const { customSectionById, props, sectionParent } = useSidebarScope();
+  const { customSectionById, draggingKind, props, sectionParent, waitingChats } = useSidebarScope();
   const { t } = useText();
-  /** A chat waits when its row shows a wait: of its own chat, a side thread, or a channel. */
-  const waits = (chat: SidebarChatItem) =>
-    chat.kind === "channel"
-      ? props.channelWaits?.[chat.id] !== undefined
-      : sidebarAgentWait(chat.id, props.agentStates[chat.id], props.threadLanes?.threads) !== undefined;
+  /**
+   * The agents whose wait is in a side thread only. The set holds still during a drag, as the store's
+   * `waitingChats` does, so no row moves between "Needs you" and a folder under the pointer.
+   */
+  let heldSideWaits: ReadonlySet<string> = new Set();
+  const sideWaits = createMemo(() => {
+    const next = new Set(
+      (props.threadLanes?.threads ?? []).flatMap((entry) =>
+        sidebarAgentWait(entry.agentId, undefined, [entry]) ? [entry.agentId] : [],
+      ),
+    );
+    if (!draggingKind()) heldSideWaits = next;
+    return heldSideWaits;
+  });
   const groups = createMemo<SidebarChatFolderGroups>(() => {
     const sectionOf = sidebarSectionResolver(props.layout);
+    const waitingIds = new Set(waitingChats().map((chat) => chat.id));
+    const waits = (chat: SidebarChatItem) =>
+      waitingIds.has(chat.id) || (chat.kind === "agent" && sideWaits().has(chat.id));
     const waiting: SidebarChatItem[] = [];
     const bySection = new Map<string, SidebarChatItem[]>();
     for (const chat of foldersProps.chats) {
@@ -409,7 +421,11 @@ function SidebarChatList() {
           <SidebarEmptyState />
         </Show>
         <SidebarPinnedGroup />
-        <Show when={props.layout.sections.length > 0} fallback={<SidebarChatRows chats={recent()} />}>
+        {/* The draft of a first folder needs the folder view, or it would have nowhere to show. */}
+        <Show
+          when={props.layout.sections.length > 0 || pending.sectionEditor?.target.kind === "create"}
+          fallback={<SidebarChatRows chats={recent()} />}
+        >
           <SidebarChatFolders chats={recent()} />
         </Show>
         <SidebarPeopleSection sectionId={SIDEBAR_PEOPLE_SECTION_ID} />
