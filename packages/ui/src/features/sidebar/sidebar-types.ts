@@ -51,6 +51,17 @@ export const SIDEBAR_LANE_IDS = {
 } as const;
 
 /**
+ * The dock of the chat sidebar opens one group at a time. The open group is saved in
+ * `collapsedSectionIds` as `dock:open:<group id>`, and `dock:none` records that the user closed all
+ * of them. With neither, "Working" is open. A folder group's id is its section id, and "Settled" is
+ * the unassigned section. The colon keeps these ids apart from the section ids that the layout makes.
+ */
+export const SIDEBAR_DOCK_OPEN_PREFIX = "dock:open:";
+export const SIDEBAR_DOCK_NONE_ID = "dock:none";
+/** The "Working" group of the dock. */
+export const SIDEBAR_DOCK_WORKING_ID = "dock:working";
+
+/**
  * How the list orders the chats in the sections. Pins and "Needs you" come first in each order, and
  * none of them changes the saved `agentOrder`.
  * - `manual`: the saved order of the layout.

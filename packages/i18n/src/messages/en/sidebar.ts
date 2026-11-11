@@ -114,6 +114,7 @@ export const messages = defineMessages("sidebar", {
   "sidebar.waiting.hint.approval": "Select to review",
   "sidebar.waiting.hint.takeover": "Select to take over",
   "sidebar.lanes.working": "Working",
+  "sidebar.dock.settled": "Settled",
   "sidebar.lanes.agents": "Agents",
   "sidebar.lanes.channels": "Channels",
   "sidebar.lanes.mainChat": "Main chat",

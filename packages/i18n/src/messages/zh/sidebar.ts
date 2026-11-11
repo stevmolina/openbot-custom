@@ -114,6 +114,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "选择即可审核",
   "sidebar.waiting.hint.takeover": "选择即可接管",
   "sidebar.lanes.working": "进行中",
+  "sidebar.dock.settled": "已完成",
   "sidebar.lanes.agents": "智能体",
   "sidebar.lanes.channels": "频道",
   "sidebar.lanes.mainChat": "主聊天",

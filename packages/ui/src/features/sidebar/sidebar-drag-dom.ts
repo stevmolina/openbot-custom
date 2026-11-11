@@ -56,7 +56,8 @@ export function measureSidebarDragSlots(
   for (const section of list.querySelectorAll<HTMLElement>(SIDEBAR_DRAG_SELECTORS.sectionRegion)) {
     const sectionId = section.dataset.sectionId;
     if (!sectionId || isInClosedSection(section)) continue;
-    const bounds = section.getBoundingClientRect();
+    const bounds = visibleBounds(section, list);
+    if (!bounds) continue;
     const header = section.querySelector<HTMLElement>(":scope > header");
     // A stuck header is not at the top of its section, so its line comes from its style, not its box.
     const headerStyle = header ? getComputedStyle(header) : null;
@@ -65,7 +66,7 @@ export function measureSidebarDragSlots(
       bottom: bounds.bottom,
       sectionId,
       top: bounds.top,
-      centerY: bounds.top + bounds.height / 2,
+      centerY: bounds.top + (bounds.bottom - bounds.top) / 2,
       header: header
         ? {
             height: header.offsetHeight,
@@ -77,13 +78,14 @@ export function measureSidebarDragSlots(
   for (const row of list.querySelectorAll<HTMLElement>(SIDEBAR_DRAG_SELECTORS.chatRow)) {
     const chatId = row.dataset.chatId;
     if (!chatId || isInClosedSection(row)) continue;
-    const bounds = row.getBoundingClientRect();
+    const bounds = visibleBounds(row, list);
+    if (!bounds) continue;
     chats.set(chatId, {
       bottom: bounds.bottom,
-      centerY: bounds.top + bounds.height / 2,
+      centerY: bounds.top + (bounds.bottom - bounds.top) / 2,
       chatId,
       element: row,
-      height: bounds.height,
+      height: bounds.bottom - bounds.top,
       sectionId: assignedSectionId(chatId),
       top: bounds.top,
     });
@@ -91,10 +93,11 @@ export function measureSidebarDragSlots(
   for (const row of list.querySelectorAll<HTMLElement>(SIDEBAR_DRAG_SELECTORS.personRow)) {
     const memberId = row.dataset.personId;
     if (!memberId) continue;
-    const bounds = row.getBoundingClientRect();
+    const bounds = visibleBounds(row, list);
+    if (!bounds) continue;
     people.set(memberId, {
       bottom: bounds.bottom,
-      centerY: bounds.top + bounds.height / 2,
+      centerY: bounds.top + (bounds.bottom - bounds.top) / 2,
       element: row,
       memberId,
       top: bounds.top,
@@ -115,6 +118,25 @@ export function measureSidebarDragSlots(
     });
   }
   return { chats, geometry, people, pinned, sections };
+}
+
+/**
+ * The part of an element that the scrollers inside the list let show. The chat list scrolls in its
+ * top zone and in its dock, so a row scrolled out of one of them can sit under the other: it takes no
+ * drop there. Null when nothing of a clipped element shows. The list's own scroll is not a clip here.
+ */
+function visibleBounds(element: HTMLElement, list: HTMLElement): { top: number; bottom: number } | null {
+  const bounds = element.getBoundingClientRect();
+  let top = bounds.top;
+  let bottom = bounds.bottom;
+  for (let node = element.parentElement; node && node !== list; node = node.parentElement) {
+    if (getComputedStyle(node).overflowY === "visible") continue;
+    const clip = node.getBoundingClientRect();
+    top = Math.max(top, clip.top);
+    bottom = Math.min(bottom, clip.bottom);
+  }
+  const clipped = top > bounds.top || bottom < bounds.bottom;
+  return clipped && bottom <= top ? null : { top, bottom };
 }
 
 /**

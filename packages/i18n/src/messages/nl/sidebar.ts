@@ -117,6 +117,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "Selecteer om te bekijken",
   "sidebar.waiting.hint.takeover": "Selecteer om over te nemen",
   "sidebar.lanes.working": "Bezig",
+  "sidebar.dock.settled": "Afgehandeld",
   "sidebar.lanes.agents": "Agents",
   "sidebar.lanes.channels": "Kanalen",
   "sidebar.lanes.mainChat": "Hoofdchat",

@@ -5,6 +5,9 @@
  *
  * A folder in a folder names its parent before its own name, in muted text, because folders do not
  * indent. A folder header ends with a folder icon, and with the unread count while it is closed.
+ *
+ * In the dock of the chat sidebar, a folder header has the look of the other dock groups (`dock`):
+ * a chevron, the folder icon, the name and the count. Its menu and its drag stay the same.
  */
 
 import { SIDEBAR_FOLDER_LEVELS } from "@openbot/contracts/ipc";
@@ -26,10 +29,20 @@ import {
 } from "@openbot/ui";
 import { For, Show } from "solid-js";
 import { useText } from "../../text";
+import { SidebarDockHeadContent } from "./SidebarDockHead";
 import { SidebarSectionEditor } from "./SidebarSectionEditor";
 import { useSidebarScope } from "./sidebar-scope";
 
-export function SidebarSectionHeader(headerProps: { sectionId: string; name: string; depth?: number }) {
+export function SidebarSectionHeader(headerProps: {
+  sectionId: string;
+  name: string;
+  depth?: number;
+  /**
+   * The header of a dock group: the count of its chats, whether one of them is unread, and the open
+   * state, which the dock owns.
+   */
+  dock?: { count: number; unread: boolean; open: boolean; onToggle: () => void } | undefined;
+}) {
   const {
     customSectionById,
     duplicateSection,
@@ -53,6 +66,7 @@ export function SidebarSectionHeader(headerProps: { sectionId: string; name: str
     startRenameSection,
     startSectionDragging,
     stopSidebarDragging,
+    toggleSection,
     visibleSectionIds,
   } = useSidebarScope();
   const { t } = useText();
@@ -60,7 +74,8 @@ export function SidebarSectionHeader(headerProps: { sectionId: string; name: str
     const target = pending.sectionEditor?.target;
     return target?.kind === "rename" && target.sectionId === headerProps.sectionId;
   };
-  const collapsed = () => sectionIsCollapsed(headerProps.sectionId);
+  const collapsed = () => (headerProps.dock ? !headerProps.dock.open : sectionIsCollapsed(headerProps.sectionId));
+  const toggle = () => (headerProps.dock ? headerProps.dock.onToggle() : toggleSection(headerProps.sectionId));
   const custom = () => customSectionById().has(headerProps.sectionId);
   const sibling = () => sectionSiblingIndex(headerProps.sectionId);
   const depth = () => headerProps.depth ?? 0;
@@ -81,7 +96,7 @@ export function SidebarSectionHeader(headerProps: { sectionId: string; name: str
         sectionCanNest(headerProps.sectionId, sectionId),
     );
   const createInside = () => {
-    if (collapsed()) props.onToggleSection(headerProps.sectionId);
+    if (collapsed()) toggle();
     startCreateSection(undefined, headerProps.sectionId);
   };
   return (
@@ -93,7 +108,7 @@ export function SidebarSectionHeader(headerProps: { sectionId: string; name: str
             type="button"
             class={buttonVariants({
               variant: "ghost",
-              class: "sidebar-section-toggle sidebar-section-drag-handle",
+              class: `sidebar-section-toggle sidebar-section-drag-handle${headerProps.dock ? " sidebar-dock-head" : ""}`,
             })}
             draggable={!layoutMutable() || props.compact ? "false" : "true"}
             title={!layoutMutable() ? t("sidebar.section.layoutUnsupported") : undefined}
@@ -103,45 +118,62 @@ export function SidebarSectionHeader(headerProps: { sectionId: string; name: str
             data-cuelume-close={collapsed() ? undefined : ""}
             data-cuelume-emphasis="subtle"
             onClick={(event: MouseEvent) => {
-              if (!sidebarClickIsSuppressed(event)) props.onToggleSection(headerProps.sectionId);
+              if (!sidebarClickIsSuppressed(event)) toggle();
             }}
             onDragStart={(event: DragEvent & { currentTarget: HTMLElement }) =>
               startSectionDragging(event, headerProps.sectionId)
             }
             onDragEnd={stopSidebarDragging}
           >
-            <span
-              class="sidebar-section-name"
-              title={custom() ? sectionLabel(headerProps.sectionId) : headerProps.name}
-            >
-              <Show when={custom() ? parentName() : undefined}>
-                {(name) => <span class="sidebar-folder-parent">{name()} / </span>}
-              </Show>
-              {headerProps.name}
-            </span>
             <Show
-              when={custom()}
+              when={headerProps.dock}
               fallback={
-                <ChevronDown
-                  class={`sidebar-section-chevron size-4${collapsed() ? " sidebar-section-chevron-collapsed" : ""}`}
-                  aria-hidden="true"
-                />
+                <>
+                  <span
+                    class="sidebar-section-name"
+                    title={custom() ? sectionLabel(headerProps.sectionId) : headerProps.name}
+                  >
+                    <Show when={custom() ? parentName() : undefined}>
+                      {(name) => <span class="sidebar-folder-parent">{name()} / </span>}
+                    </Show>
+                    {headerProps.name}
+                  </span>
+                  <Show
+                    when={custom()}
+                    fallback={
+                      <ChevronDown
+                        class={`sidebar-section-chevron size-4${collapsed() ? " sidebar-section-chevron-collapsed" : ""}`}
+                        aria-hidden="true"
+                      />
+                    }
+                  >
+                    <span class="sidebar-folder-end">
+                      <Show when={unread() > 0}>
+                        <Badge class="sidebar-folder-unread" variant="primary-light" aria-hidden="true">
+                          {Math.min(unread(), 99)}
+                        </Badge>
+                        <span class="sr-only">{t("sidebar.folder.unread", { count: unread() })}</span>
+                      </Show>
+                      <Show
+                        when={collapsed() || empty()}
+                        fallback={<FolderOpen class="sidebar-folder-icon size-4" aria-hidden="true" />}
+                      >
+                        <Folder class="sidebar-folder-icon size-4" aria-hidden="true" />
+                      </Show>
+                    </span>
+                  </Show>
+                </>
               }
             >
-              <span class="sidebar-folder-end">
-                <Show when={unread() > 0}>
-                  <Badge class="sidebar-folder-unread" variant="primary-light" aria-hidden="true">
-                    {Math.min(unread(), 99)}
-                  </Badge>
-                  <span class="sr-only">{t("sidebar.folder.unread", { count: unread() })}</span>
-                </Show>
-                <Show
-                  when={collapsed() || empty()}
-                  fallback={<FolderOpen class="sidebar-folder-icon size-4" aria-hidden="true" />}
-                >
-                  <Folder class="sidebar-folder-icon size-4" aria-hidden="true" />
-                </Show>
-              </span>
+              {(dock) => (
+                <SidebarDockHeadContent
+                  name={headerProps.name}
+                  count={dock().count}
+                  unread={dock().unread}
+                  open={!collapsed()}
+                  folder={custom()}
+                />
+              )}
             </Show>
           </ContextMenu.Trigger>
           <Show when={layoutMutable()}>

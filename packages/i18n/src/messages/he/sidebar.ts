@@ -117,6 +117,7 @@ export const messages = {
   "sidebar.waiting.hint.question": "יש לבחור כדי לענות",
   "sidebar.waiting.hint.approval": "יש לבחור כדי לסקור",
   "sidebar.waiting.hint.takeover": "יש לבחור כדי להשתלט",
+  "sidebar.dock.settled": "הושלמו",
   "sidebar.hidden.title": "מוסתרים",
   "sidebar.hidden.count": { one: "({count})", two: "({count})", other: "({count})" },
   "sidebar.hidden.label": { one: "מוסתר, סוכן אחד", two: "מוסתרים, שני סוכנים", other: "מוסתרים, {count} סוכנים" },

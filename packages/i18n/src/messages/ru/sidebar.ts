@@ -144,6 +144,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "Выберите, чтобы проверить",
   "sidebar.waiting.hint.takeover": "Выберите, чтобы взять управление",
   "sidebar.lanes.working": "В работе",
+  "sidebar.dock.settled": "Завершённые",
   "sidebar.lanes.agents": "Агенты",
   "sidebar.lanes.channels": "Каналы",
   "sidebar.lanes.mainChat": "Основной чат",

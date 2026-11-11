@@ -10,7 +10,11 @@
  * to avoid. `commitSidebarDrop` is passed that source for the same reason.
  */
 
-import type { TeamPresenceMember } from "@openbot/contracts/ipc";
+import {
+  SIDEBAR_PEOPLE_SECTION_ID,
+  SIDEBAR_UNASSIGNED_SECTION_ID,
+  type TeamPresenceMember,
+} from "@openbot/contracts/ipc";
 import { createBoundedDragPreview } from "../../components/createBoundedDragPreview";
 import type { createScrollFades } from "../../components/createScrollFades";
 
@@ -46,6 +50,8 @@ export interface SidebarDragEngineDeps {
   /** Read on the resolve path, so it is a predicate over the pin count - never a read of the source. */
   canPinDraggedItem: () => boolean;
   dragState: SidebarDragWriters;
+  /** The chat sidebar's dock, where People and the chats in no folder are no place for a folder. */
+  dockFolders: () => boolean;
   filteredChatsBySection: () => Map<string, SidebarChatItem[]>;
   orderedPeople: () => TeamPresenceMember[];
   getAgentList: () => HTMLElement | undefined;
@@ -58,6 +64,8 @@ export interface SidebarDragEngineDeps {
   folders: () => SidebarDragFolders | null;
   /** Whether a section is closed, so a drag that rests on it can open it. */
   sectionIsCollapsed: (sectionId: string) => boolean;
+  /** Opens or closes a section, as a click on its header does. */
+  toggleSection: (sectionId: string) => void;
   visiblePinnedKeys: () => string[];
   visibleSectionIds: () => string[];
 }
@@ -118,6 +126,7 @@ export function createSidebarDragEngine(deps: SidebarDragEngineDeps) {
     if (dragScrollFrame !== null) cancelAnimationFrame(dragScrollFrame);
     window.removeEventListener("blur", stopSidebarDragging);
     deps.getAgentList()?.removeEventListener("transitionend", remeasureAfterTransition);
+    deps.getAgentList()?.removeEventListener("scroll", remeasureAfterScroll, { capture: true });
     stopSpringOpen();
     dragSession = null;
     dragPoint = null;
@@ -154,7 +163,7 @@ export function createSidebarDragEngine(deps: SidebarDragEngineDeps) {
       sectionId,
       timer: window.setTimeout(() => {
         springOpen = null;
-        if (dragSession && deps.sectionIsCollapsed(sectionId)) deps.props.onToggleSection(sectionId);
+        if (dragSession && deps.sectionIsCollapsed(sectionId)) deps.toggleSection(sectionId);
       }, SPRING_OPEN_MS),
     };
   }
@@ -162,6 +171,16 @@ export function createSidebarDragEngine(deps: SidebarDragEngineDeps) {
   /** A section that opens or closes during a drag moves the rows under it: measure them again. */
   function remeasureAfterTransition(event: TransitionEvent): void {
     if (!dragSession || event.propertyName !== "grid-template-rows") return;
+    measureSidebarDragTargets();
+    if (dragPoint) scheduleSidebarDragTarget(dragPoint);
+  }
+
+  /**
+   * The chat list scrolls inside, in its top zone and its dock, not as a whole. Rows that an inner
+   * scroll moved are measured again. The list's own scroll is in the scroll deltas already.
+   */
+  function remeasureAfterScroll(event: Event): void {
+    if (!dragSession || event.target === deps.getAgentList()) return;
     measureSidebarDragTargets();
     if (dragPoint) scheduleSidebarDragTarget(dragPoint);
   }
@@ -194,6 +213,12 @@ export function createSidebarDragEngine(deps: SidebarDragEngineDeps) {
     personDragSlots = measurement.people;
     pinnedDragSlots = measurement.pinned;
     dragGeometry = measurement.geometry;
+    // The dock shows People and "Settled" after the folders whatever the layout order, so a folder
+    // dropped beside them would land elsewhere than it shows.
+    if (deps.dockFolders() && dragSession?.source.kind === "section") {
+      sectionDragSlots.delete(SIDEBAR_UNASSIGNED_SECTION_ID);
+      sectionDragSlots.delete(SIDEBAR_PEOPLE_SECTION_ID);
+    }
   }
 
   function startNativeItemDragging(
@@ -223,6 +248,7 @@ export function createSidebarDragEngine(deps: SidebarDragEngineDeps) {
       source: event.currentTarget,
     });
     list.addEventListener("transitionend", remeasureAfterTransition);
+    list.addEventListener("scroll", remeasureAfterScroll, { capture: true });
     window.addEventListener("blur", stopSidebarDragging, { once: true });
   }
 

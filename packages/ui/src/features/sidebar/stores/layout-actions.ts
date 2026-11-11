@@ -6,6 +6,7 @@
  */
 
 import {
+  SIDEBAR_PEOPLE_SECTION_ID,
   SIDEBAR_UNASSIGNED_SECTION_ID,
   type SidebarLayoutAction,
   type TeamPresenceMember,
@@ -30,6 +31,11 @@ export function createSidebarLayoutActions(deps: {
   canPinDraggedSidebarItem: () => boolean;
   chatName: (chatId: string) => string;
   draggedSidebarItem: () => SidebarPinnedItem | null;
+  /**
+   * The chat sidebar shows its folders in a dock, with People and the chats in no folder after them
+   * whatever their place in the layout. Its folder moves then step over those two sections.
+   */
+  dockFolders: () => boolean;
   filteredChatsBySection: () => Map<string, SidebarChatItem[]>;
   /** The host keeps folders in folders, so a folder moves among its siblings with `nest`. */
   foldersSupported: () => boolean;
@@ -67,9 +73,15 @@ export function createSidebarLayoutActions(deps: {
   } = deps;
   const { t } = currentText();
 
+  /** The sections that a move steps between: in the dock, the folders only. */
+  const movable = (sectionIds: string[]) =>
+    deps.dockFolders()
+      ? sectionIds.filter((id) => id !== SIDEBAR_UNASSIGNED_SECTION_ID && id !== SIDEBAR_PEOPLE_SECTION_ID)
+      : sectionIds;
+
   /** The folders next to this one, in its parent or at the top, and its index among them. */
   function sectionSiblingIndex(sectionId: string): { index: number; total: number } {
-    const siblings = foldersSupported() ? sectionChildren(sectionParent(sectionId)) : visibleSectionIds();
+    const siblings = movable(foldersSupported() ? sectionChildren(sectionParent(sectionId)) : visibleSectionIds());
     return { index: siblings.indexOf(sectionId), total: siblings.length };
   }
 
@@ -97,7 +109,7 @@ export function createSidebarLayoutActions(deps: {
   function moveSection(sectionId: string, direction: "up" | "down"): void {
     if (foldersSupported()) {
       const parentId = sectionParent(sectionId);
-      const siblings = sectionChildren(parentId);
+      const siblings = movable(sectionChildren(parentId));
       const index = siblings.indexOf(sectionId);
       if (index < 0) return;
       if (direction === "up") {
@@ -108,7 +120,7 @@ export function createSidebarLayoutActions(deps: {
       }
       return;
     }
-    const visibleOrder = visibleSectionIds();
+    const visibleOrder = movable(visibleSectionIds());
     const index = visibleOrder.indexOf(sectionId);
     const targetSectionId = visibleOrder[index + (direction === "up" ? -1 : 1)];
     const rawIndex = props.layout.order.indexOf(sectionId);

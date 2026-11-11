@@ -144,6 +144,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "Wybierz, aby przejrzeć",
   "sidebar.waiting.hint.takeover": "Wybierz, aby przejąć",
   "sidebar.lanes.working": "Pracują",
+  "sidebar.dock.settled": "Załatwione",
   "sidebar.lanes.agents": "Agenci",
   "sidebar.lanes.channels": "Kanały",
   "sidebar.lanes.mainChat": "Główny czat",

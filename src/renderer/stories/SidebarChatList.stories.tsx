@@ -1,4 +1,9 @@
-import type { ChannelSummary } from "@openbot/contracts/ipc";
+import {
+  type ChannelSummary,
+  SIDEBAR_PEOPLE_SECTION_ID,
+  SIDEBAR_UNASSIGNED_SECTION_ID,
+  type SidebarLayoutSnapshot,
+} from "@openbot/contracts/ipc";
 import type { AvatarMood } from "@openbot/ui/bloub-avatar";
 import { accountUsageProviderRows } from "@openbot/ui/features/account/account-usage-view";
 import { Sidebar } from "@openbot/ui/features/sidebar/Sidebar";
@@ -7,21 +12,45 @@ import { createSignal } from "solid-js";
 import { fn } from "storybook/test";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
 import { defaultSidebarLayout } from "../src/features/sidebar/sidebar-sections";
-import { STORY_AGENTS, STORY_SERVERS } from "./fixtures";
+import { requireFixture, STORY_AGENTS, STORY_SERVERS } from "./fixtures";
 import { SettledArgs } from "./settled-args";
 import { storySidebarPages } from "./sidebar-pages-story";
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 
+/** More agents than the fixtures have, so each group of the dock holds a few. */
+const EXTRA_AGENTS = [
+  ["builder", "Builder", "Building the all machines sidebar."],
+  ["scout", "Scout", "Reading the October rebate files."],
+  ["halo-pm", "HaloRx PM", "Uploaded the September tiers file."],
+  ["rebates", "Rebates", "The report went to Beth."],
+  ["empiq", "EMPIQ PM", "Google sign-in is live on staging."],
+  ["writer", "Writer", "Release notes are in the changelog."],
+  ["designer", "Designer", "Both MP4 files are in the folder."],
+] as const;
+
 /** Each agent with a last message and its time, so the list sorts by recency. */
-const agents = STORY_AGENTS.map((agent, index) => ({
+const agents = [
+  ...STORY_AGENTS,
+  ...EXTRA_AGENTS.map(([id, name, preview], index) => ({
+    ...requireFixture(STORY_AGENTS[index % STORY_AGENTS.length], "Story agent"),
+    id,
+    name,
+    title: "",
+    threadId: `thread-${id}`,
+    avatarSeed: id,
+    preview,
+  })),
+].map((agent, index) => ({
   ...agent,
   preview:
-    [
-      "Your biggest opportunity is the pricing page.",
-      "Both MP4 files are in the folder.",
-      "I opened the hero in the preview so you can compare both versions.",
-    ][index % 3] ?? agent.preview,
+    index < STORY_AGENTS.length
+      ? ([
+          "Your biggest opportunity is the pricing page.",
+          "Both MP4 files are in the folder.",
+          "I opened the hero in the preview so you can compare both versions.",
+        ][index % 3] ?? agent.preview)
+      : agent.preview,
   updatedAt: minutesAgo(index * 7 + 1),
 }));
 
@@ -31,13 +60,34 @@ const thirdId = agents[2]?.id ?? "";
 
 const agentStates: Record<string, SidebarAgentState> = {
   [secondId]: { kind: "working" },
+  builder: { kind: "working" },
   [thirdId]: { kind: "waiting", reason: "approval", detail: "Post 3 drafts to LinkedIn" },
+  scout: { kind: "waiting", reason: "question", detail: "Which month should the report cover?" },
   [firstId]: { kind: "unread", count: 2 },
+  rebates: { kind: "unread", count: 1 },
 };
 
 const agentMoods: Record<string, AvatarMood> = {
   [secondId]: "working",
+  builder: "working",
   [thirdId]: "waiting",
+  scout: "waiting",
+};
+
+/** Two folders at the top of the layout, and one folder in the first. */
+const haloRxId = "33333333-3333-4333-8333-333333333331";
+const reportsId = "33333333-3333-4333-8333-333333333332";
+const empiricalId = "33333333-3333-4333-8333-333333333333";
+const folderLayout: SidebarLayoutSnapshot = {
+  revision: 1,
+  sections: [
+    { id: haloRxId, name: "HaloRx" },
+    { id: reportsId, name: "Reports", parentId: haloRxId },
+    { id: empiricalId, name: "Empirical" },
+  ],
+  order: [SIDEBAR_PEOPLE_SECTION_ID, haloRxId, reportsId, empiricalId, SIDEBAR_UNASSIGNED_SECTION_ID],
+  agentAssignments: { "halo-pm": haloRxId, scout: haloRxId, rebates: reportsId, empiq: empiricalId },
+  agentOrder: [],
 };
 
 const channels: ChannelSummary[] = [
@@ -96,7 +146,7 @@ const args: Parameters<typeof Sidebar>[0] = {
   channels,
   onSelectChannel: fn(),
   onCreateChannel: fn(),
-  layout: defaultSidebarLayout(),
+  layout: folderLayout,
   collapsedSectionIds: [],
   onMutateLayout: fn(async () => undefined),
   onToggleSection: fn(),
@@ -123,6 +173,12 @@ function ChatSidebar(props: Parameters<typeof Sidebar>[0]) {
   const [compact, setCompact] = createSignal(props.compact);
   const [current, setCurrent] = createSignal(props.pages?.current ?? "chats");
   const [active, setActive] = createSignal(props.activeAgentId);
+  // The open group of the dock is saved with the collapsed sections, as the app does.
+  const [collapsed, setCollapsed] = createSignal<string[]>(props.collapsedSectionIds);
+  const toggleSection = (sectionId: string) =>
+    setCollapsed((current) =>
+      current.includes(sectionId) ? current.filter((id) => id !== sectionId) : [...current, sectionId],
+    );
   return (
     <div class="app-frame" style={{ width: compact() ? "80px" : "300px", height: "100vh" }}>
       <Sidebar
@@ -130,6 +186,8 @@ function ChatSidebar(props: Parameters<typeof Sidebar>[0]) {
         compact={compact()}
         activeAgentId={active()}
         onSelectAgent={setActive}
+        collapsedSectionIds={collapsed()}
+        onToggleSection={toggleSection}
         onExpand={() => setCompact(false)}
         pages={storySidebarPages({
           ...props.pages,
@@ -155,7 +213,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** "Needs you" on top; "Working", the folders and "Settled" in the dock, with "Working" open. */
 export const Open: Story = {};
+
+/** A folder open in the dock, with the folder in it. */
+export const FolderOpen: Story = {
+  args: { collapsedSectionIds: [`dock:open:${haloRxId}`] },
+};
+
+/** No folders: the dock holds "Working" and "Settled". */
+export const NoFolders: Story = {
+  args: { layout: defaultSidebarLayout() },
+};
 
 export const Collapsed: Story = {
   args: { compact: true },
