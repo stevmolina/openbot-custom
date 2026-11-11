@@ -63,6 +63,8 @@ import {
   type HermesImportPreview,
   type HiddenAgentsSnapshot,
   INSTANCE_TRANSFER_LIMITS,
+  mcpSignInEvent,
+  mcpSignInItemType,
   type PasswordManagerConnectMethod,
   type PasswordManagerStatus,
   type ProviderDetectionSettings,
@@ -78,7 +80,7 @@ import {
   type WhatsAppLinkState,
   withHostProviderAccountModels,
 } from "@openbot/contracts/ipc";
-import { isDynamicRecord } from "@openbot/contracts/runtime-values";
+import { isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { TEAM_API_ROUTES } from "@openbot/contracts/team-api-routes";
 import { TEAM_PROTOCOL_V1_WEBSOCKET } from "@openbot/contracts/team-protocol";
 import {
@@ -1134,17 +1136,29 @@ const fakeAgents: TeamApiAgents = {
       messages:
         shown && anchor?.type === "around"
           ? [
-              {
-                id: anchor.messageId,
-                author: "assistant",
-                text: "Reply",
-                createdAt: "2026-11-05T08:00:00.000Z",
-                status: "completed",
-                // A memory review's skill question, for the skill-learning-v1 projection.
-                ...(anchor.messageId === "skill-question"
-                  ? { itemType: "skill-suggestion:create", skillSuggestion: { name: "Weekly report" } }
-                  : {}),
-              },
+              // The Sign in card of an MCP server, as the tool router posts it, for the phone and web chats.
+              anchor.messageId === "mcp-sign-in-card"
+                ? {
+                    id: anchor.messageId,
+                    author: "system",
+                    source: "system",
+                    text: "The MCP server composio needs a sign-in. Sign in from Server settings, MCP.",
+                    createdAt: "2026-11-05T08:00:00.000Z",
+                    status: "completed",
+                    turnId: "turn-sign-in",
+                    itemType: mcpSignInItemType({ mcpServerId: "mcp-composio" }),
+                  }
+                : {
+                    id: anchor.messageId,
+                    author: "assistant",
+                    text: "Reply",
+                    createdAt: "2026-11-05T08:00:00.000Z",
+                    status: "completed",
+                    // A memory review's skill question, for the skill-learning-v1 projection.
+                    ...(anchor.messageId === "skill-question"
+                      ? { itemType: "skill-suggestion:create", skillSuggestion: { name: "Weekly report" } }
+                      : {}),
+                  },
             ]
           : [],
       references: {},
@@ -4648,6 +4662,41 @@ try {
         field(pageQuestion(plainPage), "itemType") === "skill-suggestion:create" &&
         field(pageQuestion(plainPage), "skillSuggestion") === undefined,
       [summary(namedPage), summary(plainPage)],
+    );
+
+    // The Sign in card of an MCP server reaches every client as its system message, so a phone or the
+    // web client draws the card. Its item type names the saved row; no capability gates it.
+    const signInPagePath = `${TEAM_API_ROUTES.agent.conversationPage("agent-ada")}?around=mcp-sign-in-card`;
+    const signInPages = [
+      await call("GET", signInPagePath, { token: bobToken, protocol: TEAM_PROTOCOL_V9, capabilities }),
+      await call("GET", signInPagePath, { token: bobToken, protocol: TEAM_PROTOCOL_V9 }),
+    ];
+    const signInEvents = signInPages.map((page) => {
+      const message = list(field(page.body, "messages"))[0];
+      return isDynamicRecord(message) &&
+        message.author === "system" &&
+        isString(message.id) &&
+        isString(message.text) &&
+        isString(message.createdAt) &&
+        (message.source === "system" || message.source === undefined) &&
+        message.status === "completed" &&
+        isString(message.itemType)
+        ? mcpSignInEvent({
+            id: message.id,
+            author: "system",
+            source: message.source,
+            text: message.text,
+            createdAt: message.createdAt,
+            status: "completed",
+            itemType: message.itemType,
+          })
+        : null;
+    });
+    check(
+      "a conversation page carries the MCP Sign in card to every client, with the saved row it names",
+      signInPages.every((page) => page.status === 200) &&
+        signInEvents.every((event) => event?.mcpServerId === "mcp-composio"),
+      signInPages.map(summary),
     );
 
     // A member presses Save on a suggestion card. The host writes the skill in the background.

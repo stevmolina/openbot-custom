@@ -1,7 +1,8 @@
 // Drives the agent MCP tools of issue #2673 on the real modules: the MCP tools, McpGateway, the
 // SQLite MCP store and the probe, against local MCP servers. The approval and the sign-in card are
 // recorded where the router would show them. No provider or account is used. It also checks what
-// suggest_marketplace_app answers for a Marketplace app that is already installed.
+// suggest_marketplace_app answers for a Marketplace app that is already installed, and that the host
+// finds an installed Composio row that an earlier version of its listing saved, on the bundled catalog.
 // bun scripts/agent-mcp-tools-e2e.ts. Writes .openbot-build/agent-mcp-tools-e2e/report.json.
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -23,6 +24,7 @@ import { runCauseEffect } from "../src/backend/effect-boundary";
 import { McpServerStore } from "../src/backend/mcp-server-store";
 import { OpenBotDatabase } from "../src/backend/openbot-database";
 import { NO_PROVIDER_CREDENTIALS } from "../src/backend/provider-drivers";
+import { catalogPluginSlug, loadCatalogPluginServers } from "../src/main/analytics-plugin-catalog";
 
 const OUT = resolve(import.meta.dirname, "../.openbot-build/agent-mcp-tools-e2e");
 const URL_SECRET = "url-secret-7f3a91";
@@ -129,10 +131,18 @@ const servers: Record<Mode, { url: string; close: () => Promise<void> }> = {
 };
 const calls: Call[] = [];
 let refreshes = 0;
-const report: { passed: boolean; calls: Call[]; refreshes: number; failures: string[] } = {
+const report: {
+  passed: boolean;
+  calls: Call[];
+  refreshes: number;
+  /** The catalog slug that the host finds for each saved Composio address. */
+  composioRows: Record<string, string | null>;
+  failures: string[];
+} = {
   passed: false,
   calls,
   refreshes: 0,
+  composioRows: {},
   failures: [],
 };
 
@@ -345,6 +355,26 @@ try {
   assert.equal(ready.result.status, "ready");
   assert.deepEqual(ready.result.tools, ["search", "read_page", "create_page"]);
   assert.equal(ready.result.setupSteps, undefined);
+
+  // suggest_marketplace_app tests the installed row of an app. A Composio row that listing 1.0.0 or
+  // 1.1.0 saved is on another Composio host: it is still the app's row, not a new app to connect.
+  const catalog = await Effect.runPromise(
+    loadCatalogPluginServers(resolve(import.meta.dirname, "../resources/plugin-catalog")),
+  );
+  const composioRow = (url: string): McpServerConfig => ({ ...calendar, name: "composio", url, headers: [] });
+  for (const url of [
+    "https://connect.composio.dev/mcp",
+    "https://mcp.composio.dev/composio/server/0b5c/mcp",
+    "https://composio.dev/",
+    "https://composio.example.com/mcp",
+  ])
+    report.composioRows[url] = catalogPluginSlug(composioRow(url), catalog, tmpdir());
+  assert.deepEqual(report.composioRows, {
+    "https://connect.composio.dev/mcp": "composio",
+    "https://mcp.composio.dev/composio/server/0b5c/mcp": "composio",
+    "https://composio.dev/": "composio",
+    "https://composio.example.com/mcp": null,
+  });
 
   const unknown = await call("an unknown name", "test_mcp_server", { name: "nothing" });
   assert.equal(unknown.success, false);

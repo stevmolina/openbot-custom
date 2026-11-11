@@ -27,12 +27,26 @@ export function useMcpServerList(serverId: string) {
 }
 
 /**
+ * The http servers that one host holds a sign-in for, for a user who manages its MCP servers. A
+ * failed read is an empty list: it only shows less.
+ */
+export function useMcpSignIns(serverId: string, canManage: boolean) {
+  const { listMcpSignIns } = useMobileWorkspaceActions();
+  const queryScope = useQueryScope();
+  return useQuery({
+    queryKey: queryKeys.mcpSignIns(queryScope, serverId),
+    enabled: canManage,
+    retry: false,
+    queryFn: () => listMcpSignIns(serverId).catch((): McpSignInState[] => []),
+  });
+}
+
+/**
  * The MCP servers of one host, as the MCP and MCP server pages of the server sheet show them. The
  * pages use the same queries, so a change on one page shows on the other.
  */
 export function useServerMcp(serverId: string) {
   const { servers } = useMobileWorkspace();
-  const { listMcpSignIns } = useMobileWorkspaceActions();
   const queryScope = useQueryScope();
   const queryClient = useQueryClient();
   const server = servers.find((candidate) => candidate.id === serverId);
@@ -41,12 +55,7 @@ export function useServerMcp(serverId: string) {
   const listKey = queryKeys.mcpServers(queryScope, serverId);
   const signInsKey = queryKeys.mcpSignIns(queryScope, serverId);
   // A badge only: a failed read shows no badge.
-  const signIns = useQuery({
-    queryKey: signInsKey,
-    enabled: canManage,
-    retry: false,
-    queryFn: () => listMcpSignIns(serverId).catch((): McpSignInState[] => []),
-  });
+  const signIns = useMcpSignIns(serverId, canManage);
   const action = useMutation({
     mutationFn: (operation: () => Promise<void>) => operation(),
     onSuccess: () => {

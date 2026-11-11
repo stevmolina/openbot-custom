@@ -297,6 +297,15 @@ export const messages = {
   "mobile.chat.browserSecret.takeoverTitle": "ブラウザーの引き継ぎ",
   "mobile.chat.browserSecret.takeoverBody":
     "OpenBot を実行しているコンピューターのブラウザーで、この手順を完了してください。",
+  "mobile.chat.mcpSignIn.marker": "MCP サーバーへのサインインを求めました",
+  "mobile.chat.mcpSignIn.signIn": "サインイン",
+  "mobile.chat.mcpSignIn.signInNamed": "{name} にサインイン",
+  "mobile.chat.mcpSignIn.signedIn": "サインイン済み",
+  "mobile.chat.mcpSignIn.continue": "続ける",
+  "mobile.chat.mcpSignIn.continueNamed": "{name} をもう一度テストするようエージェントに伝える",
+  "mobile.chat.mcpSignIn.message": "MCP サーバー {name} にサインインしました。もう一度テストしてください。",
+  "mobile.chat.mcpSignIn.unavailable":
+    "パソコンの OpenBot で、サーバー設定の MCP から {name} にサインインしてください。",
   "mobile.chat.browserSecret.takeoverReload": "その後、ページを再読み込みしてから「完了しました」を選択してください。",
   "mobile.chat.browserSecret.takeoverFailed": "リクエストを完了できませんでした。",
   "mobile.chat.browserSecret.done": "完了しました",
