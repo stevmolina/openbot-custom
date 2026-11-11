@@ -37,8 +37,11 @@ export function SidebarSectionHeader(headerProps: {
   sectionId: string;
   name: string;
   depth?: number;
-  /** The header of a dock group: the count of its chats, and whether one of them is unread. */
-  dock?: { count: number; unread: boolean } | undefined;
+  /**
+   * The header of a dock group: the count of its chats, whether one of them is unread, and the open
+   * state, which the dock owns.
+   */
+  dock?: { count: number; unread: boolean; open: boolean; onToggle: () => void } | undefined;
 }) {
   const {
     customSectionById,
@@ -71,7 +74,8 @@ export function SidebarSectionHeader(headerProps: {
     const target = pending.sectionEditor?.target;
     return target?.kind === "rename" && target.sectionId === headerProps.sectionId;
   };
-  const collapsed = () => sectionIsCollapsed(headerProps.sectionId);
+  const collapsed = () => (headerProps.dock ? !headerProps.dock.open : sectionIsCollapsed(headerProps.sectionId));
+  const toggle = () => (headerProps.dock ? headerProps.dock.onToggle() : toggleSection(headerProps.sectionId));
   const custom = () => customSectionById().has(headerProps.sectionId);
   const sibling = () => sectionSiblingIndex(headerProps.sectionId);
   const depth = () => headerProps.depth ?? 0;
@@ -92,7 +96,7 @@ export function SidebarSectionHeader(headerProps: {
         sectionCanNest(headerProps.sectionId, sectionId),
     );
   const createInside = () => {
-    if (collapsed()) toggleSection(headerProps.sectionId);
+    if (collapsed()) toggle();
     startCreateSection(undefined, headerProps.sectionId);
   };
   return (
@@ -114,7 +118,7 @@ export function SidebarSectionHeader(headerProps: {
             data-cuelume-close={collapsed() ? undefined : ""}
             data-cuelume-emphasis="subtle"
             onClick={(event: MouseEvent) => {
-              if (!sidebarClickIsSuppressed(event)) toggleSection(headerProps.sectionId);
+              if (!sidebarClickIsSuppressed(event)) toggle();
             }}
             onDragStart={(event: DragEvent & { currentTarget: HTMLElement }) =>
               startSectionDragging(event, headerProps.sectionId)

@@ -154,11 +154,13 @@ function SidebarDockGroup(groupProps: {
   id: string;
   name: string;
   chats: readonly SidebarChatItem[];
+  open: boolean;
+  onToggle: () => void;
   children?: JSX.Element;
 }) {
-  const { dragOffset, sectionDragClasses, sectionIsCollapsed, toggleSection } = useSidebarScope();
+  const { dragOffset, sectionDragClasses } = useSidebarScope();
   const unread = useChatUnread();
-  const open = () => !sectionIsCollapsed(groupProps.id);
+  const open = () => groupProps.open;
   const section = () => groupProps.id === SIDEBAR_UNASSIGNED_SECTION_ID;
   return (
     <section
@@ -181,7 +183,7 @@ function SidebarDockGroup(groupProps: {
           data-cuelume-open={open() ? undefined : ""}
           data-cuelume-close={open() ? "" : undefined}
           data-cuelume-emphasis="subtle"
-          onClick={() => toggleSection(groupProps.id)}
+          onClick={() => groupProps.onToggle()}
         >
           <SidebarDockHeadContent
             name={groupProps.name}
@@ -212,13 +214,17 @@ function folderChatsDeep(
 }
 
 /** A folder at the top of the layout, as a dock group. The folders in it show inside, as in the list. */
-function SidebarDockFolder(folderProps: { sectionId: string; groups: SidebarChatDockGroups }) {
-  const { customSectionById, dragOffset, sectionChildren, sectionDragClasses, sectionIsCollapsed, sectionLabel } =
-    useSidebarScope();
+function SidebarDockFolder(folderProps: {
+  sectionId: string;
+  groups: SidebarChatDockGroups;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { customSectionById, dragOffset, sectionChildren, sectionDragClasses, sectionLabel } = useSidebarScope();
   const unread = useChatUnread();
   const sectionId = () => folderProps.sectionId;
   const deep = createMemo(() => folderChatsDeep(sectionId(), folderProps.groups, sectionChildren));
-  const open = () => !sectionIsCollapsed(sectionId());
+  const open = () => folderProps.open;
   return (
     <section
       class={["sidebar-dock-group sidebar-section", sectionDragClasses(sectionId())]}
@@ -230,7 +236,7 @@ function SidebarDockFolder(folderProps: { sectionId: string; groups: SidebarChat
       <SidebarSectionHeader
         sectionId={sectionId()}
         name={customSectionById().get(sectionId())?.name ?? ""}
-        dock={{ count: deep().length, unread: deep().some(unread) }}
+        dock={{ count: deep().length, unread: deep().some(unread), open: open(), onToggle: folderProps.onToggle }}
       />
       <SidebarDockBody id={sectionId()} open={open()}>
         <SidebarChatRows chats={folderProps.groups.bySection.get(sectionId()) ?? []} />
@@ -287,7 +293,16 @@ function SidebarChatFolder(folderProps: { sectionId: string; depth: number; grou
 
 /** The dock at the bottom of the list. It hides while it has no group. */
 export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
-  const { customSectionById, orderedPeople, pending, props, sectionParent, userHiddenAgentList } = useSidebarScope();
+  const {
+    customSectionById,
+    dockOpenGroup,
+    orderedPeople,
+    pending,
+    props,
+    sectionParent,
+    setDockOpenGroup,
+    userHiddenAgentList,
+  } = useSidebarScope();
   const { t } = useText();
   /** The folders at the top of the layout, in its order. */
   const folderIds = createMemo(() =>
@@ -303,6 +318,23 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
   const people = () => props.showPeople !== false && orderedPeople().length > 0;
   const settledShown = () =>
     settled().length > 0 || people() || userHiddenAgentList().length > 0 || props.showingArchivedChannels === true;
+  /** The groups on screen, in their order. */
+  const shownIds = createMemo(() => [
+    ...(dockProps.groups.working.length > 0 ? [SIDEBAR_DOCK_WORKING_ID] : []),
+    ...folderIds(),
+    ...(settledShown() ? [SIDEBAR_UNASSIGNED_SECTION_ID] : []),
+  ]);
+  /**
+   * The open group. When the saved one is not on screen, such as "Working" while no chat works, the dock
+   * opens "Settled", or else its first group, so the chats do not all hide behind closed groups. A
+   * click saves the group that the user sees open.
+   */
+  const openId = createMemo(() => {
+    const saved = dockOpenGroup();
+    if (saved === null || shownIds().includes(saved)) return saved;
+    return shownIds().includes(SIDEBAR_UNASSIGNED_SECTION_ID) ? SIDEBAR_UNASSIGNED_SECTION_ID : (shownIds()[0] ?? null);
+  });
+  const toggle = (groupId: string) => setDockOpenGroup(openId() === groupId ? null : groupId);
   const draftShown = () => {
     const target = pending.sectionEditor?.target;
     return target?.kind === "create" && (target.parentId ?? null) === null;
@@ -315,14 +347,29 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
             id={SIDEBAR_DOCK_WORKING_ID}
             name={t("sidebar.lanes.working")}
             chats={dockProps.groups.working}
+            open={openId() === SIDEBAR_DOCK_WORKING_ID}
+            onToggle={() => toggle(SIDEBAR_DOCK_WORKING_ID)}
           />
         </Show>
         <For each={folderIds()}>
-          {(sectionId) => <SidebarDockFolder sectionId={sectionId} groups={dockProps.groups} />}
+          {(sectionId) => (
+            <SidebarDockFolder
+              sectionId={sectionId}
+              groups={dockProps.groups}
+              open={openId() === sectionId}
+              onToggle={() => toggle(sectionId)}
+            />
+          )}
         </For>
         <SidebarSectionDraft parentId={null} />
         <Show when={settledShown()}>
-          <SidebarDockGroup id={SIDEBAR_UNASSIGNED_SECTION_ID} name={t("sidebar.dock.settled")} chats={settled()}>
+          <SidebarDockGroup
+            id={SIDEBAR_UNASSIGNED_SECTION_ID}
+            name={t("sidebar.dock.settled")}
+            chats={settled()}
+            open={openId() === SIDEBAR_UNASSIGNED_SECTION_ID}
+            onToggle={() => toggle(SIDEBAR_UNASSIGNED_SECTION_ID)}
+          >
             <SidebarPeopleSection sectionId={SIDEBAR_PEOPLE_SECTION_ID} />
             <SidebarHiddenGroup />
             <Show when={props.showingArchivedChannels}>

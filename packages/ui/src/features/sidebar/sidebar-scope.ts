@@ -307,6 +307,7 @@ export function createSidebarScope(props: SidebarProps) {
     sectionSiblingIndex,
     sectionUnreadCount,
     setAgentListElement,
+    setDockOpenGroup,
     setDragListElement,
     setSectionNameInput,
     sidebarClickIsSuppressed,
