@@ -285,6 +285,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "打开工作区文件夹 {name}",
   "chat.file.openFolder": "打开文件夹 {name}",
   "chat.file.copyFolderPath": "复制文件夹路径 {name}",
+  "chat.file.folderPathCopied": "此文件夹无法在此处打开。已复制路径。",
   "chat.file.openAttached": "打开附件 {name}",
   "chat.reference.kind.agent": "助手",
   "chat.reference.kind.mcp": "MCP 服务器",

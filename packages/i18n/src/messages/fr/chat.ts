@@ -295,6 +295,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "Ouvrir le dossier de l’espace de travail {name}",
   "chat.file.openFolder": "Ouvrir le dossier {name}",
   "chat.file.copyFolderPath": "Copier le chemin du dossier {name}",
+  "chat.file.folderPathCopied": "Ce dossier ne s’ouvre pas ici. Chemin copié.",
   "chat.file.openAttached": "Ouvrir le fichier joint {name}",
   "chat.reference.kind.agent": "Agent",
   "chat.reference.kind.mcp": "Serveur MCP",

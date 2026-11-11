@@ -302,6 +302,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "פתיחת תיקיית סביבת העבודה {name}",
   "chat.file.openFolder": "פתיחת התיקייה {name}",
   "chat.file.copyFolderPath": "העתקת נתיב התיקייה {name}",
+  "chat.file.folderPathCopied": "לא ניתן לפתוח כאן את התיקייה. הנתיב הועתק.",
   "chat.file.openAttached": "פתיחת הקובץ המצורף {name}",
   "chat.reference.kind.agent": "סוכן",
   "chat.reference.kind.mcp": "שרת MCP",

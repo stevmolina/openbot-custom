@@ -301,6 +301,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "Apri la cartella del workspace {name}",
   "chat.file.openFolder": "Apri la cartella {name}",
   "chat.file.copyFolderPath": "Copia il percorso della cartella {name}",
+  "chat.file.folderPathCopied": "Questa cartella non si apre qui. Percorso copiato.",
   "chat.file.openAttached": "Apri il file allegato {name}",
   "chat.reference.kind.agent": "Agente",
   "chat.reference.kind.mcp": "Server MCP",

@@ -279,6 +279,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "ワークスペースのフォルダー {name} を開く",
   "chat.file.openFolder": "フォルダー {name} を開く",
   "chat.file.copyFolderPath": "フォルダー {name} のパスをコピー",
+  "chat.file.folderPathCopied": "このフォルダーはここでは開けません。パスをコピーしました。",
   "chat.file.openAttached": "添付ファイル {name} を開く",
   "chat.reference.kind.agent": "エージェント",
   "chat.reference.kind.mcp": "MCP サーバー",

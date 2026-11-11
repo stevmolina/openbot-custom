@@ -293,6 +293,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "Abrir pasta do espaço de trabalho {name}",
   "chat.file.openFolder": "Abrir pasta {name}",
   "chat.file.copyFolderPath": "Copiar caminho da pasta {name}",
+  "chat.file.folderPathCopied": "Esta pasta não abre aqui. Caminho copiado.",
   "chat.file.openAttached": "Abrir arquivo anexado {name}",
   "chat.reference.kind.agent": "Agente",
   "chat.reference.kind.mcp": "Servidor MCP",

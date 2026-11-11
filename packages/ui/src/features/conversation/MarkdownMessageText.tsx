@@ -41,6 +41,8 @@ type MarkdownContentProps = Omit<
   "body" | "showCitationFooter" | "streaming" | "streamingTailAfter"
 > & {
   fileDirectory: FileDirectoryContext | null;
+  /** The text of a link label. A folder path there stays code, so no button sits inside the link. */
+  linkLabel?: boolean | undefined;
 };
 
 interface FileDirectoryContext {
@@ -717,7 +719,7 @@ function MarkdownInline(props: {
                 kind="workspace"
                 onOpen={(path) => openWorkspace(path, file.asWritten)}
               />
-            ) : folderPathTarget(token.text) ? (
+            ) : !props.content.linkLabel && folderPathTarget(token.text) ? (
               <FolderPathChip path={token.text.trim()} onOpen={props.content.onOpenFolderPath} />
             ) : (
               <code dir="ltr">{token.text}</code>
@@ -748,7 +750,7 @@ function MarkdownInline(props: {
                 ) : (
                   <MarkdownInline
                     tokens={token.tokens}
-                    content={{ ...props.content, onOpenImage: undefined }}
+                    content={{ ...props.content, onOpenImage: undefined, linkLabel: true }}
                     streamingTailAfter={tailInside(token, token.tokens, after())}
                   />
                 )}
@@ -1140,6 +1142,7 @@ function LocalFileLink(props: {
  * folder when `onOpen` is given, and else copies the path. The label puts `…` in place of the middle
  * folders, so `~/dev/acme/clients/halorx` shows as `~/dev/…/clients/` and a bold `halorx`. The middle
  * folders stay in the text, hidden, so a copy, a quote or a search of the message has the full path.
+ * They are not `.sr-only`, because chat search skips that text.
  */
 function FolderPathChip(props: { path: string; onOpen?: ((path: string) => void) | undefined }) {
   const { t } = useText();
@@ -1196,11 +1199,14 @@ function FolderPathChip(props: { path: string; onOpen?: ((path: string) => void)
             <span class="message-folder-reference-ellipsis" aria-hidden="true">
               …
             </span>
-            <span class="sr-only">{parts().hidden}</span>
+            <span class="message-folder-reference-hidden">{parts().hidden}</span>
           </Show>
           {parts().tail}
         </span>
         <strong>{parts().name}</strong>
+        <Show when={parts().trailing}>
+          <span class="message-folder-reference-hidden">{parts().trailing}</span>
+        </Show>
       </span>
       <span class="sr-only message-folder-reference-status" aria-live="polite">
         {copied() ? t("common.copied") : ""}
@@ -1243,10 +1249,17 @@ function folderPathTarget(value: string): string | null {
 
 /**
  * The label of a folder chip: the folders above it and its own name. With more than two folders
- * above it, `hidden` holds the middle ones, which the chip shows as `…`. The home folder of this
- * computer is not known here, so only a path that starts with `~` shows `~`.
+ * above it, `hidden` holds the middle ones, which the chip shows as `…`. `trailing` holds the
+ * separators after the name, which the chip does not show. The home folder of this computer is not
+ * known here, so only a path that starts with `~` shows `~`.
  */
-function folderPathParts(path: string): { lead: string; hidden: string; tail: string; name: string } {
+function folderPathParts(path: string): {
+  lead: string;
+  hidden: string;
+  tail: string;
+  name: string;
+  trailing: string;
+} {
   const separator = path.includes("\\") && !path.includes("/") ? "\\" : "/";
   const drive = /^[A-Za-z]:/u.exec(path)?.[0];
   const start = drive ?? (path.startsWith("~") ? "~" : "");
@@ -1255,13 +1268,15 @@ function folderPathParts(path: string): { lead: string; hidden: string; tail: st
     .split(/[/\\]+/u)
     .filter(Boolean);
   const name = segments.at(-1) ?? path;
+  const trailing = /[/\\]+$/u.exec(path)?.[0] ?? "";
   const above = segments.slice(0, -1);
-  if (above.length <= 2) return { lead: [start, ...above, ""].join(separator), hidden: "", tail: "", name };
+  if (above.length <= 2) return { lead: [start, ...above, ""].join(separator), hidden: "", tail: "", name, trailing };
   return {
     lead: [start, above[0], ""].join(separator),
     hidden: above.slice(1, -1).join(separator),
     tail: `${separator}${above.at(-1)}${separator}`,
     name,
+    trailing,
   };
 }
 

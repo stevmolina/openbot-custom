@@ -227,6 +227,7 @@ const FOLDER_PATH_BODY = [
   "- The scripts are in `~/dev/resorsi/engagements/halorx/scripts/`.",
   "- On Windows the copy is in `C:\\Users\\steven\\Documents\\HaloRx`.",
   "- The database file `/home/ubuntu/dev/resorsi/halorx.db` is not a folder.",
+  "- A link label stays a link: [`/home/ubuntu/dev/resorsi`](https://openbot.run/docs).",
   "",
   "Run `/clear` to start again.",
 ].join("\n");

@@ -300,6 +300,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "Çalışma alanı klasörünü aç {name}",
   "chat.file.openFolder": "Klasörü aç {name}",
   "chat.file.copyFolderPath": "Klasör yolunu kopyala {name}",
+  "chat.file.folderPathCopied": "Bu klasör burada açılamıyor. Yol kopyalandı.",
   "chat.file.openAttached": "Ekli dosyayı aç {name}",
   "chat.reference.kind.agent": "Ajan",
   "chat.reference.kind.mcp": "MCP sunucusu",

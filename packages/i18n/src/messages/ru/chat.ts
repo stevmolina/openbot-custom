@@ -385,6 +385,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "Открыть папку рабочего пространства {name}",
   "chat.file.openFolder": "Открыть папку {name}",
   "chat.file.copyFolderPath": "Копировать путь к папке {name}",
+  "chat.file.folderPathCopied": "Эту папку нельзя открыть здесь. Путь скопирован.",
   "chat.file.openAttached": "Открыть прикреплённый файл {name}",
   "chat.reference.kind.agent": "Агент",
   "chat.reference.kind.mcp": "Сервер MCP",

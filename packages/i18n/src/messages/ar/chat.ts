@@ -439,6 +439,7 @@ export const messages = {
   "chat.file.openWorkspaceFolder": "فتح مجلد مساحة العمل {name}",
   "chat.file.openFolder": "فتح المجلد {name}",
   "chat.file.copyFolderPath": "نسخ مسار المجلد {name}",
+  "chat.file.folderPathCopied": "لا يمكن فتح هذا المجلد هنا. تم نسخ المسار.",
   "chat.file.openAttached": "فتح الملف المرفق {name}",
   "chat.reference.kind.agent": "وكيل",
   "chat.reference.kind.mcp": "خادم MCP",

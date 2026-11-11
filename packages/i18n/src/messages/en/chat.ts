@@ -288,6 +288,7 @@ export const messages = defineMessages("chat", {
   "chat.file.openWorkspaceFolder": "Open workspace folder {name}",
   "chat.file.openFolder": "Open folder {name}",
   "chat.file.copyFolderPath": "Copy folder path {name}",
+  "chat.file.folderPathCopied": "This folder does not open here. Path copied.",
   "chat.file.openAttached": "Open attached file {name}",
   "chat.reference.kind.agent": "Agent",
   "chat.reference.kind.mcp": "MCP server",
