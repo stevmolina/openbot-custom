@@ -1138,14 +1138,19 @@ function LocalFileLink(props: {
 /**
  * A folder that inline code names by its absolute path, such as `/home/me/project`. It opens the
  * folder when `onOpen` is given, and else copies the path. The label puts `…` in place of the middle
- * folders, so `~/dev/acme/clients/halorx` shows as `~/dev/…/clients/` and a bold `halorx`.
+ * folders, so `~/dev/acme/clients/halorx` shows as `~/dev/…/clients/` and a bold `halorx`. The middle
+ * folders stay in the text, hidden, so a copy, a quote or a search of the message has the full path.
  */
 function FolderPathChip(props: { path: string; onOpen?: ((path: string) => void) | undefined }) {
   const { t } = useText();
   const parts = createMemo(() => folderPathParts(props.path));
   const [copied, setCopied] = createSignal(false);
   let resetTimer: number | undefined;
-  onCleanup(() => window.clearTimeout(resetTimer));
+  let disposed = false;
+  onCleanup(() => {
+    disposed = true;
+    window.clearTimeout(resetTimer);
+  });
   const copyPath = async () => {
     try {
       await navigator.clipboard.writeText(props.path);
@@ -1153,6 +1158,7 @@ function FolderPathChip(props: { path: string; onOpen?: ((path: string) => void)
       // The clipboard refused the text, so the chip does not say that it copied.
       return;
     }
+    if (disposed) return;
     window.clearTimeout(resetTimer);
     setCopied(true);
     resetTimer = window.setTimeout(() => setCopied(false), 1_500);
@@ -1184,10 +1190,19 @@ function FolderPathChip(props: { path: string; onOpen?: ((path: string) => void)
         </Show>
       </span>
       <span class="inline-file-reference-name" dir="ltr">
-        <span class="message-folder-reference-parent">{parts().parent}</span>
+        <span class="message-folder-reference-parent">
+          {parts().lead}
+          <Show when={parts().hidden}>
+            <span class="message-folder-reference-ellipsis" aria-hidden="true">
+              …
+            </span>
+            <span class="sr-only">{parts().hidden}</span>
+          </Show>
+          {parts().tail}
+        </span>
         <strong>{parts().name}</strong>
       </span>
-      <span class="sr-only" aria-live="polite">
+      <span class="sr-only message-folder-reference-status" aria-live="polite">
         {copied() ? t("common.copied") : ""}
       </span>
     </Button>
@@ -1207,7 +1222,9 @@ function FolderPathIcon() {
  * The folder that inline code names by an absolute path: `/home/me/project`, `~/dev/` or
  * `C:\Users\me`. A file name, a space, a pattern character such as `*` or `:id`, or a single part
  * after `/`, such as the command `/clear`, is not a folder. A relative path such as `src/app` is not
- * one either. Nothing is read from disk, so the folder may not exist.
+ * one either. A last part such as `notes.db` is a file, unless a separator follows it. A dot file
+ * such as `~/.config` stays a chip, and the open handler finds out if it is a file. Nothing is read
+ * from disk, so the folder may not exist.
  */
 function folderPathTarget(value: string): string | null {
   const path = value.trim();
@@ -1219,15 +1236,17 @@ function folderPathTarget(value: string): string | null {
   const rest = path.slice(drive ? 3 : home ? 2 : 1);
   if (rest.includes(":")) return null;
   const segments = rest.split(/[/\\]+/u).filter(Boolean);
+  const last = segments.at(-1) ?? "";
+  if (!/[/\\]$/u.test(path) && /^[^.].*\.[A-Za-z][A-Za-z\d]{0,9}$/u.test(last)) return null;
   return segments.length >= (root ? 2 : 1) ? path : null;
 }
 
 /**
- * The label of a folder chip: the folders above it, with `…` in place of the middle ones when there
- * are more than two, and its own name. The home folder of this computer is not known here, so only a
- * path that starts with `~` shows `~`.
+ * The label of a folder chip: the folders above it and its own name. With more than two folders
+ * above it, `hidden` holds the middle ones, which the chip shows as `…`. The home folder of this
+ * computer is not known here, so only a path that starts with `~` shows `~`.
  */
-function folderPathParts(path: string): { parent: string; name: string } {
+function folderPathParts(path: string): { lead: string; hidden: string; tail: string; name: string } {
   const separator = path.includes("\\") && !path.includes("/") ? "\\" : "/";
   const drive = /^[A-Za-z]:/u.exec(path)?.[0];
   const start = drive ?? (path.startsWith("~") ? "~" : "");
@@ -1237,8 +1256,13 @@ function folderPathParts(path: string): { parent: string; name: string } {
     .filter(Boolean);
   const name = segments.at(-1) ?? path;
   const above = segments.slice(0, -1);
-  const shown = above.length > 2 ? [above[0], "…", above.at(-1)] : above;
-  return { parent: [start, ...shown, ""].join(separator), name };
+  if (above.length <= 2) return { lead: [start, ...above, ""].join(separator), hidden: "", tail: "", name };
+  return {
+    lead: [start, above[0], ""].join(separator),
+    hidden: above.slice(1, -1).join(separator),
+    tail: `${separator}${above.at(-1)}${separator}`,
+    name,
+  };
 }
 
 function sharedFileTarget(value: string): string | null {

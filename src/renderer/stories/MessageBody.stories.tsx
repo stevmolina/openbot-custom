@@ -226,6 +226,7 @@ const FOLDER_PATH_BODY = [
   "- The `Purchase/Return` rows are in `rebates.csv`.",
   "- The scripts are in `~/dev/resorsi/engagements/halorx/scripts/`.",
   "- On Windows the copy is in `C:\\Users\\steven\\Documents\\HaloRx`.",
+  "- The database file `/home/ubuntu/dev/resorsi/halorx.db` is not a folder.",
   "",
   "Run `/clear` to start again.",
 ].join("\n");

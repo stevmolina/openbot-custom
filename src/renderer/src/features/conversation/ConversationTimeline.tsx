@@ -186,7 +186,6 @@ export function ConversationTimeline() {
     openInstructionsSettings,
     openSharedFile,
     openWorkspaceFile,
-    openWorkspaceFolder,
     openQuote,
     openTaggedReference,
     pendingSendFor,
@@ -232,13 +231,13 @@ export function ConversationTimeline() {
     sideThreadOpen,
   } = useConversationViewScope();
   const { t, format, sourceText } = useText();
-  // A folder path chip opens the folder in the side panel only when the folder is on this computer.
-  // A joined server or the web client shows a path of the host, so there the chip copies the path.
-  // A named function, not a ternary in the prop, as `waitingProviderName` below says.
-  const folderPathOpener = (agentId: string | undefined) => {
-    if (!agentId || props.runtime || (props.server?.id ?? "local") !== "local") return undefined;
-    return (path: string) => openWorkspaceFolder(path, agentId, "tab");
-  };
+  // A folder path chip opens its path in the side panel only on this computer, where the agent may read
+  // any folder. A member of a joined server, or the web client, can read only the agent's workspace on
+  // the host, and an agent names folders outside it too, so there the chip copies the path. The file
+  // opener also lists a folder, so a chip that names a file, such as `~/.zshrc`, opens too.
+  const opensFolderPaths = () => !props.runtime && (props.server?.id ?? "local") === "local";
+  const openFolderPath = (path: string, agentId: string | undefined) =>
+    openWorkspaceFile(path, undefined, agentId, "tab");
   // A named function, not a ternary in the prop: the compiler wraps a ternary prop in a memo, and
   // the avatar reads it in a tracked effect, where a new memo halts the reactive system.
   const waitingProviderName = () => {
@@ -506,7 +505,11 @@ export function ConversationTimeline() {
               onOpenSharedFile={(path) => openSharedFile(path)}
               // A workspace path is in the workspace of the agent that wrote it, as in a channel.
               onOpenWorkspaceFile={(path) => openWorkspaceFile(path, undefined, current().exchange?.senderAgentId)}
-              onOpenFolderPath={folderPathOpener(current().exchange?.senderAgentId)}
+              onOpenFolderPath={
+                opensFolderPaths() && current().exchange?.senderAgentId
+                  ? (path) => openFolderPath(path, current().exchange?.senderAgentId)
+                  : undefined
+              }
               onOpenQuote={openQuote}
               onOpenTag={openTaggedReference}
               macWindowControls={props.platform === "darwin"}
@@ -525,7 +528,9 @@ export function ConversationTimeline() {
               onPreview={(attachment) => void previewAttachment(attachment)}
               onAttachmentAction={attachmentAction}
               onOpenWorkspaceFile={(path) => openWorkspaceFile(path, undefined, props.agent?.id)}
-              onOpenFolderPath={folderPathOpener(props.agent?.id)}
+              onOpenFolderPath={
+                opensFolderPaths() && props.agent?.id ? (path) => openFolderPath(path, props.agent?.id) : undefined
+              }
               onOpenQuote={openQuote}
               onOpenTag={openTaggedReference}
               macWindowControls={props.platform === "darwin"}
@@ -1630,7 +1635,11 @@ export function ConversationTimeline() {
                                     )
                                 : undefined
                             }
-                            onOpenFolderPath={folderPathOpener(workspaceAgentId())}
+                            onOpenFolderPath={
+                              opensFolderPaths() && workspaceAgentId()
+                                ? (path) => openFolderPath(path, workspaceAgentId())
+                                : undefined
+                            }
                             onOpenQuote={openQuote}
                             onOpenTag={openTaggedReference}
                             onDownload={(attachment) => attachmentAction(attachment, "download")}

@@ -1545,6 +1545,12 @@
   font-weight: var(--openbot-weight-semibold);
 }
 
+/* A copy of the message takes the hidden middle folders, not the `…` or the copy status. */
+.message-folder-reference-ellipsis,
+.message-folder-reference-status {
+  user-select: none;
+}
+
 .ui-button.message-file-reference:focus-visible,
 .composer-file-reference:focus-visible {
   outline: 2px solid var(--file-reference-color);
