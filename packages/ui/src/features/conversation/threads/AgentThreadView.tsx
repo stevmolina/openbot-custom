@@ -11,7 +11,7 @@ import type {
 } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { isAgentTaskActive } from "@openbot/team-client/agent-tasks";
-import { Button, Check, DropdownMenu, MessageSquareText } from "@openbot/ui";
+import { Button, Check, DropdownMenu, LoaderCircle, MessageSquareText } from "@openbot/ui";
 import { createScrollFades } from "@openbot/ui/components/createScrollFades";
 import type {
   AgentMessage,
@@ -706,6 +706,19 @@ export function AgentThreadView(props: AgentThreadViewProps) {
   });
   const queuePanelOwner = () => (queueRows().deliveries.length > 0 ? queueRows().taskId : undefined);
   const queueOpen = () => (props.queue?.deliveries.length ?? 0) > 0 && queueRows().taskId === props.task?.id;
+  /**
+   * The messages that wait, shown under the hold above the message box when the queue panel does not
+   * list them: a joined server sends only the start of each message, and a host can report a waiting
+   * thread with no queued rows. Then the title, the start of the first message, stands in for it.
+   */
+  const waitingRows = (): { id: string; text: string }[] | undefined => {
+    const task = props.task;
+    if (!task || queueOpen()) return undefined;
+    if (props.queue && !hold()) return undefined;
+    const rows = task.queuedMessages.map((message) => ({ id: message.deliveryId, text: message.text }));
+    if (rows.length > 0) return rows;
+    return hold() ? [{ id: task.id, text: task.title }] : undefined;
+  };
   const hasRow = () =>
     Boolean(props.onRemoveAttachment) &&
     ((props.rowAttachments?.length ?? 0) > 0 || (props.pendingImages?.length ?? 0) > 0);
@@ -960,24 +973,6 @@ export function AgentThreadView(props: AgentThreadViewProps) {
           <Show when={attention.toArray().length > 0}>
             <div class="virtual-chat-row">{attention()}</div>
           </Show>
-          <Show when={hold()}>
-            {(text) => (
-              <div class="virtual-chat-row">
-                <p class="agent-queue-hold" role="status">
-                  {text()}
-                </p>
-              </div>
-            )}
-          </Show>
-          <Show when={!props.queue && queued()}>
-            {(task) => (
-              <section class="agent-thread-queued" aria-label={t("conversation.threads.view.queued")}>
-                <For each={task().queuedMessages} keyed={(message) => message.deliveryId}>
-                  {(message) => <p class="agent-thread-queued-text">{message().text}</p>}
-                </For>
-              </section>
-            )}
-          </Show>
         </div>
       </section>
       <div class="composer-wrap">
@@ -1002,53 +997,72 @@ export function AgentThreadView(props: AgentThreadViewProps) {
             />
           )}
         </Show>
-        <Show when={props.queue}>
-          {(queue) => (
-            <div class="composer-stack">
-              <div
-                class="agent-queue-slot"
-                data-open={queueOpen() ? "true" : "false"}
-                aria-hidden={queueOpen() ? undefined : "true"}
-                inert={queueOpen() ? undefined : true}
-              >
-                <div class="agent-queue-slot-inner">
-                  {/* Each thread gets its own panel, so its rows do not animate in from the thread before. */}
-                  <Show when={queuePanelOwner()} keyed>
-                    {(_taskId) => (
-                      <QueuePanel
-                        deliveries={queueRows().deliveries}
-                        agents={props.agents}
-                        skills={props.skills}
-                        editingDeliveryId={queue().editingDeliveryId}
-                        canSteer={Boolean(props.task?.activeTurnId)}
-                        onSteer={queue().onSteer}
-                        onCancel={(deliveryId) => queue().onCancel(deliveryId)}
-                        onEdit={(delivery) => queue().onEdit(delivery)}
-                        onReorder={(deliveryIds) => queue().onReorder(deliveryIds)}
-                      />
-                    )}
-                  </Show>
-                </div>
+        <div class="composer-stack">
+          <Show when={hold()}>
+            {(text) => (
+              <div class="composer-notice agent-thread-hold" role="status">
+                <LoaderCircle class="composer-notice-icon composer-spinner" aria-hidden="true" />
+                <p class="agent-thread-hold-copy">{text()}</p>
               </div>
-              <Show when={queue().editingDeliveryId}>
-                <ComposerNotice
-                  body={t("composer.queueEdit.body")}
-                  action={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      disabled={queue().editBusy}
-                      onClick={() => queue().onCancelEdit()}
-                    >
-                      {t("composer.queueEdit.cancel")}
-                    </Button>
-                  }
-                />
-              </Show>
-            </div>
-          )}
-        </Show>
+            )}
+          </Show>
+          <Show when={waitingRows()}>
+            {(rows) => (
+              <section class="agent-thread-queued" aria-label={t("conversation.threads.view.queued")}>
+                <For each={rows()} keyed={(row) => row.id}>
+                  {(row) => <p class="agent-thread-queued-text">{row().text}</p>}
+                </For>
+              </section>
+            )}
+          </Show>
+          <Show when={props.queue}>
+            {(queue) => (
+              <>
+                <div
+                  class="agent-queue-slot"
+                  data-open={queueOpen() ? "true" : "false"}
+                  aria-hidden={queueOpen() ? undefined : "true"}
+                  inert={queueOpen() ? undefined : true}
+                >
+                  <div class="agent-queue-slot-inner">
+                    {/* Each thread gets its own panel, so its rows do not animate in from the thread before. */}
+                    <Show when={queuePanelOwner()} keyed>
+                      {(_taskId) => (
+                        <QueuePanel
+                          deliveries={queueRows().deliveries}
+                          agents={props.agents}
+                          skills={props.skills}
+                          editingDeliveryId={queue().editingDeliveryId}
+                          canSteer={Boolean(props.task?.activeTurnId)}
+                          onSteer={queue().onSteer}
+                          onCancel={(deliveryId) => queue().onCancel(deliveryId)}
+                          onEdit={(delivery) => queue().onEdit(delivery)}
+                          onReorder={(deliveryIds) => queue().onReorder(deliveryIds)}
+                        />
+                      )}
+                    </Show>
+                  </div>
+                </div>
+                <Show when={queue().editingDeliveryId}>
+                  <ComposerNotice
+                    body={t("composer.queueEdit.body")}
+                    action={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        disabled={queue().editBusy}
+                        onClick={() => queue().onCancelEdit()}
+                      >
+                        {t("composer.queueEdit.cancel")}
+                      </Button>
+                    }
+                  />
+                </Show>
+              </>
+            )}
+          </Show>
+        </div>
         <form
           class="composer agent-thread-composer"
           data-compact={hasRow() ? undefined : "true"}
