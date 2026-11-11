@@ -15,6 +15,10 @@ services:
     mem_limit: ${OPENBOT_MEM:?}
     # No swap above the memory limit.
     memswap_limit: ${OPENBOT_MEM:?}
+    # The swap limit of the container is in its systemd scope, and each `systemctl daemon-reload`
+    # sets it back to no limit. openbot.slice keeps swap at 0 for all instances. See check_swap in
+    # openbot-instance.
+    cgroup_parent: openbot.slice
     pids_limit: 8192
     # The soft limit of Docker is 1024 open files, which is too few for Chromium and agent builds.
     ulimits:

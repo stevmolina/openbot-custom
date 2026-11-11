@@ -28,6 +28,7 @@ DATA=/srv/openbot
 NETWORK=openbot
 SUBNET=172.30.0.0/16
 FIREWALL=openbot-firewall.service
+SLICE=openbot.slice
 LOG_SOCKET=/var/lib/openbot-docker/dev/log
 UNIT_DIRECTORY=/etc/systemd/system
 UPDATE_UNIT=openbot-instance-update
@@ -168,6 +169,8 @@ setup() {
   install -m 0644 "$HERE/openbot-logrotate.service" "$HERE/openbot-logrotate.timer" /etc/systemd/system/
   install -d -m 0755 /etc/systemd/system/docker.service.d
   install -m 0644 "$HERE/docker-openbot.conf" /etc/systemd/system/docker.service.d/openbot.conf
+  # The parent of the containers. It keeps their swap at 0. See check_swap.
+  install -m 0644 "$HERE/$SLICE" "$UNIT_DIRECTORY/"
   # The update requests of the app. `start` enables the path unit of each instance.
   install -m 0644 "$HERE/$UPDATE_UNIT@.path" "$UNIT_DIRECTORY/"
   sed "s#/opt/openbot-docker/instances/#$HERE/#" "$HERE/$UPDATE_UNIT@.service" >"$UNIT_DIRECTORY/$UPDATE_UNIT@.service"
@@ -175,6 +178,7 @@ setup() {
   install -m 0644 "$HERE/$BACKUP_UNIT@.timer" "$UNIT_DIRECTORY/"
   sed "s#/opt/openbot-docker/instances/#$HERE/#" "$HERE/$BACKUP_UNIT@.service" >"$UNIT_DIRECTORY/$BACKUP_UNIT@.service"
   systemctl daemon-reload
+  systemctl start "$SLICE"
   systemctl enable --now --quiet openbot-logrotate.timer
   if ! cmp --silent "$HERE/openbot-rsyslog.conf" /etc/rsyslog.d/30-openbot-docker.conf || [ ! -S "$LOG_SOCKET" ]; then
     install -m 0644 "$HERE/openbot-rsyslog.conf" /etc/rsyslog.d/30-openbot-docker.conf
@@ -207,15 +211,19 @@ start() {
 
 # compose.yaml gives no swap above the memory limit. A container that swaps stops for seconds at a
 # time when it is full, and its clients lose the connection, so a limit that Docker did not apply is
-# reported.
+# reported. Docker writes the limit of the container to its systemd scope, but systemd does not keep
+# it: each `systemctl daemon-reload`, which create and package upgrades run, sets it back to "max".
+# So the limit that counts is the one of the parent, openbot.slice, which systemd keeps.
 check_swap() {
-  local id swap
-  id=$(docker inspect --format '{{.Id}}' "openbot-$1") || return 0
-  if ! swap=$(cat "/sys/fs/cgroup/system.slice/docker-$id.scope/memory.swap.max" 2>/dev/null); then
+  local pid cgroup swap
+  pid=$(docker inspect --format '{{.State.Pid}}' "openbot-$1" 2>/dev/null) || return 0
+  cgroup=$(sed -n 's/^0:://p' "/proc/$pid/cgroup" 2>/dev/null) || true
+  if [ -z "$cgroup" ] || ! swap=$(cat "/sys/fs/cgroup${cgroup%/*}/memory.swap.max" 2>/dev/null); then
     echo "The swap limit of openbot-$1 cannot be read. Check that Docker uses cgroup v2 with the systemd driver and swap accounting." >&2
     return 0
   fi
-  [ "$swap" = 0 ] || echo "openbot-$1 can use swap (memory.swap.max is $swap). Check the swap accounting of Docker." >&2
+  [ "${cgroup%/*}" = "/$SLICE" ] && [ "$swap" = 0 ] ||
+    echo "openbot-$1 can use swap (${cgroup%/*}/memory.swap.max is $swap). Run: openbot-instance setup, then openbot-instance up $1." >&2
 }
 
 # The folders that compose.yaml mounts for updates from the app. Docker would make a missing one as

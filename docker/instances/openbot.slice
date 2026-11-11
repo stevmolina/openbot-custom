@@ -1,0 +1,11 @@
+# The parent of the OpenBot instances. `openbot-instance setup` installs it as
+# /etc/systemd/system/openbot.slice, and compose.yaml puts each container in it.
+#
+# Docker writes the swap limit of a container to its scope, but each `systemctl daemon-reload` sets
+# that back to no limit. The limit of this slice stays, and no container in it can swap.
+[Unit]
+Description=OpenBot instances
+Before=slices.target
+
+[Slice]
+MemorySwapMax=0
