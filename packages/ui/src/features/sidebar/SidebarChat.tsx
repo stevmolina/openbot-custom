@@ -9,9 +9,14 @@
  * The chat list is one list by last message: the pinned chats, then each agent and channel, newest
  * first, then the people, the hidden agents and the deleted channels. A chat that waits shows it on
  * the face and in the preview line, so the list has no "Needs you" or "Working" group.
+ *
+ * Once the layout has folders, the list keeps them: "Needs you" holds the chats that wait, above the
+ * folders, so a closed folder cannot hide one. Then each folder in the order of the layout, with its
+ * chats newest first and the folders in it after them. The chats in no folder sit where the layout
+ * puts the unassigned section, with no heading when nothing is above them.
  */
 
-import { SIDEBAR_PEOPLE_SECTION_ID } from "@openbot/contracts/ipc";
+import { SIDEBAR_PEOPLE_SECTION_ID, SIDEBAR_UNASSIGNED_SECTION_ID } from "@openbot/contracts/ipc";
 import {
   Bot,
   Button,
@@ -19,6 +24,7 @@ import {
   CircleFadingArrowUp,
   ContextMenu,
   DropdownMenu,
+  FolderPlus,
   Hash,
   MotionTooltip,
   PanelLeft,
@@ -35,11 +41,15 @@ import { SidebarHiddenGroup } from "./SidebarHiddenGroup";
 import { SidebarPeopleSection } from "./SidebarPeopleSection";
 import { SidebarPill } from "./SidebarPill";
 import { SidebarPinnedGroup } from "./SidebarPinnedGroup";
+import { SidebarSectionDraft } from "./SidebarSectionEditor";
+import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { SidebarUsage } from "./SidebarUsage";
+import { sidebarSectionResolver } from "./sidebar-agent-order";
 import type { SidebarPages } from "./sidebar-pages";
 import { sidebarPinnedItemKey } from "./sidebar-pins";
-import { sidebarRecentChats } from "./sidebar-recent-chats";
+import { sidebarAgentWait, sidebarRecentChats } from "./sidebar-recent-chats";
 import { useSidebarScope } from "./sidebar-scope";
+import type { SidebarChatItem } from "./sidebar-types";
 
 /** A round button of the top row, with its name as a tooltip. */
 function RoundButton(props: { label: string; onClick: () => void; children: JSX.Element }) {
@@ -153,13 +163,14 @@ function SidebarChatTopbar(topProps: { pages: SidebarPages }) {
 
 /** The right-click menu of the free area of the list. */
 function FreeAreaMenu() {
-  const { props } = useSidebarScope();
+  const { layoutMutable, props, startCreateSection } = useSidebarScope();
   const { t } = useText();
   return (
     <Show
       when={
         props.createSupported !== false ||
         props.onCreateChannel ||
+        layoutMutable() ||
         props.onMarkAllRead ||
         props.onToggleArchivedChannels
       }
@@ -178,6 +189,12 @@ function FreeAreaMenu() {
               <ContextMenu.Item onSelect={() => props.onCreateChannel?.()}>
                 <Hash class="agent-context-icon size-4" aria-hidden="true" />
                 <span>{t("sidebar.new.channel")}</span>
+              </ContextMenu.Item>
+            </Show>
+            <Show when={layoutMutable()}>
+              <ContextMenu.Item onSelectAfterClose={() => startCreateSection()}>
+                <FolderPlus class="agent-context-icon size-4" aria-hidden="true" />
+                <span>{t("sidebar.new.section")}</span>
               </ContextMenu.Item>
             </Show>
             <Show when={props.onMarkAllRead}>
@@ -207,6 +224,158 @@ function useRecentChats() {
   const { filteredChats, waitingChats, unreadChats, props } = useSidebarScope();
   return createMemo(() =>
     sidebarRecentChats([...waitingChats(), ...unreadChats(), ...filteredChats()], props.threadLanes?.threads),
+  );
+}
+
+/** Rows of the open list, in the order given. */
+function SidebarChatRows(rowsProps: { chats: readonly SidebarChatItem[] }) {
+  return (
+    <div class="sidebar-chat-rows">
+      {/* Keyed by chat, so a new order after a message keeps each row, its focus and its menu. */}
+      <For each={rowsProps.chats} keyed={(chat) => `${chat.kind}:${chat.id}`}>
+        {(chat) => <SidebarChatRow chat={chat()} look="row" />}
+      </For>
+    </div>
+  );
+}
+
+/** The chats that wait, and the other chats by the folder that the layout puts them in. */
+interface SidebarChatFolderGroups {
+  waiting: SidebarChatItem[];
+  bySection: ReadonlyMap<string, SidebarChatItem[]>;
+}
+
+/**
+ * The open list by folder. The folders, their headings, their menus and their collapse are those of
+ * the section list; only the rows are the rows of the chat list.
+ */
+function SidebarChatFolders(foldersProps: { chats: readonly SidebarChatItem[] }) {
+  const { customSectionById, draggingKind, props, sectionParent, waitingChats } = useSidebarScope();
+  const { t } = useText();
+  /**
+   * The agents whose wait is in a side thread only. The set holds still during a drag, as the store's
+   * `waitingChats` does, so no row moves between "Needs you" and a folder under the pointer.
+   */
+  let heldSideWaits: ReadonlySet<string> = new Set();
+  const sideWaits = createMemo(() => {
+    const next = new Set(
+      (props.threadLanes?.threads ?? []).flatMap((entry) =>
+        sidebarAgentWait(entry.agentId, undefined, [entry]) ? [entry.agentId] : [],
+      ),
+    );
+    if (!draggingKind()) heldSideWaits = next;
+    return heldSideWaits;
+  });
+  const groups = createMemo<SidebarChatFolderGroups>(() => {
+    const sectionOf = sidebarSectionResolver(props.layout);
+    const waitingIds = new Set(waitingChats().map((chat) => chat.id));
+    const waits = (chat: SidebarChatItem) =>
+      waitingIds.has(chat.id) || (chat.kind === "agent" && sideWaits().has(chat.id));
+    const waiting: SidebarChatItem[] = [];
+    const bySection = new Map<string, SidebarChatItem[]>();
+    for (const chat of foldersProps.chats) {
+      if (waits(chat)) {
+        waiting.push(chat);
+        continue;
+      }
+      const sectionId = sectionOf(chat.id);
+      bySection.set(sectionId, [...(bySection.get(sectionId) ?? []), chat]);
+    }
+    return { waiting, bySection };
+  });
+  const unassignedCount = () => groups().bySection.get(SIDEBAR_UNASSIGNED_SECTION_ID)?.length ?? 0;
+  /** The folders at the top of the list and the chats in no folder, in the order of the layout. */
+  const topSectionIds = createMemo(() => {
+    const ids = props.layout.order.filter((sectionId) =>
+      sectionId === SIDEBAR_UNASSIGNED_SECTION_ID
+        ? unassignedCount() > 0
+        : customSectionById().has(sectionId) && sectionParent(sectionId) === null,
+    );
+    // A layout always names the unassigned section, but a chat must not be lost if one does not.
+    if (unassignedCount() > 0 && !ids.includes(SIDEBAR_UNASSIGNED_SECTION_ID)) ids.push(SIDEBAR_UNASSIGNED_SECTION_ID);
+    return ids;
+  });
+  /** The chats in no folder have a heading only below something, where they would read as part of it. */
+  const unassignedHeaded = () => groups().waiting.length > 0 || topSectionIds()[0] !== SIDEBAR_UNASSIGNED_SECTION_ID;
+  return (
+    <>
+      <Show when={groups().waiting.length > 0}>
+        <section
+          class="sidebar-chat-group sidebar-chat-folder-group"
+          aria-label={t("sidebar.waiting.label", { count: groups().waiting.length })}
+        >
+          <header>
+            <h2 class="sidebar-chat-folder-title">{t("sidebar.waiting.title")}</h2>
+          </header>
+          <SidebarChatRows chats={groups().waiting} />
+        </section>
+      </Show>
+      <For each={topSectionIds()}>
+        {(sectionId) => (
+          <SidebarChatFolder
+            sectionId={sectionId}
+            depth={0}
+            groups={groups()}
+            headed={sectionId !== SIDEBAR_UNASSIGNED_SECTION_ID || unassignedHeaded()}
+          />
+        )}
+      </For>
+      <SidebarSectionDraft parentId={null} />
+    </>
+  );
+}
+
+/** One folder of the open list, or the chats in no folder: its chats, then the folders in it. */
+function SidebarChatFolder(folderProps: {
+  sectionId: string;
+  depth: number;
+  groups: SidebarChatFolderGroups;
+  headed: boolean;
+}) {
+  const { customSectionById, dragOffset, sectionChildren, sectionDragClasses, sectionIsCollapsed, sectionLabel } =
+    useSidebarScope();
+  const { t } = useText();
+  const sectionId = () => folderProps.sectionId;
+  const custom = () => customSectionById().get(sectionId());
+  const chats = () => folderProps.groups.bySection.get(sectionId()) ?? [];
+  const children = () => (custom() ? sectionChildren(sectionId()) : []);
+  const name = () =>
+    sectionId() === SIDEBAR_UNASSIGNED_SECTION_ID ? t("sidebar.section.unassigned") : (custom()?.name ?? "");
+  const collapsed = () => folderProps.headed && sectionIsCollapsed(sectionId());
+  return (
+    <section
+      class={[
+        "sidebar-chat-group sidebar-section sidebar-chat-folder-group",
+        { "sidebar-folder": Boolean(custom()) },
+        sectionDragClasses(sectionId()),
+      ]}
+      style={`--sidebar-drag-y: ${dragOffset(sectionId()).y}px;`}
+      aria-label={custom() ? sectionLabel(sectionId()) : name()}
+      data-section-id={sectionId()}
+      data-depth={custom() ? String(folderProps.depth) : undefined}
+    >
+      <Show when={folderProps.headed}>
+        <SidebarSectionHeader sectionId={sectionId()} name={name()} depth={folderProps.depth} />
+      </Show>
+      <div
+        class="sidebar-section-collapse"
+        data-collapsed={collapsed() ? "" : undefined}
+        aria-hidden={collapsed() ? "true" : undefined}
+        inert={collapsed() ? true : undefined}
+      >
+        <div id={`sidebar-section-body-${sectionId()}`} class="sidebar-section-body">
+          <SidebarChatRows chats={chats()} />
+          <For each={children()}>
+            {(childId) => (
+              <SidebarChatFolder sectionId={childId} depth={folderProps.depth + 1} groups={folderProps.groups} headed />
+            )}
+          </For>
+          <Show when={custom()}>
+            <SidebarSectionDraft parentId={sectionId()} />
+          </Show>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -252,12 +421,13 @@ function SidebarChatList() {
           <SidebarEmptyState />
         </Show>
         <SidebarPinnedGroup />
-        <div class="sidebar-chat-rows">
-          {/* Keyed by chat, so a new order after a message keeps each row, its focus and its menu. */}
-          <For each={recent()} keyed={(chat) => `${chat.kind}:${chat.id}`}>
-            {(chat) => <SidebarChatRow chat={chat()} look="row" />}
-          </For>
-        </div>
+        {/* The draft of a first folder needs the folder view, or it would have nowhere to show. */}
+        <Show
+          when={props.layout.sections.length > 0 || pending.sectionEditor?.target.kind === "create"}
+          fallback={<SidebarChatRows chats={recent()} />}
+        >
+          <SidebarChatFolders chats={recent()} />
+        </Show>
         <SidebarPeopleSection sectionId={SIDEBAR_PEOPLE_SECTION_ID} />
         <SidebarHiddenGroup />
         <Show when={props.showingArchivedChannels}>

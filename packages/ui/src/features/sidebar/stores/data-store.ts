@@ -142,9 +142,12 @@ export function createSidebarDataStore(deps: {
     return heldUnreadKey;
   });
   const unreadIds = createMemo(() => new Set(unreadKey() ? unreadKey().split("\n") : []));
-  /** The "Unread" group takes a chat out of its section, as "Needs you" does. A waiting chat stays in "Needs you". */
+  /**
+   * The "Unread" group takes a chat out of its section, as "Needs you" does. A waiting chat stays in "Needs you".
+   * The chat sidebar (`pages`) has no "Unread" group: its chats stay in their folders, and a closed folder counts them.
+   */
   const chatInUnreadGroup = (chatId: string) =>
-    chatOrder() === "unread-group" && unreadIds().has(chatId) && !chatWaits(chatId);
+    chatOrder() === "unread-group" && !props.pages && unreadIds().has(chatId) && !chatWaits(chatId);
   const filteredAgents = createMemo(() =>
     listedAgents().filter((agent) => !chatWaits(agent.id) && !chatInUnreadGroup(agent.id)),
   );

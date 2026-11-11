@@ -30,9 +30,8 @@ export function SidebarMoveToSubmenu(menuProps: { chatId: string }) {
     customSectionById().has(props.layout.agentAssignments[menuProps.chatId] ?? "")
       ? props.layout.agentAssignments[menuProps.chatId]
       : null;
-  // The chat sidebar lists chats by last message and shows no folders, so a move there shows nothing.
   return (
-    <Show when={layoutMutable() && !props.pages}>
+    <Show when={layoutMutable()}>
       <ContextMenu.Sub>
         <ContextMenu.SubTrigger>
           <FolderInput class="agent-context-icon size-4" aria-hidden="true" />
