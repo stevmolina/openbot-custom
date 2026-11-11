@@ -32,10 +32,14 @@ import type { AuthUser, TeamInviteEmailDelivery } from "./types";
 const COOKIE = "__Host-openbot-web";
 const PREFIX = "/api/browser/";
 const COOKIE_ATTRIBUTES = "Path=/; Secure; HttpOnly; SameSite=Lax";
+
 /**
  * The company sign-in that this browser started: its state and verifier. Only this browser can finish
  * it, so a provider page that someone else opened cannot sign this browser in.
  */
+import { WORKOS_WEB_RETURN_PATH, WorkosSignInError, type WorkosSignInService } from "./workos-sign-in";
+
+const WORKOS_COOKIE = "__Host-openbot-workos";
 const COMPANY_COOKIE = "__Host-openbot-company";
 const COMPANY_FLOW_SECONDS = 600;
 
@@ -74,6 +78,7 @@ export interface BrowserApiServices {
   >;
   /** The methods bind their service, so this is the whole service. */
   companySignIn: () => CompanySignInService;
+  workosSignIn?: () => WorkosSignInService;
   /** The stored logo of one host version, or null. The handler checks membership and the version first. */
   hostLogo: (hostId: string, version: string) => ReturnType<typeof readHostLogo>;
   hosting: () => Pick<
@@ -176,6 +181,8 @@ export function handleBrowserApi(request: Request, services: BrowserApiServices)
     return Promise.resolve(failure(403, "browser_request_refused", "The browser request was refused."));
   // The company provider sends the browser here, so this navigation is cross-site. The flow cookie
   // of the browser that started the sign-in is its check.
+  if (path === "workos/return" && request.method === "GET")
+    return runApiResponse(finishWorkosSignIn(request, services), services.errorResponse);
   if (path === "company/return" && request.method === "GET")
     return runApiResponse(finishCompanySignIn(request, services), services.errorResponse);
   if (request.headers.get("Sec-Fetch-Site") === "cross-site")
@@ -226,6 +233,52 @@ const finishCompanySignIn = Effect.fn("BrowserApi.finishCompanySignIn")(function
   return back();
 });
 
+function workosService(services: BrowserApiServices) {
+  return services.workosSignIn
+    ? Effect.succeed(services.workosSignIn())
+    : Effect.fail(
+        new WorkosSignInError(503, "workos_sign_in_not_configured", sourceText("error.auth.workosSignInUnavailable")),
+      );
+}
+
+const finishWorkosSignIn = Effect.fn("BrowserApi.finishWorkosSignIn")(function* (
+  request: Request,
+  services: BrowserApiServices,
+) {
+  const url = new URL(request.url);
+  const cookies = [`${WORKOS_COOKIE}=; ${COOKIE_ATTRIBUTES}; Max-Age=0`];
+  const back = (error?: string) => {
+    const target = new URL("/app", url.origin);
+    if (error) target.searchParams.set("workosSignInError", error);
+    const headers = new Headers({
+      Location: target.toString(),
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+    });
+    for (const cookie of cookies) headers.append("Set-Cookie", cookie);
+    return new Response(null, { status: 303, headers });
+  };
+  const [clientState, verifier] = cookieValue(request, WORKOS_COOKIE)?.split(".") ?? [];
+  if (!clientState || !verifier || url.searchParams.get("state") !== clientState)
+    return back("invalid_workos_sign_in_code");
+  const error = url.searchParams.get("error");
+  if (error) return back(/^[a-z_]{1,64}$/u.test(error) ? error : "workos_sign_in_failed");
+  const service = yield* workosService(services);
+  const result = yield* service.exchange({ code: url.searchParams.get("code") ?? "", codeVerifier: verifier }).pipe(
+    Effect.map((session) => ({ session })),
+    Effect.catchTag("WorkosSignInError", (refusal) => Effect.succeed({ error: refusal.code })),
+    Effect.catch(() => Effect.succeed({ error: "workos_sign_in_failed" })),
+  );
+  if ("error" in result) return back(result.error);
+  const previous = browserSessionToken(request);
+  if (previous) {
+    const user = yield* services.auth.authenticate(previous);
+    if (user) yield* services.remote.endAccountSession(user.id, yield* sha256(previous));
+  }
+  cookies.push(`${COOKIE}=${result.session.sessionToken}; ${COOKIE_ATTRIBUTES}; Max-Age=34560000`);
+  return back();
+});
+
 const handleBrowserOperation = Effect.fn("BrowserApi.handleOperation")(function* (
   request: Request,
   path: string,
@@ -258,6 +311,38 @@ const handleBrowserOperation = Effect.fn("BrowserApi.handleOperation")(function*
     const response = json({ user: result.user });
     response.headers.set("Set-Cookie", `${COOKIE}=${result.sessionToken}; ${COOKIE_ATTRIBUTES}; Max-Age=34560000`);
     return response;
+  }
+  if (path === "workos/start" && request.method === "POST") {
+    // The email start answered `workos_sign_in_required`. The page goes to the answer in this tab.
+    const body = yield* readJsonObject(request);
+    const email = yield* requiredString(body, "email");
+    const site = new URL(request.url);
+    const clientState = randomToken(24);
+    const verifier = randomToken(32);
+    const service = yield* workosService(services);
+    return yield* service
+      .startSignIn(
+        {
+          email,
+          returnTo: new URL(WORKOS_WEB_RETURN_PATH, site.origin).toString(),
+          clientState,
+          clientChallenge: yield* sha256(verifier),
+          sourceIp: services.sourceIp(request),
+        },
+        site.origin,
+        site.origin,
+      )
+      .pipe(
+        Effect.map(({ authorizationUrl }) => {
+          const response = json({ authorizationUrl });
+          response.headers.set(
+            "Set-Cookie",
+            `${WORKOS_COOKIE}=${clientState}.${verifier}; ${COOKIE_ATTRIBUTES}; Max-Age=${COMPANY_FLOW_SECONDS}`,
+          );
+          return response;
+        }),
+        refuseWith(WorkosSignInError),
+      );
   }
   if (path === "company/start" && request.method === "POST") {
     // The email start answered `company_sign_in_required`. The page goes to the answer in this tab.

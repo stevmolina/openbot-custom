@@ -11,6 +11,7 @@ import {
 } from "@openbot/contracts/marketplace-links";
 import { pluginSlugFromWebAppSearch, WEB_APP_PLUGIN_PARAM } from "@openbot/contracts/plugin-links";
 import { isBoolean, isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
+import { WEB_APP_WORKOS_SIGN_IN_ERROR_PARAM, workosSignInErrorKey } from "@openbot/contracts/workos-sign-in";
 import { formatLocale, resolveLocale } from "@openbot/i18n";
 import { sourceText } from "@openbot/i18n/source";
 import { markRemoteSync } from "@openbot/team-client/sync-profile";
@@ -67,26 +68,32 @@ function loadWorkspace(): Promise<typeof WebWorkspace> {
 class SignInIssueShown extends Error {}
 
 /** The email signs in with the company's provider, not with an email code. */
-class CompanySignInRequired extends Error {}
+class CompanySignInRequired extends Error {
+  constructor(readonly provider: "company" | "workos" = "company") {
+    super();
+  }
+}
 
 /**
  * The error code of a company sign-in that came back without a session, from
  * `/app?companySignInError=<code>`. The query is removed after it is read.
  */
-function takeCompanySignInError(): string | null {
+function takeCompanySignInError(parameter = WEB_APP_COMPANY_SIGN_IN_ERROR_PARAM): string | null {
   const url = new URL(window.location.href);
-  const code = url.searchParams.get(WEB_APP_COMPANY_SIGN_IN_ERROR_PARAM);
+  const code = url.searchParams.get(parameter);
   if (code === null) return null;
-  url.searchParams.delete(WEB_APP_COMPANY_SIGN_IN_ERROR_PARAM);
+  url.searchParams.delete(parameter);
   window.history.replaceState(window.history.state, "", url);
   return code;
 }
 
-/** The email start answered that the company's provider signs this email in. */
-const COMPANY_SIGN_IN = Symbol("company sign-in");
+/** The error label of the selected account provider. */
 
-function companySignInIssue(code: string) {
-  return { code, message: sourceText(companySignInErrorKey(code)) };
+function companySignInIssue(code: string, provider: "company" | "workos" = "company") {
+  return {
+    code,
+    message: sourceText(provider === "workos" ? workosSignInErrorKey(code) : companySignInErrorKey(code)),
+  };
 }
 
 /**
@@ -223,6 +230,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
     (initialHostingReturn ? { outcome: initialHostingReturn.paid ? "completed" : "cancelled", kind: "plan" } : null);
   /** Shown after the first session check, because its 401 resets the login state. */
   let companySignInReturnError = takeCompanySignInError();
+  let workosSignInReturnError = takeCompanySignInError(WEB_APP_WORKOS_SIGN_IN_ERROR_PARAM);
   const [workspace, setWorkspace] = createSignal<typeof WebWorkspace>();
   /** Sets the account when the workspace code is ready to show it. */
   async function showAccount(account: CentralAuthUser) {
@@ -260,7 +268,8 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
       response.status === 401 &&
       input !== "/api/browser/email/start" &&
       input !== "/api/browser/email/verify" &&
-      input !== "/api/browser/company/start"
+      input !== "/api/browser/company/start" &&
+      input !== "/api/browser/workos/start"
     ) {
       if (state.account) channel?.postMessage("session-changed");
       clearSession();
@@ -285,12 +294,12 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
     const value = await response.json();
     if (!response.ok) {
       if (
-        path === "email/start" &&
+        (path === "email/start" || path === "email/verify") &&
         isDynamicRecord(value) &&
         isDynamicRecord(value.error) &&
-        value.error.code === "company_sign_in_required"
+        (value.error.code === "company_sign_in_required" || value.error.code === "workos_sign_in_required")
       )
-        throw new CompanySignInRequired();
+        throw new CompanySignInRequired(value.error.code === "workos_sign_in_required" ? "workos" : "company");
       if (path === "email/start" || path === "email/verify") {
         const retryAfterSeconds = Number.parseInt(response.headers.get("Retry-After") ?? "", 10);
         const issue = {
@@ -389,13 +398,15 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
           });
       }
     } finally {
-      const returnError = companySignInReturnError;
+      const returnProvider = workosSignInReturnError !== null ? "workos" : "company";
+      const returnError = workosSignInReturnError ?? companySignInReturnError;
       companySignInReturnError = null;
+      workosSignInReturnError = null;
       if (!disposed)
         setState((draft) => {
           draft.loaded = true;
           if (returnError !== null && !draft.account && draft.login.status === "signed_out")
-            draft.login = { status: "error", issue: companySignInIssue(returnError) };
+            draft.login = { status: "error", issue: companySignInIssue(returnError, returnProvider) };
         });
     }
   }
@@ -408,10 +419,10 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
       import("./web-analytics").then((module) => module.followWebReportsPreference()).catch(() => undefined);
     }
     const value = await signInRequest("email/start", { email }).catch((error: unknown) => {
-      if (error instanceof CompanySignInRequired) return COMPANY_SIGN_IN;
+      if (error instanceof CompanySignInRequired) return error;
       throw error;
     });
-    if (value === COMPANY_SIGN_IN) return openCompanySignIn(email);
+    if (value instanceof CompanySignInRequired) return openCompanySignIn(email, value.provider);
     if (value === null) return;
     if (!isDynamicRecord(value) || !isString(value.challengeId) || typeof value.resendAt !== "number")
       throw new Error(text.t("webClient.login.responseInvalid"));
@@ -433,17 +444,20 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
    * Goes to the company's sign-in page in this tab. The account service sends the browser back to
    * `/app` with the session cookie, or with `companySignInError`.
    */
-  async function openCompanySignIn(email: string) {
+  async function openCompanySignIn(email: string, provider: "company" | "workos" = "company") {
     setState((draft) => {
-      draft.login = { status: "company_sign_in", email };
+      draft.login = { status: "company_sign_in", email, ...(provider === "workos" ? { provider } : {}) };
     });
-    const response = await accountFetch("/api/browser/company/start", {
-      method: "POST",
-      credentials: "same-origin",
-      cache: "no-store",
-      headers: { "Content-Type": "application/json", "X-OpenBot-Browser": "1" },
-      body: JSON.stringify({ email }),
-    });
+    const response = await accountFetch(
+      provider === "workos" ? "/api/browser/workos/start" : "/api/browser/company/start",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", "X-OpenBot-Browser": "1" },
+        body: JSON.stringify({ email }),
+      },
+    );
     const value = await response.json().catch(() => null);
     if (response.ok && isDynamicRecord(value) && isString(value.authorizationUrl)) {
       window.location.assign(value.authorizationUrl);
@@ -452,15 +466,31 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
     const code =
       isDynamicRecord(value) && isDynamicRecord(value.error) && isString(value.error.code)
         ? value.error.code
-        : "company_sign_in_failed";
+        : provider === "workos"
+          ? "workos_sign_in_failed"
+          : "company_sign_in_failed";
     setState((draft) => {
-      draft.login = { status: "company_sign_in", email, issue: companySignInIssue(code) };
+      draft.login = {
+        status: "company_sign_in",
+        email,
+        ...(provider === "workos" ? { provider } : {}),
+        issue: companySignInIssue(code, provider),
+      };
     });
   }
   async function verify(challengeId: string, code: string) {
     // The first website visit of this browser, so that reports can name the source of a new account.
     const firstTouch = readFirstTouch(() => window.localStorage, Date.now());
-    const value = await signInRequest("email/verify", { challengeId, code, ...(firstTouch ? { firstTouch } : {}) });
+    const value = await signInRequest("email/verify", {
+      challengeId,
+      code,
+      ...(firstTouch ? { firstTouch } : {}),
+    }).catch((error: unknown) => {
+      if (error instanceof CompanySignInRequired && state.login.status === "code_sent") {
+        return openCompanySignIn(state.login.email, error.provider).then(() => null);
+      }
+      throw error;
+    });
     if (value === null) return;
     const account = accountFrom(value);
     sessionGeneration += 1;
@@ -533,7 +563,9 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
                   onRequestEmailCode={start}
                   onVerifyEmailCode={verify}
                   onOpenCompanySignIn={() =>
-                    state.login.status === "company_sign_in" ? openCompanySignIn(state.login.email) : Promise.resolve()
+                    state.login.status === "company_sign_in"
+                      ? openCompanySignIn(state.login.email, state.login.provider ?? "company")
+                      : Promise.resolve()
                   }
                   onReset={async () => {
                     clearSession();

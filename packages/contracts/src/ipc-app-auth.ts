@@ -308,7 +308,7 @@ export type CentralAuthState =
       issue?: CentralAuthIssue | undefined;
     }
   /** The email signs in with the company's provider. The browser has the sign-in page. */
-  | { status: "company_sign_in"; email: string; issue?: CentralAuthIssue | undefined }
+  | { status: "company_sign_in"; email: string; provider?: "workos"; issue?: CentralAuthIssue | undefined }
   | { status: "signed_in"; user: CentralAuthUser }
   | { status: "error"; issue: CentralAuthIssue };
 

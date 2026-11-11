@@ -347,13 +347,13 @@ export function EmailPane({
 }) {
   const { t } = useText();
   const colors = useSignInColors();
-  const { retryIn, deliveryUnconfirmed, sending, companySignIn, usesCompanySignIn } = signIn;
+  const { retryIn, deliveryUnconfirmed, sending, companySignIn, usesCompanySignIn, usesWorkosSignIn } = signIn;
   const label = companySignIn
-    ? t("mobile.auth.email.companyWaiting")
+    ? t(usesWorkosSignIn ? "mobile.auth.email.workosWaiting" : "mobile.auth.email.companyWaiting")
     : sending
       ? t("mobile.auth.email.sending")
       : usesCompanySignIn && retryIn === 0
-        ? t("mobile.auth.email.companyContinue")
+        ? t(usesWorkosSignIn ? "mobile.auth.email.workosContinue" : "mobile.auth.email.companyContinue")
         : deliveryUnconfirmed
           ? retryIn > 0
             ? t("mobile.auth.email.checkAgainIn", { time: formatTimer(retryIn) })
@@ -375,7 +375,11 @@ export function EmailPane({
   const message = signIn.emailIssue
     ? { key: `email-${signIn.rejection}`, text: signIn.emailIssue.message, color: colors.danger }
     : usesCompanySignIn
-      ? { key: "company", text: t("mobile.auth.email.companyNotice"), color: colors.muted }
+      ? {
+          key: "company",
+          text: t(usesWorkosSignIn ? "mobile.auth.email.workosNotice" : "mobile.auth.email.companyNotice"),
+          color: colors.muted,
+        }
       : null;
   return (
     <View onLayout={({ nativeEvent: { layout } }) => onLayout(layout.height)}>

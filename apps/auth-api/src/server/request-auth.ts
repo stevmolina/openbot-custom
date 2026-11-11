@@ -47,6 +47,7 @@ import {
 import { SkillMarketplace, SkillMarketplaceError } from "./skill-marketplace";
 import { SlackAppError, SlackAppService } from "./slack-app";
 import { requireWorkerBindings, type TeamInviteEmailDelivery, type WorkerBindings } from "./types";
+import { WorkosSignInError, WorkosSignInService, workosSignInEnabled } from "./workos-sign-in";
 
 function accountAnalytics(bindings: WorkerBindings): AccountAnalytics {
   return createAccountAnalytics({
@@ -69,7 +70,9 @@ export function requestAuthService(): AuthService {
   const analytics = accountAnalytics(bindings);
   return new AuthService({
     repository: new D1AuthRepository(bindings.DB),
-    delivery: exposeDevelopmentCode ? null : createEmailCodeDelivery(bindings, analytics),
+    delivery:
+      exposeDevelopmentCode || workosSignInEnabled(bindings) ? null : createEmailCodeDelivery(bindings, analytics),
+    workosSignInRequired: workosSignInEnabled(bindings),
     exposeDevelopmentCode,
     // The revocation is already written and the cron redelivers it, so the answer does not wait.
     flushSessionRevocations: () => Effect.sync(() => schedule(deliverPendingRemoteAuthEvents(bindings, Date.now()))),
@@ -81,6 +84,18 @@ export function requestAuthService(): AuthService {
         .usesCompanySignIn(email)
         .pipe(Effect.mapError(() => new AuthOperationError({ message: "Account operation failed." }))),
   });
+}
+
+export function requestWorkosSignIn(): WorkosSignInService {
+  const bindings = requireWorkerBindings(env);
+  return new WorkosSignInService(bindings, {
+    flushSessionRevocations: () => Effect.sync(() => schedule(deliverPendingRemoteAuthEvents(bindings, Date.now()))),
+  });
+}
+
+export function workosSignInErrorResponse(error: unknown): Response {
+  if (error instanceof WorkosSignInError) return apiError(error.status, error.code, error.message);
+  return authErrorResponse(error);
 }
 
 export function requestCompanySignIn(): CompanySignInService {
@@ -509,6 +524,7 @@ export function apiError(status: number, code: string, message: string): Respons
 }
 
 export function authErrorResponse(error: unknown): Response {
+  if (error instanceof WorkosSignInError) return apiError(error.status, error.code, error.message);
   if (error instanceof JsonBodyError) {
     return apiError(error.status, error.code, error.message);
   }

@@ -155,3 +155,10 @@ export const ServiceUnavailable: Story = {
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
+
+export const WorkosSignIn: Story = {
+  args: {
+    state: { status: "company_sign_in", email: "person@example.com", provider: "workos" },
+    onOpenCompanySignIn: async () => undefined,
+  },
+};

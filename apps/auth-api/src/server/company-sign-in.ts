@@ -16,6 +16,7 @@ import { MOBILE_COMPANY_SIGN_IN_RETURN } from "@openbot/contracts/company-sign-i
 import { isAvatarColor } from "@openbot/contracts/ipc";
 import { isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { isValidHostname, normalizeEmailAddress } from "@openbot/contracts/validation";
+import { sourceText } from "@openbot/i18n/source";
 import { Effect, Schema } from "effect";
 import { createRemoteJWKSet, customFetch, jwtVerify } from "jose";
 import { decodeBase64Url, deriveSecret, encodeBase64Url, hmacSha256, randomToken, sha256 } from "./crypto";
@@ -23,6 +24,7 @@ import { mobileSessionStatements } from "./d1-auth-repository";
 import type { RemoteFailure } from "./remote-control-plane";
 import { PERSISTENT_SESSION_EXPIRES_AT } from "./session-policy";
 import type { AuthUser, MobileAuthDeviceIdentity, WorkerBindings } from "./types";
+import { workosSignInEnabled } from "./workos-sign-in";
 
 const FLOW_TTL_MS = 10 * 60_000;
 const CODE_TTL_MS = 2 * 60_000;
@@ -223,6 +225,7 @@ type JoinServer = (
 ) => Effect.Effect<"joined" | "member" | "removed" | "no_seat", RemoteFailure>;
 
 export class CompanySignInService {
+  readonly #workosSignInRequired: boolean;
   readonly #database: D1Database;
   readonly #secret: string | null;
   readonly #development: boolean;
@@ -237,7 +240,15 @@ export class CompanySignInService {
   readonly #joinServer: JoinServer;
 
   constructor(
-    bindings: Pick<WorkerBindings, "DB" | "COMPANY_SIGN_IN_SECRET" | "AUTH_EXPOSE_DEVELOPMENT_CODE">,
+    bindings: Pick<
+      WorkerBindings,
+      | "DB"
+      | "COMPANY_SIGN_IN_SECRET"
+      | "AUTH_EXPOSE_DEVELOPMENT_CODE"
+      | "WORKOS_OIDC_ISSUER"
+      | "WORKOS_OIDC_CLIENT_ID"
+      | "WORKOS_OIDC_CLIENT_SECRET"
+    >,
     options: {
       fetch?: Fetch;
       now?: () => number;
@@ -250,6 +261,7 @@ export class CompanySignInService {
       joinServer?: JoinServer;
     } = {},
   ) {
+    this.#workosSignInRequired = workosSignInEnabled(bindings);
     const secret = bindings.COMPANY_SIGN_IN_SECRET?.trim();
     this.#database = bindings.DB;
     this.#secret = secret && new TextEncoder().encode(secret).byteLength >= 32 ? secret : null;
@@ -456,6 +468,13 @@ export class CompanySignInService {
     /** The web app's origin, when the web app started the sign-in. `requestUrl` is then the API's. */
     webOrigin?: string,
   ): Effect.fn.Return<{ authorizationUrl: string }, CompanySignInFailure> {
+    if (this.#workosSignInRequired) {
+      return yield* new CompanySignInError(
+        409,
+        "workos_sign_in_required",
+        sourceText("error.auth.workosSignInRequired"),
+      );
+    }
     yield* this.#requireSecret();
     yield* this.#validateReturn(input.returnTo, input.clientState, webOrigin, webOrigin === undefined);
     if (!TOKEN_PATTERN.test(input.clientChallenge)) return yield* invalid("The sign-in request is invalid.");
@@ -540,6 +559,13 @@ export class CompanySignInService {
     this: CompanySignInService,
     input: { code: string; codeVerifier: string; device?: MobileAuthDeviceIdentity },
   ): Effect.fn.Return<{ sessionToken: string; user: AuthUser }, CompanySignInFailure> {
+    if (this.#workosSignInRequired) {
+      return yield* new CompanySignInError(
+        409,
+        "workos_sign_in_required",
+        sourceText("error.auth.workosSignInRequired"),
+      );
+    }
     const failed = new CompanySignInError(
       400,
       "invalid_company_sign_in_code",
@@ -728,6 +754,13 @@ export class CompanySignInService {
     params: URLSearchParams,
     requestUrl: string,
   ): Effect.fn.Return<Record<string, string>, CompanySignInFailure> {
+    if (this.#workosSignInRequired) {
+      return yield* new CompanySignInError(
+        409,
+        "workos_sign_in_required",
+        sourceText("error.auth.workosSignInRequired"),
+      );
+    }
     if (params.get("error")) {
       return yield* new CompanySignInError(400, "company_provider_refused", "The company sign-in was cancelled.");
     }

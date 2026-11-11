@@ -8,6 +8,12 @@ service stores the minimum central data needed for email sign-in, account avatar
 configuration, memberships, invitations, logical sessions, and the account's product analytics
 answer.
 
+A self-hosted account service can use WorkOS for account sign-in. The configured WorkOS provider
+receives the sign-in email and authenticates the person. The account service checks the signed ID
+token and stores the provider issuer, subject and linked account. It does not store provider tokens
+or send chats, files or commands to WorkOS. WorkOS invitations can restrict registration; OpenBot
+memberships still decide which servers the person can open.
+
 The optional browser client at `/app` connects to the computer that runs OpenBot. Conversation
 and attachment data travel through the existing encrypted host connection, not through the
 account Worker. The browser keeps chat pages, drafts, search results, and file previews in memory;

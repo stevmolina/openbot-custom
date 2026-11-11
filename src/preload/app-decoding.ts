@@ -334,10 +334,12 @@ export function decodeCentralAuthState(value: unknown): CentralAuthState {
       };
     }
     case "company_sign_in": {
-      const { issue } = state;
+      const { issue, provider } = state;
+      if (provider !== undefined && provider !== "workos") throw new Error("Invalid account sign-in provider.");
       return {
         status: "company_sign_in",
         email: requiredString(state, "email"),
+        ...(provider === undefined ? {} : { provider }),
         ...(issue === undefined ? {} : { issue: decodeCentralAuthIssue(issue) }),
       };
     }

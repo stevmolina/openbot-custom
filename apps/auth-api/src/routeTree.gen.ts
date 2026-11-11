@@ -129,6 +129,9 @@ import { Route as V1AuthCompanyExchangeRouteImport } from './routes/v1/auth/comp
 import { Route as V1AuthCompanyStartRouteImport } from './routes/v1/auth/company/start'
 import { Route as V1AuthEmailStartRouteImport } from './routes/v1/auth/email/start'
 import { Route as V1AuthEmailVerifyRouteImport } from './routes/v1/auth/email/verify'
+import { Route as V1AuthWorkosCallbackRouteImport } from './routes/v1/auth/workos/callback'
+import { Route as V1AuthWorkosExchangeRouteImport } from './routes/v1/auth/workos/exchange'
+import { Route as V1AuthWorkosStartRouteImport } from './routes/v1/auth/workos/start'
 import { Route as V1MarketplaceAgentsIndexRouteImport } from './routes/v1/marketplace/agents/index'
 import { Route as V1MarketplaceAgentsAgentIdRouteImport } from './routes/v1/marketplace/agents/$agentId'
 import { Route as V1MarketplaceAgentsMineRouteImport } from './routes/v1/marketplace/agents/mine'
@@ -142,6 +145,7 @@ import { Route as V1MeLicenseUsersRouteImport } from './routes/v1/me/license/use
 import { Route as V1MobileAuthCompanyExchangeRouteImport } from './routes/v1/mobile-auth/company/exchange'
 import { Route as V1MobileAuthDevicesSessionIdRouteImport } from './routes/v1/mobile-auth/devices/$sessionId'
 import { Route as V1MobileAuthEmailVerifyRouteImport } from './routes/v1/mobile-auth/email/verify'
+import { Route as V1MobileAuthWorkosExchangeRouteImport } from './routes/v1/mobile-auth/workos/exchange'
 import { Route as V1SkillsSkillIdCardRouteImport } from './routes/v1/skills/$skillId/card'
 import { Route as V1SkillsSkillIdContentRouteImport } from './routes/v1/skills/$skillId/content'
 import { Route as V1SkillsSkillIdIconRouteImport } from './routes/v1/skills/$skillId/icon'
@@ -819,6 +823,21 @@ const V1AuthEmailVerifyRoute = V1AuthEmailVerifyRouteImport.update({
   path: '/v1/auth/email/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V1AuthWorkosCallbackRoute = V1AuthWorkosCallbackRouteImport.update({
+  id: '/v1/auth/workos/callback',
+  path: '/v1/auth/workos/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const V1AuthWorkosExchangeRoute = V1AuthWorkosExchangeRouteImport.update({
+  id: '/v1/auth/workos/exchange',
+  path: '/v1/auth/workos/exchange',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const V1AuthWorkosStartRoute = V1AuthWorkosStartRouteImport.update({
+  id: '/v1/auth/workos/start',
+  path: '/v1/auth/workos/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const V1MarketplaceAgentsIndexRoute =
   V1MarketplaceAgentsIndexRouteImport.update({
     id: '/v1/marketplace/agents/',
@@ -888,6 +907,12 @@ const V1MobileAuthEmailVerifyRoute = V1MobileAuthEmailVerifyRouteImport.update({
   path: '/v1/mobile-auth/email/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V1MobileAuthWorkosExchangeRoute =
+  V1MobileAuthWorkosExchangeRouteImport.update({
+    id: '/v1/mobile-auth/workos/exchange',
+    path: '/v1/mobile-auth/workos/exchange',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const V1SkillsSkillIdCardRoute = V1SkillsSkillIdCardRouteImport.update({
   id: '/card',
   path: '/card',
@@ -1426,6 +1451,9 @@ export interface FileRoutesByFullPath {
   '/v1/auth/company/start': typeof V1AuthCompanyStartRoute
   '/v1/auth/email/start': typeof V1AuthEmailStartRoute
   '/v1/auth/email/verify': typeof V1AuthEmailVerifyRoute
+  '/v1/auth/workos/callback': typeof V1AuthWorkosCallbackRoute
+  '/v1/auth/workos/exchange': typeof V1AuthWorkosExchangeRoute
+  '/v1/auth/workos/start': typeof V1AuthWorkosStartRoute
   '/v1/marketplace/agents/$agentId': typeof V1MarketplaceAgentsAgentIdRouteWithChildren
   '/v1/marketplace/agents/mine': typeof V1MarketplaceAgentsMineRoute
   '/v1/me/billing/portal': typeof V1MeBillingPortalRoute
@@ -1436,6 +1464,7 @@ export interface FileRoutesByFullPath {
   '/v1/mobile-auth/company/exchange': typeof V1MobileAuthCompanyExchangeRoute
   '/v1/mobile-auth/devices/$sessionId': typeof V1MobileAuthDevicesSessionIdRoute
   '/v1/mobile-auth/email/verify': typeof V1MobileAuthEmailVerifyRoute
+  '/v1/mobile-auth/workos/exchange': typeof V1MobileAuthWorkosExchangeRoute
   '/v1/skills/$skillId/card': typeof V1SkillsSkillIdCardRoute
   '/v1/skills/$skillId/content': typeof V1SkillsSkillIdContentRoute
   '/v1/skills/$skillId/icon': typeof V1SkillsSkillIdIconRoute
@@ -1630,6 +1659,9 @@ export interface FileRoutesByTo {
   '/v1/auth/company/start': typeof V1AuthCompanyStartRoute
   '/v1/auth/email/start': typeof V1AuthEmailStartRoute
   '/v1/auth/email/verify': typeof V1AuthEmailVerifyRoute
+  '/v1/auth/workos/callback': typeof V1AuthWorkosCallbackRoute
+  '/v1/auth/workos/exchange': typeof V1AuthWorkosExchangeRoute
+  '/v1/auth/workos/start': typeof V1AuthWorkosStartRoute
   '/v1/marketplace/agents/$agentId': typeof V1MarketplaceAgentsAgentIdRouteWithChildren
   '/v1/marketplace/agents/mine': typeof V1MarketplaceAgentsMineRoute
   '/v1/me/billing/portal': typeof V1MeBillingPortalRoute
@@ -1640,6 +1672,7 @@ export interface FileRoutesByTo {
   '/v1/mobile-auth/company/exchange': typeof V1MobileAuthCompanyExchangeRoute
   '/v1/mobile-auth/devices/$sessionId': typeof V1MobileAuthDevicesSessionIdRoute
   '/v1/mobile-auth/email/verify': typeof V1MobileAuthEmailVerifyRoute
+  '/v1/mobile-auth/workos/exchange': typeof V1MobileAuthWorkosExchangeRoute
   '/v1/skills/$skillId/card': typeof V1SkillsSkillIdCardRoute
   '/v1/skills/$skillId/content': typeof V1SkillsSkillIdContentRoute
   '/v1/skills/$skillId/icon': typeof V1SkillsSkillIdIconRoute
@@ -1839,6 +1872,9 @@ export interface FileRoutesById {
   '/v1/auth/company/start': typeof V1AuthCompanyStartRoute
   '/v1/auth/email/start': typeof V1AuthEmailStartRoute
   '/v1/auth/email/verify': typeof V1AuthEmailVerifyRoute
+  '/v1/auth/workos/callback': typeof V1AuthWorkosCallbackRoute
+  '/v1/auth/workos/exchange': typeof V1AuthWorkosExchangeRoute
+  '/v1/auth/workos/start': typeof V1AuthWorkosStartRoute
   '/v1/marketplace/agents/$agentId': typeof V1MarketplaceAgentsAgentIdRouteWithChildren
   '/v1/marketplace/agents/mine': typeof V1MarketplaceAgentsMineRoute
   '/v1/me/billing/portal': typeof V1MeBillingPortalRoute
@@ -1849,6 +1885,7 @@ export interface FileRoutesById {
   '/v1/mobile-auth/company/exchange': typeof V1MobileAuthCompanyExchangeRoute
   '/v1/mobile-auth/devices/$sessionId': typeof V1MobileAuthDevicesSessionIdRoute
   '/v1/mobile-auth/email/verify': typeof V1MobileAuthEmailVerifyRoute
+  '/v1/mobile-auth/workos/exchange': typeof V1MobileAuthWorkosExchangeRoute
   '/v1/skills/$skillId/card': typeof V1SkillsSkillIdCardRoute
   '/v1/skills/$skillId/content': typeof V1SkillsSkillIdContentRoute
   '/v1/skills/$skillId/icon': typeof V1SkillsSkillIdIconRoute
@@ -2045,6 +2082,9 @@ export interface FileRouteTypes {
     | '/v1/auth/company/start'
     | '/v1/auth/email/start'
     | '/v1/auth/email/verify'
+    | '/v1/auth/workos/callback'
+    | '/v1/auth/workos/exchange'
+    | '/v1/auth/workos/start'
     | '/v1/marketplace/agents/$agentId'
     | '/v1/marketplace/agents/mine'
     | '/v1/me/billing/portal'
@@ -2055,6 +2095,7 @@ export interface FileRouteTypes {
     | '/v1/mobile-auth/company/exchange'
     | '/v1/mobile-auth/devices/$sessionId'
     | '/v1/mobile-auth/email/verify'
+    | '/v1/mobile-auth/workos/exchange'
     | '/v1/skills/$skillId/card'
     | '/v1/skills/$skillId/content'
     | '/v1/skills/$skillId/icon'
@@ -2249,6 +2290,9 @@ export interface FileRouteTypes {
     | '/v1/auth/company/start'
     | '/v1/auth/email/start'
     | '/v1/auth/email/verify'
+    | '/v1/auth/workos/callback'
+    | '/v1/auth/workos/exchange'
+    | '/v1/auth/workos/start'
     | '/v1/marketplace/agents/$agentId'
     | '/v1/marketplace/agents/mine'
     | '/v1/me/billing/portal'
@@ -2259,6 +2303,7 @@ export interface FileRouteTypes {
     | '/v1/mobile-auth/company/exchange'
     | '/v1/mobile-auth/devices/$sessionId'
     | '/v1/mobile-auth/email/verify'
+    | '/v1/mobile-auth/workos/exchange'
     | '/v1/skills/$skillId/card'
     | '/v1/skills/$skillId/content'
     | '/v1/skills/$skillId/icon'
@@ -2457,6 +2502,9 @@ export interface FileRouteTypes {
     | '/v1/auth/company/start'
     | '/v1/auth/email/start'
     | '/v1/auth/email/verify'
+    | '/v1/auth/workos/callback'
+    | '/v1/auth/workos/exchange'
+    | '/v1/auth/workos/start'
     | '/v1/marketplace/agents/$agentId'
     | '/v1/marketplace/agents/mine'
     | '/v1/me/billing/portal'
@@ -2467,6 +2515,7 @@ export interface FileRouteTypes {
     | '/v1/mobile-auth/company/exchange'
     | '/v1/mobile-auth/devices/$sessionId'
     | '/v1/mobile-auth/email/verify'
+    | '/v1/mobile-auth/workos/exchange'
     | '/v1/skills/$skillId/card'
     | '/v1/skills/$skillId/content'
     | '/v1/skills/$skillId/icon'
@@ -2647,10 +2696,14 @@ export interface RootRouteChildren {
   V1AuthCompanyStartRoute: typeof V1AuthCompanyStartRoute
   V1AuthEmailStartRoute: typeof V1AuthEmailStartRoute
   V1AuthEmailVerifyRoute: typeof V1AuthEmailVerifyRoute
+  V1AuthWorkosCallbackRoute: typeof V1AuthWorkosCallbackRoute
+  V1AuthWorkosExchangeRoute: typeof V1AuthWorkosExchangeRoute
+  V1AuthWorkosStartRoute: typeof V1AuthWorkosStartRoute
   V1MarketplaceAgentsAgentIdRoute: typeof V1MarketplaceAgentsAgentIdRouteWithChildren
   V1MarketplaceAgentsMineRoute: typeof V1MarketplaceAgentsMineRoute
   V1MobileAuthCompanyExchangeRoute: typeof V1MobileAuthCompanyExchangeRoute
   V1MobileAuthEmailVerifyRoute: typeof V1MobileAuthEmailVerifyRoute
+  V1MobileAuthWorkosExchangeRoute: typeof V1MobileAuthWorkosExchangeRoute
   V1SkillsAdminSubmissionsRoute: typeof V1SkillsAdminSubmissionsRouteWithChildren
   V1SkillsSlugSlugRoute: typeof V1SkillsSlugSlugRoute
   V2HostingBoatWebhookRoute: typeof V2HostingBoatWebhookRoute
@@ -3558,6 +3611,27 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof V1AuthEmailVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v1/auth/workos/callback': {
+      id: '/v1/auth/workos/callback'
+      path: '/v1/auth/workos/callback'
+      fullPath: '/v1/auth/workos/callback'
+      preLoaderRoute: typeof V1AuthWorkosCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/v1/auth/workos/exchange': {
+      id: '/v1/auth/workos/exchange'
+      path: '/v1/auth/workos/exchange'
+      fullPath: '/v1/auth/workos/exchange'
+      preLoaderRoute: typeof V1AuthWorkosExchangeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/v1/auth/workos/start': {
+      id: '/v1/auth/workos/start'
+      path: '/v1/auth/workos/start'
+      fullPath: '/v1/auth/workos/start'
+      preLoaderRoute: typeof V1AuthWorkosStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/v1/marketplace/agents/': {
       id: '/v1/marketplace/agents/'
       path: '/v1/marketplace/agents'
@@ -3647,6 +3721,13 @@ declare module '@tanstack/solid-router' {
       path: '/v1/mobile-auth/email/verify'
       fullPath: '/v1/mobile-auth/email/verify'
       preLoaderRoute: typeof V1MobileAuthEmailVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/v1/mobile-auth/workos/exchange': {
+      id: '/v1/mobile-auth/workos/exchange'
+      path: '/v1/mobile-auth/workos/exchange'
+      fullPath: '/v1/mobile-auth/workos/exchange'
+      preLoaderRoute: typeof V1MobileAuthWorkosExchangeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/v1/skills/$skillId/card': {
@@ -4482,10 +4563,14 @@ const rootRouteChildren: RootRouteChildren = {
   V1AuthCompanyStartRoute: V1AuthCompanyStartRoute,
   V1AuthEmailStartRoute: V1AuthEmailStartRoute,
   V1AuthEmailVerifyRoute: V1AuthEmailVerifyRoute,
+  V1AuthWorkosCallbackRoute: V1AuthWorkosCallbackRoute,
+  V1AuthWorkosExchangeRoute: V1AuthWorkosExchangeRoute,
+  V1AuthWorkosStartRoute: V1AuthWorkosStartRoute,
   V1MarketplaceAgentsAgentIdRoute: V1MarketplaceAgentsAgentIdRouteWithChildren,
   V1MarketplaceAgentsMineRoute: V1MarketplaceAgentsMineRoute,
   V1MobileAuthCompanyExchangeRoute: V1MobileAuthCompanyExchangeRoute,
   V1MobileAuthEmailVerifyRoute: V1MobileAuthEmailVerifyRoute,
+  V1MobileAuthWorkosExchangeRoute: V1MobileAuthWorkosExchangeRoute,
   V1SkillsAdminSubmissionsRoute: V1SkillsAdminSubmissionsRouteWithChildren,
   V1SkillsSlugSlugRoute: V1SkillsSlugSlugRoute,
   V2HostingBoatWebhookRoute: V2HostingBoatWebhookRoute,
@@ -4566,12 +4651,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/solid-start'
-declare module '@tanstack/solid-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

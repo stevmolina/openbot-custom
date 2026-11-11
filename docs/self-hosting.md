@@ -171,3 +171,57 @@ a user name or password, or is set without `OPENBOT_AUTH_API_URL`.
 After each OpenBot update, pull the same release, keep your `wrangler.jsonc` changes and deploy the
 Worker again. The deploy applies the new D1 migrations. Then rebuild Signal with the same
 `docker compose` command.
+
+
+## WorkOS account sign-in
+
+WorkOS account sign-in is separate from the company-domain sign-in of a server. It accepts any
+email domain. WorkOS authenticates the account; OpenBot invitations and memberships still decide
+which servers it can open. It does not add members from an email domain.
+
+Use a dedicated WorkOS project. In AuthKit, turn off **Sign-up** and add people through
+**Users > Invitations**. This blocks new public accounts. It does not revoke people or OpenBot
+sessions that already exist. Turn Sign-up on later when public registration is needed.
+
+Create a confidential OAuth application under **Connect**, managed by you. Allow the openid,
+email and profile scopes. Register the callback of the account API:
+
+    https://api.example.com/v1/auth/workos/callback
+
+The Worker takes three optional secrets: WORKOS_OIDC_ISSUER, WORKOS_OIDC_CLIENT_ID, and
+WORKOS_OIDC_CLIENT_SECRET. Set them through Wrangler secret input. Do not put their values
+in a command argument or a log. The issuer is the AuthKit origin, not the WorkOS API origin.
+
+If any of these settings exists, email-code sign-in and the older company-provider account sign-in
+are closed. An incomplete configuration fails closed. Remove all three settings to return to the
+earlier email and company-provider paths. Existing sessions keep their normal revocation rules.
+
+The provider must return a signed ID token with the expected issuer, audience and nonce, an expiry,
+a subject, an email address and email_verified: true. A token that cannot be checked grants no
+session. The account API uses PKCE and one-use return codes. Provider tokens are not stored.
+
+### Check staging locally
+
+Do not put WorkOS staging credentials on the production Worker. Keep staging credentials in the
+ignored self-hosted secret file under the distinct names WORKOS_STAGING_OIDC_ISSUER,
+WORKOS_STAGING_OIDC_CLIENT_ID and WORKOS_STAGING_OIDC_CLIENT_SECRET. The staging check refuses a
+production issuer.
+
+    WORKOS_STAGING_TEST_EMAIL=you@example.com \
+      bun --env-file=apps/auth-api/.env.self-hosted scripts/workos-staging-signin.ts
+
+The command starts a loopback-only account service with a temporary local D1 database. It prints its
+local origin and exact callback URI. Add that URI to the WorkOS staging OAuth application, then open
+the local origin in the browser and sign in with an invited account. It checks a real WorkOS login
+and the OpenBot browser session without changing production data. The report is
+.openbot-build/workos-staging-signin.json. Stop the command after the check. A new run can select
+another port, so update the registered callback.
+
+Run the repeatable local service checks without live credentials:
+
+    bun scripts/workos-oidc-e2e.ts
+    bun scripts/workos-account-signin-e2e.ts
+
+The JSON reports are in .openbot-build/. The second command uses local D1 and a local OIDC provider.
+It covers browser, desktop and mobile sessions, replay, PKCE, provider refusals, and alternate login
+paths. A passing local report does not confirm a live WorkOS configuration.
