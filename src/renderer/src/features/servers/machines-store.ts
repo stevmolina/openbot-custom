@@ -68,6 +68,11 @@ export function createMachinesStore(options: {
   const [entries, setEntries] = createStore<Record<string, MachineEntry>>({});
   /** Bumped for each read of a server, so an answer of an earlier read is dropped. */
   const generations = new Map<string, number>();
+  /**
+   * The newest layout that an event gave for each server. A read that started before the event can
+   * answer an older revision; the newer one wins.
+   */
+  const eventLayouts = new Map<string, SidebarLayoutSnapshot>();
   const reloads = new Map<string, ReturnType<typeof setTimeout>>();
   onCleanup(() => {
     for (const timer of reloads.values()) clearTimeout(timer);
@@ -94,8 +99,10 @@ export function createMachinesStore(options: {
       ]);
       if (generations.get(serverId) !== generation) return;
       const hiddenIds = hidden.agents.map((agent) => agent.agentId);
+      const eventLayout = eventLayouts.get(serverId);
+      const newestLayout = eventLayout && (!layout || eventLayout.revision > layout.revision) ? eventLayout : layout;
       setEntries((draft) => {
-        draft[serverId] = { status: "ready", agents, reads, hiddenIds, layout };
+        draft[serverId] = { status: "ready", agents, reads, hiddenIds, layout: newestLayout };
       });
     } catch {
       if (generations.get(serverId) !== generation) return;
@@ -132,6 +139,7 @@ export function createMachinesStore(options: {
       }
       // A folder that changes on its server changes in the view at once.
       if (event.type === "sidebar-layout-changed") {
+        eventLayouts.set(serverId, event.layout);
         setEntries((draft) => {
           const entry = draft[serverId];
           if (entry?.status === "ready") entry.layout = event.layout;
@@ -206,10 +214,14 @@ export function createMachinesStore(options: {
    * The read servers that the app still lists, but `skipServerId`. A server the user left keeps its
    * entry, and its old unread counts must not count.
    */
-  function listedEntries(skipServerId: string | null): [string, MachineEntry][] {
+  function listedEntries(skipServerId: string | null, onlyServerId: string | null = null): [string, MachineEntry][] {
     const listed = new Set(options.servers().map((server) => server.id));
     return Object.entries(entries).filter(
-      ([serverId, entry]) => serverId !== skipServerId && listed.has(serverId) && entry.status === "ready",
+      ([serverId, entry]) =>
+        serverId !== skipServerId &&
+        (onlyServerId === null || serverId === onlyServerId) &&
+        listed.has(serverId) &&
+        entry.status === "ready",
     );
   }
 
@@ -217,9 +229,9 @@ export function createMachinesStore(options: {
    * Marks each unread agent chat of the servers read through its newest message, then reads those
    * servers again. The open server is left out: its own read state marks it, so its rows change at once.
    */
-  async function markAllRead(skipServerId: string | null): Promise<void> {
+  async function markAllRead(skipServerId: string | null, onlyServerId: string | null = null): Promise<void> {
     const port = serversPort().agent;
-    const marked = listedEntries(skipServerId).flatMap(([serverId, entry]) =>
+    const marked = listedEntries(skipServerId, onlyServerId).flatMap(([serverId, entry]) =>
       entry.agents
         .filter((agent) => agentShown(entry, agent) && (entry.reads[agent.id]?.unreadCount ?? 0) > 0)
         .map(async (agent) => {
@@ -240,8 +252,8 @@ export function createMachinesStore(options: {
   }
 
   /** Whether an agent of a server other than `skipServerId` has a message that the user did not read. */
-  function hasUnread(skipServerId: string | null): boolean {
-    return listedEntries(skipServerId).some(([, entry]) =>
+  function hasUnread(skipServerId: string | null, onlyServerId: string | null = null): boolean {
+    return listedEntries(skipServerId, onlyServerId).some(([, entry]) =>
       entry.agents.some((agent) => agentShown(entry, agent) && (entry.reads[agent.id]?.unreadCount ?? 0) > 0),
     );
   }

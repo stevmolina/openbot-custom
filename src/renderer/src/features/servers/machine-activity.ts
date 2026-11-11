@@ -30,8 +30,8 @@ export type MachineActivity = NonNullable<ReturnType<DynamicIslandCoordinator["s
  *
  * A joined server sends its runtime snapshot on its event stream, so `refresh` asks main to send it
  * again; the coordinator takes it like any other event. The server of this computer answers with its
- * snapshot instead; the coordinator gets it once, while it holds nothing of that server, such as
- * after the window loads again with another server open.
+ * snapshot instead; the coordinator gets it once per window, such as after the window loads again
+ * with another server open.
  */
 export function createMachineActivity(options: {
   coordinator: DynamicIslandCoordinator;
@@ -50,6 +50,7 @@ export function createMachineActivity(options: {
     });
   };
   let disposed = false;
+  const appliedSnapshots = new Set<string>();
   onCleanup(() => {
     disposed = true;
   });
@@ -73,8 +74,11 @@ export function createMachineActivity(options: {
         .catch(() => null)
         .then((snapshot) => {
           if (disposed) return;
-          // A joined server answers null and sends the snapshot as an event.
-          if (snapshot && options.coordinator.serverState(serverId) === null) {
+          // A joined server answers null and sends the snapshot as an event. The server of this
+          // computer answers it; the coordinator takes it once per window, as other events may have
+          // made its entry for that server without the waits and turns that came before them.
+          if (snapshot && !appliedSnapshots.has(serverId)) {
+            appliedSnapshots.add(serverId);
             options.coordinator.applyEvent(
               { serverId, event: { type: "runtime-snapshot", snapshot } },
               options.activeServerId(),

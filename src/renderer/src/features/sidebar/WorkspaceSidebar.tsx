@@ -248,7 +248,10 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
       sources: allMachines.sources({
         serverId: activeServerId(),
         agents: agentList().filter((agent) => !hidden.has(agent.id)),
-        agentStates: sidebarAgentStates(),
+        // A hidden agent has no row, so it must not light the dot of its machine's chip either.
+        agentStates: Object.fromEntries(
+          Object.entries(sidebarAgentStates()).filter(([agentId]) => !hidden.has(agentId)),
+        ),
         agentMoods: agentMoods(),
         layout: sidebarLayout(),
         threadWaits: threadLanes()?.threads.some(
@@ -274,18 +277,24 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         onToggleArchivedChannels={channelsListed() && !allMachinesOn() ? channels.toggleArchived : undefined}
         onCreateChannel={channelsListed() && !allMachinesOn() ? channels.create : undefined}
         onMarkAllRead={() => {
-          void markAllAgentMessagesRead();
-          void channels.markAllRead();
-          // The view lists every server, so Mark all read reads the chats of every server.
-          if (allMachinesOn()) void allMachines.markAllRead(activeServerId());
+          // In "All machines", Mark all read reads the chats that the chips show: every server, or
+          // the one chosen. A chosen server that is not open keeps the chats of the open one.
+          const filter = allMachinesOn() ? allMachines.filter() : null;
+          if (filter === null || filter === activeServerId()) {
+            void markAllAgentMessagesRead();
+            if (filter === null) void channels.markAllRead();
+          }
+          if (allMachinesOn() && filter !== activeServerId()) void allMachines.markAllRead(activeServerId(), filter);
         }}
-        hasUnread={
-          agentList().some(
+        hasUnread={(() => {
+          const filter = allMachinesOn() ? allMachines.filter() : null;
+          const ownUnread = agentList().some(
             (agent) => !userHiddenAgentIds().has(agent.id) && (agentUnreadReplies()[agent.id] ?? 0) > 0,
-          ) ||
-          channels.hasUnread() ||
-          (allMachinesOn() && allMachines.hasUnread(activeServerId()))
-        }
+          );
+          if (filter === activeServerId()) return ownUnread;
+          if (filter !== null) return allMachines.hasUnread(activeServerId(), filter);
+          return ownUnread || channels.hasUnread() || (allMachinesOn() && allMachines.hasUnread(activeServerId()));
+        })()}
         view={layout.sidebarView()}
         serverName={
           allMachinesOn() ? t("server.allMachines.title") : (activeServer()?.name ?? t("sidebar.topbar.localServer"))

@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal, untrack } from "solid-js";
 import { toAgentProfile } from "../../app-message-projection";
 import { usePlatform } from "../../platform";
 import { createSimpleContext } from "../../simple-context";
@@ -91,7 +91,16 @@ const AllMachines = createSimpleContext({
     );
     createEffect(reachable, (ids, previous) => {
       const before = new Set(previous ? previous.split("\n") : []);
-      for (const serverId of ids ? ids.split("\n") : []) if (!before.has(serverId)) activity.refresh(serverId);
+      const added = (ids ? ids.split("\n") : []).filter((serverId) => !before.has(serverId));
+      const remote = new Set(
+        untrack(orderedServers)
+          .filter((server) => server.kind === "remote")
+          .map((server) => server.id),
+      );
+      for (const serverId of added) if (!remote.has(serverId)) activity.refresh(serverId);
+      // Main asks every joined server for its snapshot at once, so one request covers all of them.
+      const firstRemote = added.find((serverId) => remote.has(serverId));
+      if (firstRemote) activity.refresh(firstRemote);
     });
 
     /** The chats and folders of each server but the open one, by server. */
@@ -100,6 +109,8 @@ const AllMachines = createSimpleContext({
       if (!active()) return sources;
       for (const server of orderedServers()) {
         if (server.id === activeServerId()) continue;
+        // A joined server that went offline shows its notice only: its old rows could not open.
+        if (server.kind === "remote" && server.state !== "online") continue;
         const entry = store.sidebarEntry(server.id);
         const agents = (entry?.agents ?? []).map(toAgentProfile);
         const unreadReplies = Object.fromEntries(
@@ -135,11 +146,16 @@ const AllMachines = createSimpleContext({
       save(FILTER_STORAGE_KEY, serverId ?? "");
     }
 
+    /**
+     * The updater form: one click of the dock toggles several ids, and a read of the signal returns the
+     * old list until the next flush, so each toggle must build on the one before.
+     */
     function toggleSection(sectionId: string): void {
-      const current = collapsedSectionIds();
-      const next = current.includes(sectionId) ? current.filter((id) => id !== sectionId) : [...current, sectionId];
-      setCollapsedSectionIds(next);
-      save(SECTIONS_STORAGE_KEY, next.join("\n"));
+      setCollapsedSectionIds((current) => {
+        const next = current.includes(sectionId) ? current.filter((id) => id !== sectionId) : [...current, sectionId];
+        save(SECTIONS_STORAGE_KEY, next.join("\n"));
+        return next;
+      });
     }
 
     /** Connects to a joined server that is not online, or reads the agents of an online server again. */
