@@ -1,4 +1,4 @@
-import type { AgentTask, ConversationMessage, ConversationSnapshot } from "@openbot/contracts/ipc";
+import type { AgentTask, ConversationMessage, ConversationSnapshot, QueueDelivery } from "@openbot/contracts/ipc";
 import type { MockOpenBotOptions } from "../src/preview/mock-openbot";
 
 /** Side threads of Chief for the desktop and web thread stories. */
@@ -201,4 +201,49 @@ export const UNREAD_OPTIONS: MockOpenBotOptions = {
     ]),
   },
   taskUnread: { pricing: 1, competitors: 1, "pricing-orphan": 2 },
+};
+
+function queued(id: string, text: string, createdAt: string, position: number): QueueDelivery {
+  return {
+    id,
+    messageId: `${id}-message`,
+    recipientAgentId: AGENT_ID,
+    sender: { kind: "user" },
+    text,
+    attachments: [],
+    replyToMessageId: null,
+    status: "queued",
+    position,
+    turnId: null,
+    error: null,
+    createdAt,
+  };
+}
+
+const SERVER_BUSY_QUEUE = [
+  queued("busy-1", "Help me create a bot for our hackathon space, please.", "2026-08-19T10:10:00.000Z", 0),
+  queued("busy-2", "What happened?", "2026-08-19T10:14:00.000Z", 1),
+  queued("busy-3", "What?", "2026-08-19T10:15:00.000Z", 2),
+];
+
+const SERVER_BUSY = thread("hackathon-bot", "Hackathon bot", "2026-08-19T10:15:00.000Z", {
+  state: "queued",
+  outcome: null,
+  hold: "server-busy",
+  queuedMessages: SERVER_BUSY_QUEUE.map((delivery) => ({
+    deliveryId: delivery.id,
+    text: delivery.text,
+    createdAt: delivery.createdAt,
+  })),
+  queue: SERVER_BUSY_QUEUE,
+});
+
+/**
+ * A side thread on a server that is low on memory, with no other thread running. The host names the
+ * memory as the hold, so the thread says why it waits and lists the three messages that wait.
+ */
+export const SERVER_BUSY_OPTIONS: MockOpenBotOptions = {
+  ...THREAD_OPTIONS,
+  tasks: { [AGENT_ID]: [SERVER_BUSY, PRICING] },
+  taskConversations: { ...THREAD_OPTIONS.taskConversations, "hackathon-bot": snapshot(SERVER_BUSY, []) },
 };

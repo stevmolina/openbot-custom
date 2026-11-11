@@ -441,7 +441,11 @@ export class DrainScheduler {
   taskHold(agentId: string, taskId: string): string | null {
     const lane = { agentId, taskId };
     if (!this.#mailbox.nextQueued(agentId, taskId)) return null;
-    return this.#heldBy(lane) ?? (this.#slotWaiters.has(laneKey(lane)) ? "machine" : null);
+    // A memory hold does not add the lane to the slot waiters, so it is read here too. Without it, a
+    // task that waits for memory has no reason, and its thread shows the thread limit and no queue.
+    const held = this.#heldBy(lane);
+    if (held !== null) return held;
+    return !this.#memory.mayDrain(agentId) || this.#slotWaiters.has(laneKey(lane)) ? "machine" : null;
   }
 
   /** `followUsageLimit` is false after a move that failed, so that the drain does not try it again. */
