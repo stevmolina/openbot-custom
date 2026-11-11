@@ -17,10 +17,11 @@ import { useText } from "../../text";
 import { AgentAvatar } from "../agents/AgentAvatar";
 import { ChannelAvatar } from "../channels/ChannelAvatar";
 import { MAIN_THREAD_ID } from "../conversation/threads/thread-types";
-import { ServerMark } from "../servers/ServerRail";
+import { ServerMark, type ServerMarkServer } from "../servers/ServerRail";
 import { SidebarAgentContextMenu } from "./SidebarAgentContextMenu";
 import { SidebarAgentIndicator } from "./SidebarAgentIndicator";
 import { SidebarChannelContextMenu } from "./SidebarChannelContextMenu";
+import { useSidebarMachineMarks } from "./SidebarMachineFilter";
 import { SIDEBAR_WAIT_ACTION, SIDEBAR_WAIT_TITLE, sidebarAgentStateLabel } from "./sidebar-filtering";
 import { sidebarAgentWait } from "./sidebar-recent-chats";
 import { useSidebarScope } from "./sidebar-scope";
@@ -43,6 +44,8 @@ interface ChatView {
   mark: () => JSX.Element;
   menu: () => JSX.Element;
   open: () => void;
+  /** The server of the chat, as a small mark at the end of the row. Undefined: no mark. */
+  server: (ServerMarkServer & { name: string }) | undefined;
 }
 
 /** A chat shows as open only while the page of the chats is on screen, not under another page. */
@@ -68,6 +71,16 @@ function useAgentView(agent: () => AgentProfile, pinned: () => boolean): ChatVie
   const { t, format } = useText();
   const waitText = useWaitText();
   const chatsOnScreen = useChatsOnScreen();
+  const marks = useSidebarMachineMarks();
+  /**
+   * In the "All machines" view, an agent of a server that is not open. Its menu needs its server open,
+   * so it has none, and a click opens it on its server.
+   */
+  const elsewhere = () => {
+    const view = props.allMachines;
+    const ref = view?.agentServers.get(agent().id);
+    return view && ref && ref.serverId !== view.activeServerId ? { view, ref } : undefined;
+  };
   const state = () => props.agentStates[agent().id];
   const wait = () => sidebarAgentWait(agent().id, state(), props.threadLanes?.threads);
   // A function, not a JSX ternary: the avatar reads its mood inside an effect.
@@ -95,15 +108,23 @@ function useAgentView(agent: () => AgentProfile, pinned: () => boolean): ChatVie
       return state()?.kind === "unread" || (props.threadLanes?.unreadAgentIds.has(agent().id) ?? false);
     },
     get active() {
-      return chatsOnScreen() && props.activeAgentId === agent().id;
+      return chatsOnScreen() && !elsewhere() && props.activeAgentId === agent().id;
     },
     get extraLabel() {
       return wait() ? "" : stateLabel();
     },
+    get server() {
+      return props.allMachines ? marks.agent(agent().id) : props.chatServer;
+    },
     avatar: () => <AgentAvatar agent={agent()} motion="idle" mood={mood()} />,
     mark: () => <SidebarAgentIndicator state={markState} />,
-    menu: () => <SidebarAgentContextMenu agent={agent()} pinned={pinned()} />,
+    menu: () => (elsewhere() ? null : <SidebarAgentContextMenu agent={agent()} pinned={pinned()} />),
     open: () => {
+      const other = elsewhere();
+      if (other) {
+        other.view.onOpenAgent(other.ref.serverId, other.ref.agentId);
+        return;
+      }
       const current = wait();
       const lanes = props.threadLanes;
       if (current && lanes && current.threadId !== MAIN_THREAD_ID) lanes.onOpenThread(agent().id, current.threadId);
@@ -142,6 +163,9 @@ function useChannelView(channel: () => ChannelSummary, pinned: () => boolean): C
     get extraLabel() {
       return channel().unreadCount > 0 ? t("sidebar.channel.unread", { count: channel().unreadCount }) : "";
     },
+    get server() {
+      return props.chatServer;
+    },
     avatar: () => <ChannelAvatar members={channel().members} agents={props.agents} layout="cluster" />,
     mark: () => null,
     menu: () => <SidebarChannelContextMenu channel={channel()} pinned={pinned()} />,
@@ -167,7 +191,6 @@ export function SidebarChatRow(rowProps: { chat: SidebarChatItem; look: SidebarC
 
 function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
   const { t } = useText();
-  const { props } = useSidebarScope();
   const [menuOpen, setMenuOpen] = createSignal(false);
   const view = viewProps.view;
   // The preview can end with its own full stop, so the label does not add a second one.
@@ -176,7 +199,7 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
       view.name,
       view.preview.replace(/[.!?…]\s*$/u, ""),
       view.extraLabel || (view.unread ? t("sidebar.chat.unread") : ""),
-      props.chatServer ? t("sidebar.chat.server", { name: props.chatServer.name }) : "",
+      view.server ? t("sidebar.chat.server", { name: view.server.name }) : "",
     ]
       .filter(Boolean)
       .join(". ");
@@ -208,7 +231,7 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
         <Show when={view.unread}>
           <span class="sidebar-chat-unread" aria-hidden="true" />
         </Show>
-        <Show when={viewProps.look === "row" ? props.chatServer : undefined}>
+        <Show when={viewProps.look === "row" ? view.server : undefined}>
           {(server) => (
             <span class="sidebar-chat-server" title={server().name} aria-hidden="true">
               <ServerMark server={server()} />

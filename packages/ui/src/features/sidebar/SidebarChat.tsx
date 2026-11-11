@@ -8,6 +8,7 @@
  *
  * The open chat list has two zones (see `SidebarChatDock`): the pinned chats and "Needs you" at the
  * top, and a dock over the pill that opens one group at a time: "Working", each folder, "Settled".
+ * The "All machines" view keeps both zones for the chats of every server, with machine chips on top.
  */
 
 import {
@@ -31,7 +32,7 @@ import { ServerMark } from "../servers/ServerRail";
 import { SidebarChatDock, SidebarChatNeedsYou, useSidebarChatDockGroups } from "./SidebarChatDock";
 import { SidebarChatRow } from "./SidebarChatRow";
 import { SidebarEmptyState } from "./SidebarEmptyState";
-import { SidebarMachinesDock, SidebarMachinesList } from "./SidebarMachines";
+import { SidebarMachineChips, SidebarMachineNotices } from "./SidebarMachineFilter";
 import { SidebarPill } from "./SidebarPill";
 import { SidebarPinnedGroup } from "./SidebarPinnedGroup";
 import { SidebarUsage } from "./SidebarUsage";
@@ -291,6 +292,8 @@ function SidebarChatList() {
       onDragLeave={handleListDragLeave}
       onDrop={dropSidebarNativeDrag}
     >
+      {/* The chips stay over the list while it scrolls. */}
+      <Show when={props.allMachines}>{(view) => <SidebarMachineChips view={view()} />}</Show>
       <div
         ref={(element) => scrollFades.bind(element)}
         class={["sidebar-chat-scroll", scrollFades.classes()]}
@@ -298,28 +301,32 @@ function SidebarChatList() {
         onScroll={scrollFades.measure}
       >
         <div class="agent-list-content">
-          <Show when={props.allMachines}>{(view) => <SidebarMachinesList view={view()} />}</Show>
-          <Show when={!props.allMachines}>
-            <Show
-              when={
-                resolvedPinnedItems().length === 0 &&
-                recent().length === 0 &&
-                userHiddenAgentList().length === 0 &&
-                (props.showPeople === false || orderedPeople().length === 0) &&
-                pending.sectionEditor?.target.kind !== "create"
-              }
-            >
-              <SidebarEmptyState />
-            </Show>
-            <SidebarPinnedGroup />
-            <SidebarChatNeedsYou chats={groups().waiting} />
+          <Show
+            when={props.allMachines}
+            fallback={
+              <>
+                <Show
+                  when={
+                    resolvedPinnedItems().length === 0 &&
+                    recent().length === 0 &&
+                    userHiddenAgentList().length === 0 &&
+                    (props.showPeople === false || orderedPeople().length === 0) &&
+                    pending.sectionEditor?.target.kind !== "create"
+                  }
+                >
+                  <SidebarEmptyState />
+                </Show>
+                <SidebarPinnedGroup />
+              </>
+            }
+          >
+            {(view) => <SidebarMachineNotices view={view()} />}
           </Show>
+          <SidebarChatNeedsYou chats={groups().waiting} />
         </div>
         <FreeAreaMenu />
       </div>
-      <Show when={!props.allMachines}>
-        <SidebarChatDock groups={groups()} />
-      </Show>
+      <SidebarChatDock groups={groups()} />
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {reorderAnnouncement()}
       </span>
@@ -335,16 +342,11 @@ function SidebarChatDockList() {
   const pinnedKeys = createMemo(() => new Set(props.pinnedItems.map(sidebarPinnedItemKey)));
   return (
     <nav aria-label={t("sidebar.nav.label")} class="sidebar-chat-dock-list">
-      <Show when={props.allMachines}>{(view) => <SidebarMachinesDock view={view()} />}</Show>
-      <For each={props.allMachines ? [] : resolvedPinnedItems()} keyed={(item) => sidebarPinnedItemKey(item.ref)}>
+      <For each={resolvedPinnedItems()} keyed={(item) => sidebarPinnedItemKey(item.ref)}>
         {(item) => <SidebarChatRow chat={item().chat} look="face" pinned />}
       </For>
       <For
-        each={
-          props.allMachines
-            ? []
-            : recent().filter((chat) => !pinnedKeys().has(sidebarPinnedItemKey({ kind: chat.kind, id: chat.id })))
-        }
+        each={recent().filter((chat) => !pinnedKeys().has(sidebarPinnedItemKey({ kind: chat.kind, id: chat.id })))}
         keyed={(chat) => `${chat.kind}:${chat.id}`}
       >
         {(chat) => <SidebarChatRow chat={chat()} look="face" />}

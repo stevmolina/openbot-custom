@@ -354,105 +354,108 @@
   opacity: 1;
 }
 
-/* "All machines": a folder per server. The heading is the server mark and name, like a folder name
- * with the logo in front, and it opens and closes the folder. */
-.sidebar-chat .sidebar-machine-toggle.ui-button {
+/* "All machines": a row of chips over the list. "All", then one round chip per machine with its logo;
+ * the chosen chip shows its name. The row scrolls sideways when the machines do not fit. */
+.sidebar-machine-chips {
   display: flex;
-  width: 100%;
-  height: 30px;
-  justify-content: flex-start;
+  flex: none;
+  gap: var(--openbot-space-1);
+  overflow-x: auto;
+  padding: var(--openbot-space-1) var(--openbot-space-3) var(--openbot-space-2);
+  scrollbar-width: none;
+}
+
+.sidebar-machine-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-chat .sidebar-machine-chip.ui-button {
+  display: flex;
+  min-width: 28px;
+  height: 28px;
+  flex: none;
   align-items: center;
-  gap: var(--openbot-space-2);
-  padding-inline: var(--openbot-space-3);
-  border-radius: var(--openbot-radius-md);
+  justify-content: center;
+  gap: var(--openbot-space-1-5);
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-pill);
+  padding-inline: var(--openbot-space-1-5);
+  background: transparent;
   color: var(--openbot-text-secondary);
   font-size: var(--openbot-text-sm);
   font-weight: var(--openbot-weight-medium);
+  transition:
+    background-color var(--openbot-duration-fast) var(--openbot-ease-out),
+    border-color var(--openbot-duration-fast) var(--openbot-ease-out),
+    opacity var(--openbot-duration-fast) var(--openbot-ease-out);
 }
 
-/* A ghost button marks itself while expanded; an open folder is the usual state, so it stays quiet. */
-.sidebar-chat .sidebar-machine-toggle.ui-button,
-.sidebar-chat .sidebar-machine-toggle.ui-button[aria-expanded="true"] {
-  background: transparent;
-}
-
-.sidebar-chat .sidebar-machine-toggle.ui-button:is(:hover, :focus-visible) {
-  background: transparent;
+.sidebar-chat .sidebar-machine-chip.ui-button:is(:hover, :focus-visible) {
+  background: var(--openbot-bg-control-hover);
   color: var(--openbot-text-primary);
 }
 
-.sidebar-machine-mark {
+.sidebar-chat .sidebar-machine-chip.ui-button[aria-checked="true"] {
+  border-color: transparent;
+  background: var(--openbot-bg-control-active);
+  color: var(--openbot-text-primary);
+  padding-inline-end: var(--openbot-space-2);
+}
+
+/* A machine that does not answer. Its chip still chooses it, to show why. */
+.sidebar-chat .sidebar-machine-chip.ui-button[data-state]:not([data-state="online"]) {
+  opacity: 0.55;
+}
+
+.sidebar-machine-chip-mark {
   display: grid;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex: none;
   overflow: hidden;
   border-radius: var(--openbot-radius-sm);
 }
 
-.sidebar-machine-mark > * {
+.sidebar-machine-chip-mark > * {
   width: 100%;
   height: 100%;
   border-radius: var(--openbot-radius-sm);
 }
 
-.sidebar-machine-name {
-  min-width: 0;
+.sidebar-machine-chip-name {
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sidebar-machine-state {
+/* A chat that waits for the user (warning) or one that is unread (accent) on the machine. */
+.sidebar-machine-chip-dot {
+  width: 6px;
+  height: 6px;
   flex: none;
-  color: var(--openbot-text-muted);
-  font-size: var(--openbot-text-sm);
-  font-weight: var(--openbot-weight-regular);
-}
-
-.sidebar-machine-folder[data-state="connecting"] .sidebar-machine-state,
-.sidebar-machine-folder[data-state="sleeping"] .sidebar-machine-state {
-  color: var(--openbot-warning);
-}
-
-.sidebar-machine-folder:is([data-state="error"], [data-state="incompatible"]) .sidebar-machine-state {
-  color: var(--openbot-danger);
-}
-
-.sidebar-machine-unread {
-  display: grid;
-  min-width: 18px;
-  height: 18px;
-  flex: none;
-  place-items: center;
-  padding-inline: var(--openbot-space-1);
-  box-sizing: border-box;
   border-radius: var(--openbot-radius-pill);
-  background: var(--openbot-bg-control);
-  color: var(--openbot-text-secondary);
-  font-size: var(--openbot-text-sm);
+  background: var(--openbot-accent);
 }
 
-.sidebar-machine-chevron {
-  margin-inline-start: auto;
-  flex: none;
-  color: var(--openbot-text-muted);
-  transition: transform var(--openbot-duration-fast) var(--openbot-ease-out);
+.sidebar-machine-chip-dot[data-attention="waiting"] {
+  background: var(--openbot-warning);
 }
 
-.sidebar-machine-chevron-collapsed {
-  transform: rotate(-90deg);
-}
-
+/* A machine of the choice that shows no chats: one muted line, with a retry where one helps. */
 .sidebar-machine-notice {
   display: flex;
   margin: 0;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--openbot-space-2);
   padding: var(--openbot-space-1) var(--openbot-space-3) var(--openbot-space-2);
   color: var(--openbot-text-muted);
   font-size: var(--openbot-text-sm);
+}
+
+.sidebar-machine-notice > span {
+  min-width: 0;
+  flex: 1;
 }
 
 .sidebar-chat-footer:empty {

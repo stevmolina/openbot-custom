@@ -37,15 +37,18 @@ export function SidebarAgentContextMenu(menuProps: { agent: AgentProfile; pinned
   return (
     <ContextMenu.Portal>
       <ContextMenu.Content class="agent-context-menu" aria-label={t("sidebar.agentMenu.label")}>
-        <ContextMenu.Item
-          data-cuelume-tap="toggle"
-          onSelect={() => (menuProps.pinned ? props.onUnpin(ref()) : props.onPin(ref()))}
-        >
-          <Show when={menuProps.pinned} fallback={<Pin class="agent-context-icon size-4" aria-hidden="true" />}>
-            <PinOff class="agent-context-icon size-4" aria-hidden="true" />
-          </Show>
-          <span>{menuProps.pinned ? t("sidebar.unpin") : t("sidebar.pin")}</span>
-        </ContextMenu.Item>
+        {/* Pins belong to one server, so the "All machines" view shows none and offers none. */}
+        <Show when={!props.allMachines}>
+          <ContextMenu.Item
+            data-cuelume-tap="toggle"
+            onSelect={() => (menuProps.pinned ? props.onUnpin(ref()) : props.onPin(ref()))}
+          >
+            <Show when={menuProps.pinned} fallback={<Pin class="agent-context-icon size-4" aria-hidden="true" />}>
+              <PinOff class="agent-context-icon size-4" aria-hidden="true" />
+            </Show>
+            <span>{menuProps.pinned ? t("sidebar.unpin") : t("sidebar.pin")}</span>
+          </ContextMenu.Item>
+        </Show>
         <Show when={unread() && props.onMarkAgentRead}>
           {(markRead) => (
             <ContextMenu.Item onSelect={() => markRead()(menuProps.agent.id)}>

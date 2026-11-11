@@ -675,4 +675,10 @@ export const messages = {
   "server.allMachines.title": "Todas las máquinas",
   "server.allMachines.newAgentOn": "Nuevo agente en",
   "server.allMachines.serverScoped": "Abre un servidor para añadir carpetas o canales",
+  "server.allMachines.filter": "Mostrar chats de",
+  "server.allMachines.all": "Todas",
+  "server.allMachines.offline": "{name} está desconectada. Sus agentes aparecen cuando se conecte.",
+  "server.allMachines.connecting": "Conectando con {name}.",
+  "server.allMachines.sleeping": "{name} está en reposo. Reintenta para activarla.",
+  "server.allMachines.loadFailed": "No se pudieron leer los agentes de {name}.",
 } as const satisfies PartialTranslation<typeof source>;

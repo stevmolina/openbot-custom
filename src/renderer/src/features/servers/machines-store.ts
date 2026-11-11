@@ -1,4 +1,9 @@
-import type { ClientAgentSummary, ConversationReadState, ServerSummary } from "@openbot/contracts/ipc";
+import type {
+  ClientAgentSummary,
+  ConversationReadState,
+  ServerSummary,
+  SidebarLayoutSnapshot,
+} from "@openbot/contracts/ipc";
 import type { Machine, MachineAgents, MachineState } from "@openbot/ui/features/servers/MachinesPage";
 import { createEffect, createMemo, createStore, onCleanup, onSettled } from "solid-js";
 import { serversPort } from "./servers-port";
@@ -13,7 +18,19 @@ interface MachineEntry {
    * `agent-hidden-v1`; `hiddenAt` on the agent is set on this computer's server alone.
    */
   hiddenIds: readonly string[];
+  /** The folders of the server, for the "All machines" view. Null for a server that keeps none. */
+  layout: SidebarLayoutSnapshot | null;
 }
+
+/** What the "All machines" view reads of one server that answered. */
+export interface MachineSidebarEntry {
+  /** The agents that the server shows, without the hidden ones. */
+  agents: readonly ClientAgentSummary[];
+  reads: Readonly<Record<string, ConversationReadState>>;
+  layout: SidebarLayoutSnapshot | null;
+}
+
+const EMPTY_ENTRY = { agents: [], reads: {}, hiddenIds: [], layout: null } as const;
 
 /** Whether the store shows an agent: one that nobody hid, on this computer or on its joined server. */
 function agentShown(entry: MachineEntry, agent: ClientAgentSummary): boolean {
@@ -51,6 +68,11 @@ export function createMachinesStore(options: {
   const [entries, setEntries] = createStore<Record<string, MachineEntry>>({});
   /** Bumped for each read of a server, so an answer of an earlier read is dropped. */
   const generations = new Map<string, number>();
+  /**
+   * The newest layout that an event gave for each server. A read that started before the event can
+   * answer an older revision; the newer one wins.
+   */
+  const eventLayouts = new Map<string, SidebarLayoutSnapshot>();
   const reloads = new Map<string, ReturnType<typeof setTimeout>>();
   onCleanup(() => {
     for (const timer of reloads.values()) clearTimeout(timer);
@@ -62,27 +84,30 @@ export function createMachinesStore(options: {
     setEntries((draft) => {
       const previous = draft[serverId];
       // A read again keeps the agents on screen; only the first read shows the loading line.
-      draft[serverId] =
-        previous?.status === "ready" ? previous : { status: "loading", agents: [], reads: {}, hiddenIds: [] };
+      draft[serverId] = previous?.status === "ready" ? previous : { status: "loading", ...EMPTY_ENTRY };
     });
     const port = serversPort().agent;
     try {
-      const [agents, reads, hidden] = await Promise.all([
+      const [agents, reads, hidden, layout] = await Promise.all([
         port.listAgents(serverId),
         // The unread counts are extra: a server that cannot give them still shows its agents.
         port.listConversationReads(serverId).catch(() => ({})),
         // An older host has no hidden agents to give.
         port.listHiddenAgents(serverId).catch(() => ({ agents: [] })),
+        // The folders are extra too: without them, every agent of the server shows in "Settled".
+        port.getSidebarLayout(serverId).catch(() => null),
       ]);
       if (generations.get(serverId) !== generation) return;
       const hiddenIds = hidden.agents.map((agent) => agent.agentId);
+      const eventLayout = eventLayouts.get(serverId);
+      const newestLayout = eventLayout && (!layout || eventLayout.revision > layout.revision) ? eventLayout : layout;
       setEntries((draft) => {
-        draft[serverId] = { status: "ready", agents, reads, hiddenIds };
+        draft[serverId] = { status: "ready", agents, reads, hiddenIds, layout: newestLayout };
       });
     } catch {
       if (generations.get(serverId) !== generation) return;
       setEntries((draft) => {
-        draft[serverId] = { status: "failed", agents: [], reads: {}, hiddenIds: [] };
+        draft[serverId] = { status: "failed", ...EMPTY_ENTRY };
       });
     }
   }
@@ -109,6 +134,22 @@ export function createMachinesStore(options: {
             entry.status = "ready";
             entry.agents = event.agents;
           }
+        });
+        return;
+      }
+      // A folder that changes on its server changes in the view at once.
+      if (event.type === "sidebar-layout-changed") {
+        eventLayouts.set(serverId, event.layout);
+        setEntries((draft) => {
+          const entry = draft[serverId];
+          if (entry?.status === "ready") entry.layout = event.layout;
+        });
+        return;
+      }
+      if (event.type === "hidden-agents-changed") {
+        setEntries((draft) => {
+          const entry = draft[serverId];
+          if (entry?.status === "ready") entry.hiddenIds = event.agents.map((agent) => agent.agentId);
         });
         return;
       }
@@ -173,10 +214,14 @@ export function createMachinesStore(options: {
    * The read servers that the app still lists, but `skipServerId`. A server the user left keeps its
    * entry, and its old unread counts must not count.
    */
-  function listedEntries(skipServerId: string | null): [string, MachineEntry][] {
+  function listedEntries(skipServerId: string | null, onlyServerId: string | null = null): [string, MachineEntry][] {
     const listed = new Set(options.servers().map((server) => server.id));
     return Object.entries(entries).filter(
-      ([serverId, entry]) => serverId !== skipServerId && listed.has(serverId) && entry.status === "ready",
+      ([serverId, entry]) =>
+        serverId !== skipServerId &&
+        (onlyServerId === null || serverId === onlyServerId) &&
+        listed.has(serverId) &&
+        entry.status === "ready",
     );
   }
 
@@ -184,9 +229,9 @@ export function createMachinesStore(options: {
    * Marks each unread agent chat of the servers read through its newest message, then reads those
    * servers again. The open server is left out: its own read state marks it, so its rows change at once.
    */
-  async function markAllRead(skipServerId: string | null): Promise<void> {
+  async function markAllRead(skipServerId: string | null, onlyServerId: string | null = null): Promise<void> {
     const port = serversPort().agent;
-    const marked = listedEntries(skipServerId).flatMap(([serverId, entry]) =>
+    const marked = listedEntries(skipServerId, onlyServerId).flatMap(([serverId, entry]) =>
       entry.agents
         .filter((agent) => agentShown(entry, agent) && (entry.reads[agent.id]?.unreadCount ?? 0) > 0)
         .map(async (agent) => {
@@ -207,14 +252,26 @@ export function createMachinesStore(options: {
   }
 
   /** Whether an agent of a server other than `skipServerId` has a message that the user did not read. */
-  function hasUnread(skipServerId: string | null): boolean {
-    return listedEntries(skipServerId).some(([, entry]) =>
+  function hasUnread(skipServerId: string | null, onlyServerId: string | null = null): boolean {
+    return listedEntries(skipServerId, onlyServerId).some(([, entry]) =>
       entry.agents.some((agent) => agentShown(entry, agent) && (entry.reads[agent.id]?.unreadCount ?? 0) > 0),
     );
   }
 
+  /** The agents, unread counts and folders that a server gave, or null while it gave none. */
+  function sidebarEntry(serverId: string): MachineSidebarEntry | null {
+    const entry = entries[serverId];
+    if (entry?.status !== "ready") return null;
+    return {
+      agents: entry.agents.filter((agent) => agentShown(entry, agent)),
+      reads: entry.reads,
+      layout: entry.layout,
+    };
+  }
+
   return {
     machines,
+    sidebarEntry,
     /** Reads the agents of a server again. */
     reload: (serverId: string) => void load(serverId),
     markAllRead,
