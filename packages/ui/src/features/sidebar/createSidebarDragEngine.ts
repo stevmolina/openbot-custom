@@ -58,6 +58,8 @@ export interface SidebarDragEngineDeps {
   folders: () => SidebarDragFolders | null;
   /** Whether a section is closed, so a drag that rests on it can open it. */
   sectionIsCollapsed: (sectionId: string) => boolean;
+  /** Opens or closes a section, as a click on its header does. */
+  toggleSection: (sectionId: string) => void;
   visiblePinnedKeys: () => string[];
   visibleSectionIds: () => string[];
 }
@@ -154,7 +156,7 @@ export function createSidebarDragEngine(deps: SidebarDragEngineDeps) {
       sectionId,
       timer: window.setTimeout(() => {
         springOpen = null;
-        if (dragSession && deps.sectionIsCollapsed(sectionId)) deps.props.onToggleSection(sectionId);
+        if (dragSession && deps.sectionIsCollapsed(sectionId)) deps.toggleSection(sectionId);
       }, SPRING_OPEN_MS),
     };
   }

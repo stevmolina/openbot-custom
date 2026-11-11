@@ -7,10 +7,16 @@
  * is the one part that needs a closure of its own, and `createSidebarDragEngine` is it.
  */
 
-import { createContext, createEffect, createSignal, onCleanup, useContext } from "solid-js";
+import { SIDEBAR_UNASSIGNED_SECTION_ID } from "@openbot/contracts/ipc";
+import { createContext, createEffect, createMemo, createSignal, onCleanup, useContext } from "solid-js";
 import { createScrollFades } from "../../components/createScrollFades";
 import { createSidebarDragEngine } from "./createSidebarDragEngine";
-import type { SidebarProps } from "./sidebar-types";
+import {
+  SIDEBAR_DOCK_NONE_ID,
+  SIDEBAR_DOCK_OPEN_PREFIX,
+  SIDEBAR_DOCK_WORKING_ID,
+  type SidebarProps,
+} from "./sidebar-types";
 import { createSidebarAnnouncementStore } from "./stores/announcement-store";
 import { createSidebarDataStore } from "./stores/data-store";
 import { createSidebarDragStateStore } from "./stores/drag-state-store";
@@ -49,7 +55,7 @@ export function createSidebarScope(props: SidebarProps) {
     sectionAcceptsChat,
     sectionCanNest,
     sectionChildren,
-    sectionIsCollapsed,
+    sectionIsCollapsed: layoutSectionIsCollapsed,
     sectionIsInside,
     sectionLabel,
     sectionParent,
@@ -82,6 +88,42 @@ export function createSidebarScope(props: SidebarProps) {
     updateSectionEditorName,
   } = createSidebarPendingStore({ customSectionById, props });
   let agentList: HTMLElement | undefined;
+
+  /**
+   * The dock of the chat sidebar: "Working", each folder at the top of the layout, and "Settled" (the
+   * chats in no folder). One group is open at a time. The other sections keep their own collapse.
+   */
+  const dockHolds = (sectionId: string) =>
+    props.pages !== undefined &&
+    !props.allMachines &&
+    (sectionId === SIDEBAR_DOCK_WORKING_ID ||
+      sectionId === SIDEBAR_UNASSIGNED_SECTION_ID ||
+      (customSectionById().has(sectionId) && sectionParent(sectionId) === null));
+  const dockMarker = (sectionId: string) =>
+    sectionId === SIDEBAR_DOCK_NONE_ID || sectionId.startsWith(SIDEBAR_DOCK_OPEN_PREFIX);
+  /** The open group of the dock, or null when the user closed all of them. "Working" by default. */
+  const dockOpenGroup = createMemo<string | null>(() => {
+    const marker = props.collapsedSectionIds.findLast(dockMarker);
+    if (marker === undefined) return SIDEBAR_DOCK_WORKING_ID;
+    return marker === SIDEBAR_DOCK_NONE_ID ? null : marker.slice(SIDEBAR_DOCK_OPEN_PREFIX.length);
+  });
+  /** Saves the open group as the only dock marker. Each toggle reads the saved set again, so the calls compose. */
+  function setDockOpenGroup(groupId: string | null): void {
+    const target = groupId === null ? SIDEBAR_DOCK_NONE_ID : `${SIDEBAR_DOCK_OPEN_PREFIX}${groupId}`;
+    const saved = [...props.collapsedSectionIds];
+    for (const sectionId of saved) if (dockMarker(sectionId) && sectionId !== target) props.onToggleSection(sectionId);
+    if (!saved.includes(target)) props.onToggleSection(target);
+  }
+  /** Opens or closes a section. In the dock, opening a group closes the open one. */
+  const toggleSection = (sectionId: string) => {
+    if (!dockHolds(sectionId)) {
+      props.onToggleSection(sectionId);
+      return;
+    }
+    setDockOpenGroup(dockOpenGroup() === sectionId ? null : sectionId);
+  };
+  const sectionIsCollapsed = (sectionId: string) =>
+    dockHolds(sectionId) ? dockOpenGroup() !== sectionId : layoutSectionIsCollapsed(sectionId);
   const foldersSupported = () => props.foldersSupported === true && layoutMutable();
   const dragFolders = () =>
     foldersSupported() ? { canNest: sectionCanNest, isInside: sectionIsInside, parent: sectionParent } : null;
@@ -144,6 +186,7 @@ export function createSidebarScope(props: SidebarProps) {
     sectionAcceptsChat,
     folders: dragFolders,
     sectionIsCollapsed,
+    toggleSection,
     visiblePinnedKeys,
     visibleSectionIds,
   });
@@ -197,6 +240,13 @@ export function createSidebarScope(props: SidebarProps) {
     agentList = element;
     scrollFades.bind(element);
   };
+  /**
+   * The chat list scrolls in two places, its top and the open group of its dock, so the drag measures
+   * the whole list and the fades follow the top only.
+   */
+  const setDragListElement = (element: HTMLElement) => {
+    agentList = element;
+  };
 
   /**
    * The scope's public surface, and the whole of what a region component may reach for. The drag
@@ -221,6 +271,7 @@ export function createSidebarScope(props: SidebarProps) {
     draggedChatId: dragState.draggedChatId,
     draggedPinnedKey: dragState.draggedPinnedKey,
     draggingKind: dragState.draggingKind,
+    dockOpenGroup,
     dropSidebarNativeDrag,
     duplicateSection,
     emptyPinnedDropVisible: dragState.emptyPinnedDropVisible,
@@ -256,6 +307,7 @@ export function createSidebarScope(props: SidebarProps) {
     sectionSiblingIndex,
     sectionUnreadCount,
     setAgentListElement,
+    setDragListElement,
     setSectionNameInput,
     sidebarClickIsSuppressed,
     startChatDragging,
@@ -265,6 +317,7 @@ export function createSidebarScope(props: SidebarProps) {
     startRenameSection,
     startSectionDragging,
     stopSidebarDragging,
+    toggleSection,
     unreadChats,
     updateSectionEditorName,
     updateSidebarNativeDrag,

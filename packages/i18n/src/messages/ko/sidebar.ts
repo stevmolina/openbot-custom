@@ -114,6 +114,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "선택하여 검토",
   "sidebar.waiting.hint.takeover": "선택하여 직접 처리",
   "sidebar.lanes.working": "작업 중",
+  "sidebar.dock.settled": "완료",
   "sidebar.lanes.agents": "에이전트",
   "sidebar.lanes.channels": "채널",
   "sidebar.lanes.mainChat": "메인 채팅",

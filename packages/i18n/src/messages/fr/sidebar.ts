@@ -117,6 +117,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "Sélectionnez pour examiner",
   "sidebar.waiting.hint.takeover": "Sélectionnez pour prendre la main",
   "sidebar.lanes.working": "En cours",
+  "sidebar.dock.settled": "Réglés",
   "sidebar.lanes.agents": "Agents",
   "sidebar.lanes.channels": "Canaux",
   "sidebar.lanes.mainChat": "Discussion principale",

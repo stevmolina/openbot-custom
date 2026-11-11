@@ -114,6 +114,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "İncelemek için seçin",
   "sidebar.waiting.hint.takeover": "Devralmak için seçin",
   "sidebar.lanes.working": "Çalışıyor",
+  "sidebar.dock.settled": "Tamamlanan",
   "sidebar.lanes.agents": "Ajanlar",
   "sidebar.lanes.channels": "Kanallar",
   "sidebar.lanes.mainChat": "Ana sohbet",

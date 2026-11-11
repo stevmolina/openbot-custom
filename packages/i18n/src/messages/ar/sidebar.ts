@@ -244,6 +244,7 @@ export const messages = {
   "sidebar.pill.pinPage": "تثبيت {name} في الشريط الجانبي",
   "sidebar.pill.moreNotice": "المزيد. {notice}",
   "sidebar.lanes.working": "قيد العمل",
+  "sidebar.dock.settled": "مستقرة",
   "sidebar.lanes.agents": "الوكلاء",
   "sidebar.lanes.channels": "القنوات",
   "sidebar.lanes.mainChat": "المحادثة الرئيسية",

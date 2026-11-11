@@ -114,6 +114,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "Selecione para revisar",
   "sidebar.waiting.hint.takeover": "Selecione para assumir o controle",
   "sidebar.lanes.working": "Trabalhando",
+  "sidebar.dock.settled": "Resolvidos",
   "sidebar.lanes.agents": "Agentes",
   "sidebar.lanes.channels": "Canais",
   "sidebar.lanes.mainChat": "Chat principal",

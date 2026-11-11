@@ -80,9 +80,128 @@
   height: 18px;
 }
 
-/* The list. */
+/* The list: a top zone that scrolls and takes the free space, and the dock under it. The list itself
+ * does not scroll, so the drag measures both zones in place. */
 .sidebar-chat .sidebar-chat-list {
+  overflow: hidden;
+  padding: 0;
+}
+
+.sidebar-chat-scroll {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: var(--openbot-space-2) var(--openbot-space-3);
+  scrollbar-width: none;
+}
+
+.sidebar-chat-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* "Needs you": the count in the warning color, at the end of the heading. */
+.sidebar-chat .sidebar-needs-you > .sidebar-needs-you-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline-end: var(--openbot-space-3);
+  margin-bottom: var(--openbot-space-1);
+}
+
+.sidebar-needs-you-count {
+  color: var(--openbot-warning);
+  font-size: var(--openbot-text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--openbot-weight-medium);
+}
+
+.sidebar-chat-scroll .sidebar-pinned-group + .sidebar-needs-you {
+  margin-top: var(--openbot-space-2);
+}
+
+/* The dock: one group open at a time, over the pill, under a hairline. It takes at most 60% of the
+ * list, and the open group scrolls on its own. */
+.sidebar-dock {
+  display: flex;
+  max-height: 60%;
+  flex: none;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-top: 1px solid var(--openbot-border);
+  padding: var(--openbot-space-2) var(--openbot-space-3);
+  scrollbar-width: none;
+}
+
+.sidebar-dock::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-chat .sidebar-dock-head.ui-button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  justify-content: flex-start;
+  gap: var(--openbot-space-2);
+  border-radius: var(--openbot-radius-md);
+  padding: var(--openbot-space-2) var(--openbot-space-3);
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+}
+
+.sidebar-chat .sidebar-dock-head.ui-button:is(:hover, :focus-visible) {
+  background: var(--openbot-hover);
+  color: var(--openbot-text-primary);
+}
+
+.sidebar-dock-chevron,
+.sidebar-dock-folder {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.sidebar-dock-chevron {
+  transition: transform var(--openbot-duration-fast) ease;
+}
+
+.sidebar-dock-chevron-open {
+  transform: rotate(90deg);
+}
+
+.sidebar-dock-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-dock-count {
+  color: var(--openbot-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-dock-group > .sidebar-section-collapse {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sidebar-dock-body {
+  max-height: 40vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: var(--openbot-space-1);
+  scrollbar-width: thin;
+}
+
+.sidebar-dock-body > .sidebar-section,
+.sidebar-dock-body > .sidebar-chat-group {
+  margin-top: var(--openbot-space-2);
 }
 
 .sidebar-chat-rows {

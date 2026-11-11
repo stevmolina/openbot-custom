@@ -114,6 +114,7 @@ export const messages = {
   "sidebar.waiting.hint.approval": "選択して確認します",
   "sidebar.waiting.hint.takeover": "選択して操作します",
   "sidebar.lanes.working": "作業中",
+  "sidebar.dock.settled": "完了",
   "sidebar.lanes.agents": "エージェント",
   "sidebar.lanes.channels": "チャンネル",
   "sidebar.lanes.mainChat": "メインチャット",
