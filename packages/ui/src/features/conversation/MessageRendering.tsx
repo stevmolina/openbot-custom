@@ -335,6 +335,8 @@ export function MessageBody(props: {
   onAttachmentAction: (attachment: AttachmentSummary, action: "open" | "reveal" | "download") => void;
   onOpenSharedFile?: ((path: string, asWritten?: string) => void) | undefined;
   onOpenWorkspaceFile?: ((path: string, asWritten?: string) => void) | undefined;
+  /** Opens a folder path chip. Without it, the chip copies the path. */
+  onOpenFolderPath?: ((path: string) => void) | undefined;
   /** Opens the passage that a quote in the message points to. */
   onOpenQuote?: ((messageId: string, text: string) => void) | undefined;
   /** Shows the browser tab or opens the thread that a tag in the message names. */
@@ -654,6 +656,7 @@ export function MessageBody(props: {
       onOpenImage={openMarkdownImage}
       onOpenSharedFile={props.onOpenSharedFile}
       onOpenWorkspaceFile={props.onOpenWorkspaceFile}
+      onOpenFolderPath={props.onOpenFolderPath}
       onOpenQuote={props.onOpenQuote}
       onOpenTag={props.onOpenTag}
     />
@@ -823,6 +826,7 @@ export function MessageBody(props: {
                             onOpenImage={openMarkdownImage}
                             onOpenSharedFile={props.onOpenSharedFile}
                             onOpenWorkspaceFile={props.onOpenWorkspaceFile}
+                            onOpenFolderPath={props.onOpenFolderPath}
                             onOpenQuote={props.onOpenQuote}
                             onOpenTag={props.onOpenTag}
                             showCitationFooter={index === lastTextBlockIndex()}

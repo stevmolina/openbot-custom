@@ -2,7 +2,7 @@ import { fileQuoteId } from "@openbot/contracts/chat-tag-references";
 import { chatVisualReply } from "@openbot/contracts/chat-visual";
 import type { AgentApproval, ConversationMessageSender, MessageReaction } from "@openbot/contracts/ipc";
 import type { ConversationUiBlock } from "@openbot/contracts/ui-blocks";
-import { Button } from "@openbot/ui";
+import { Button, toast } from "@openbot/ui";
 import type { AgentMessage, ChatActionMarkerModel, MessageKind } from "@openbot/ui/data";
 import { ChannelActivityIndicator, type ChannelWorker } from "@openbot/ui/features/channels/ChannelActivityIndicator";
 import { AgentActivityIndicator } from "@openbot/ui/features/conversation/AgentActivity";
@@ -46,6 +46,7 @@ import { useText } from "@openbot/ui/text";
 import { createEffect, createMemo, createSignal, For, Loading, lazy, onCleanup, Show, untrack } from "solid-js";
 import { useShowAgentSteps } from "../../agent-steps-preference";
 import { planItems, planTitle } from "../../app-message-projection";
+import { writeClipboardText } from "../../clipboard";
 import { useCompactMessageActions } from "../../compact-message-actions-preference";
 import { currentDevicePlatform, deviceQuoteShortcut } from "../../send-shortcut-preference";
 import { remoteRoutineRecovery, serverCanAdminister } from "../servers/server-capabilities";
@@ -231,6 +232,20 @@ export function ConversationTimeline() {
     sideThreadOpen,
   } = useConversationViewScope();
   const { t, format, sourceText } = useText();
+  // A folder path chip opens its path in the side panel only on this computer, where the agent may read
+  // any folder. A member of a joined server, or the web client, can read only the agent's workspace on
+  // the host, and an agent names folders outside it too, so there the chip copies the path. The file
+  // opener also lists a folder, so a chip that names a file, such as `~/.zshrc`, opens too. When the
+  // path does not open, such as a folder that a workspace-only agent may not read, the path is copied
+  // in place of the error.
+  const opensFolderPaths = () => !props.runtime && (props.server?.id ?? "local") === "local";
+  const openFolderPath = (path: string, agentId: string | undefined) =>
+    openWorkspaceFile(path, undefined, agentId, "tab", undefined, () => {
+      writeClipboardText(path).then(
+        () => toast.success(t("chat.file.folderPathCopied")),
+        () => toast.error(t("app.clipboard.copyFailed")),
+      );
+    });
   // A named function, not a ternary in the prop: the compiler wraps a ternary prop in a memo, and
   // the avatar reads it in a tracked effect, where a new memo halts the reactive system.
   const waitingProviderName = () => {
@@ -498,6 +513,11 @@ export function ConversationTimeline() {
               onOpenSharedFile={(path) => openSharedFile(path)}
               // A workspace path is in the workspace of the agent that wrote it, as in a channel.
               onOpenWorkspaceFile={(path) => openWorkspaceFile(path, undefined, current().exchange?.senderAgentId)}
+              onOpenFolderPath={
+                opensFolderPaths() && current().exchange?.senderAgentId
+                  ? (path) => openFolderPath(path, current().exchange?.senderAgentId)
+                  : undefined
+              }
               onOpenQuote={openQuote}
               onOpenTag={openTaggedReference}
               macWindowControls={props.platform === "darwin"}
@@ -516,6 +536,9 @@ export function ConversationTimeline() {
               onPreview={(attachment) => void previewAttachment(attachment)}
               onAttachmentAction={attachmentAction}
               onOpenWorkspaceFile={(path) => openWorkspaceFile(path, undefined, props.agent?.id)}
+              onOpenFolderPath={
+                opensFolderPaths() && props.agent?.id ? (path) => openFolderPath(path, props.agent?.id) : undefined
+              }
               onOpenQuote={openQuote}
               onOpenTag={openTaggedReference}
               macWindowControls={props.platform === "darwin"}
@@ -1618,6 +1641,11 @@ export function ConversationTimeline() {
                                       turnAttachment(path),
                                       writtenFile(asWritten),
                                     )
+                                : undefined
+                            }
+                            onOpenFolderPath={
+                              opensFolderPaths() && workspaceAgentId()
+                                ? (path) => openFolderPath(path, workspaceAgentId())
                                 : undefined
                             }
                             onOpenQuote={openQuote}

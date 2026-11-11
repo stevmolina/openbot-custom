@@ -36,6 +36,11 @@ export interface RichMessageTextProps {
    */
   onOpenSharedFile?: ((path: string, asWritten?: string) => void) | undefined;
   onOpenWorkspaceFile?: ((path: string, asWritten?: string) => void) | undefined;
+  /**
+   * Opens a folder chip: inline code that names an absolute folder path, such as `~/dev/project`.
+   * Give it only where the folder is on this computer. Without it, the chip copies the path.
+   */
+  onOpenFolderPath?: ((path: string) => void) | undefined;
   /** Shows the passage that a quote tag names. Without it, a quote is a chip that does nothing. */
   onOpenQuote?: ((messageId: string, text: string) => void) | undefined;
   /** Shows the browser tab or opens the thread that a tag names. Without it, the chip does nothing. */
