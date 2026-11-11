@@ -93,10 +93,11 @@ export function measureSidebarDragSlots(
   for (const row of list.querySelectorAll<HTMLElement>(SIDEBAR_DRAG_SELECTORS.personRow)) {
     const memberId = row.dataset.personId;
     if (!memberId) continue;
-    const bounds = row.getBoundingClientRect();
+    const bounds = visibleBounds(row, list);
+    if (!bounds) continue;
     people.set(memberId, {
       bottom: bounds.bottom,
-      centerY: bounds.top + bounds.height / 2,
+      centerY: bounds.top + (bounds.bottom - bounds.top) / 2,
       element: row,
       memberId,
       top: bounds.top,

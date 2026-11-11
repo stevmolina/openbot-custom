@@ -5,7 +5,7 @@
  * an agent whose wait is only in a side thread too. The dock sits at the bottom of the list, over the
  * pill, and opens one group at a time: "Working", each folder at the top of the layout in the layout
  * order, then "Settled", the chats in no folder. Each chat is in one group: a chat that waits is in
- * "Needs you", one that works is in "Working", and the others are in their folder or in "Settled".
+ * "Needs you", one that works (or a channel with a running task) is in "Working", and the others are in their folder or in "Settled".
  * People, the hidden agents and the deleted channels follow the chats of "Settled".
  *
  * The open group is saved with the collapsed sections (`dockOpenGroup` in the scope), so it stays
@@ -74,10 +74,14 @@ export function useSidebarChatDockGroups(chats: () => readonly SidebarChatItem[]
   const { draggingKind, props, waitingChats } = useSidebarScope();
   const threadStates = useThreadStates();
   let heldWorking = new Set<string>();
+  /** The agents that work and the channels with a running task, as `kind:id` keys. */
   const workingIds = createMemo(() => {
-    const next = new Set(
-      Object.keys(props.agentStates).filter((agentId) => props.agentStates[agentId]?.kind === "working"),
-    );
+    const next = new Set([
+      ...Object.keys(props.agentStates).flatMap((agentId) =>
+        props.agentStates[agentId]?.kind === "working" ? [`agent:${agentId}`] : [],
+      ),
+      ...(props.channels ?? []).flatMap((channel) => (channel.activeTasks > 0 ? [`channel:${channel.id}`] : [])),
+    ]);
     if (!draggingKind()) heldWorking = next;
     return heldWorking;
   });
@@ -92,7 +96,7 @@ export function useSidebarChatDockGroups(chats: () => readonly SidebarChatItem[]
       const agent = chat.kind === "agent";
       if (waitingIds.has(chat.id) || (agent && states.waits.has(chat.id))) {
         waiting.push(chat);
-      } else if (agent && (workingIds().has(chat.id) || states.works.has(chat.id))) {
+      } else if (workingIds().has(`${chat.kind}:${chat.id}`) || (agent && states.works.has(chat.id))) {
         working.push(chat);
       } else {
         const sectionId = sectionOf(chat.id);
