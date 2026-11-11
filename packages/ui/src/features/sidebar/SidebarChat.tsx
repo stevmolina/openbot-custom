@@ -324,9 +324,10 @@ function SidebarChatList() {
           </Show>
           <SidebarChatNeedsYou chats={groups().waiting} />
         </div>
-        <FreeAreaMenu />
       </div>
       <SidebarChatDock groups={groups()} />
+      {/* The free area sits under the folders, so the folders follow the top zone instead of the bottom. */}
+      <FreeAreaMenu />
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {reorderAnnouncement()}
       </span>

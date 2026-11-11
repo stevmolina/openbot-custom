@@ -80,8 +80,8 @@
   height: 18px;
 }
 
-/* The list: a top zone that scrolls and takes the free space, and the dock under it. The list itself
- * does not scroll, so the drag measures both zones in place. */
+/* The list: a top zone that scrolls and is only as tall as its rows, the dock under it, and the free
+ * area under the dock. The list itself does not scroll, so the drag measures both zones in place. */
 .sidebar-chat .sidebar-chat-list {
   overflow: hidden;
   padding: 0;
@@ -90,7 +90,7 @@
 .sidebar-chat-scroll {
   display: flex;
   min-height: 0;
-  flex: 1 1 0;
+  flex: 0 1 auto;
   flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
@@ -100,6 +100,17 @@
 
 .sidebar-chat-scroll::-webkit-scrollbar {
   display: none;
+}
+
+/* An empty top zone takes no room, so the folders start under the top bar. */
+.sidebar-chat-scroll:not(:has(.agent-list-content > *)) {
+  padding-block: 0;
+}
+
+/* The free area takes the room that is left; a full list leaves it none. */
+.sidebar-chat .sidebar-chat-list > .sidebar-list-context-trigger {
+  min-height: 0;
+  flex: 1 1 0;
 }
 
 /* "Needs you": the count in the warning color, at the end of the heading. */
