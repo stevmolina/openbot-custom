@@ -56,6 +56,7 @@ import {
   DEFAULT_AGENT_DEFAULTS,
   decodeHostPasswordManagerList,
   decodeHostPasswordManagerStatus,
+  decodeHostProviderAccountModels,
   decodeHostWhatsAppLinkState,
   decodeHostWhatsAppOverview,
   disconnectedPasswordManager,
@@ -75,6 +76,7 @@ import {
   type VoiceLiveEvent,
   type WhatsAppAccount,
   type WhatsAppLinkState,
+  withHostProviderAccountModels,
 } from "@openbot/contracts/ipc";
 import { isDynamicRecord } from "@openbot/contracts/runtime-values";
 import { TEAM_API_ROUTES } from "@openbot/contracts/team-api-routes";
@@ -168,6 +170,11 @@ import { CHANNEL_ROUTES } from "@openbot/contracts/team-protocol/channels-v1";
 import { CHAT_COLORS_CAPABILITY, CHAT_COLORS_ROUTES } from "@openbot/contracts/team-protocol/chat-colors-v1";
 import { CHAT_HISTORY_CAPABILITY, CHAT_HISTORY_ROUTES } from "@openbot/contracts/team-protocol/chat-history-v1";
 import {
+  CLAUDE_COMPACT_WINDOW_CAPABILITY,
+  CLAUDE_COMPACT_WINDOW_CODECS,
+  CLAUDE_COMPACT_WINDOW_ROUTES,
+} from "@openbot/contracts/team-protocol/claude-compact-window-v1";
+import {
   CLAUDE_USER_SETUP_CAPABILITY,
   CLAUDE_USER_SETUP_CODECS,
   CLAUDE_USER_SETUP_ROUTES,
@@ -232,6 +239,10 @@ import {
   PASSWORD_MANAGERS_CODECS,
   PASSWORD_MANAGERS_ROUTES,
 } from "@openbot/contracts/team-protocol/password-managers-v1";
+import {
+  PROVIDER_ACCOUNT_MODELS_CAPABILITY,
+  PROVIDER_ACCOUNT_MODELS_ROUTES,
+} from "@openbot/contracts/team-protocol/provider-account-models-v1";
 import {
   PROVIDER_DEFAULT_CAPABILITY,
   PROVIDER_DEFAULT_ROUTES,
@@ -323,6 +334,10 @@ import { BitwardenConnectorStore } from "../src/main/bitwarden-connector-store";
 import { createBrowserProfileService } from "../src/main/browser-profile-service";
 import { BrowsingMemoryPreferenceStore } from "../src/main/browsing-memory-preference-store";
 import {
+  claudeCompactWindowControl,
+  createClaudeCompactWindowPreferenceStore,
+} from "../src/main/claude-compact-window-preference-store";
+import {
   claudeUserSetupControl,
   createClaudeUserSetupPreferenceStore,
 } from "../src/main/claude-user-setup-preference-store";
@@ -337,6 +352,7 @@ import { MachineAlertMonitor, MachineAlertPreferenceStore } from "../src/main/ma
 import { MemoryReviewPreferenceStore } from "../src/main/memory-review-preference-store";
 import type { PasswordManagerDriver } from "../src/main/password-managers/driver";
 import { PasswordManagersService } from "../src/main/password-managers/password-managers-service";
+import { ProviderAccountsHost } from "../src/main/provider-accounts-host";
 import { downloadTransferInParts, uploadTransferInParts } from "../src/main/remote-instance-transfer-chunks";
 import { RemoteRequestError } from "../src/main/remote-server-errors";
 import { RemoteWorkflowError } from "../src/main/remote-service-effects";
@@ -619,6 +635,44 @@ function providerStatus(): AgentStatus {
       ...(id === "codex" && codexOnKey ? { apiKeyInUse: true } : {}),
       ...(offProviders.has(id) ? { off: true } : {}),
     })),
+  };
+}
+
+/**
+ * The Gemini accounts of the fake host for `provider-account-models-v1`: the own sign-in, a second
+ * account whose plan serves Gemini 4 Argon, and a third account that lists no model of its own.
+ */
+const ULTRA_ACCOUNT = "a00000000000000a1";
+const FREE_ACCOUNT = "a00000000000000f2";
+const ARGON_MODEL: AgentModelOption = {
+  provider: "antigravity",
+  id: "gemini-4-argon",
+  name: "Gemini 4 Argon",
+  description: "Ultra plan model",
+  defaultReasoningEffort: "high",
+  supportedReasoningEfforts: ["low", "high"],
+  listing: "new",
+};
+function accountModelsStatus(): AgentStatus {
+  const account = (id: string, models?: AgentModelOption[]) => ({
+    id,
+    label: null,
+    email: null,
+    state: "connected" as const,
+    message: null,
+    ...(models ? { models } : {}),
+  });
+  return {
+    ...NO_STATUS,
+    providers: [
+      {
+        id: "antigravity",
+        state: "available",
+        version: null,
+        message: null,
+        accounts: [account("default"), account(ULTRA_ACCOUNT, [ARGON_MODEL]), account(FREE_ACCOUNT, [])],
+      },
+    ],
   };
 }
 
@@ -1974,6 +2028,11 @@ try {
         createClaudeUserSetupPreferenceStore(join(root, "claude-user-setup.json")),
         () => record("claudeUserSetupChanged"),
       ),
+      // The real size over a file of the test folder; a change records the provider status event.
+      claudeCompactWindow: claudeCompactWindowControl(
+        createClaudeCompactWindowPreferenceStore(join(root, "claude-compact-window.json")),
+        () => record("claudeCompactWindowChanged"),
+      ),
       // The host's scan: one model server, one agent, and a model list that echoes no key.
       providerDetection: {
         detection: {
@@ -2167,6 +2226,23 @@ try {
           return { freeBytes: 2 * 1024 ** 3, totalBytes: 64 * 1024 ** 3 };
         }),
     },
+    // The real host service over a fake status: only the models route runs in this run.
+    providerAccounts: new ProviderAccountsHost({
+      service: {
+        getStatus: accountModelsStatus,
+        getProviderAccountUsage: unused("providerAccounts.getProviderAccountUsage"),
+        listAgents: () => [],
+        updateAgent: unused("providerAccounts.updateAgent"),
+        signInProviderAccountOnHost: unused("providerAccounts.signInProviderAccountOnHost"),
+        renameProviderAccount: unused("providerAccounts.renameProviderAccount"),
+        removeProviderAccount: unused("providerAccounts.removeProviderAccount"),
+      },
+      browser: {
+        openPrivate: unused("providerAccounts.openPrivate"),
+        privateTab: unused("providerAccounts.privateTab"),
+        close: unused("providerAccounts.close"),
+      },
+    }),
     // The host's own sign-in has two usage reset credits; a reset spends one.
     providerUsageResets: {
       providerUsageResets: (provider) =>
@@ -3242,6 +3318,79 @@ try {
       "an empty folder path gets 400, and the host writes nothing",
       emptyPath.status === 400 && callsOf("updateAgentFolders").length === writes + 4,
       summary(emptyPath),
+    );
+  }
+
+  // ---- Account models (provider-account-models-v1) ----
+  {
+    const v9 = { capabilities: [PROVIDER_ACCOUNT_MODELS_CAPABILITY], protocol: TEAM_PROTOCOL_V9 };
+    const compatibility = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: TEAM_PROTOCOL_V9 });
+    const older = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: 8 });
+    check(
+      "the host advertises provider-account-models-v1 to a protocol 9 peer only",
+      list(field(compatibility.body, "capabilities")).includes(PROVIDER_ACCOUNT_MODELS_CAPABILITY) &&
+        older.status === 200 &&
+        !list(field(older.body, "capabilities")).includes(PROVIDER_ACCOUNT_MODELS_CAPABILITY),
+      [summary(compatibility), summary(older)],
+    );
+    const unsupported = await call("POST", PROVIDER_ACCOUNT_MODELS_ROUTES.list, {
+      token: adaToken,
+      json: {},
+      protocol: TEAM_PROTOCOL_V9,
+    });
+    check(
+      "the account models route without the capability gets 400 providersUnsupported",
+      errorIs(unsupported, 400, sourceText("error.team.providersUnsupported")),
+      summary(unsupported),
+    );
+    const member = await call("POST", PROVIDER_ACCOUNT_MODELS_ROUTES.list, { token: bobToken, json: {}, ...v9 });
+    check(
+      "a member cannot read the account models",
+      errorIs(member, 403, sourceText("error.team.adminRequired")),
+      summary(member),
+    );
+    const admin = await call("POST", PROVIDER_ACCOUNT_MODELS_ROUTES.list, { token: adaToken, json: {}, ...v9 });
+    const { provider: _provider, listing: _listing, ...argonOnWire } = ARGON_MODEL;
+    check(
+      "an admin reads the models of the second account only, without the provider and the listing",
+      admin.status === 200 &&
+        isDeepStrictEqual(admin.body, {
+          providers: [{ provider: "antigravity", accounts: [{ accountId: ULTRA_ACCOUNT, models: [argonOnWire] }] }],
+        }),
+      summary(admin),
+    );
+    // The client decodes the answer and puts the models on the account, as the web client, a joined
+    // desktop and mobile do before the model picker reads them.
+    const merged = withHostProviderAccountModels(
+      {
+        providers: [
+          {
+            provider: "antigravity",
+            accounts: ["default", ULTRA_ACCOUNT, FREE_ACCOUNT].map((id) => ({
+              id,
+              label: null,
+              email: null,
+              state: "connected" as const,
+              message: null,
+            })),
+          },
+        ],
+        agents: [],
+      },
+      decodeHostProviderAccountModels(admin.body),
+    );
+    const { listing: _clientListing, ...argonOnClient } = ARGON_MODEL;
+    check(
+      "the client puts the models on the second account and leaves the others as they are",
+      isDeepStrictEqual(
+        merged.providers[0]?.accounts.map((account) => [account.id, account.models ?? null]),
+        [
+          ["default", null],
+          [ULTRA_ACCOUNT, [argonOnClient]],
+          [FREE_ACCOUNT, null],
+        ],
+      ),
+      merged,
     );
   }
 
@@ -6127,6 +6276,69 @@ try {
         isDeepStrictEqual(off.body, { enabled: false }) &&
         callsOf("claudeUserSetupChanged").length === 2,
       [summary(member), summary(memberRead), summary(noCapability), summary(off)],
+    );
+  }
+
+  // ---- The size at which Claude Code compacts chats, from a joined server (claude-compact-window-v1) ----
+  {
+    const setup = { token: adaToken, protocol: TEAM_PROTOCOL_V9, capabilities: [CLAUDE_COMPACT_WINDOW_CAPABILITY] };
+    const compatibility = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: TEAM_PROTOCOL_V9 });
+    const older = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: 8 });
+    const before = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.settings, { ...setup, json: {} });
+    const set = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, { ...setup, json: { tokens: 400_000 } });
+    const again = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, { ...setup, json: { tokens: 400_000 } });
+    const after = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.settings, { ...setup, json: {} });
+    const saved = parseJson(readFileSync(join(root, "claude-compact-window.json"), "utf8"));
+    check(
+      "the host advertises claude-compact-window-v1 to protocol 9 only, and an admin reads and sets the size, which the host saves and announces once",
+      list(field(compatibility.body, "capabilities")).includes(CLAUDE_COMPACT_WINDOW_CAPABILITY) &&
+        !list(field(older.body, "capabilities")).includes(CLAUDE_COMPACT_WINDOW_CAPABILITY) &&
+        isDeepStrictEqual(before.body, { tokens: null }) &&
+        isDeepStrictEqual(set.body, { tokens: 400_000 }) &&
+        isDeepStrictEqual(again.body, { tokens: 400_000 }) &&
+        isDeepStrictEqual(after.body, { tokens: 400_000 }) &&
+        CLAUDE_COMPACT_WINDOW_CODECS.get(CLAUDE_COMPACT_WINDOW_ROUTES.update)?.response(200, set.body) !== undefined &&
+        isDeepStrictEqual(saved, { version: 1, tokens: 400_000 }) &&
+        callsOf("claudeCompactWindowChanged").length === 1,
+      [summary(before), summary(set), summary(after)],
+    );
+    const tooSmall = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, { ...setup, json: { tokens: 50_000 } });
+    const tooLarge = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, { ...setup, json: { tokens: 2_000_000 } });
+    const fraction = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, { ...setup, json: { tokens: 150_000.5 } });
+    const unchanged = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.settings, { ...setup, json: {} });
+    check(
+      "the host refuses a size below 100,000, above 1,000,000 or not whole, and keeps the saved size",
+      tooSmall.status === 400 &&
+        tooLarge.status === 400 &&
+        fraction.status === 400 &&
+        isDeepStrictEqual(unchanged.body, { tokens: 400_000 }) &&
+        callsOf("claudeCompactWindowChanged").length === 1,
+      [summary(tooSmall), summary(tooLarge), summary(fraction), summary(unchanged)],
+    );
+    const member = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, {
+      ...setup,
+      token: bobToken,
+      json: { tokens: null },
+    });
+    const memberRead = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.settings, {
+      ...setup,
+      token: bobToken,
+      json: {},
+    });
+    const noCapability = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, {
+      token: adaToken,
+      protocol: TEAM_PROTOCOL_V9,
+      json: { tokens: null },
+    });
+    const reset = await call("POST", CLAUDE_COMPACT_WINDOW_ROUTES.update, { ...setup, json: { tokens: null } });
+    check(
+      "a member cannot read or set the size (403), a client without claude-compact-window-v1 gets 400, and an admin sets Claude Code's own size again",
+      member.status === 403 &&
+        memberRead.status === 403 &&
+        errorIs(noCapability, 400, sourceText("error.team.claudeCompactWindowUnsupported")) &&
+        isDeepStrictEqual(reset.body, { tokens: null }) &&
+        callsOf("claudeCompactWindowChanged").length === 2,
+      [summary(member), summary(memberRead), summary(noCapability), summary(reset)],
     );
   }
 
