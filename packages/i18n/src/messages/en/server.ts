@@ -813,4 +813,10 @@ export const messages = defineMessages("server", {
   "server.allMachines.title": "All machines",
   "server.allMachines.newAgentOn": "New agent on",
   "server.allMachines.serverScoped": "Open one server to add folders or channels",
+  "server.allMachines.filter": "Show chats from",
+  "server.allMachines.all": "All",
+  "server.allMachines.offline": "{name} is offline. Its agents show when it connects.",
+  "server.allMachines.connecting": "Connecting to {name}.",
+  "server.allMachines.sleeping": "{name} sleeps. Retry to wake it.",
+  "server.allMachines.loadFailed": "Could not read the agents of {name}.",
 });

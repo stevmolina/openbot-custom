@@ -1,4 +1,9 @@
-import type { ClientAgentSummary, ConversationReadState, ServerSummary } from "@openbot/contracts/ipc";
+import type {
+  ClientAgentSummary,
+  ConversationReadState,
+  ServerSummary,
+  SidebarLayoutSnapshot,
+} from "@openbot/contracts/ipc";
 import type { Machine, MachineAgents, MachineState } from "@openbot/ui/features/servers/MachinesPage";
 import { createEffect, createMemo, createStore, onCleanup, onSettled } from "solid-js";
 import { serversPort } from "./servers-port";
@@ -13,7 +18,19 @@ interface MachineEntry {
    * `agent-hidden-v1`; `hiddenAt` on the agent is set on this computer's server alone.
    */
   hiddenIds: readonly string[];
+  /** The folders of the server, for the "All machines" view. Null for a server that keeps none. */
+  layout: SidebarLayoutSnapshot | null;
 }
+
+/** What the "All machines" view reads of one server that answered. */
+export interface MachineSidebarEntry {
+  /** The agents that the server shows, without the hidden ones. */
+  agents: readonly ClientAgentSummary[];
+  reads: Readonly<Record<string, ConversationReadState>>;
+  layout: SidebarLayoutSnapshot | null;
+}
+
+const EMPTY_ENTRY = { agents: [], reads: {}, hiddenIds: [], layout: null } as const;
 
 /** Whether the store shows an agent: one that nobody hid, on this computer or on its joined server. */
 function agentShown(entry: MachineEntry, agent: ClientAgentSummary): boolean {
@@ -62,27 +79,28 @@ export function createMachinesStore(options: {
     setEntries((draft) => {
       const previous = draft[serverId];
       // A read again keeps the agents on screen; only the first read shows the loading line.
-      draft[serverId] =
-        previous?.status === "ready" ? previous : { status: "loading", agents: [], reads: {}, hiddenIds: [] };
+      draft[serverId] = previous?.status === "ready" ? previous : { status: "loading", ...EMPTY_ENTRY };
     });
     const port = serversPort().agent;
     try {
-      const [agents, reads, hidden] = await Promise.all([
+      const [agents, reads, hidden, layout] = await Promise.all([
         port.listAgents(serverId),
         // The unread counts are extra: a server that cannot give them still shows its agents.
         port.listConversationReads(serverId).catch(() => ({})),
         // An older host has no hidden agents to give.
         port.listHiddenAgents(serverId).catch(() => ({ agents: [] })),
+        // The folders are extra too: without them, every agent of the server shows in "Settled".
+        port.getSidebarLayout(serverId).catch(() => null),
       ]);
       if (generations.get(serverId) !== generation) return;
       const hiddenIds = hidden.agents.map((agent) => agent.agentId);
       setEntries((draft) => {
-        draft[serverId] = { status: "ready", agents, reads, hiddenIds };
+        draft[serverId] = { status: "ready", agents, reads, hiddenIds, layout };
       });
     } catch {
       if (generations.get(serverId) !== generation) return;
       setEntries((draft) => {
-        draft[serverId] = { status: "failed", agents: [], reads: {}, hiddenIds: [] };
+        draft[serverId] = { status: "failed", ...EMPTY_ENTRY };
       });
     }
   }
@@ -109,6 +127,21 @@ export function createMachinesStore(options: {
             entry.status = "ready";
             entry.agents = event.agents;
           }
+        });
+        return;
+      }
+      // A folder that changes on its server changes in the view at once.
+      if (event.type === "sidebar-layout-changed") {
+        setEntries((draft) => {
+          const entry = draft[serverId];
+          if (entry?.status === "ready") entry.layout = event.layout;
+        });
+        return;
+      }
+      if (event.type === "hidden-agents-changed") {
+        setEntries((draft) => {
+          const entry = draft[serverId];
+          if (entry?.status === "ready") entry.hiddenIds = event.agents.map((agent) => agent.agentId);
         });
         return;
       }
@@ -213,8 +246,20 @@ export function createMachinesStore(options: {
     );
   }
 
+  /** The agents, unread counts and folders that a server gave, or null while it gave none. */
+  function sidebarEntry(serverId: string): MachineSidebarEntry | null {
+    const entry = entries[serverId];
+    if (entry?.status !== "ready") return null;
+    return {
+      agents: entry.agents.filter((agent) => agentShown(entry, agent)),
+      reads: entry.reads,
+      layout: entry.layout,
+    };
+  }
+
   return {
     machines,
+    sidebarEntry,
     /** Reads the agents of a server again. */
     reload: (serverId: string) => void load(serverId),
     markAllRead,

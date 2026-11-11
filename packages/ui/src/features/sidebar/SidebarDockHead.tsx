@@ -7,6 +7,7 @@
 import { ChevronRight, Folder } from "@openbot/ui";
 import { Show } from "solid-js";
 import { useText } from "../../text";
+import { ServerMark, type ServerMarkServer } from "../servers/ServerRail";
 
 export interface SidebarDockHeadProps {
   name: string;
@@ -15,6 +16,8 @@ export interface SidebarDockHeadProps {
   folder?: boolean;
   /** A chat in the group, or in a folder in it, has a reply that the user did not read. */
   unread: boolean;
+  /** The server of a folder in the "All machines" view, as a small mark after its name. */
+  server?: (ServerMarkServer & { name: string }) | undefined;
 }
 
 export function SidebarDockHeadContent(headProps: SidebarDockHeadProps) {
@@ -29,6 +32,16 @@ export function SidebarDockHeadContent(headProps: SidebarDockHeadProps) {
         <Folder class="sidebar-dock-folder" aria-hidden="true" />
       </Show>
       <span class="sidebar-dock-name">{headProps.name}</span>
+      <Show when={headProps.server}>
+        {(server) => (
+          <>
+            <span class="sidebar-chat-server" title={server().name} aria-hidden="true">
+              <ServerMark server={server()} />
+            </span>
+            <span class="sr-only">{t("sidebar.chat.server", { name: server().name })}</span>
+          </>
+        )}
+      </Show>
       <Show when={!headProps.open && headProps.unread}>
         <span class="sidebar-chat-unread" aria-hidden="true" />
         <span class="sr-only">{t("sidebar.chat.unread")}</span>

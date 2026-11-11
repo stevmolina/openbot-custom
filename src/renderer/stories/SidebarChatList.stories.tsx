@@ -6,11 +6,13 @@ import {
 } from "@openbot/contracts/ipc";
 import type { AvatarMood } from "@openbot/ui/bloub-avatar";
 import { accountUsageProviderRows } from "@openbot/ui/features/account/account-usage-view";
+import type { Machine } from "@openbot/ui/features/servers/MachinesPage";
 import { Sidebar } from "@openbot/ui/features/sidebar/Sidebar";
 import type { SidebarAgentState } from "@openbot/ui/features/sidebar/sidebar-types";
 import { createSignal } from "solid-js";
 import { fn } from "storybook/test";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
+import { mergeAllMachinesSidebar } from "../src/features/servers/all-machines-sidebar";
 import { defaultSidebarLayout } from "../src/features/sidebar/sidebar-sections";
 import { requireFixture, STORY_AGENTS, STORY_SERVERS } from "./fixtures";
 import { SettledArgs } from "./settled-args";
@@ -240,4 +242,133 @@ export const NoUsage: Story = {
 
 export const Empty: Story = {
   args: { agents: [], channels: [], agentStates: {}, agentMoods: {} },
+};
+
+/* "All machines": the chats of three machines in one list, with a chip per machine. */
+
+const machineAgent = (id: string, name: string, preview: string, minutes: number) => ({
+  ...requireFixture(STORY_AGENTS[0], "Story agent"),
+  id,
+  name,
+  title: "",
+  threadId: `thread-${id}`,
+  avatarSeed: id,
+  preview,
+  updatedAt: minutesAgo(minutes),
+});
+
+const vpsAgents = [
+  machineAgent("inbox", "Inbox", "Reply to Renzo today?", 3),
+  machineAgent("vps-writer", "Writer", "Drafting the LinkedIn post.", 5),
+  machineAgent("uba", "UBA notes", "Week 6 summary is ready.", 40),
+  machineAgent("finance", "Finance", "The card bill is paid.", 90),
+];
+
+const universityId = "44444444-4444-4444-8444-444444444441";
+const vpsLayout: SidebarLayoutSnapshot = {
+  revision: 1,
+  sections: [{ id: universityId, name: "University" }],
+  order: [SIDEBAR_PEOPLE_SECTION_ID, universityId, SIDEBAR_UNASSIGNED_SECTION_ID],
+  agentAssignments: { uba: universityId },
+  agentOrder: [],
+};
+
+const storyMachines: Machine[] = [
+  {
+    id: "local",
+    name: "MacBook",
+    logoUrl: null,
+    state: "online",
+    current: true,
+    thisComputer: true,
+    agents: { status: "ready", agents: [] },
+  },
+  {
+    id: "personal-vps",
+    name: "Personal VPS",
+    logoUrl: null,
+    state: "online",
+    current: false,
+    thisComputer: false,
+    agents: { status: "ready", agents: [] },
+  },
+  {
+    id: "resorsi-vps",
+    name: "Resorsi VPS",
+    logoUrl: null,
+    state: "offline",
+    current: false,
+    thisComputer: false,
+    agents: { status: "loading" },
+  },
+];
+
+/** The real sidebar in the "All machines" view, merged the way the app merges it. */
+function AllMachinesSidebar(props: { filter?: string | null; compact?: boolean }) {
+  const [filter, setFilter] = createSignal<string | null>(props.filter ?? null);
+  const merged = () =>
+    mergeAllMachinesSidebar({
+      activeServerId: "local",
+      filter: filter(),
+      sources: [
+        { serverId: "local", agents, agentStates, agentMoods, layout: folderLayout },
+        {
+          serverId: "personal-vps",
+          agents: vpsAgents,
+          agentStates: {
+            inbox: { kind: "waiting", reason: "question", detail: "Answer: Reply to Renzo today?" },
+            "vps-writer": { kind: "working" },
+            uba: { kind: "unread", count: 1 },
+          },
+          agentMoods: { inbox: "waiting", "vps-writer": "working" },
+          layout: vpsLayout,
+        },
+        { serverId: "resorsi-vps", agents: [], agentStates: {}, agentMoods: {}, layout: null },
+      ],
+    });
+  return (
+    <ChatSidebar
+      {...args}
+      serverName="All machines"
+      channels={[]}
+      compact={props.compact ?? false}
+      agents={merged().agents}
+      agentStates={merged().agentStates}
+      agentMoods={merged().agentMoods}
+      layout={merged().layout}
+      layoutMutable={false}
+      allMachines={{
+        machines: storyMachines,
+        activeServerId: "local",
+        filter: filter(),
+        onFilterChange: setFilter,
+        attention: merged().attention,
+        agentServers: merged().agentServers,
+        sectionServers: merged().sectionServers,
+        onOpenAgent: fn(),
+        onRetry: fn(),
+        onCreateAgent: fn(),
+      }}
+    />
+  );
+}
+
+/** Every machine: "Needs you" on top, then "Working", the folders of each machine and "Settled". */
+export const AllMachines: Story = {
+  render: () => <SettledArgs>{() => <AllMachinesSidebar />}</SettledArgs>,
+};
+
+/** One machine chosen: its chip shows its name, and the rows lose their machine mark. */
+export const AllMachinesOneMachine: Story = {
+  render: () => <SettledArgs>{() => <AllMachinesSidebar filter="personal-vps" />}</SettledArgs>,
+};
+
+/** A machine that does not answer shows one muted line with a retry. */
+export const AllMachinesOffline: Story = {
+  render: () => <SettledArgs>{() => <AllMachinesSidebar filter="resorsi-vps" />}</SettledArgs>,
+};
+
+/** The collapsed sidebar shows the faces of the chosen machines. */
+export const AllMachinesCollapsed: Story = {
+  render: () => <SettledArgs>{() => <AllMachinesSidebar compact />}</SettledArgs>,
 };

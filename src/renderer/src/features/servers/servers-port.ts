@@ -9,6 +9,8 @@ export interface ServersPort {
   agent: Pick<
     OpenBotDesktopApi["agent"],
     | "getStatus"
+    | "getRuntimeSnapshot"
+    | "getSidebarLayout"
     | "listAgents"
     | "listConversationReads"
     | "markConversationRead"

@@ -93,7 +93,7 @@ export function createSidebarScope(props: SidebarProps) {
    * The dock of the chat sidebar: "Working", each folder at the top of the layout, and "Settled" (the
    * chats in no folder). One group is open at a time. The other sections keep their own collapse.
    */
-  const dockActive = () => props.pages !== undefined && !props.allMachines;
+  const dockActive = () => props.pages !== undefined;
   const dockHolds = (sectionId: string) =>
     dockActive() &&
     (sectionId === SIDEBAR_DOCK_WORKING_ID ||

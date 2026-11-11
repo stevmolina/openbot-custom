@@ -85,18 +85,36 @@ export const SIDEBAR_CHAT_ORDER_LABEL = {
   "unread-first": "sidebar.order.unreadFirst",
 } as const satisfies Record<SidebarChatOrder, AppTextKey>;
 
+/** Where an agent row of the "All machines" view lives: its server, and the agent's own id there. */
+export interface SidebarMachineAgentRef {
+  serverId: string;
+  agentId: string;
+}
+
+/** What a machine of the "All machines" view holds for the user: a chat that waits, or one that is unread. */
+export type SidebarMachineAttention = "waiting" | "unread";
+
 /**
- * The "All machines" view of the chat sidebar: one folder per server, each with the agents of that
- * server. Folders, channels, pins and people belong to one server, so the view has none of them.
+ * The "All machines" view of the chat sidebar: the chats of every server in one list, with "Needs you"
+ * on top and "Working", the folders and "Settled" in the dock, and a row of chips that shows one
+ * machine or all of them. The caller merges the agents, their states and the folders of the chosen
+ * machines into `agents`, `agentStates`, `agentMoods` and `layout`. Channels, pins and people belong
+ * to one server, so the view has none of them.
  */
 export interface SidebarAllMachines {
-  /** The servers in the order of the server menu, with their agents. */
+  /** The servers in the order of the server menu, for the chips and the notices. */
   machines: readonly Machine[];
   /** The server that the window has open. Its agents show with their full rows and menus. */
   activeServerId: string;
-  /** The servers whose folder the user closed. */
-  collapsedServerIds: ReadonlySet<string>;
-  onToggleServer: (serverId: string) => void;
+  /** The machine that the list shows, or null for all of them. */
+  filter: string | null;
+  onFilterChange: (serverId: string | null) => void;
+  /** What each machine holds for the user. A machine with nothing has no entry. */
+  attention: Readonly<Record<string, SidebarMachineAttention>>;
+  /** The server and own id of each agent row, by row id. */
+  agentServers: ReadonlyMap<string, SidebarMachineAgentRef>;
+  /** The server of each folder, by folder id. */
+  sectionServers: ReadonlyMap<string, string>;
   /** Opens the chat of an agent on its server, and switches to that server first when needed. */
   onOpenAgent: (serverId: string, agentId: string) => void;
   /** Connects to a server again, or reads its agents again. */
@@ -131,7 +149,7 @@ export interface SidebarProps {
    * only while the user has more than one server, where the mark tells them apart.
    */
   chatServer?: (ServerMarkServer & { name: string }) | undefined;
-  /** The "All machines" view. With it, the chat list shows the agents of every server, by server. */
+  /** The "All machines" view. With it, the chat list shows the agents of every server, with machine chips. */
   allMachines?: SidebarAllMachines | undefined;
   onOpenServerSettings?: ((trigger: HTMLElement) => void) | undefined;
   /** The desktop server menu. Without it, the server name opens the server settings. */

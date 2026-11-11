@@ -30,6 +30,7 @@ import {
 import { For, Show } from "solid-js";
 import { useText } from "../../text";
 import { SidebarDockHeadContent } from "./SidebarDockHead";
+import { useSidebarMachineMarks } from "./SidebarMachineFilter";
 import { SidebarSectionEditor } from "./SidebarSectionEditor";
 import { useSidebarScope } from "./sidebar-scope";
 
@@ -70,6 +71,7 @@ export function SidebarSectionHeader(headerProps: {
     visibleSectionIds,
   } = useSidebarScope();
   const { t } = useText();
+  const marks = useSidebarMachineMarks();
   const editing = () => {
     const target = pending.sectionEditor?.target;
     return target?.kind === "rename" && target.sectionId === headerProps.sectionId;
@@ -111,7 +113,7 @@ export function SidebarSectionHeader(headerProps: {
               class: `sidebar-section-toggle sidebar-section-drag-handle${headerProps.dock ? " sidebar-dock-head" : ""}`,
             })}
             draggable={!layoutMutable() || props.compact ? "false" : "true"}
-            title={!layoutMutable() ? t("sidebar.section.layoutUnsupported") : undefined}
+            title={!layoutMutable() && !props.allMachines ? t("sidebar.section.layoutUnsupported") : undefined}
             aria-expanded={collapsed() ? "false" : "true"}
             aria-controls={`sidebar-section-body-${headerProps.sectionId}`}
             data-cuelume-open={collapsed() ? "" : undefined}
@@ -172,6 +174,7 @@ export function SidebarSectionHeader(headerProps: {
                   unread={dock().unread}
                   open={!collapsed()}
                   folder={custom()}
+                  server={marks.section(headerProps.sectionId)}
                 />
               )}
             </Show>

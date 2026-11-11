@@ -24,6 +24,7 @@ import { useChannels } from "../channels/channels-context";
 import { useConversation } from "../conversation/conversation-context";
 import { useDirectMessages } from "../conversation/direct-messages-context";
 import { useAllMachines } from "../servers/all-machines-context";
+import { mergeAllMachinesSidebar } from "../servers/all-machines-sidebar";
 import { useOpenMachineAgent } from "../servers/machine-agent-open";
 import { useServerActions } from "../servers/server-actions";
 import { serverRoleCanAdminister } from "../servers/server-capabilities";
@@ -234,20 +235,42 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
     },
   );
 
-  /** Folders, channels and the layout belong to one server, so the "All machines" view has none of them. */
+  /**
+   * The "All machines" view: the chats and folders of the chosen machines as one list. The open
+   * server gives its live agents, states and folders; the context gives the other servers. Channels,
+   * pins and people belong to one server, so the view has none of them.
+   */
   const allMachinesOn = () => allMachines.active();
+  const allMachinesSidebar = createMemo(() => {
+    if (!allMachinesOn()) return undefined;
+    const hidden = userHiddenAgentIds();
+    return mergeAllMachinesSidebar({
+      sources: allMachines.sources({
+        serverId: activeServerId(),
+        agents: agentList().filter((agent) => !hidden.has(agent.id)),
+        agentStates: sidebarAgentStates(),
+        agentMoods: agentMoods(),
+        layout: sidebarLayout(),
+        threadWaits: threadLanes()?.threads.some(
+          (entry) => entry.state.kind === "waiting" && !hidden.has(entry.agentId),
+        ),
+      }),
+      activeServerId: activeServerId(),
+      filter: allMachines.filter(),
+    });
+  });
 
   return (
     <>
       <Sidebar
-        channels={visibleChannels()}
-        deletedChannels={sidebarChannels().filter((channel) => channel.archived)}
+        channels={allMachinesOn() ? [] : visibleChannels()}
+        deletedChannels={allMachinesOn() ? [] : sidebarChannels().filter((channel) => channel.archived)}
         activeChannelId={channels.state.selectedId}
         onSelectChannel={(id) => void channels.open(id)}
         onEditChannel={(id) => void channels.editChannel(id)}
         onDeleteChannel={channels.deletionSupported() ? channels.remove : undefined}
         onRestoreChannel={channels.deletionSupported() ? channels.restore : undefined}
-        showingArchivedChannels={channelsListed() && channels.state.archived}
+        showingArchivedChannels={channelsListed() && !allMachinesOn() && channels.state.archived}
         onToggleArchivedChannels={channelsListed() && !allMachinesOn() ? channels.toggleArchived : undefined}
         onCreateChannel={channelsListed() && !allMachinesOn() ? channels.create : undefined}
         onMarkAllRead={() => {
@@ -305,8 +328,9 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
             : undefined
         }
         chatServer={(() => {
-          // One server needs no mark: every chat is on it.
+          // One server needs no mark: every chat is on it. The "All machines" view marks each row itself.
           const server = activeServer();
+          if (allMachinesOn()) return undefined;
           return server && serverActions.orderedServers().length > 1
             ? {
                 id: server.id,
@@ -317,43 +341,47 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
               }
             : undefined;
         })()}
-        allMachines={
-          allMachinesOn()
+        allMachines={(() => {
+          const view = allMachinesSidebar();
+          return view
             ? {
                 machines: allMachines.machines(),
                 activeServerId: activeServerId(),
-                collapsedServerIds: allMachines.collapsedServerIds(),
-                onToggleServer: allMachines.toggleServer,
+                filter: allMachines.filter(),
+                onFilterChange: allMachines.setFilter,
+                attention: view.attention,
+                agentServers: view.agentServers,
+                sectionServers: view.sectionServers,
                 onOpenAgent: (serverId, agentId) => void machineAgents.openAgent(serverId, agentId),
                 onRetry: allMachines.retry,
                 onCreateAgent: (serverId) => void createAgentOn(serverId),
               }
-            : undefined
-        }
-        agents={agentList()}
+            : undefined;
+        })()}
+        agents={allMachinesSidebar()?.agents ?? agentList()}
         activeAgentId={activeDirectMember() || channels.state.selectedId ? "" : (activeAgent()?.id ?? "")}
-        showPeople={props.peopleEnabled}
+        showPeople={props.peopleEnabled && !allMachinesOn()}
         people={directPeople()}
         directThreads={directThreads()}
         activeDirectMemberId={activeDirectMemberId()}
-        agentStates={sidebarAgentStates()}
+        agentStates={allMachinesSidebar()?.agentStates ?? sidebarAgentStates()}
         channelWaits={channelWaits()}
         channelPreviewsPending={!channels.state.listed}
-        agentMoods={agentMoods()}
-        layout={sidebarLayout()}
+        agentMoods={allMachinesSidebar()?.agentMoods ?? agentMoods()}
+        layout={allMachinesSidebar()?.layout ?? sidebarLayout()}
         layoutMutable={!allMachinesOn() && activeServerSupportsCapability("sidebar-layout")}
         chatOrder={layout.sidebarChatOrder()}
         onChatOrderChange={layout.setSidebarChatOrder}
         foldersSupported={activeServerSupportsCapability("sidebar-folders-v1")}
-        collapsedSectionIds={collapsedSidebarSectionIds()}
+        collapsedSectionIds={allMachinesOn() ? allMachines.collapsedSectionIds() : collapsedSidebarSectionIds()}
         onMutateLayout={mutateSidebarLayout}
         sectionDuplicateSupported={
           activeServerSupportsCapability("agent-duplication") && activeServerSupportsCapability("sidebar-layout")
         }
         duplicatingSectionIds={duplicatingSectionIds()}
         onDuplicateSection={duplicateSection}
-        onToggleSection={toggleSidebarSection}
-        pinnedItems={pinnedSidebarItems()}
+        onToggleSection={allMachinesOn() ? allMachines.toggleSection : toggleSidebarSection}
+        pinnedItems={allMachinesOn() ? [] : pinnedSidebarItems()}
         peopleOrder={sidebarPeopleOrder()}
         onPin={pinSidebarItem}
         onUnpin={unpinSidebarItem}
@@ -368,7 +396,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         duplicatingAgentIds={duplicatingAgentIds()}
         onDuplicateAgent={duplicateAgent}
         onDeleteAgent={deleteAgent}
-        userHiddenAgents={userHiddenAgents()}
+        userHiddenAgents={allMachinesOn() ? [] : userHiddenAgents()}
         threadLanes={threadLanes()}
         unreadAgentIds={unreadAgentIds()}
         onMarkAgentRead={(agentId) => void markAgentChatRead(agentId)}
