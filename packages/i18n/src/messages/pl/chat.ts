@@ -388,6 +388,8 @@ export const messages = {
   "chat.file.openShared": "Otwórz udostępniony plik {name}",
   "chat.file.openWorkspace": "Otwórz plik obszaru roboczego {name}",
   "chat.file.openWorkspaceFolder": "Otwórz folder obszaru roboczego {name}",
+  "chat.file.openFolder": "Otwórz folder {name}",
+  "chat.file.copyFolderPath": "Kopiuj ścieżkę folderu {name}",
   "chat.file.openAttached": "Otwórz załączony plik {name}",
   "chat.reference.kind.agent": "Agent",
   "chat.reference.kind.mcp": "Serwer MCP",

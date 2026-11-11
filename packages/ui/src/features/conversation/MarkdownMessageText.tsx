@@ -6,7 +6,7 @@ import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
 import { Button, Checkbox } from "@openbot/ui";
 import { Dynamic } from "@solidjs/web";
 import { Marked, type Token, type Tokens, type TokensList } from "marked";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { textDirection } from "../../content-direction";
 import { useText } from "../../text";
 import { AttachmentReferenceVisual, attachmentReferenceTone } from "./AttachmentReference";
@@ -284,6 +284,7 @@ export function MarkdownMessageText(props: MarkdownMessageTextProps) {
       onOpenAttachment: props.onOpenAttachment,
       onOpenSharedFile: props.onOpenSharedFile,
       onOpenWorkspaceFile: props.onOpenWorkspaceFile,
+      onOpenFolderPath: props.onOpenFolderPath,
       onOpenQuote: props.onOpenQuote,
       onOpenTag: props.onOpenTag,
       linkFavicons: props.linkFavicons,
@@ -323,6 +324,7 @@ export function MarkdownInlineText(
     onOpenAttachment: props.onOpenAttachment,
     onOpenSharedFile: props.onOpenSharedFile,
     onOpenWorkspaceFile: props.onOpenWorkspaceFile,
+    onOpenFolderPath: props.onOpenFolderPath,
     onOpenQuote: props.onOpenQuote,
     onOpenTag: props.onOpenTag,
     linkFavicons: props.linkFavicons,
@@ -715,6 +717,8 @@ function MarkdownInline(props: {
                 kind="workspace"
                 onOpen={(path) => openWorkspace(path, file.asWritten)}
               />
+            ) : folderPathTarget(token.text) ? (
+              <FolderPathChip path={token.text.trim()} onOpen={props.content.onOpenFolderPath} />
             ) : (
               <code dir="ltr">{token.text}</code>
             );
@@ -1129,6 +1133,112 @@ function LocalFileLink(props: {
       </span>
     </Button>
   );
+}
+
+/**
+ * A folder that inline code names by its absolute path, such as `/home/me/project`. It opens the
+ * folder when `onOpen` is given, and else copies the path. The label puts `…` in place of the middle
+ * folders, so `~/dev/acme/clients/halorx` shows as `~/dev/…/clients/` and a bold `halorx`.
+ */
+function FolderPathChip(props: { path: string; onOpen?: ((path: string) => void) | undefined }) {
+  const { t } = useText();
+  const parts = createMemo(() => folderPathParts(props.path));
+  const [copied, setCopied] = createSignal(false);
+  let resetTimer: number | undefined;
+  onCleanup(() => window.clearTimeout(resetTimer));
+  const copyPath = async () => {
+    try {
+      await navigator.clipboard.writeText(props.path);
+    } catch {
+      // The clipboard refused the text, so the chip does not say that it copied.
+      return;
+    }
+    window.clearTimeout(resetTimer);
+    setCopied(true);
+    resetTimer = window.setTimeout(() => setCopied(false), 1_500);
+  };
+  const label = () =>
+    props.onOpen
+      ? t("chat.file.openFolder", { name: parts().name })
+      : t("chat.file.copyFolderPath", { name: parts().name });
+  return (
+    <Button
+      variant="ghost"
+      type="button"
+      class="message-file-reference message-folder-reference"
+      aria-label={label()}
+      title={props.path}
+      data-copied={copied() ? "" : undefined}
+      data-cuelume-tap={props.onOpen ? "open" : "copy"}
+      onClick={() => {
+        const open = props.onOpen;
+        if (open) open(props.path);
+        else void copyPath();
+      }}
+    >
+      <span class="attachment-reference-visual" aria-hidden="true">
+        <Show when={copied()} fallback={<FolderPathIcon />}>
+          <svg aria-hidden="true" viewBox="0 0 20 20">
+            <path d="M4.75 10.5l3.5 3.5 7-8" />
+          </svg>
+        </Show>
+      </span>
+      <span class="inline-file-reference-name" dir="ltr">
+        <span class="message-folder-reference-parent">{parts().parent}</span>
+        <strong>{parts().name}</strong>
+      </span>
+      <span class="sr-only" aria-live="polite">
+        {copied() ? t("common.copied") : ""}
+      </span>
+    </Button>
+  );
+}
+
+/** A folder on the 20-unit grid of the file icon of a chip. */
+function FolderPathIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="M2.75 5.25a1.5 1.5 0 0 1 1.5-1.5h3.5l2 2h6a1.5 1.5 0 0 1 1.5 1.5v7.5a1.5 1.5 0 0 1-1.5 1.5h-11.5a1.5 1.5 0 0 1-1.5-1.5z" />
+    </svg>
+  );
+}
+
+/**
+ * The folder that inline code names by an absolute path: `/home/me/project`, `~/dev/` or
+ * `C:\Users\me`. A file name, a space, a pattern character such as `*` or `:id`, or a single part
+ * after `/`, such as the command `/clear`, is not a folder. A relative path such as `src/app` is not
+ * one either. Nothing is read from disk, so the folder may not exist.
+ */
+function folderPathTarget(value: string): string | null {
+  const path = value.trim();
+  if (!path || /[\s*?"<>|{}$#%]/u.test(path) || isFileReference(path)) return null;
+  const drive = /^[A-Za-z]:[/\\]/u.test(path);
+  const home = /^~[/\\]/u.test(path);
+  const root = path.startsWith("/") && !path.startsWith("//");
+  if (!drive && !home && !root) return null;
+  const rest = path.slice(drive ? 3 : home ? 2 : 1);
+  if (rest.includes(":")) return null;
+  const segments = rest.split(/[/\\]+/u).filter(Boolean);
+  return segments.length >= (root ? 2 : 1) ? path : null;
+}
+
+/**
+ * The label of a folder chip: the folders above it, with `…` in place of the middle ones when there
+ * are more than two, and its own name. The home folder of this computer is not known here, so only a
+ * path that starts with `~` shows `~`.
+ */
+function folderPathParts(path: string): { parent: string; name: string } {
+  const separator = path.includes("\\") && !path.includes("/") ? "\\" : "/";
+  const drive = /^[A-Za-z]:/u.exec(path)?.[0];
+  const start = drive ?? (path.startsWith("~") ? "~" : "");
+  const segments = path
+    .slice(start.length)
+    .split(/[/\\]+/u)
+    .filter(Boolean);
+  const name = segments.at(-1) ?? path;
+  const above = segments.slice(0, -1);
+  const shown = above.length > 2 ? [above[0], "…", above.at(-1)] : above;
+  return { parent: [start, ...shown, ""].join(separator), name };
 }
 
 function sharedFileTarget(value: string): string | null {

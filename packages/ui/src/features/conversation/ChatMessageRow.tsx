@@ -98,6 +98,8 @@ export interface ChatMessageRowProps {
   onAttachmentAction: (attachment: AttachmentSummary, action: "open" | "reveal" | "download") => void;
   onOpenSharedFile?: (path: string, asWritten?: string) => void;
   onOpenWorkspaceFile?: ((path: string, asWritten?: string) => void) | undefined;
+  /** Opens a folder path chip. Without it, the chip copies the path. */
+  onOpenFolderPath?: ((path: string) => void) | undefined;
   onOpenQuote?: ((messageId: string, text: string) => void) | undefined;
   onOpenTag?: ((kind: "tab" | "thread", id: string) => void) | undefined;
   onDownload?: ((attachment: AttachmentSummary) => void) | undefined;
@@ -230,6 +232,7 @@ export function ChatMessageRow(props: ChatMessageRowProps): JSX.Element {
       onAttachmentAction={props.onAttachmentAction}
       onOpenSharedFile={props.onOpenSharedFile}
       onOpenWorkspaceFile={props.onOpenWorkspaceFile}
+      onOpenFolderPath={props.onOpenFolderPath}
       onOpenQuote={props.onOpenQuote}
       onOpenTag={props.onOpenTag}
       onDownload={props.onDownload}

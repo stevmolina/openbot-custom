@@ -293,6 +293,8 @@ export const messages = {
   "chat.file.openShared": "Gedeeld bestand {name} openen",
   "chat.file.openWorkspace": "Werkruimtebestand {name} openen",
   "chat.file.openWorkspaceFolder": "Werkruimtemap {name} openen",
+  "chat.file.openFolder": "Map {name} openen",
+  "chat.file.copyFolderPath": "Mappad {name} kopiëren",
   "chat.file.openAttached": "Bijgevoegd bestand {name} openen",
   "chat.reference.kind.agent": "Agent",
   "chat.reference.kind.mcp": "MCP-server",

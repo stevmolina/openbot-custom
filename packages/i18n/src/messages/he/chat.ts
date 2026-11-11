@@ -300,6 +300,8 @@ export const messages = {
   "chat.file.openShared": "פתיחת הקובץ המשותף {name}",
   "chat.file.openWorkspace": "פתיחת קובץ סביבת העבודה {name}",
   "chat.file.openWorkspaceFolder": "פתיחת תיקיית סביבת העבודה {name}",
+  "chat.file.openFolder": "פתיחת התיקייה {name}",
+  "chat.file.copyFolderPath": "העתקת נתיב התיקייה {name}",
   "chat.file.openAttached": "פתיחת הקובץ המצורף {name}",
   "chat.reference.kind.agent": "סוכן",
   "chat.reference.kind.mcp": "שרת MCP",

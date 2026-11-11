@@ -283,6 +283,8 @@ export const messages = {
   "chat.file.openShared": "打开共享文件 {name}",
   "chat.file.openWorkspace": "打开工作区文件 {name}",
   "chat.file.openWorkspaceFolder": "打开工作区文件夹 {name}",
+  "chat.file.openFolder": "打开文件夹 {name}",
+  "chat.file.copyFolderPath": "复制文件夹路径 {name}",
   "chat.file.openAttached": "打开附件 {name}",
   "chat.reference.kind.agent": "助手",
   "chat.reference.kind.mcp": "MCP 服务器",

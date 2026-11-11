@@ -220,6 +220,47 @@ export const WorkspaceFileLinks: Story = {
   render: (storyArgs) => <MessageBodySurface args={storyArgs} width="620px" />,
 };
 
+const FOLDER_PATH_BODY = [
+  "The HaloRx brain is in `/home/ubuntu/dev/resorsi/engagements/halorx`.",
+  "",
+  "- The `Purchase/Return` rows are in `rebates.csv`.",
+  "- The scripts are in `~/dev/resorsi/engagements/halorx/scripts/`.",
+  "- On Windows the copy is in `C:\\Users\\steven\\Documents\\HaloRx`.",
+  "",
+  "Run `/clear` to start again.",
+].join("\n");
+
+/** Inline code with an absolute folder path is a chip. On this computer, the chip opens the folder. */
+export const FolderPathChips: Story = {
+  args: {
+    message: {
+      ...message,
+      id: "message-folder-path-chips",
+      body: FOLDER_PATH_BODY,
+      status: undefined,
+      attachments: [],
+    },
+    onOpenWorkspaceFile: fn(),
+    onOpenFolderPath: fn(),
+  },
+  render: (storyArgs) => <MessageBodySurface args={storyArgs} width="620px" />,
+};
+
+/** On a joined server or the web client the folder is on the host, so the chip copies its path. */
+export const FolderPathChipsCopy: Story = {
+  args: {
+    message: {
+      ...message,
+      id: "message-folder-path-chips-copy",
+      body: FOLDER_PATH_BODY,
+      status: undefined,
+      attachments: [],
+    },
+    onOpenWorkspaceFile: fn(),
+  },
+  render: (storyArgs) => <MessageBodySurface args={storyArgs} width="620px" />,
+};
+
 export const CodeBlock: Story = {
   args: {
     message: {

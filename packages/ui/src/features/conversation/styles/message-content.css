@@ -1535,6 +1535,16 @@
   cursor: pointer;
 }
 
+/* A folder path chip: the folders above it are quiet, and its own name is bold. */
+.message-folder-reference-parent {
+  color: var(--openbot-text-muted);
+  font-weight: var(--openbot-weight-regular);
+}
+
+.message-folder-reference strong {
+  font-weight: var(--openbot-weight-semibold);
+}
+
 .ui-button.message-file-reference:focus-visible,
 .composer-file-reference:focus-visible {
   outline: 2px solid var(--file-reference-color);
