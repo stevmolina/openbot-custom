@@ -1,0 +1,107 @@
+/* Prototype: machine filter chips over the chat sidebar. Every rule is scoped to the frame. */
+
+.machine-filter-frame {
+  display: flex;
+  height: 100vh;
+  background: var(--openbot-bg-surface);
+}
+
+.machine-filter-frame .machine-filter-sidebar {
+  width: 300px;
+  height: 100vh;
+  flex: none;
+}
+
+.machine-filter-frame .machine-filter-window {
+  flex: 1;
+}
+
+.machine-filter-frame .agent-list-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.machine-filter-frame .machine-filter-offline {
+  order: 99;
+  font-size: var(--openbot-text-sm);
+}
+
+.machine-filter-chips {
+  position: sticky;
+  z-index: 1;
+  top: calc(-1 * var(--openbot-space-2));
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--openbot-space-1);
+  order: -1;
+  overflow-x: auto;
+  padding: var(--openbot-space-2) var(--openbot-space-1) var(--openbot-space-3);
+  background: var(--openbot-bg-sidebar);
+  mask-image: linear-gradient(to right, black 85%, transparent);
+  scrollbar-width: none;
+}
+
+.machine-filter-chips[data-look="logos"] {
+  mask-image: none;
+}
+
+.machine-filter-chips[data-look="needs-you"] {
+  flex-wrap: wrap;
+  mask-image: none;
+}
+
+.machine-filter-frame .machine-filter-chip.ui-button {
+  height: 28px;
+  flex: none;
+  gap: 6px;
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-pill);
+  padding-inline: 10px;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+}
+
+.machine-filter-chips[data-look="logos"] .machine-filter-chip.ui-button {
+  min-width: 28px;
+  padding-inline: 6px;
+}
+
+.machine-filter-frame .machine-filter-chip.ui-button[aria-checked="true"] {
+  border-color: transparent;
+  background: var(--openbot-bg-control-active);
+  color: var(--openbot-text-primary);
+}
+
+.machine-filter-frame .machine-filter-chip[data-state="offline"] {
+  opacity: 0.55;
+}
+
+.machine-filter-chip .machine-filter-chip-mark {
+  opacity: 1;
+}
+
+.machine-filter-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--openbot-accent);
+}
+
+.machine-filter-dot.machine-filter-dot-wait {
+  background: var(--openbot-warning);
+}
+
+.machine-filter-wait-count {
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: var(--openbot-radius-pill);
+  padding-inline: 4px;
+  box-sizing: border-box;
+  background: var(--openbot-warning);
+  color: var(--openbot-bg-surface);
+  font-size: 10px;
+  font-weight: var(--openbot-weight-semibold);
+}
