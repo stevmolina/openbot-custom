@@ -295,18 +295,26 @@ They describe the enforced syntax, fixture behavior, and reasons for removed rul
 ## After merge: OpenBot Custom app
 
 This repository is Steven's fork. Steven uses the `OpenBot Custom` app in `/Applications`, which
-`electron-builder.custom.yml` builds. A merge to `main` does not update that app.
+`electron-builder.custom.yml` builds. A launchd job on his Mac updates that app; agents do not.
 
-- After each merge to `main` that changes the desktop app, the web client, or `packages/ui`, build
-  and install the app again. Do this in the same task as the merge, without a new request.
-- Run `scripts/custom-build-install.sh` from a clean checkout of `origin/main`. The script builds
-  the app, copies the installed app to `~/OpenBot/backups/`, installs the new app, and opens it to
-  make sure that it stays up.
-- If the app runs, the script stops. Ask Steven to quit the app, then run the script again.
-- In the report, give the commit of the installed app and the result of the launch check.
+- The job (`scripts/custom-auto-update.sh`) checks `origin/main` every 5 minutes. On a new commit
+  that changes the app, it builds it, waits until no local agent works (10 minutes at most), quits
+  the app, installs the new build, and opens it. It keeps the 3 newest copies in
+  `~/OpenBot/backups/` and puts the old app back when the new one does not start.
+- Do not build or install the app yourself after a merge, and do not ask Steven to quit it. Builds
+  from agent sessions stopped when the session ended, and they raced each other.
+- After a merge, wait for the job instead. `scripts/custom-auto-update-setup.sh --status` shows the
+  installed commit, the status (`building`, `waiting`, `installed`, `build_failed`,
+  `launch_failed`) and the log. A build takes about 5 minutes after the next check.
+- In the report, give the commit of the installed app from `--status`. When the status is
+  `build_failed` or `launch_failed`, read the log, fix the cause on `main`, and the next merge
+  builds again. `scripts/custom-auto-update-setup.sh --run-now` starts a check at once.
+- When Steven says that a change is missing from the app, check the installed commit first.
 - To show the result, take a screenshot of the changed screen in the running app and show it inline
   in the chat reply. Use `bun run dev:automation screenshot` (read-only) as `README.md` describes;
   when it cannot reach the installed app, say so.
+- `scripts/custom-auto-update-setup.sh` installs the job on a new Mac; `--remove` removes it.
+  `scripts/custom-build-install.sh` stays for a build by hand when the job is off.
 
 ## Pull requests
 
