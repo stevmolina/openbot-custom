@@ -358,6 +358,26 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
               }
             : undefined;
         })()}
+        machineChips={
+          // The chips switch the view in the main window: "All" is the "All machines" view, and a
+          // machine is its own chat list, with its channels, pins and people.
+          platform.chatWindow === null && allMachines.machines().length > 1
+            ? {
+                machines: allMachines.machines(),
+                chosen: allMachinesOn() ? null : activeServerId(),
+                attention: allMachinesSidebar()?.attention ?? {},
+                onChoose: (serverId: string | null) => {
+                  allMachines.setFilter(null);
+                  if (serverId === null) {
+                    allMachines.setActive(true);
+                    return;
+                  }
+                  allMachines.setActive(false);
+                  if (serverId !== activeServerId()) serverActions.select(serverId);
+                },
+              }
+            : undefined
+        }
         allMachines={(() => {
           const view = allMachinesSidebar();
           return view

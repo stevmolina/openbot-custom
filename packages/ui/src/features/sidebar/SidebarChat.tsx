@@ -321,7 +321,7 @@ function SidebarChatList() {
       onDrop={dropSidebarNativeDrag}
     >
       {/* The chips stay over the list while it scrolls. */}
-      <Show when={props.allMachines}>{(view) => <SidebarMachineChips view={view()} />}</Show>
+      <Show when={props.machineChips}>{(chips) => <SidebarMachineChips chips={chips()} />}</Show>
       <div
         ref={(element) => scrollFades.bind(element)}
         class={["sidebar-chat-scroll", scrollFades.classes()]}

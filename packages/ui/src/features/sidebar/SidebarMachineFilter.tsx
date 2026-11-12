@@ -1,7 +1,9 @@
 /**
- * The machine chips and notices of the "All machines" view of the chat list.
+ * The machine chips over the chat list, and the notices of the "All machines" view.
  *
- * The chips sit over the list: "All", then one round chip per machine with its logo. The chosen chip
+ * The chips sit over the list in every view while the user has more than one machine: "All", then
+ * one round chip per machine with its logo. "All" is the "All machines" view; a machine is that
+ * machine's own chat list. The chosen chip
  * shows its name. A dot marks a machine with a chat that waits for the user (warning color) or one
  * that is unread (accent), and a machine that does not answer is dimmed. The chips are one radio
  * group, so the arrow keys move between them.
@@ -18,7 +20,7 @@ import { MACHINE_STATE_LABEL, type Machine } from "../servers/MachinesPage";
 import { AllMachinesMonogram } from "../servers/ServerMonogram";
 import { ServerMark } from "../servers/ServerRail";
 import { useSidebarScope } from "./sidebar-scope";
-import type { SidebarAllMachines } from "./sidebar-types";
+import type { SidebarAllMachines, SidebarMachineChipsProps } from "./sidebar-types";
 
 /** The machines that the list shows now: the chosen one, or all of them. */
 function shownMachines(view: SidebarAllMachines): readonly Machine[] {
@@ -91,16 +93,16 @@ function MachineChip(chipProps: {
 }
 
 /** The chips over the list: "All", then each machine in the order of the server menu. */
-export function SidebarMachineChips(chipsProps: { view: SidebarAllMachines }) {
+export function SidebarMachineChips(chipsProps: { chips: SidebarMachineChipsProps }) {
   const { t } = useText();
-  const view = () => chipsProps.view;
+  const chips = () => chipsProps.chips;
   /** The choices in order: null is "All". */
-  const choices = createMemo(() => [null, ...view().machines.map((machine) => machine.id)]);
+  const choices = createMemo(() => [null, ...chips().machines.map((machine) => machine.id)]);
   const choose = (serverId: string | null) => {
-    if (serverId !== view().filter) view().onFilterChange(serverId);
+    if (serverId !== chips().chosen) chips().onChoose(serverId);
   };
   const machineLabel = (machine: Machine) => {
-    const attention = view().attention[machine.id];
+    const attention = chips().attention[machine.id];
     return [
       machine.name,
       machine.state === "online" ? "" : t(MACHINE_STATE_LABEL[machine.state]),
@@ -112,7 +114,7 @@ export function SidebarMachineChips(chipsProps: { view: SidebarAllMachines }) {
   let group: HTMLDivElement | undefined;
   // The chosen chip stays in view when the row of chips scrolls sideways.
   createEffect(
-    () => chipsProps.view?.filter,
+    () => chipsProps.chips.chosen,
     () => {
       requestAnimationFrame(() =>
         group
@@ -124,7 +126,7 @@ export function SidebarMachineChips(chipsProps: { view: SidebarAllMachines }) {
   /** The arrow keys, Home and End move the choice, and the focus with it, as in a radio group. */
   const onKeyDown = (event: KeyboardEvent & { currentTarget: HTMLElement }) => {
     const ids = choices();
-    const index = ids.indexOf(view().filter);
+    const index = ids.indexOf(chips().chosen);
     const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
     const step = { ArrowRight: rtl ? -1 : 1, ArrowDown: 1, ArrowLeft: rtl ? 1 : -1, ArrowUp: -1 }[event.key];
     let next: number | undefined;
@@ -146,21 +148,21 @@ export function SidebarMachineChips(chipsProps: { view: SidebarAllMachines }) {
       onKeyDown={onKeyDown}
     >
       <MachineChip
-        checked={view().filter === null}
+        checked={chips().chosen === null}
         label={t("server.allMachines.all")}
         name={t("server.allMachines.all")}
         onChoose={() => choose(null)}
       >
         <AllMachinesMonogram />
       </MachineChip>
-      <For each={view().machines} keyed={(machine) => machine.id}>
+      <For each={chips().machines} keyed={(machine) => machine.id}>
         {(machine) => (
           <MachineChip
-            checked={view().filter === machine().id}
+            checked={chips().chosen === machine().id}
             label={machineLabel(machine())}
             name={machine().name}
             state={machine().state}
-            attention={view().attention[machine().id]}
+            attention={chips().attention[machine().id]}
             onChoose={() => choose(machine().id)}
           >
             <ServerMark server={machine()} />
