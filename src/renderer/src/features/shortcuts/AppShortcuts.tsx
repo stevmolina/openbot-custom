@@ -6,7 +6,7 @@ import { createSignal, onSettled } from "solid-js";
 import { playActionSound } from "../../action-sounds";
 import { appPort } from "../../app-port";
 import { useLayout } from "../../layout";
-import { installShortcutKeys, onShortcutCommand, runShortcutCommand } from "./shortcut-commands";
+import { installShortcutKeys, onShortcutCommand, runMenuCommand } from "./shortcut-commands";
 
 /**
  * The shortcut keys of one window and the sheet that lists them. Mount it once per window, beside
@@ -51,7 +51,7 @@ export function AppShortcuts(props: {
       onShortcutCommand("focusComposer", () => focusComposerEditor(document)),
       onShortcutCommand("typeToComposer", () => focusComposerEditor(document)),
     ];
-    if (props.nativeMenu) removals.push(appPort().onRunShortcut((command) => runShortcutCommand(command)));
+    if (props.nativeMenu) removals.push(appPort().onRunShortcut(runMenuCommand));
     return () => {
       for (const remove of removals) remove();
     };

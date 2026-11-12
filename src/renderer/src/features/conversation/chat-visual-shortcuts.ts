@@ -4,19 +4,11 @@ import { isGlobalSearchShortcut } from "../../global-search-shortcut";
 import { isOpenSettingsShortcut } from "../settings/settings-shortcut";
 
 /**
- * The app chords that work while a page has the focus. A plain key such as `?` stays in the page,
- * as do the edit keys the page needs, such as ⌘C.
+ * The app chords that work while a page has the focus. The page forwards only chords with ⌘ or
+ * Ctrl, so a plain key such as `?` and the Option arrows stay in the page, as do the edit keys the
+ * page needs, such as ⌘C.
  */
-const PAGE_APP_SHORTCUTS = [
-  "shortcuts",
-  "newChat",
-  "toggleSidebar",
-  "previousChat",
-  "nextChat",
-  "previousUnreadChat",
-  "nextUnreadChat",
-  "stopAgent",
-] as const;
+const PAGE_APP_SHORTCUTS = ["shortcuts", "newChat", "toggleSidebar", "stopAgent"] as const;
 
 /**
  * The app shortcuts that a visual reply's page gives to the app while the page has the focus:

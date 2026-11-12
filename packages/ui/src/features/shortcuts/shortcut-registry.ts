@@ -202,11 +202,14 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   { id: "closePanel", group: "chat", label: "app.shortcuts.closePanel", ...both([{ key: "Escape" }]) },
   // Agents
   {
-    // ⌘⇧. quotes the selected text, so this agent's stop sits next to ⌘. with Option.
+    // ⌘⇧. quotes the selected text, so this agent's stop sits next to ⌘. with Option. On a Mac
+    // Option+. types "≥", so the Mac key is matched by its place. Elsewhere Ctrl+Alt is also AltGr,
+    // which types a character on some layouts: there the key must be the period itself.
     id: "stopAgent",
     group: "agents",
     label: "app.shortcuts.stopAgent",
-    ...both([{ key: ".", code: "Period", mod: "primary", alt: true, inTextFields: true }]),
+    mac: [{ key: ".", code: "Period", mod: "primary", alt: true, inTextFields: true }],
+    pc: [{ key: ".", mod: "primary", alt: true, inTextFields: true }],
   },
   {
     id: "stopAllAgents",

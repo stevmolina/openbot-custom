@@ -1551,7 +1551,8 @@ export function createConversationViewScope(props: ConversationProps) {
       }
     });
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
+      // ⇧Esc focuses the message box; it closes nothing and cancels no edit.
+      if (event.key !== "Escape" || event.shiftKey || event.defaultPrevented) return;
       // An open popover or menu, such as a routine chip, the model picker or the side panel's add
       // menu, closes on this key from a document listener that runs after this one. Closing the
       // panel under it too discards the edit the person was making.

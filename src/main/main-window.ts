@@ -1070,9 +1070,12 @@ function macQuitItem(
 
 /**
  * A menu item for a key that the window owns, such as New Chat. The menu bar lists the key, but the
- * key is not registered here: the renderer reads it, also in a text field and a visual reply page,
- * and checks where the focus is. A click sends the same command to the focused window, or to the
- * main window when no OpenBot window has the focus.
+ * renderer reads it, also in a text field and a visual reply page, and checks where the focus is.
+ * `registerAccelerator: false` keeps the key off Windows and Linux. On macOS a key that the page
+ * does not take still reaches the menu, such as ⌘N in an open dialog. Electron marks a click from
+ * the Accessibility API as a key too, so main cannot tell them apart: the renderer drops a command
+ * that a key it just saw already decided (`shortcut-commands.ts`). A click sends the command to the
+ * focused window, or to the main window when no OpenBot window has the focus.
  */
 function rendererShortcutItem(
   translate: AppTranslate,
