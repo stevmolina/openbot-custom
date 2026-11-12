@@ -227,14 +227,19 @@ async function main(): Promise<void> {
       if (!composerEditable) return { status: "skipped", detail: "the message box is locked in this profile" };
       await blur(page);
       await page.keyboard.type("hi");
-      const state = await page.evaluate(() => ({
-        focused: document.activeElement?.classList.contains("composer-editor-surface") ?? false,
-        text: document.activeElement?.textContent ?? "",
-      }));
-      const screenshot = await shot(page, "type-to-composer");
-      // Leave the draft as it was.
-      await page.keyboard.press("Backspace");
-      await page.keyboard.press("Backspace");
+      let state: { focused: boolean; text: string };
+      let screenshot: string;
+      try {
+        state = await page.evaluate(() => ({
+          focused: document.activeElement?.classList.contains("composer-editor-surface") ?? false,
+          text: document.activeElement?.textContent ?? "",
+        }));
+        screenshot = await shot(page, "type-to-composer");
+      } finally {
+        // Leave the draft as it was.
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+      }
       return {
         status: state.focused && state.text.includes("hi") ? "passed" : "failed",
         detail: JSON.stringify(state),
@@ -298,17 +303,21 @@ async function main(): Promise<void> {
     await check("Sheet in the light theme", `${mod}+/`, async () => {
       const appearance = await page.evaluate(() => window.openbot.getAppAppearancePreference());
       await page.evaluate(() => window.openbot.setAppAppearancePreference({ appearance: "light" }));
-      await page.waitForTimeout(600);
-      await blur(page);
-      await page.keyboard.press(`${mod}+/`);
-      await page.waitForSelector(".shortcut-sheet", { timeout: 3_000 });
-      await page.waitForTimeout(400);
-      const screenshot = await shot(page, "sheet-light");
-      await page.keyboard.press("Escape");
-      await page.evaluate(
-        (value) => window.openbot.setAppAppearancePreference({ appearance: value }),
-        appearance.appearance,
-      );
+      let screenshot: string;
+      try {
+        await page.waitForTimeout(600);
+        await blur(page);
+        await page.keyboard.press(`${mod}+/`);
+        await page.waitForSelector(".shortcut-sheet", { timeout: 3_000 });
+        await page.waitForTimeout(400);
+        screenshot = await shot(page, "sheet-light");
+        await page.keyboard.press("Escape");
+      } finally {
+        await page.evaluate(
+          (value) => window.openbot.setAppAppearancePreference({ appearance: value }),
+          appearance.appearance,
+        );
+      }
       return { status: "passed", detail: `appearance light, then ${appearance.appearance} again`, screenshot };
     });
   } finally {

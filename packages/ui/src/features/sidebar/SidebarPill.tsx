@@ -166,7 +166,7 @@ function PillMore(props: { pages: SidebarPages; list: readonly PillPage[]; verti
             <Show
               when={props.pages.settingsNotice}
               fallback={
-                <Show when={props.pages.shortcutPlatform}>
+                <Show when={props.pages.settingsShortcut ? props.pages.shortcutPlatform : undefined}>
                   {(platform) => <span class="ui-menu-trailing">{shortcutText("settings", platform())}</span>}
                 </Show>
               }

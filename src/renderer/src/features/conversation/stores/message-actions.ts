@@ -118,9 +118,10 @@ export function createMessageActions(deps: MessageActionsDeps) {
     );
   }
 
-  async function copyMessage(message: AgentMessage) {
+  /** Copies a message. Resolves true when the clipboard has it. */
+  async function copyMessage(message: AgentMessage): Promise<boolean> {
     const text = messageText(message);
-    if (!text && !message.attachments?.length) return;
+    if (!text && !message.attachments?.length) return false;
     const agentId = conversationOwnerId(deps.props);
     const target = agentId ? { agentId, serverId: deps.props.server?.id ?? "local" } : undefined;
     try {
@@ -136,8 +137,10 @@ export function createMessageActions(deps: MessageActionsDeps) {
       window.setTimeout(() => {
         if (deps.copiedMessageId() === message.id) deps.setCopiedMessageId(null);
       }, 1_400);
+      return true;
     } catch (error) {
       deps.setComposerError(errorMessage(error, t("chat.actions.copyFailed")), target);
+      return false;
     }
   }
 

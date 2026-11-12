@@ -16,6 +16,7 @@ import {
 import { AGENT_FAST_MODE_CAPABILITY } from "@openbot/contracts/team-protocol/agent-fast-mode-v1";
 import { toast } from "@openbot/ui";
 import type { QuestionPromptComposerAnswer } from "@openbot/ui/components/QuestionPromptBubble";
+import type { AgentMessage } from "@openbot/ui/data";
 import type { QuoteRequest } from "@openbot/ui/features/conversation/ComposerEditor";
 import { currentText } from "@openbot/ui/text";
 import { prefersReducedMotion, usesTouchLayout } from "@openbot/ui/utils";
@@ -32,6 +33,7 @@ import {
   useContext,
 } from "solid-js";
 import { actionToast } from "../../action-toast";
+import { toAgentMessage } from "../../app-message-projection";
 import { writeClipboardText } from "../../clipboard";
 import { createScopeGuard } from "../../scope-lifetime";
 import { appendVoiceTranscript } from "../../voice-recording";
@@ -1630,6 +1632,12 @@ export function createConversationViewScope(props: ConversationProps) {
     const chatSearchListener = whenVisible(handleChatSearchShortcut);
     // The menu items and the keys of the shortcut list that act on the chat in view.
     const whenShown = (handler: () => boolean) => () => (props.workspaceCovered ? false : handler());
+    /** The messages in view: the open side thread's, which covers the agent's own chat. */
+    const shownMessages = (): readonly AgentMessage[] => {
+      const thread = sideThreadOpen() ? props.threads?.conversation : undefined;
+      if (!thread) return props.messages;
+      return thread.messages.map((message) => toAgentMessage(message, thread.agentId));
+    };
     const removeShortcutCommands = [
       onShortcutCommand(
         "findInChat",
@@ -1641,7 +1649,7 @@ export function createConversationViewScope(props: ConversationProps) {
       onShortcutCommand(
         "copyLastReply",
         whenShown(() => {
-          const reply = lastAgentReply(props.messages);
+          const reply = lastAgentReply(shownMessages());
           const { t } = currentText();
           if (!reply) {
             actionToast.warning(t("app.shortcuts.noReply"), { id: "shortcut-copy" });
@@ -1658,7 +1666,7 @@ export function createConversationViewScope(props: ConversationProps) {
       onShortcutCommand(
         "copyLastCode",
         whenShown(() => {
-          const reply = lastAgentReply(props.messages);
+          const reply = lastAgentReply(shownMessages());
           const code = reply ? lastCodeBlock(reply.body) : undefined;
           const { t, errorMessage } = currentText();
           if (code === undefined) {
@@ -1676,6 +1684,12 @@ export function createConversationViewScope(props: ConversationProps) {
       onShortcutCommand(
         "stopAgent",
         whenShown(() => {
+          // The open side thread's Stop, as its own button does, or the agent's own chat.
+          if (sideThreadOpen()) {
+            if (!props.threads?.conversation?.activeTurnId) return false;
+            props.threads.onStop();
+            return true;
+          }
           if (!props.activeTurnId) return false;
           props.onStop();
           return true;

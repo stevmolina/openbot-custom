@@ -81,7 +81,10 @@ export function ShortcutSheet(props: ShortcutSheetProps): JSX.Element {
     })).filter((entry) => entry.rows.length > 0);
   });
 
-  const close = () => props.onOpenChange(false);
+  const close = () => {
+    setQuery("");
+    props.onOpenChange(false);
+  };
 
   return (
     <Dialog.Root

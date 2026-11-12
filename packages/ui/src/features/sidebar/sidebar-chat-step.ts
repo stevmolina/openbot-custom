@@ -17,15 +17,23 @@ function isCurrent(row: HTMLElement): boolean {
 
 /** The row to open, or null at the end of the list or with no such row. */
 export function sidebarChatStep(root: ParentNode, offset: 1 | -1, unread: boolean): HTMLElement | null {
-  const rows = [...root.querySelectorAll<HTMLElement>(`[${SIDEBAR_CHAT_ATTRIBUTE}]`)].filter(shown);
-  const current = rows.find(isCurrent);
-  const currentId = current?.getAttribute(SIDEBAR_CHAT_ATTRIBUTE);
-  // A chat can show twice, such as in "Needs you" and in its folder: step from the row in view.
-  let index = current ? rows.indexOf(current) : offset === 1 ? -1 : rows.length;
+  // A chat can show twice, such as in "Needs you" and in its folder. Only its first row counts, so a
+  // step never lands on a second copy and comes back.
+  const seen = new Set<string>();
+  const rows = [...root.querySelectorAll<HTMLElement>(`[${SIDEBAR_CHAT_ATTRIBUTE}]`)].filter((row) => {
+    const id = row.getAttribute(SIDEBAR_CHAT_ATTRIBUTE) ?? "";
+    if (!shown(row) || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  const currentId = [...root.querySelectorAll<HTMLElement>(`[${SIDEBAR_CHAT_ATTRIBUTE}]`)]
+    .find(isCurrent)
+    ?.getAttribute(SIDEBAR_CHAT_ATTRIBUTE);
+  const current = rows.findIndex((row) => row.getAttribute(SIDEBAR_CHAT_ATTRIBUTE) === currentId);
+  let index = current >= 0 ? current : offset === 1 ? -1 : rows.length;
   for (index += offset; index >= 0 && index < rows.length; index += offset) {
     const row = rows[index];
-    if (!row || row.getAttribute(SIDEBAR_CHAT_ATTRIBUTE) === currentId) continue;
-    if (!unread || row.hasAttribute("data-unread")) return row;
+    if (row && (!unread || row.hasAttribute("data-unread"))) return row;
   }
   return null;
 }

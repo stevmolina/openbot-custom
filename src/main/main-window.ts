@@ -1068,6 +1068,17 @@ function macQuitItem(
   };
 }
 
+/** Whether a window shows the app page (the main window or a chat window), not a helper page. */
+function loadsAppPage(window: BrowserWindow): boolean {
+  if (window.isDestroyed()) return false;
+  try {
+    const { pathname } = new URL(window.webContents.getURL());
+    return pathname.endsWith("/") || pathname.endsWith("/index.html");
+  } catch {
+    return false;
+  }
+}
+
 /**
  * A menu item for a key that the window owns, such as New Chat. The menu bar lists the key, but the
  * renderer reads it, also in a text field and a visual reply page, and checks where the focus is.
@@ -1090,7 +1101,9 @@ function rendererShortcutItem(
     registerAccelerator: false,
     click: (_item, focusedWindow) => {
       const focused = focusedWindow ?? BrowserWindow.getFocusedWindow();
-      const target = focused instanceof BrowserWindow ? focused : getMainWindow();
+      // Only the app page runs shortcuts. A helper page, such as the agent dock or the browser
+      // picture-in-picture, sends the command to the main window instead.
+      const target = focused instanceof BrowserWindow && loadsAppPage(focused) ? focused : getMainWindow();
       if (!target || target.isDestroyed()) return;
       if (target !== focused) showMainWindow(target);
       sendToRenderer(target, IPC_ENDPOINTS.app.runShortcut, command);

@@ -22,13 +22,15 @@ export function lastAgentReply(messages: readonly AgentMessage[]): AgentMessage 
 
 /**
  * The text of the last fenced code block of a Markdown reply, without its fences, or undefined. A
- * fence can be indented, as under a list item; its indent is taken off each line. An empty block
- * counts as no block.
+ * fence can be indented, as under a list item; its indent is taken off each line. A block that the
+ * reply never closes runs to its end. An empty block counts as no block.
  */
 export function lastCodeBlock(body: string): string | undefined {
   let last: string | undefined;
   const text = body.replace(/\r\n?/gu, "\n");
-  for (const match of text.matchAll(/^([ \t]*)(`{3,}|~{3,})[^\n]*\n([\s\S]*?)^[ \t]*\2[`~]*[ \t]*$/gmu)) {
+  for (const match of text.matchAll(
+    /^([ \t]*)(`{3,}|~{3,})[^\n]*\n([\s\S]*?)(?:^[ \t]*\2[`~]*[ \t]*$|(?![\s\S]))/gmu,
+  )) {
     const indent = match[1] ?? "";
     const lines = (match[3] ?? "").replace(/\n$/u, "").split("\n");
     const code = lines.map((line) => (line.startsWith(indent) ? line.slice(indent.length) : line)).join("\n");

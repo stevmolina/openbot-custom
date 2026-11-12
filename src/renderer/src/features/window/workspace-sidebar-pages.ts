@@ -94,5 +94,6 @@ export function useWorkspaceSidebarPages(): () => SidebarPages {
     help,
     onCollapse: () => layout.setSidebarCollapsed(true),
     shortcutPlatform: shortcutPlatform(),
+    settingsShortcut: true,
   });
 }
