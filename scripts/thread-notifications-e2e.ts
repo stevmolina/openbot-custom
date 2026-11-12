@@ -298,6 +298,7 @@ function registerAndroid(
 /** A send as the phone opens it. */
 function opened(request: NotificationRelayRequest): PushNotificationContent {
   const keys = pushNotificationKeys(secretOf(request.push.sessionId));
+  assert.ok(request.platform !== "web", "A phone send went to a web client.");
   const text = openSealedLiveActivity(
     request.push.sealed,
     encodeLiveActivityBytes(keys.seal),

@@ -10,6 +10,7 @@ import { contentImages } from "./content-images";
 import { DEVELOPMENT_APNS_PATH, developmentApnsProxy } from "./dev-apns-proxy";
 import { developmentNetworkRequestAllowed } from "./dev-network-access";
 import { rendererPreviewAlias, rendererWebAlias } from "./renderer-preview-alias";
+import { webServiceWorker } from "./service-worker-plugin";
 import { readLocalRuntimeVars } from "./src/server/runtime-env";
 
 export default defineConfig(({ command }) => {
@@ -19,6 +20,9 @@ export default defineConfig(({ command }) => {
   if (localRuntimeVars.APNS_PRIVATE_KEY) {
     localRuntimeVars.APNS_ORIGIN = `http://127.0.0.1:${port}${DEVELOPMENT_APNS_PATH}`;
   }
+  // A local check stands in for the push service of a browser on this computer, over HTTP. A build never
+  // sets it, so a deployed Worker sends only to the known push services.
+  if (command === "serve") localRuntimeVars.WEB_PUSH_ALLOW_LOOPBACK = "true";
   return {
     resolve: {
       dedupe: ["solid-js", "@solidjs/web", "@solidjs/signals"],
@@ -80,6 +84,7 @@ export default defineConfig(({ command }) => {
       // parser false positive is fixed.
       tailwindcss({ optimize: false }),
       contentImages(),
+      webServiceWorker(),
     ],
   };
 });

@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createOpenBotLogger, toLogValue } from "@openbot/logging";
 import { readFcmServiceAccount } from "../apps/auth-api/src/server/android-notification-relay";
+import { readWebPushVapidConfig } from "../apps/auth-api/src/server/web-push-relay";
 
 const logger = createOpenBotLogger("deploy-auth-api");
 
@@ -25,6 +26,7 @@ async function main(): Promise<void> {
     assertLandingBeam();
   }
   assertFcmServiceAccount();
+  assertWebPushVapidKeys();
   await putRequiredSecret("EMAIL_SMTP_PASSWORD");
   await putRequiredSecret("SKILLS_ADMIN_TOKEN");
   await putRequiredSecret("SITE_REPORT_HASH_SECRET");
@@ -66,6 +68,9 @@ async function main(): Promise<void> {
   await putOptionalSecretSet("APNS_PRIVATE_KEY", "APNS_KEY_ID");
   // The Android notification relay stays off until the Firebase service account key is in the environment.
   await putOptionalSecret("FCM_SERVICE_ACCOUNT");
+  // The web client notification relay stays off until the VAPID key pair and its contact are in the
+  // environment. `bun scripts/generate-web-push-vapid-keys.ts` makes them.
+  await putOptionalSecretSet("WEB_PUSH_VAPID_PRIVATE_KEY", "WEB_PUSH_VAPID_PUBLIC_KEY", "WEB_PUSH_VAPID_SUBJECT");
   await run(wranglerExecutable, ["d1", "migrations", "apply", "DB", "--remote", ...environmentArgs], {
     label: "Remote D1 migrations",
   });
@@ -123,6 +128,26 @@ function assertFcmServiceAccount(): void {
   if (value.startsWith("encrypted:"))
     throw new Error("FCM_SERVICE_ACCOUNT is not decrypted. Check the environment decryption key.");
   if (!readFcmServiceAccount(value)) throw new Error("FCM_SERVICE_ACCOUNT is not a Firebase service account key file.");
+}
+
+/**
+ * A VAPID key pair that the Worker cannot read turns the web client notification relay off, so it stops
+ * the deployment before remote changes. A missing value is left to `putOptionalSecretSet`.
+ */
+function assertWebPushVapidKeys(): void {
+  const names = ["WEB_PUSH_VAPID_PRIVATE_KEY", "WEB_PUSH_VAPID_PUBLIC_KEY", "WEB_PUSH_VAPID_SUBJECT"] as const;
+  const values = names.map((name) => process.env[name]?.trim());
+  if (values.some((value) => !value)) return;
+  for (const [index, name] of names.entries()) {
+    if (values[index]?.startsWith("encrypted:"))
+      throw new Error(`${name} is not decrypted. Check the environment decryption key.`);
+  }
+  const [privateKey, publicKey, subject] = values;
+  if (!readWebPushVapidConfig({ privateKey, publicKey, subject })) {
+    throw new Error(
+      "WEB_PUSH_VAPID_PRIVATE_KEY, WEB_PUSH_VAPID_PUBLIC_KEY and WEB_PUSH_VAPID_SUBJECT are not one P-256 key pair (JWK and base64url) and a mailto: or https: contact.",
+    );
+  }
 }
 
 /** A test Worker must never take real payments, and production must never take test payments. */

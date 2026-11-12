@@ -3,3 +3,8 @@
 # the old one for a year without asking again.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The service worker of the web client. A browser checks this file for a new version, so no cache
+# may keep it: the file changes with each build, and an old copy would hold back an update.
+/app-sw.js
+  Cache-Control: no-cache

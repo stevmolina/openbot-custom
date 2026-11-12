@@ -180,7 +180,12 @@ mock. The separate web preview implements the browser runtime with that same moc
   view hides channels and shows the open agent's routine canvas, as on desktop: links, node positions,
   task edits, Run now, a new agent from the right-click menu, and the chat panel that asks the agent
   to edit the canvas. Webhook config and webhook routine changes need an owner or admin with
-  `events-v1`. On a phone the canvas takes the chat pane, and the pane button reads Routines.
+  `events-v1`. On a phone the canvas opens over the chat list, as a chat does.
+- On a phone (720 px wide or less) the layout follows the iOS app: the chat list with the server name
+  as a large title, a tab bar (Chats, Servers, Search, Settings), a chat that slides in over the list
+  with a Back button and a swipe back from the leading edge, the server rail as a drawer, and dialogs
+  as bottom sheets that a drag down closes (`web-phone.css`, `web-phone-stack.ts`,
+  `web-phone-sheets.ts`).
 - No full remote desktop, push notifications, or offline operation is included. See
   [Remote desktop](#remote-desktop) for the reason.
 - These stay desktop only: the application Settings page (permissions, app updates),

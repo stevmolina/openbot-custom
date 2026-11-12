@@ -11,6 +11,7 @@ import { guardedListDecoder } from "@openbot/contracts/ipc-decoding";
 import { TEAM_API_ROUTES } from "@openbot/contracts/team-api-routes";
 import { AGENT_NOTIFICATION_LEVELS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-notification-levels-v1";
 import { teamProtocolUpdateDirection } from "@openbot/contracts/team-protocol/v1";
+import type { TeamProtocolV2Json } from "@openbot/contracts/team-protocol/v2";
 import { TEAM_PROTOCOL_V3 } from "@openbot/contracts/team-protocol/v3";
 import { decodeTeamProtocolSupportV9 } from "@openbot/contracts/team-protocol/v9";
 import { runTeamEffect } from "@openbot/team-client";
@@ -120,6 +121,13 @@ export interface WebHostConnections {
    * `agent-notification-levels-v1` has none. Rejects while the host has no connection.
    */
   agentNotificationLevels(hostId: string): Promise<AgentNotificationLevelsSnapshot>;
+  /** The capabilities of a host that this tab has not opened, or null until it answered on its connection. */
+  capabilities(hostId: string): readonly string[] | null;
+  /**
+   * Posts one Web Push registration request (`push-notifications-web-v1`) to a host that this tab has not
+   * opened. Rejects while the host has no connection.
+   */
+  postWebPush(hostId: string, path: string, body: TeamProtocolV2Json): Promise<void>;
   /**
    * The agents and the user's own levels of a host that this tab has not opened, for the notification
    * settings. `levels` is null on a host without `agent-notification-levels-v1`.
@@ -470,6 +478,13 @@ export function createWebHostConnections(options: {
       const { entry, request } = hostRequest(hostId);
       if (!entry.capabilities?.includes(AGENT_NOTIFICATION_LEVELS_CAPABILITY)) return { server: null, agents: [] };
       return runTeamEffect(listAgentNotificationLevels(request).pipe(Effect.mapError((error) => error.cause)));
+    },
+    capabilities(hostId) {
+      return entries.get(hostId)?.capabilities ?? null;
+    },
+    async postWebPush(hostId, path, body) {
+      const { request } = hostRequest(hostId);
+      await request("POST", path, () => undefined, body);
     },
     async notificationSettings(hostId) {
       const { entry, request } = hostRequest(hostId);

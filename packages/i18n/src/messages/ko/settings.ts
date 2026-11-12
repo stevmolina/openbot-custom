@@ -169,6 +169,13 @@ export const messages = {
   "settings.notifications.allDevices": "내 모든 기기",
   "settings.notifications.thisComputer": "이 컴퓨터",
   "settings.notifications.thisBrowser": "이 브라우저",
+  "settings.webPush.title": "닫혀 있을 때 알림",
+  "settings.webPush.description": "OpenBot 창이 화면에 없을 때, 창을 닫은 후에도 서버가 이 브라우저에 알림을 보냅니다.",
+  "settings.webPush.blocked":
+    "이 브라우저가 OpenBot 알림을 차단하고 있습니다. 브라우저의 사이트 설정에서 허용한 다음 다시 켜세요.",
+  "settings.webPush.failed": "알림을 켤 수 없습니다. 다시 시도하세요.",
+  "settings.webPush.installHint":
+    "iPhone과 iPad에서는 OpenBot을 홈 화면에 추가하세요. 공유를 탭한 다음 홈 화면에 추가를 탭합니다. 거기에서 열면 알림을 받을 수 있습니다.",
   "settings.notificationMatrix.muteOptions": "{name} 음소거 옵션",
   "settings.notificationMatrix.levelsOf": "{name} 알림",
   "settings.notificationMatrix.levelAll": "모두",

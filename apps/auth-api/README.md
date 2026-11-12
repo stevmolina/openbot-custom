@@ -374,3 +374,19 @@ from Firebase console > Project settings > Service accounts > Generate new priva
 the encrypted environment as one line (`jq -c . <file>.json`) and into the `cloudflare-production`
 GitHub environment. A deployment stops before remote changes when the value is not a service account
 key file. The local Worker sends to Firebase directly.
+
+`POST /v2/remote/hosts/:hostId/web-notification` forwards a Web Push notification for the web client
+(RFC 8030) with the same limit and session check. The host has already encrypted the body for the
+browser's subscription (RFC 8291, `aes128gcm`); the Worker signs a VAPID token (RFC 8292, ES256, for
+12 hours, for the origin of the endpoint) and posts the bytes to the endpoint. It sends only to the
+push services of Firebase (`fcm.googleapis.com`), Mozilla (`*.push.services.mozilla.com`), Apple
+(`web.push.apple.com`) and Windows (`*.notify.windows.com`); `vite dev` also allows `http:` on
+loopback, so `scripts/web-push-e2e.ts` can stand in for one. `404` and `410` from the push service
+answer `410`, which removes the registration. `GET /v2/web-push/config` gives `{ "publicKey" }` that the
+web client subscribes with, or `null`. The relay is off until all three of `WEB_PUSH_VAPID_PRIVATE_KEY`
+(a JWK of an EC P-256 key with `d`, as JSON on one line), `WEB_PUSH_VAPID_PUBLIC_KEY` (the 65-byte
+public key as base64url) and `WEB_PUSH_VAPID_SUBJECT` (a `mailto:` or `https:` contact) are set.
+`bun scripts/generate-web-push-vapid-keys.ts mailto:<address>` prints a new set; add each line to the
+encrypted `.env.production` with `bunx dotenvx set` and to the `cloudflare-production` GitHub
+environment. A deployment stops before remote changes when they are not one key pair. A new pair ends
+every subscription: each web client subscribes again when it next opens.

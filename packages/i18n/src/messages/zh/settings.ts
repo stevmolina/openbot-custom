@@ -167,6 +167,12 @@ export const messages = {
   "settings.notifications.allDevices": "我的所有设备",
   "settings.notifications.thisComputer": "这台电脑",
   "settings.notifications.thisBrowser": "此浏览器",
+  "settings.webPush.title": "关闭时通知",
+  "settings.webPush.description": "屏幕上没有 OpenBot 窗口时，包括关闭窗口之后，你的服务器会向此浏览器发送通知。",
+  "settings.webPush.blocked": "此浏览器阻止了 OpenBot 的通知。请在浏览器的网站设置中允许通知，然后重新开启此选项。",
+  "settings.webPush.failed": "无法开启通知。请重试。",
+  "settings.webPush.installHint":
+    "在 iPhone 和 iPad 上，请将 OpenBot 添加到主屏幕：轻点“共享”，然后轻点“添加到主屏幕”。从主屏幕打开即可接收通知。",
   "settings.notificationMatrix.muteOptions": "{name} 的静音选项",
   "settings.notificationMatrix.levelsOf": "来自 {name} 的通知",
   "settings.notificationMatrix.levelAll": "全部",

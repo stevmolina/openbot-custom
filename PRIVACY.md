@@ -984,9 +984,10 @@ no review reads are deleted after 30 days. Turning the setting off deletes all r
 - `~/Library/Application Support/OpenBot/openbot-push-notifications-v1.json` holds, for each member
   phone that gets notifications from this host, the session ID, the member ID, the Apple or Firebase
   push token, the secret that seals the notifications, the interface language, and the notification
-  choices. Only the user can read the file, and it is not in the diagnostics export or the data
-  export. See [iPhone notifications](#iphone-notifications) and
-  [Android notifications](#android-notifications).
+  choices; for each web client, the push endpoint and the keys of its browser subscription in place of
+  the token and the secret. Only the user can read the file, and it is not in the diagnostics export or
+  the data export. See [iPhone notifications](#iphone-notifications),
+  [Android notifications](#android-notifications) and [Web client notifications](#web-client-notifications).
 - `~/Library/Application Support/OpenBot/openbot-agent-notification-levels-v1.json` holds the
   notification level that the owner and each member of this host chose for the whole server and for
   each agent ("All activity", "Only when it needs me" or "Nothing"), by member ID and agent ID. Each member reads and
@@ -2021,6 +2022,26 @@ Notifications only inform: they have no buttons.
 
 Settings > Notifications turns this off, and sets the preview and the sound. Android also lists one
 notification channel for each sound in the system settings of the app.
+
+## Web client notifications
+
+The web client can show the same notifications, also after its window closed, when the user turns
+this on in its settings. The browser then subscribes to its own push service (Google for Chrome and
+Edge, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows) and gives each connected
+host, over the encrypted host connection, the push endpoint and the two keys of that subscription, its
+interface language, the events of that server, a mute end, and whether a window of the app shows.
+
+The host encrypts each notification for that subscription (RFC 8291) and sends it to the OpenBot
+account service with the account session of the web client. The account service checks the session,
+signs the request with its own key, and sends the encrypted bytes only to one of the push services
+above. The account service receives only the endpoint, the session ID, the encrypted bytes and the
+time. The push service receives the encrypted bytes. Neither can read the agent name, the text or the
+link. The account service stores nothing from these requests and does not log them. The push service
+can keep its own delivery logs under its own policy.
+
+The browser opens the notification and shows the agent name and the text. Turning this off or signing
+out removes the subscription from each host and ends it in the browser. The host also forgets it when
+the member is removed or when the push service says that it ended.
 
 ## Optional macOS Host Manager
 

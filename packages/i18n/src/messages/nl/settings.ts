@@ -170,6 +170,14 @@ export const messages = {
   "settings.notifications.allDevices": "Al mijn apparaten",
   "settings.notifications.thisComputer": "Deze computer",
   "settings.notifications.thisBrowser": "Deze browser",
+  "settings.webPush.title": "Melden als gesloten",
+  "settings.webPush.description":
+    "Je servers sturen deze browser meldingen als er geen OpenBot-venster op het scherm staat, ook nadat je het hebt gesloten.",
+  "settings.webPush.blocked":
+    "Deze browser blokkeert meldingen van OpenBot. Sta ze toe in de site-instellingen van de browser en zet dit daarna weer aan.",
+  "settings.webPush.failed": "Meldingen konden niet worden aangezet. Probeer het opnieuw.",
+  "settings.webPush.installHint":
+    "Zet OpenBot op iPhone en iPad op het beginscherm: tik op Deel en daarna op Zet op beginscherm. Open het daar om meldingen te krijgen.",
   "settings.notificationMatrix.muteOptions": "Dempopties voor {name}",
   "settings.notificationMatrix.levelsOf": "Meldingen van {name}",
   "settings.notificationMatrix.levelAll": "Alles",

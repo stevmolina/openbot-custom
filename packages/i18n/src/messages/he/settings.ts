@@ -166,6 +166,14 @@ export const messages = {
   "settings.notifications.allDevices": "כל המכשירים שלי",
   "settings.notifications.thisComputer": "המחשב הזה",
   "settings.notifications.thisBrowser": "הדפדפן הזה",
+  "settings.webPush.title": "התראה כשהאפליקציה סגורה",
+  "settings.webPush.description":
+    "השרתים שלך שולחים התראות לדפדפן הזה כשאין חלון של OpenBot על המסך, גם אחרי שסגרת אותו.",
+  "settings.webPush.blocked":
+    "הדפדפן הזה חוסם התראות מ-OpenBot. אפשר אותן בהגדרות האתר בדפדפן, ואז הפעל את האפשרות שוב.",
+  "settings.webPush.failed": "לא ניתן היה להפעיל התראות. נסה שוב.",
+  "settings.webPush.installHint":
+    "ב-iPhone וב-iPad, הוסף את OpenBot למסך הבית: הקש על שיתוף ואז על הוספה למסך הבית. פתח אותו משם כדי לקבל התראות.",
   "settings.notificationMatrix.muteOptions": "אפשרויות השתקה עבור {name}",
   "settings.notificationMatrix.levelsOf": "התראות מ-{name}",
   "settings.notificationMatrix.levelAll": "הכול",

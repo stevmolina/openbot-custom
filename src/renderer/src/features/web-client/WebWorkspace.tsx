@@ -140,7 +140,7 @@ import {
 } from "@openbot/team-client/team-admin-requests";
 import { clearAgentContext, type TeamApiRequest } from "@openbot/team-client/team-api-requests";
 import { classifyFailure } from "@openbot/telemetry";
-import { hasVisibleToasts, toast } from "@openbot/ui";
+import { Button, hasVisibleToasts, toast } from "@openbot/ui";
 import type { GlobalSearchRoutine } from "@openbot/ui/components/GlobalSearch";
 import type { AgentMessage } from "@openbot/ui/data";
 import { accountUsageProviderRows } from "@openbot/ui/features/account/account-usage-view";
@@ -183,6 +183,7 @@ import {
   createMemo,
   createRoot,
   createSignal,
+  flush,
   Loading,
   lazy,
   Match,
@@ -318,7 +319,7 @@ import {
 import type { SettingsKind, WindowPage } from "../window/window-page-context";
 import { WebAgentSettings } from "./WebAgentSettings";
 import { WebConnectComputer } from "./WebConnectComputer";
-import { WebMobileNavigation, type WebMobilePane } from "./WebMobileNavigation";
+import { WebMobileNavigation, type WebMobilePane, WebPhoneBack, type WebPhoneTab } from "./WebMobileNavigation";
 import { WebServerOtherTab } from "./WebServerOtherTab";
 import { createWebAccountCalls } from "./web-account";
 import { createWebAccountUsage } from "./web-account-usage";
@@ -345,7 +346,11 @@ import { createWebNotificationSettings } from "./web-notification-settings";
 import { requestWebNotificationPermission } from "./web-notifications";
 import { webOnePasswordConnectorPort } from "./web-onepassword-connector";
 import { webPasswordManagersPort } from "./web-password-managers";
+import { installWebPhoneSheets } from "./web-phone-sheets";
+import { trackPhoneSwipeBack } from "./web-phone-stack";
 import { createWebProviderSettings, openWebDestination } from "./web-provider-admin";
+import { createWebPush } from "./web-push";
+import { takeWebPushOpenLink, watchWebPushOpens } from "./web-push-open";
 import { webRoutineFlowsHost } from "./web-routine-flows";
 import type { WebAdminRuntime } from "./web-runtime";
 import { webScheduleSource } from "./web-schedule";
@@ -556,6 +561,9 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
         // Sign-out continues with the edit stored.
       }
     }
+    // The servers forget this browser and its push subscription ends. A server that does not answer in
+    // time learns it from the account service, which refuses the ended session.
+    await Promise.race([webPush.signOut(), new Promise((resolve) => setTimeout(resolve, 2_000))]);
     await props.onLogout();
   }
   /** The host list was read and holds no computer to connect to. */
@@ -629,7 +637,12 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   const [creating, setCreating] = createSignal(false);
   /** The new agent form's avatar. The first-agent row in an empty sidebar shows it. */
   const [agentAvatar, setAgentAvatar] = createSignal(newAgentAvatar());
-  const [mobilePane, setMobilePane] = createSignal<WebMobilePane>("conversation");
+  // A phone opens on the chat list, as the iOS app opens on its home screen; a chat opens over it.
+  const [mobilePane, setMobilePane] = createSignal<WebMobilePane>(
+    window.matchMedia?.(PHONE_QUERY).matches ? "workspace" : "conversation",
+  );
+  /** On a phone: the server drawer of the Servers tab, over the chat list. */
+  const [serversOpen, setServersOpen] = createSignal(false);
   const [settingsRequest, setSettingsRequest] = createSignal<AgentSettingsRequest | null>(null);
   const account = createMemo(() => ({
     id: props.accountId,
@@ -761,6 +774,8 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     phoneQuery?.addEventListener("change", update);
     return () => phoneQuery?.removeEventListener("change", update);
   });
+  // On a phone, a dialog is a bottom sheet that a drag down closes.
+  onSettled(() => installWebPhoneSheets());
   const compact = () => !phone() && layout.leftPanelCompact();
   const closeSidebar = () => layout.setSidebarClosed(true);
   /** A phone shows the agent list as a page, not as a column, so it has no button that closes the list. */
@@ -874,6 +889,15 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     setMuted,
     onLevelsWritten: applyAgentLevels,
     openHostId: () => server()?.id ?? null,
+  });
+  // Each server notifies this browser through Web Push while no window of the app shows.
+  const webPush = createWebPush({ servers, runtime: workspace.runtime, locale: () => text.locale() });
+  // A click on a Web Push notification opens its agent or channel, in this window or in a new one.
+  watchWebPushOpens({
+    startLink: takeWebPushOpenLink(),
+    hostListed: (hostId) => workspace.state.hosts.some((host) => host.hostId === hostId),
+    openAgent: (hostId, agentId) => void openNotified(hostId, agentId),
+    openChannel: (hostId, channelId) => void openNotifiedChannel(hostId, channelId),
   });
   /** The host whose notification row the account settings show. Each nonce moves there once. */
   const [notificationFocusRequest, setNotificationFocusRequest] = createSignal<{
@@ -2733,6 +2757,50 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     showAgents();
     setCreating(true);
   }
+  /** The tab of the phone tab bar that shows. */
+  const phoneTab = (): WebPhoneTab => {
+    if (searchOpen()) return "search";
+    if (serversOpen()) return "servers";
+    return page() === "settings" ? "settings" : "chats";
+  };
+  /**
+   * A tab of the phone tab bar. Chats shows the list, also from a pushed chat or a page, as a second
+   * tap on an iOS tab goes back to its root. Servers opens and closes the server drawer over the list.
+   */
+  function selectPhoneTab(tab: WebPhoneTab) {
+    if (tab === "search") {
+      setServersOpen(false);
+      setSearchOpen(true);
+      return;
+    }
+    if (tab === "settings") {
+      setServersOpen(false);
+      openAccountSettings();
+      return;
+    }
+    const drawer = tab === "servers" && !serversOpen();
+    showAgents();
+    setMobilePane("workspace");
+    setServersOpen(drawer);
+  }
+  /** The drawer closes when a server is chosen in it, as the iOS drawer does. */
+  function selectDrawerServer(id: string) {
+    setServersOpen(false);
+    selectServer(id);
+  }
+  /** Back from a pushed chat to the list. A swipe applies it at once, so the list slides from the finger. */
+  function phoneBack() {
+    setMobilePane("workspace");
+  }
+  function startPhoneSwipe(event: PointerEvent) {
+    const frame =
+      event.currentTarget instanceof Element ? event.currentTarget.closest<HTMLElement>(".web-app-frame") : null;
+    if (!frame) return;
+    trackPhoneSwipeBack(event, frame, () => {
+      phoneBack();
+      flush();
+    });
+  }
   /** The sidebar button of the page. The server settings open from the server menu, so no button is current. */
   const sidebarPage = (): SidebarPage | null => {
     const current = page();
@@ -2882,11 +2950,17 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
             <WorkspaceFrame
               class="web-app-frame"
               data-web-mobile-pane={mobilePane()}
+              data-web-phone-servers={phone() && serversOpen() ? "" : undefined}
+              data-web-phone-connect={phone() && noHost() ? "" : undefined}
               compact={compact()}
               blockedServer={blockedServer()}
               initialLoading={hostOffline()}
               connection={
                 <>
+                  {/* A phone pushes the chat over the list: Back and the edge swipe go back to the list. */}
+                  <Show when={phone() && !noHost()}>
+                    <WebPhoneBack onBack={phoneBack} onEdgePointerDown={startPhoneSwipe} />
+                  </Show>
                   {/* While the chat loader covers the first load, the notice shows only its delayed toast. */}
                   <Show when={connectionShown() && !fullWindowLoading()}>{connectionNotice()}</Show>
                   <Show when={workspace.state.status === "online" && workspace.state.panelsFailed}>
@@ -3095,10 +3169,11 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
               }
               left={
                 <>
-                  <Show when={layout.serverRailVisible()}>
+                  {/* A phone always has the rail: it is the drawer of the Servers tab. */}
+                  <Show when={layout.serverRailVisible() || phone()}>
                     <ServerRail
                       servers={servers()}
-                      onSelect={selectServer}
+                      onSelect={selectDrawerServer}
                       onReorder={workspace.reorderHosts}
                       onAdd={() => hostedServers.openAddServer("server_rail")}
                       addCreatesServer={hostedServers.available()}
@@ -3140,6 +3215,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     }
                     view={layout.sidebarView()}
                     serverName={workspace.state.host?.name ?? "OpenBot"}
+                    largeTitle={phone()}
                     serverUpdate={(() => {
                       const id = server()?.id;
                       const badge = id ? serverUpdateBadge(id) : null;
@@ -3251,7 +3327,18 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                         : undefined
                     }
                   />
-                  <WebMobileNavigation activePane={mobilePane()} routines={routinesView()} onChange={setMobilePane} />
+                  <Show when={phone()}>
+                    <Show when={serversOpen()}>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        class="web-phone-drawer-scrim"
+                        aria-label={t("common.close")}
+                        onClick={() => setServersOpen(false)}
+                      />
+                    </Show>
+                    <WebMobileNavigation active={phoneTab()} onSelect={selectPhoneTab} />
+                  </Show>
                 </>
               }
               after={
@@ -3321,6 +3408,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                         onOpenBilling={() => setBillingOpen(true)}
                         onSignOut={signOut}
                         notifications={notificationSettings}
+                        webPush={webPush}
                         notificationFocusRequest={notificationFocusRequest()}
                       />
                     </Loading>

@@ -120,6 +120,7 @@ import { Route as V2ServerClaimsIndexRouteImport } from './routes/v2/server-clai
 import { Route as V2ServerClaimsRedeemRouteImport } from './routes/v2/server-claims/redeem'
 import { Route as V2SlackAuthorizeRouteImport } from './routes/v2/slack/authorize'
 import { Route as V2SlackCallbackRouteImport } from './routes/v2/slack/callback'
+import { Route as V2WebPushConfigRouteImport } from './routes/v2/web-push/config'
 import { Route as ScimV2UsersIndexRouteImport } from './routes/scim/v2/Users/index'
 import { Route as ScimV2UsersUserIdRouteImport } from './routes/scim/v2/Users/$userId'
 import { Route as V1AgentTemplatesTemplateIdAvatarRouteImport } from './routes/v1/agent-templates/$templateId/avatar'
@@ -205,6 +206,7 @@ import { Route as V2RemoteHostsHostIdTelegramDisconnectRouteImport } from './rou
 import { Route as V2RemoteHostsHostIdTelegramLinkRouteImport } from './routes/v2/remote/hosts/$hostId/telegram-link'
 import { Route as V2RemoteHostsHostIdTelegramRouteRouteImport } from './routes/v2/remote/hosts/$hostId/telegram-route'
 import { Route as V2RemoteHostsHostIdTicketRouteImport } from './routes/v2/remote/hosts/$hostId/ticket'
+import { Route as V2RemoteHostsHostIdWebNotificationRouteImport } from './routes/v2/remote/hosts/$hostId/web-notification'
 import { Route as V2RemoteHostsHostIdWebhookRouteRouteImport } from './routes/v2/remote/hosts/$hostId/webhook-route'
 import { Route as V2RemoteHostsHostIdWebhookRoutesRouteImport } from './routes/v2/remote/hosts/$hostId/webhook-routes'
 import { Route as V2RemoteSessionsSessionIdEndRouteImport } from './routes/v2/remote/sessions/$sessionId/end'
@@ -776,6 +778,11 @@ const V2SlackCallbackRoute = V2SlackCallbackRouteImport.update({
   path: '/v2/slack/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V2WebPushConfigRoute = V2WebPushConfigRouteImport.update({
+  id: '/v2/web-push/config',
+  path: '/v2/web-push/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScimV2UsersIndexRoute = ScimV2UsersIndexRouteImport.update({
   id: '/scim/v2/Users/',
   path: '/scim/v2/Users/',
@@ -1250,6 +1257,12 @@ const V2RemoteHostsHostIdTicketRoute =
     path: '/v2/remote/hosts/$hostId/ticket',
     getParentRoute: () => rootRouteImport,
   } as any)
+const V2RemoteHostsHostIdWebNotificationRoute =
+  V2RemoteHostsHostIdWebNotificationRouteImport.update({
+    id: '/v2/remote/hosts/$hostId/web-notification',
+    path: '/v2/remote/hosts/$hostId/web-notification',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const V2RemoteHostsHostIdWebhookRouteRoute =
   V2RemoteHostsHostIdWebhookRouteRouteImport.update({
     id: '/v2/remote/hosts/$hostId/webhook-route',
@@ -1438,6 +1451,7 @@ export interface FileRoutesByFullPath {
   '/v2/server-claims/redeem': typeof V2ServerClaimsRedeemRoute
   '/v2/slack/authorize': typeof V2SlackAuthorizeRoute
   '/v2/slack/callback': typeof V2SlackCallbackRoute
+  '/v2/web-push/config': typeof V2WebPushConfigRoute
   '/marketplace/skills/': typeof MarketplaceSkillsIndexRoute
   '/v1/agent-templates/': typeof V1AgentTemplatesIndexRoute
   '/v1/sites/': typeof V1SitesIndexRoute
@@ -1526,6 +1540,7 @@ export interface FileRoutesByFullPath {
   '/v2/remote/hosts/$hostId/telegram-link': typeof V2RemoteHostsHostIdTelegramLinkRoute
   '/v2/remote/hosts/$hostId/telegram-route': typeof V2RemoteHostsHostIdTelegramRouteRoute
   '/v2/remote/hosts/$hostId/ticket': typeof V2RemoteHostsHostIdTicketRoute
+  '/v2/remote/hosts/$hostId/web-notification': typeof V2RemoteHostsHostIdWebNotificationRoute
   '/v2/remote/hosts/$hostId/webhook-route': typeof V2RemoteHostsHostIdWebhookRouteRoute
   '/v2/remote/hosts/$hostId/webhook-routes': typeof V2RemoteHostsHostIdWebhookRoutesRoute
   '/v2/remote/sessions/$sessionId/end': typeof V2RemoteSessionsSessionIdEndRoute
@@ -1646,6 +1661,7 @@ export interface FileRoutesByTo {
   '/v2/server-claims/redeem': typeof V2ServerClaimsRedeemRoute
   '/v2/slack/authorize': typeof V2SlackAuthorizeRoute
   '/v2/slack/callback': typeof V2SlackCallbackRoute
+  '/v2/web-push/config': typeof V2WebPushConfigRoute
   '/marketplace/skills': typeof MarketplaceSkillsIndexRoute
   '/v1/agent-templates': typeof V1AgentTemplatesIndexRoute
   '/v1/sites': typeof V1SitesIndexRoute
@@ -1734,6 +1750,7 @@ export interface FileRoutesByTo {
   '/v2/remote/hosts/$hostId/telegram-link': typeof V2RemoteHostsHostIdTelegramLinkRoute
   '/v2/remote/hosts/$hostId/telegram-route': typeof V2RemoteHostsHostIdTelegramRouteRoute
   '/v2/remote/hosts/$hostId/ticket': typeof V2RemoteHostsHostIdTicketRoute
+  '/v2/remote/hosts/$hostId/web-notification': typeof V2RemoteHostsHostIdWebNotificationRoute
   '/v2/remote/hosts/$hostId/webhook-route': typeof V2RemoteHostsHostIdWebhookRouteRoute
   '/v2/remote/hosts/$hostId/webhook-routes': typeof V2RemoteHostsHostIdWebhookRoutesRoute
   '/v2/remote/sessions/$sessionId/end': typeof V2RemoteSessionsSessionIdEndRoute
@@ -1859,6 +1876,7 @@ export interface FileRoutesById {
   '/v2/server-claims/redeem': typeof V2ServerClaimsRedeemRoute
   '/v2/slack/authorize': typeof V2SlackAuthorizeRoute
   '/v2/slack/callback': typeof V2SlackCallbackRoute
+  '/v2/web-push/config': typeof V2WebPushConfigRoute
   '/marketplace/skills/': typeof MarketplaceSkillsIndexRoute
   '/v1/agent-templates/': typeof V1AgentTemplatesIndexRoute
   '/v1/sites/': typeof V1SitesIndexRoute
@@ -1947,6 +1965,7 @@ export interface FileRoutesById {
   '/v2/remote/hosts/$hostId/telegram-link': typeof V2RemoteHostsHostIdTelegramLinkRoute
   '/v2/remote/hosts/$hostId/telegram-route': typeof V2RemoteHostsHostIdTelegramRouteRoute
   '/v2/remote/hosts/$hostId/ticket': typeof V2RemoteHostsHostIdTicketRoute
+  '/v2/remote/hosts/$hostId/web-notification': typeof V2RemoteHostsHostIdWebNotificationRoute
   '/v2/remote/hosts/$hostId/webhook-route': typeof V2RemoteHostsHostIdWebhookRouteRoute
   '/v2/remote/hosts/$hostId/webhook-routes': typeof V2RemoteHostsHostIdWebhookRoutesRoute
   '/v2/remote/sessions/$sessionId/end': typeof V2RemoteSessionsSessionIdEndRoute
@@ -2069,6 +2088,7 @@ export interface FileRouteTypes {
     | '/v2/server-claims/redeem'
     | '/v2/slack/authorize'
     | '/v2/slack/callback'
+    | '/v2/web-push/config'
     | '/marketplace/skills/'
     | '/v1/agent-templates/'
     | '/v1/sites/'
@@ -2157,6 +2177,7 @@ export interface FileRouteTypes {
     | '/v2/remote/hosts/$hostId/telegram-link'
     | '/v2/remote/hosts/$hostId/telegram-route'
     | '/v2/remote/hosts/$hostId/ticket'
+    | '/v2/remote/hosts/$hostId/web-notification'
     | '/v2/remote/hosts/$hostId/webhook-route'
     | '/v2/remote/hosts/$hostId/webhook-routes'
     | '/v2/remote/sessions/$sessionId/end'
@@ -2277,6 +2298,7 @@ export interface FileRouteTypes {
     | '/v2/server-claims/redeem'
     | '/v2/slack/authorize'
     | '/v2/slack/callback'
+    | '/v2/web-push/config'
     | '/marketplace/skills'
     | '/v1/agent-templates'
     | '/v1/sites'
@@ -2365,6 +2387,7 @@ export interface FileRouteTypes {
     | '/v2/remote/hosts/$hostId/telegram-link'
     | '/v2/remote/hosts/$hostId/telegram-route'
     | '/v2/remote/hosts/$hostId/ticket'
+    | '/v2/remote/hosts/$hostId/web-notification'
     | '/v2/remote/hosts/$hostId/webhook-route'
     | '/v2/remote/hosts/$hostId/webhook-routes'
     | '/v2/remote/sessions/$sessionId/end'
@@ -2489,6 +2512,7 @@ export interface FileRouteTypes {
     | '/v2/server-claims/redeem'
     | '/v2/slack/authorize'
     | '/v2/slack/callback'
+    | '/v2/web-push/config'
     | '/marketplace/skills/'
     | '/v1/agent-templates/'
     | '/v1/sites/'
@@ -2577,6 +2601,7 @@ export interface FileRouteTypes {
     | '/v2/remote/hosts/$hostId/telegram-link'
     | '/v2/remote/hosts/$hostId/telegram-route'
     | '/v2/remote/hosts/$hostId/ticket'
+    | '/v2/remote/hosts/$hostId/web-notification'
     | '/v2/remote/hosts/$hostId/webhook-route'
     | '/v2/remote/hosts/$hostId/webhook-routes'
     | '/v2/remote/sessions/$sessionId/end'
@@ -2685,6 +2710,7 @@ export interface RootRouteChildren {
   V2ServerClaimsRedeemRoute: typeof V2ServerClaimsRedeemRoute
   V2SlackAuthorizeRoute: typeof V2SlackAuthorizeRoute
   V2SlackCallbackRoute: typeof V2SlackCallbackRoute
+  V2WebPushConfigRoute: typeof V2WebPushConfigRoute
   MarketplaceSkillsIndexRoute: typeof MarketplaceSkillsIndexRoute
   V1AgentTemplatesIndexRoute: typeof V1AgentTemplatesIndexRoute
   V1SitesIndexRoute: typeof V1SitesIndexRoute
@@ -2753,6 +2779,7 @@ export interface RootRouteChildren {
   V2RemoteHostsHostIdTelegramLinkRoute: typeof V2RemoteHostsHostIdTelegramLinkRoute
   V2RemoteHostsHostIdTelegramRouteRoute: typeof V2RemoteHostsHostIdTelegramRouteRoute
   V2RemoteHostsHostIdTicketRoute: typeof V2RemoteHostsHostIdTicketRoute
+  V2RemoteHostsHostIdWebNotificationRoute: typeof V2RemoteHostsHostIdWebNotificationRoute
   V2RemoteHostsHostIdWebhookRouteRoute: typeof V2RemoteHostsHostIdWebhookRouteRoute
   V2RemoteHostsHostIdWebhookRoutesRoute: typeof V2RemoteHostsHostIdWebhookRoutesRoute
   V2RemoteSessionsSessionIdEndRoute: typeof V2RemoteSessionsSessionIdEndRoute
@@ -3548,6 +3575,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof V2SlackCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v2/web-push/config': {
+      id: '/v2/web-push/config'
+      path: '/v2/web-push/config'
+      fullPath: '/v2/web-push/config'
+      preLoaderRoute: typeof V2WebPushConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scim/v2/Users/': {
       id: '/scim/v2/Users/'
       path: '/scim/v2/Users'
@@ -4143,6 +4177,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof V2RemoteHostsHostIdTicketRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v2/remote/hosts/$hostId/web-notification': {
+      id: '/v2/remote/hosts/$hostId/web-notification'
+      path: '/v2/remote/hosts/$hostId/web-notification'
+      fullPath: '/v2/remote/hosts/$hostId/web-notification'
+      preLoaderRoute: typeof V2RemoteHostsHostIdWebNotificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/v2/remote/hosts/$hostId/webhook-route': {
       id: '/v2/remote/hosts/$hostId/webhook-route'
       path: '/v2/remote/hosts/$hostId/webhook-route'
@@ -4552,6 +4593,7 @@ const rootRouteChildren: RootRouteChildren = {
   V2ServerClaimsRedeemRoute: V2ServerClaimsRedeemRoute,
   V2SlackAuthorizeRoute: V2SlackAuthorizeRoute,
   V2SlackCallbackRoute: V2SlackCallbackRoute,
+  V2WebPushConfigRoute: V2WebPushConfigRoute,
   MarketplaceSkillsIndexRoute: MarketplaceSkillsIndexRoute,
   V1AgentTemplatesIndexRoute: V1AgentTemplatesIndexRoute,
   V1SitesIndexRoute: V1SitesIndexRoute,
@@ -4626,6 +4668,8 @@ const rootRouteChildren: RootRouteChildren = {
   V2RemoteHostsHostIdTelegramLinkRoute: V2RemoteHostsHostIdTelegramLinkRoute,
   V2RemoteHostsHostIdTelegramRouteRoute: V2RemoteHostsHostIdTelegramRouteRoute,
   V2RemoteHostsHostIdTicketRoute: V2RemoteHostsHostIdTicketRoute,
+  V2RemoteHostsHostIdWebNotificationRoute:
+    V2RemoteHostsHostIdWebNotificationRoute,
   V2RemoteHostsHostIdWebhookRouteRoute: V2RemoteHostsHostIdWebhookRouteRoute,
   V2RemoteHostsHostIdWebhookRoutesRoute: V2RemoteHostsHostIdWebhookRoutesRoute,
   V2RemoteSessionsSessionIdEndRoute: V2RemoteSessionsSessionIdEndRoute,

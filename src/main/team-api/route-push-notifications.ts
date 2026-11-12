@@ -10,8 +10,17 @@ import {
   PUSH_NOTIFICATIONS_CAPABILITY,
   PUSH_NOTIFICATIONS_ROUTES,
 } from "@openbot/contracts/team-protocol/push-notifications-v1";
+import {
+  WEB_PUSH_NOTIFICATIONS_CAPABILITY,
+  WEB_PUSH_NOTIFICATIONS_ROUTES,
+} from "@openbot/contracts/team-protocol/push-notifications-web-v1";
 import { sourceText } from "@openbot/i18n/source";
-import { type PushTarget, readAndroidPushRegistration, readPushRegistration } from "../push-notification-store";
+import {
+  type PushTarget,
+  readAndroidPushRegistration,
+  readPushRegistration,
+  readWebPushRegistration,
+} from "../push-notification-store";
 import type { PushNotificationService } from "../push-notifications";
 import { HttpError } from "./http-error";
 import type { RouteOutcome, TeamApiRequestContext } from "./request-context";
@@ -20,7 +29,8 @@ import { readJson } from "./request-helpers";
 /**
  * The phone of the calling member gives or removes its push token and the events it wants. The host
  * sends notifications only for what this member can see. Frozen by `push-notifications-v1` for an
- * iPhone and by `push-notifications-android-v1` for an Android phone. A phone of either platform says
+ * iPhone, by `push-notifications-android-v1` for an Android phone, and by `push-notifications-web-v1`
+ * for a web client, which gives its push subscription in place of a token. A phone of either platform says
  * through `push-notification-threads-v1` whether it takes the notifications of side thread turns.
  */
 export async function routePushNotifications(
@@ -49,7 +59,7 @@ export async function routePushNotifications(
     notifications.remove(sessionId);
     return json(200, {});
   }
-  const target = readTarget(route.android, body);
+  const target = readTarget(route.platform, body);
   if (!target) throw new HttpError(400, sourceText("error.team.pushNotificationsUnsupported"));
   notifications.register(sessionId, { memberId: member.id, protocol, capabilities }, target);
   return json(200, {});
@@ -61,25 +71,36 @@ function pushRoute(pathname: string) {
     case PUSH_NOTIFICATIONS_ROUTES.remove:
       return {
         capability: PUSH_NOTIFICATIONS_CAPABILITY,
-        android: false,
+        platform: "ios",
         remove: pathname === PUSH_NOTIFICATIONS_ROUTES.remove,
-      };
+      } as const;
     case ANDROID_PUSH_NOTIFICATIONS_ROUTES.register:
     case ANDROID_PUSH_NOTIFICATIONS_ROUTES.remove:
       return {
         capability: ANDROID_PUSH_NOTIFICATIONS_CAPABILITY,
-        android: true,
+        platform: "android",
         remove: pathname === ANDROID_PUSH_NOTIFICATIONS_ROUTES.remove,
-      };
+      } as const;
+    case WEB_PUSH_NOTIFICATIONS_ROUTES.register:
+    case WEB_PUSH_NOTIFICATIONS_ROUTES.remove:
+      return {
+        capability: WEB_PUSH_NOTIFICATIONS_CAPABILITY,
+        platform: "web",
+        remove: pathname === WEB_PUSH_NOTIFICATIONS_ROUTES.remove,
+      } as const;
     default:
       return null;
   }
 }
 
-function readTarget(android: boolean, body: unknown): PushTarget | null {
-  if (android) {
+function readTarget(platform: "ios" | "android" | "web", body: unknown): PushTarget | null {
+  if (platform === "android") {
     const value = readAndroidPushRegistration(body);
     return value ? { platform: "android", value } : null;
+  }
+  if (platform === "web") {
+    const value = readWebPushRegistration(body);
+    return value ? { platform: "web", value } : null;
   }
   const value = readPushRegistration(body);
   return value ? { value } : null;
