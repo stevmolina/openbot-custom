@@ -1,4 +1,4 @@
-import { CHAT_MERMAID_FONT_FAMILY, mermaidImageUrl } from "@openbot/contracts/chat-preview";
+import { CHAT_MERMAID_ELK, CHAT_MERMAID_FONT_FAMILY, mermaidImageUrl } from "@openbot/contracts/chat-preview";
 import type { DocumentColorScheme } from "../../document-color-scheme";
 
 type Mermaid = typeof import("mermaid")["default"];
@@ -32,6 +32,7 @@ function initializeMermaid(api: Mermaid, scheme: DocumentColorScheme): void {
     fontFamily: CHAT_MERMAID_FONT_FAMILY,
     // HTML labels write a line break as an unclosed `<br>`, and an image of that SVG does not load.
     htmlLabels: false,
+    elk: CHAT_MERMAID_ELK,
     suppressErrorRendering: true,
   });
 }

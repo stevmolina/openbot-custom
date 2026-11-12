@@ -66,6 +66,14 @@ export const CHAT_MERMAID_FONT_FAMILY =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 /**
+ * The ELK layout settings of a Mermaid diagram. Mermaid 12.1 and later lay out flowcharts with ELK,
+ * and its default node placement pushes the labels of two opposite edges, such as
+ * `A -->|orders| B` and `B -->|status| A`, into the boxes (mermaid-js/mermaid#8580). Network simplex
+ * keeps them apart. A diagram can still set its own in its front matter.
+ */
+export const CHAT_MERMAID_ELK = { nodePlacementStrategy: "NETWORK_SIMPLEX" } as const;
+
+/**
  * A Mermaid SVG as an image with its own size. Mermaid writes `width="100%"` and a `max-width`
  * style, so an `<img>` of the SVG would have no natural size. The viewBox gives the drawn size.
  */
