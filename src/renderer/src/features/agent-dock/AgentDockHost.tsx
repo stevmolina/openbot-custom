@@ -516,6 +516,7 @@ function ScreenAgentDock(props: { serverId: string }) {
       edge: preference().edge,
       autoHide: preference().autoHide,
       edgeStrip: preference().edgeStrip,
+      peekOnAttention: preference().peekOnAttention,
       sizePercent: preference().sizePercent,
       offsets: preference().offsets.map((item) => ({ ...item })),
       seats: dock

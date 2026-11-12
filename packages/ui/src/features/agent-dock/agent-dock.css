@@ -229,6 +229,36 @@
   transform: scale(1.12);
 }
 
+/* A seat that needs the user: a soft halo breathes behind the face a few times, then stays faint, so a
+   question that waits long costs no frames. */
+.agent-dock-seat-button[data-calling] {
+  isolation: isolate;
+}
+
+.agent-dock-seat-button[data-calling]::before {
+  position: absolute;
+  z-index: -1;
+  inset: -3px;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-accent-soft);
+  content: "";
+  opacity: 0.55;
+  animation: agent-dock-calling 2s var(--openbot-ease-in-out) 3;
+}
+
+@keyframes agent-dock-calling {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+}
+
 /* A dragged seat is lifted above the other seats, which make room for it. */
 .agent-dock-seat[data-dragging] {
   z-index: 1;
@@ -797,7 +827,8 @@
     transition: none;
   }
 
-  .agent-dock-shelf-item {
+  .agent-dock-shelf-item,
+  .agent-dock-seat-button[data-calling]::before {
     animation: none;
   }
 }

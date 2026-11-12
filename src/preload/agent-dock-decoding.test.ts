@@ -38,6 +38,7 @@ const PRESENTATION: AgentDockPresentation = {
   edge: "left",
   autoHide: true,
   edgeStrip: false,
+  peekOnAttention: true,
   sizePercent: 85,
   offsets: [{ displayId: 69733382, offset: 0 }],
   seats: [

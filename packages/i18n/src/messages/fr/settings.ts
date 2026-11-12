@@ -288,6 +288,9 @@ export const messages = {
     "Faites glisser pour changer la taille du dock au-dessus des autres apps. Dans la fenêtre principale, le dock suit la taille de l’interface.",
   "settings.agentDock.autoHide.title": "Masquer quand inutilisé",
   "settings.agentDock.autoHide.description": "Le dock glisse dans le bord. Amenez le pointeur au bord pour l’afficher.",
+  "settings.agentDock.peek.title": "Afficher quand un agent a besoin de vous",
+  "settings.agentDock.peek.description":
+    "Le dock masqué sort quand un agent vous pose une question ou vous répond. Il reste visible tant qu’une question attend.",
   "settings.agentDock.edgeStrip.title": "Afficher une bande au bord",
   "settings.agentDock.edgeStrip.description":
     "Une fine bande reste là où le dock se cache. Approchez le pointeur pour afficher le dock. Une vague de couleur monte dans la bande quand un agent vous pose une question.",

@@ -279,6 +279,9 @@ export const messages = {
     "Przeciągnij, aby zmienić rozmiar doku nad innymi aplikacjami. W oknie głównym dok ma rozmiar interfejsu.",
   "settings.agentDock.autoHide.title": "Ukrywaj, gdy nieużywany",
   "settings.agentDock.autoHide.description": "Dok chowa się w krawędzi. Przesuń wskaźnik do krawędzi, aby go pokazać.",
+  "settings.agentDock.peek.title": "Pokazuj, gdy agent cię potrzebuje",
+  "settings.agentDock.peek.description":
+    "Ukryty dok wysuwa się, gdy agent o coś pyta lub odpowiada. Zostaje widoczny, dopóki pytanie czeka.",
   "settings.agentDock.edgeStrip.title": "Pokazuj pasek przy krawędzi",
   "settings.agentDock.edgeStrip.description":
     "Cienki pasek zostaje tam, gdzie chowa się dok. Zbliż do niego wskaźnik, aby pokazać dok. Gdy agent o coś pyta, przez pasek przechodzi fala kolorów.",

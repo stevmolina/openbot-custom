@@ -279,6 +279,9 @@ export const messages = defineMessages("settings", {
     "Drag to change the size of the dock above the other apps. In the main window, the dock follows the interface size.",
   "settings.agentDock.autoHide.title": "Hide when not in use",
   "settings.agentDock.autoHide.description": "The dock slides into the edge. Move the pointer to the edge to show it.",
+  "settings.agentDock.peek.title": "Show when an agent needs you",
+  "settings.agentDock.peek.description":
+    "The hidden dock comes out when an agent asks you something or answers you. It stays out while a question waits.",
   "settings.agentDock.edgeStrip.title": "Show a strip at the edge",
   "settings.agentDock.edgeStrip.description":
     "A thin strip stays where the dock hides. Move the pointer near it to show the dock. A color wash goes up the strip when an agent asks you something.",

@@ -253,6 +253,8 @@ export const PANEL_CLOSE: SpringConfig = { stiffness: 280, damping: 33 };
 export const STRETCH_FOLLOW: SpringConfig = { stiffness: 300, damping: 30 };
 /** The dock slides out of the edge with a small overshoot, so it seems to flow out of the frame. */
 export const TUCK: SpringConfig = { stiffness: 260, damping: 22 };
+/** The dock comes out by itself, because an agent needs the user: slower, and with no overshoot. */
+export const TUCK_CALM: SpringConfig = { stiffness: 120, damping: 22 };
 /** The longest pull of a dock end during a drag, in px. */
 export const MAX_STRETCH = 14;
 /** The pull of a dock end for each px/ms of drag speed. */

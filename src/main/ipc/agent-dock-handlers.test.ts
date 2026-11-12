@@ -46,6 +46,7 @@ const PRESENTATION: AgentDockPresentation = {
   edge: "right",
   autoHide: false,
   edgeStrip: true,
+  peekOnAttention: true,
   sizePercent: 120,
   offsets: [{ displayId: 1, offset: 0.25 }],
   seats: [
@@ -174,6 +175,8 @@ describe("agent dock handlers", () => {
       { edge: "top" },
       { autoHide: "yes" },
       { edgeStrip: "yes" },
+      { peekOnAttention: "yes" },
+      { peekOnAttention: undefined },
       { sizePercent: 141 },
       { sizePercent: 69 },
       { sizePercent: 100.5 },

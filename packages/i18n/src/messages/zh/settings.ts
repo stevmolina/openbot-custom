@@ -264,6 +264,8 @@ export const messages = {
   "settings.agentDock.size.description": "拖动以更改显示在其他应用上方的停靠栏大小。在主窗口中，停靠栏跟随界面大小。",
   "settings.agentDock.autoHide.title": "不使用时隐藏",
   "settings.agentDock.autoHide.description": "停靠栏会滑入边缘。将指针移到边缘即可显示。",
+  "settings.agentDock.peek.title": "智能体需要你时显示",
+  "settings.agentDock.peek.description": "智能体向你提问或回复你时，隐藏的停靠栏会滑出。有问题等待时，它会一直显示。",
   "settings.agentDock.edgeStrip.title": "在边缘显示细条",
   "settings.agentDock.edgeStrip.description":
     "停靠栏隐藏后，边缘会留下一条细条。将指针移近即可显示停靠栏。当代理向你提问时，细条上会有一道彩色波浪经过。",

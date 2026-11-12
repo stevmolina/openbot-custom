@@ -274,6 +274,9 @@ export const messages = {
     "ドラッグして、他のアプリの上に表示するドックのサイズを変更します。メインウィンドウでは、ドックはインターフェイスのサイズに従います。",
   "settings.agentDock.autoHide.title": "使用していないときは隠す",
   "settings.agentDock.autoHide.description": "ドックが端に隠れます。ポインタを端に移動すると表示されます。",
+  "settings.agentDock.peek.title": "エージェントが呼んだら表示",
+  "settings.agentDock.peek.description":
+    "エージェントが質問や返信をすると、隠れたドックが出てきます。質問が待っている間は表示されたままです。",
   "settings.agentDock.edgeStrip.title": "端に細い帯を表示",
   "settings.agentDock.edgeStrip.description":
     "ドックが隠れた場所に細い帯が残ります。ポインタを近づけるとドックが表示されます。エージェントから質問があると、帯に色の波が流れます。",

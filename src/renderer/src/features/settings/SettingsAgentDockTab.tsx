@@ -175,6 +175,14 @@ export function SettingsAgentDockTab(props: { model: AgentDockSettingsModel; sel
             description={i18n.t("settings.agentDock.autoHide.description")}
           />
           <SwitchField
+            data-settings-row="settings.agentDock.peek.title"
+            checked={preference().peekOnAttention}
+            disabled={!aboveApps() || !preference().autoHide}
+            onChange={(peekOnAttention) => setAgentDockPreference({ peekOnAttention })}
+            label={i18n.t("settings.agentDock.peek.title")}
+            description={i18n.t("settings.agentDock.peek.description")}
+          />
+          <SwitchField
             data-settings-row="settings.agentDock.edgeStrip.title"
             checked={preference().edgeStrip}
             disabled={!aboveApps() || !preference().autoHide}
