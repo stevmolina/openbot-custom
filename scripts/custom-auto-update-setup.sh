@@ -10,10 +10,14 @@
 # any checkout of the repository: the job uses the main checkout (the first worktree) for git.
 set -euo pipefail
 
-label="app.openbot.custom.autoupdate"
-state="$HOME/.local/state/openbot-custom-autoupdate"
+label="app.pokebots.autoupdate"
+state="$HOME/.local/state/pokebots-autoupdate"
 plist="$HOME/Library/LaunchAgents/$label.plist"
 domain="gui/$(id -u)"
+# The names before the rename to Pokebots. Install and remove take the old job away.
+legacy_label="app.openbot.custom.autoupdate"
+legacy_state="$HOME/.local/state/openbot-custom-autoupdate"
+legacy_plist="$HOME/Library/LaunchAgents/$legacy_label.plist"
 here="$(cd "$(dirname "$0")/.." && pwd)"
 source_repo="$(git -C "$here" worktree list --porcelain | sed -n '1s/^worktree //p')"
 
@@ -28,7 +32,8 @@ case "${1:-}" in
     ;;
   --remove)
     launchctl bootout "$domain/$label" 2>/dev/null || true
-    rm -f "$plist"
+    launchctl bootout "$domain/$legacy_label" 2>/dev/null || true
+    rm -f "$plist" "$legacy_plist"
     echo "Removed the job. The state stays in $state."
     exit 0
     ;;
@@ -38,6 +43,27 @@ case "${1:-}" in
     exit 2
     ;;
 esac
+
+# Move the job from its old name. Wait for a run of the old job to end, so that its build
+# worktree and lock are not moved under it. The build worktree is registered in the checkout,
+# so tell git where it is now.
+if [[ -f "$legacy_plist" ]] || launchctl print "$domain/$legacy_label" >/dev/null 2>&1; then
+  launchctl bootout "$domain/$legacy_label" 2>/dev/null || true
+  rm -f "$legacy_plist"
+  echo "Removed the old job $legacy_label."
+fi
+if [[ -d "$legacy_state" && ! -e "$state" ]]; then
+  for _ in $(seq 1 600); do
+    owner="$(cat "$legacy_state/lock/pid" 2>/dev/null || true)"
+    if [[ -z "$owner" ]] || ! kill -0 "$owner" 2>/dev/null; then break; fi
+    sleep 1
+  done
+  mkdir -p "$(dirname "$state")"
+  mv "$legacy_state" "$state"
+  rm -rf "$state/lock"
+  if [[ -d "$state/repo" ]]; then git -C "$source_repo" worktree repair "$state/repo" || true; fi
+  echo "Moved the state from $legacy_state to $state."
+fi
 
 mkdir -p "$state/bin" "$(dirname "$plist")"
 cp "$here/scripts/custom-auto-update.sh" "$state/bin/custom-auto-update.sh.new"
@@ -57,7 +83,7 @@ cat >"$plist" <<EOF
   </array>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>OPENBOT_CUSTOM_REPO</key><string>$source_repo</string>
+    <key>POKEBOTS_REPO</key><string>$source_repo</string>
     <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>StartInterval</key><integer>300</integer>

@@ -1,7 +1,8 @@
-# OpenBot Custom: upstream sync
+# Pokebots: upstream sync
 
-OpenBot Custom (`stevmolina/openbot-custom`) is a fork of `nightly-labs/openbot`. Each sync is a real
-merge commit, so the next sync starts from the last merged upstream commit.
+Pokebots (`stevmolina/pokebots`, named `openbot-custom` before 2026-11-12) is a fork of
+`nightly-labs/openbot`. Each sync is a real merge commit, so the next sync starts from the last
+merged upstream commit.
 
 ## Steps
 

@@ -298,9 +298,10 @@ They describe the enforced syntax, fixture behavior, and reasons for removed rul
 
 ## After merge: Pokebots app
 
-This repository is Steven's fork. Steven uses the `Pokebots` app (`/Applications/Pokebots.app`),
-which `electron-builder.custom.yml` builds. It was `OpenBot Custom` before. A launchd job on his
-Mac updates that app; agents do not.
+This repository is Steven's fork: `stevmolina/pokebots` on GitHub, checked out at
+`~/dev/projects/pokebots` (both were `openbot-custom` before 2026-11-12). Steven uses the `Pokebots`
+app (`/Applications/Pokebots.app`), which `electron-builder.custom.yml` builds. It was
+`OpenBot Custom` before. A launchd job on his Mac updates that app; agents do not.
 
 - The job (`scripts/custom-auto-update.sh`) checks `origin/main` every 5 minutes. On a new commit
   that changes the app, it builds it, waits until no local agent works (10 minutes at most), quits
