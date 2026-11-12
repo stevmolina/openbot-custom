@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-11-12T00:14:39.194Z",
+  "platform": "mac",
+  "passed": 14,
+  "failed": 0,
+  "skipped": 0,
+  "results": [
+    {
+      "name": "Shortcut sheet opens",
+      "keys": "Meta+/",
+      "status": "passed",
+      "detail": "35 rows in Navigation, Chat, Agents, View, Browser; on screen: true",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/sheet-dark.png"
+    },
+    {
+      "name": "Sheet filter",
+      "keys": "type",
+      "status": "passed",
+      "detail": "Copy the last reply, Copy the last code block",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/sheet-filter.png"
+    },
+    {
+      "name": "Sheet closes",
+      "keys": "Escape",
+      "status": "passed",
+      "detail": "closed"
+    },
+    {
+      "name": "? opens the sheet outside a text field",
+      "keys": "?",
+      "status": "passed",
+      "detail": "opened with ?, closed with the same chord that opens it"
+    },
+    {
+      "name": "Sidebar toggles",
+      "keys": "Meta+B",
+      "status": "passed",
+      "detail": "aria-expanded true -> false -> true",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/sidebar-collapsed.png"
+    },
+    {
+      "name": "Next and previous chat",
+      "keys": "Alt+↓ / Alt+↑",
+      "status": "passed",
+      "detail": "agent:chief -> agent:research -> agent:chief",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/previous-chat.png"
+    },
+    {
+      "name": "Next unread chat",
+      "keys": "Alt+Shift+↓ or ↑",
+      "status": "passed",
+      "detail": "agent:chief -> channel:channel-launch-room; unread rows were channel:channel-launch-room",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/unread-chat.png"
+    },
+    {
+      "name": "Focus the message box",
+      "keys": "Shift+Escape",
+      "status": "passed",
+      "detail": "message box focused: true"
+    },
+    {
+      "name": "Typing goes to the message box",
+      "keys": "h",
+      "status": "passed",
+      "detail": "{\"focused\":true,\"text\":\"hi\"}",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/type-to-composer.png"
+    },
+    {
+      "name": "Copy the last reply",
+      "keys": "Meta+Shift+C",
+      "status": "passed",
+      "detail": "Copied the last reply",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/copy-last-reply.png"
+    },
+    {
+      "name": "Copy the last code block",
+      "keys": "Meta+Shift+;",
+      "status": "passed",
+      "detail": "Copied the last code block"
+    },
+    {
+      "name": "Tooltip names the key",
+      "keys": "hover",
+      "status": "passed",
+      "detail": "Search⌘K",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/tooltip.png"
+    },
+    {
+      "name": "New chat",
+      "keys": "Meta+N",
+      "status": "passed",
+      "detail": "the new agent form shows: true",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/new-chat.png"
+    },
+    {
+      "name": "Sheet in the light theme",
+      "keys": "Meta+/",
+      "status": "passed",
+      "detail": "appearance light, then dark again",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-c0ca45c0/.openbot-build/keyboard-shortcuts/sheet-light.png"
+    }
+  ]
+}
