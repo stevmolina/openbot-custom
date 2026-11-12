@@ -2757,31 +2757,38 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     showAgents();
     setCreating(true);
   }
-  /** The tab of the phone tab bar that shows. */
-  const phoneTab = (): WebPhoneTab => {
-    if (searchOpen()) return "search";
-    if (serversOpen()) return "servers";
-    return page() === "settings" ? "settings" : "chats";
+  /** The tab of the phone tab bar that shows. A page that no tab holds, such as Usage, shows none. */
+  const phoneTab = (): WebPhoneTab | null => {
+    const current = page();
+    if (current === "settings" || current === "tasks" || current === "workflows") return current;
+    return current === "agents" ? "chats" : null;
   };
+  /** Tasks and Workflows show only when the server has them, as in the pill of a larger screen. */
+  const phoneTabAvailable = (tab: WebPhoneTab) =>
+    tab === "tasks" ? tasksSupported() : tab === "workflows" ? workflowsSupported() : true;
   /**
    * A tab of the phone tab bar. Chats shows the list, also from a pushed chat or a page, as a second
-   * tap on an iOS tab goes back to its root. Servers opens and closes the server drawer over the list.
+   * tap on an iOS tab goes back to its root.
    */
   function selectPhoneTab(tab: WebPhoneTab) {
-    if (tab === "search") {
-      setServersOpen(false);
-      setSearchOpen(true);
-      return;
-    }
+    setServersOpen(false);
     if (tab === "settings") {
-      setServersOpen(false);
       openAccountSettings();
       return;
     }
-    const drawer = tab === "servers" && !serversOpen();
+    if (tab === "tasks" || tab === "workflows") {
+      const id = server()?.id;
+      if (id) void openHostPage(id, tab, null);
+      return;
+    }
     showAgents();
     setMobilePane("workspace");
-    setServersOpen(drawer);
+  }
+  /** The server drawer, from the title of the chat list. */
+  function openPhoneServers() {
+    showAgents();
+    setMobilePane("workspace");
+    setServersOpen(true);
   }
   /** The drawer closes when a server is chosen in it, as the iOS drawer does. */
   function selectDrawerServer(id: string) {
@@ -3216,6 +3223,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     view={layout.sidebarView()}
                     serverName={workspace.state.host?.name ?? "OpenBot"}
                     largeTitle={phone()}
+                    onOpenServers={phone() ? openPhoneServers : undefined}
                     serverUpdate={(() => {
                       const id = server()?.id;
                       const badge = id ? serverUpdateBadge(id) : null;
@@ -3337,7 +3345,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                         onClick={() => setServersOpen(false)}
                       />
                     </Show>
-                    <WebMobileNavigation active={phoneTab()} onSelect={selectPhoneTab} />
+                    <WebMobileNavigation active={phoneTab()} available={phoneTabAvailable} onSelect={selectPhoneTab} />
                   </Show>
                 </>
               }

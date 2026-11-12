@@ -19,8 +19,6 @@ export const messages = {
   "webClient.login.responseInvalid": "Некорректный ответ при входе.",
   "webClient.pane.navigation": "Навигация по рабочему пространству",
   "webClient.tab.chats": "Чаты",
-  "webClient.tab.servers": "Серверы",
-  "webClient.tab.search": "Поиск",
   "webClient.tab.settings": "Настройки",
   "webClient.notice.connecting": "Подключение к вашему серверу",
   "webClient.notice.findingHosts": "Поиск ваших серверов",

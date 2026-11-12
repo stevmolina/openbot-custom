@@ -8,8 +8,9 @@
  * - `data-web-phone-servers`: the server drawer is open over the list.
  * - `data-web-phone-swiping` and `--web-phone-swipe` (0 to 1): a finger drags the chat back to the list.
  *
- * Layers, from the back: the list, the drawer scrim, the server drawer, a page, the tab bar, the chat.
- * The chat covers the tab bar, as a pushed screen on iOS does.
+ * Layers, from the back: the list, the drawer scrim, the server drawer, a page, the fade under the tab
+ * bar, the tab bar, the chat. The chat covers the tab bar, as a pushed screen on iOS does. The tab bar
+ * floats over the bottom of the list, which scrolls under it.
  */
 
 .web-phone-tab-bar,
@@ -43,9 +44,16 @@
 
   .web-app-frame {
     --server-rail-width: 64px;
-    --web-phone-tab-bar-height: 50px;
+    --web-phone-tab-bar-height: 62px;
+    --web-phone-tab-bar-gap: var(--openbot-space-3);
     --web-phone-bottom-inset: env(safe-area-inset-bottom, 0px);
-    --web-phone-tab-bar-space: calc(var(--web-phone-tab-bar-height) + var(--web-phone-bottom-inset));
+    /* The room under the floating tab bar: the bar, its gap above and below, and the home indicator. */
+    --web-phone-tab-bar-space: calc(
+      var(--web-phone-tab-bar-height) +
+      var(--web-phone-tab-bar-gap) *
+      2 +
+      var(--web-phone-bottom-inset)
+    );
     --web-phone-dir: 1;
     --web-phone-push-duration: calc(var(--openbot-duration-overlay) * 1.5);
     --web-phone-push-ease: cubic-bezier(0.32, 0.72, 0, 1);
@@ -96,34 +104,48 @@
 
   /* ---------------------------------------------------------------- the tab bar */
 
+  /* A rounded bar that floats over the list, clear of the screen edges. */
   .web-phone-tab-bar {
+    position: absolute;
+    z-index: 5;
+    inset-inline: calc(var(--openbot-space-4) + env(safe-area-inset-left, 0px));
+    bottom: calc(var(--web-phone-tab-bar-gap) + var(--web-phone-bottom-inset));
+    display: grid;
+    height: var(--web-phone-tab-bar-height);
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    align-items: center;
+    border: 0.5px solid var(--openbot-border-strong);
+    border-radius: var(--openbot-radius-pill);
+    background: var(--openbot-bg-surface-raised);
+    padding: var(--openbot-space-1);
+    box-shadow: 0 10px 30px var(--openbot-shadow-dialog);
+  }
+
+  /* The list fades out under the bar, so no row shows in the gap at the screen edge. */
+  .web-app-frame::before {
     position: absolute;
     z-index: 5;
     inset-inline: 0;
     bottom: 0;
-    display: grid;
-    height: var(--web-phone-tab-bar-space);
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-items: start;
-    border-top: 0.5px solid var(--openbot-border-strong);
-    background: var(--openbot-bg-chrome-blur);
-    padding: 0 env(safe-area-inset-right, 0px) var(--web-phone-bottom-inset) env(safe-area-inset-left, 0px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
+    height: calc(var(--web-phone-tab-bar-space) + var(--openbot-space-6));
+    background: linear-gradient(to bottom, var(--openbot-bg-canvas-clear), var(--openbot-bg-canvas) 60%);
+    content: "";
+    pointer-events: none;
   }
 
   .web-phone-tab-bar .web-phone-tab.ui-button {
     display: flex;
-    height: var(--web-phone-tab-bar-height);
+    height: 100%;
     min-width: 0;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: var(--openbot-space-0-5);
     border: 0;
-    border-radius: 0;
+    border-radius: var(--openbot-radius-pill);
     background: transparent;
-    padding: var(--openbot-space-1) 0 0;
+    padding: 0;
     color: var(--openbot-text-muted);
     font-size: var(--openbot-text-sm);
     font-weight: var(--openbot-weight-medium);
@@ -142,6 +164,7 @@
   }
 
   .web-phone-tab-bar .web-phone-tab.ui-button[data-active="true"] {
+    background: var(--openbot-hover);
     color: var(--openbot-accent-text);
   }
 
@@ -154,12 +177,13 @@
 
   /* ---------------------------------------------------------------- the list at the root */
 
+  /* The list runs to the bottom of the screen, under the floating tab bar. */
   .web-app-frame > .sidebar {
     z-index: 0;
     display: flex;
     width: auto;
     grid-area: 1 / 1;
-    padding-bottom: var(--web-phone-tab-bar-space);
+    padding-bottom: 0;
   }
 
   .web-app-frame > :is(.sidebar, .web-phone-tab-bar) {
@@ -181,6 +205,10 @@
     visibility: hidden;
   }
 
+  .web-app-frame[data-web-mobile-pane="conversation"]::before {
+    visibility: hidden;
+  }
+
   /* The phone shows the list as a full screen, so it has no dock to collapse to. */
   .web-app-frame > .sidebar-chat .sidebar-chat-toggle {
     display: none;
@@ -195,18 +223,149 @@
     padding-inline: var(--openbot-space-3);
   }
 
-  /* The large title, as on the iOS home screen: the server name over the list. It scrolls away. */
+  /*
+   * One list: the title, the search field and every folder scroll together, so an open folder shows
+   * all of its chats. A larger screen keeps the folders in a dock over the pill instead.
+   */
+  .web-app-frame > .sidebar-chat .sidebar-chat-list {
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .web-app-frame > .sidebar-chat :is(.sidebar-chat-scroll, .sidebar-dock, .sidebar-dock-group, .sidebar-dock-body) {
+    flex: none;
+    overflow: visible;
+  }
+
+  .web-app-frame > .sidebar-chat .sidebar-dock {
+    border-top: 0;
+    padding-bottom: var(--web-phone-tab-bar-space);
+  }
+
+  /* The tab bar, the title and the More menu of the top row take the places of the pill and the usage. */
+  .web-app-frame > .sidebar-chat :is(.sidebar-chat-bottom, .sidebar-community-card) {
+    display: none;
+  }
+
+  /* An alert card stays, over the tab bar. */
+  .web-app-frame > .sidebar-chat .sidebar-chat-footer:not(:empty) {
+    padding-bottom: var(--web-phone-tab-bar-space);
+  }
+
+  /* The More menu of the pill sits in the top row, as a round button beside New. */
+  .web-app-frame > .sidebar-chat .sidebar-chat-top .sidebar-pill-button {
+    display: grid;
+    width: var(--sidebar-chat-control);
+    height: var(--sidebar-chat-control);
+    flex: none;
+    place-items: center;
+    border: 1px solid var(--openbot-border);
+    border-radius: var(--openbot-radius-pill);
+    background: var(--openbot-bg-surface);
+    box-shadow: var(--openbot-shadow-card);
+    padding: 0;
+    color: var(--openbot-text-primary);
+  }
+
+  /* The phone has no pill, so its More menu has nothing to pin. */
+  .ui-action-menu.sidebar-more-menu .sidebar-more-row .sidebar-more-pin[role="menuitemcheckbox"] {
+    display: none;
+  }
+
+  /* Folder headings read as the sections of the list. */
+  .web-app-frame > .sidebar-chat .sidebar-dock-head.ui-button {
+    min-height: 52px;
+    gap: var(--openbot-space-3);
+    padding: var(--openbot-space-3) var(--openbot-space-2);
+    color: var(--openbot-text-primary);
+    font-size: var(--openbot-text-xl);
+    font-weight: var(--openbot-weight-semibold);
+  }
+
+  .web-app-frame > .sidebar-chat .sidebar-dock-head :is(.sidebar-dock-folder, .sidebar-dock-chevron) {
+    color: var(--openbot-text-muted);
+  }
+
+  .web-app-frame > .sidebar-chat .sidebar-dock-head .sidebar-dock-folder {
+    width: 20px;
+    height: 20px;
+  }
+
+  .web-app-frame > .sidebar-chat .sidebar-dock-head .sidebar-dock-chevron {
+    width: 16px;
+    height: 16px;
+  }
+
+  .web-app-frame > .sidebar-chat .sidebar-dock-head .sidebar-dock-count {
+    font-size: var(--openbot-text-lg);
+    font-weight: var(--openbot-weight-medium);
+  }
+
+  .web-app-frame > .sidebar-chat .sidebar-dock-group + .sidebar-dock-group {
+    margin-top: var(--openbot-space-2);
+  }
+
+  /* The title: the server name over the list. It scrolls away, and a tap opens the server drawer. */
   .sidebar-chat-large-title {
     margin: 0;
-    padding: var(--openbot-space-1) var(--openbot-space-4) var(--openbot-space-2);
+    padding: var(--openbot-space-1) var(--openbot-space-4) var(--openbot-space-3);
     overflow: hidden;
     color: var(--openbot-text-primary);
-    font-size: var(--openbot-text-display);
+    font-size: var(--openbot-text-3xl);
     font-weight: var(--openbot-weight-bold);
     line-height: var(--openbot-leading-display);
     letter-spacing: var(--openbot-tracking-tight);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .sidebar-chat-large-title .sidebar-chat-large-title-button.ui-button {
+    display: inline-flex;
+    max-width: 100%;
+    height: auto;
+    align-items: center;
+    gap: var(--openbot-space-1-5);
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+  }
+
+  .sidebar-chat-large-title-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-chat-large-title-chevron {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    color: var(--openbot-text-muted);
+  }
+
+  /* The search field under the title. */
+  .sidebar-chat .sidebar-chat-search-field.ui-button {
+    display: flex;
+    width: calc(100% - var(--openbot-space-2));
+    height: 40px;
+    justify-content: flex-start;
+    gap: var(--openbot-space-2);
+    margin: 0 var(--openbot-space-1) var(--openbot-space-2);
+    border: 0;
+    border-radius: var(--openbot-radius-lg);
+    background: var(--openbot-bg-surface);
+    padding: 0 var(--openbot-space-3);
+    color: var(--openbot-text-muted);
+    font-size: var(--openbot-text-lg);
+    font-weight: var(--openbot-weight-regular);
+  }
+
+  .sidebar-chat .sidebar-chat-search-field.ui-button > svg {
+    width: var(--openbot-icon-md);
+    height: var(--openbot-icon-md);
   }
 
   /* The small title of the bar fades in when the large title has scrolled under the bar. */
@@ -359,6 +518,35 @@
   .web-app-frame[data-web-phone-swiping] > :is(.sidebar, .web-phone-tab-bar) {
     visibility: visible;
     transform: translateX(calc(var(--web-phone-dir) * (var(--web-phone-swipe, 0) - 1) * 30%));
+  }
+
+  /* The icons under each message go: a long press on the message opens the same actions. The time
+   * and the steps stay. */
+  .web-app-frame > .server-connection-workspace .message-action-row > .message-actions {
+    display: none;
+  }
+
+  /* The header of a chat shows the model as its logo only; a tap still opens the picker. */
+  .web-app-frame > .server-connection-workspace .conversation-header .provider-model-trigger {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    border-radius: var(--openbot-radius-pill);
+    padding: 0;
+  }
+
+  .web-app-frame
+    > .server-connection-workspace
+    .conversation-header
+    .provider-model-trigger
+    :is(.provider-model-trigger-name, .provider-model-trigger-effort),
+  .web-app-frame > .server-connection-workspace .conversation-header .provider-model-trigger > svg:last-child {
+    display: none;
+  }
+
+  /* The message box floats, as the tab bar of the list does. */
+  .web-app-frame > .server-connection-workspace .composer-wrap > .composer {
+    box-shadow: 0 10px 30px var(--openbot-shadow-dialog);
   }
 
   /* ---------------------------------------------------------------- dialogs as bottom sheets */

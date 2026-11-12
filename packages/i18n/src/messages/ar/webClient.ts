@@ -19,8 +19,6 @@ export const messages = {
   "webClient.login.responseInvalid": "استجابة تسجيل الدخول غير صالحة.",
   "webClient.pane.navigation": "التنقل في مساحة العمل",
   "webClient.tab.chats": "الدردشات",
-  "webClient.tab.servers": "الخوادم",
-  "webClient.tab.search": "بحث",
   "webClient.tab.settings": "الإعدادات",
   "webClient.notice.connecting": "جارٍ الاتصال بخادمك",
   "webClient.notice.findingHosts": "جارٍ البحث عن خوادمك",
