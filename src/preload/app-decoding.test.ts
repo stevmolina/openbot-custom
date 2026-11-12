@@ -257,6 +257,11 @@ const valid: [string, (value: unknown) => unknown, unknown][] = [
     { status: "signed_out", reason: "keyring_changed" } satisfies CentralAuthState,
   ],
   [
+    "signed out for WorkOS",
+    decodeCentralAuthState,
+    { status: "signed_out", provider: "workos" } satisfies CentralAuthState,
+  ],
+  [
     "company sign-in",
     decodeCentralAuthState,
     { status: "company_sign_in", email: "user@example.com" } satisfies CentralAuthState,
@@ -538,6 +543,7 @@ const malformed: [string, (value: unknown) => unknown, unknown][] = [
   ],
   ["an unknown account status", decodeCentralAuthState, { status: "banned" }],
   ["signed out with an unknown reason", decodeCentralAuthState, { status: "signed_out", reason: "expired" }],
+  ["signed out with an unknown provider", decodeCentralAuthState, { status: "signed_out", provider: "other" }],
   ["signed in without a user", decodeCentralAuthState, { status: "signed_in" }],
   ["code sent with a text expiry", decodeCentralAuthState, { ...codeSent, expiresAt: "soon" }],
   ["Mobile Connect ticket without data", decodeMobileConnectTicket, { expiresAt: 1 }],

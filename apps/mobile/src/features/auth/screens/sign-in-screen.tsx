@@ -25,7 +25,11 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { mobileAnalytics } from "@/features/analytics/mobile-analytics";
-import { type MobileSession, redeemMobileConnectUrl } from "@/features/auth/api/mobile-auth";
+import {
+  type MobileSession,
+  redeemMobileConnectUrl,
+  workosAccountSignInEnabled,
+} from "@/features/auth/api/mobile-auth";
 import type { EmailCodeInputHandle } from "@/features/auth/components/email-code-input";
 import { QrScanner, type ScannerMode, type ScanStatus } from "@/features/auth/components/qr-scanner";
 import {
@@ -166,6 +170,16 @@ export function SignInScreen({ notice }: { notice?: SignInNotice }) {
   }, [finished, reduced]);
 
   const signIn = useEmailSignIn({ connect: setFinished, reduced });
+  const [workosOnly, setWorkosOnly] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void workosAccountSignInEnabled().then((enabled) => {
+      if (!cancelled) setWorkosOnly(enabled);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const { step } = signIn;
   const emailInput = useRef<TextInputInstance>(null);
   const codeInput = useRef<EmailCodeInputHandle>(null);
@@ -402,6 +416,7 @@ export function SignInScreen({ notice }: { notice?: SignInNotice }) {
             onToggleHelp={() => undefined}
             onScan={() => undefined}
             onEmail={() => undefined}
+            workos={workosOnly}
             onLayout={setOptionsHeight}
             onHelpLayout={setHelpHeight}
             reduced={reduced}
@@ -426,7 +441,10 @@ export function SignInScreen({ notice }: { notice?: SignInNotice }) {
               helpShift={helpShift}
               onToggleHelp={() => setHelpOpen((open) => !open)}
               onScan={openScanner}
-              onEmail={signIn.openEmail}
+              onEmail={workosOnly ? signIn.startWorkos : signIn.openEmail}
+              workos={workosOnly}
+              busy={workosOnly && signIn.companySignIn}
+              issue={workosOnly ? signIn.emailIssue?.message : undefined}
               reduced={reduced}
             />
           </Animated.View>

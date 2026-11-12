@@ -67,6 +67,9 @@ function loadWorkspace(): Promise<typeof WebWorkspace> {
 /** A sign-in refusal that the login form already shows. */
 class SignInIssueShown extends Error {}
 
+/** The browser has no account session. The sign-in screen is the answer, not a service outage. */
+class SessionSignedOut extends Error {}
+
 /** The email signs in with the company's provider, not with an email code. */
 class CompanySignInRequired extends Error {
   constructor(readonly provider: "company" | "workos" = "company") {
@@ -231,6 +234,11 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
   /** Shown after the first session check, because its 401 resets the login state. */
   let companySignInReturnError = takeCompanySignInError();
   let workosSignInReturnError = takeCompanySignInError(WEB_APP_WORKOS_SIGN_IN_ERROR_PARAM);
+  /** This deployment signs the account in with WorkOS, so the email code stays hidden. */
+  let workosOnly = false;
+  function signedOutState(): CentralAuthState {
+    return { status: "signed_out", ...(workosOnly ? { provider: "workos" } : {}) };
+  }
   const [workspace, setWorkspace] = createSignal<typeof WebWorkspace>();
   /** Sets the account when the workspace code is ready to show it. */
   async function showAccount(account: CentralAuthUser) {
@@ -255,7 +263,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
     sessionGeneration += 1;
     setState((draft) => {
       draft.account = null;
-      draft.login = { status: "signed_out" };
+      draft.login = signedOutState();
     });
     resetAnalyticsBox();
   }
@@ -318,6 +326,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
         });
         throw new SignInIssueShown();
       }
+      if (response.status === 401 && path === "session") throw new SessionSignedOut();
       throw new Error(
         isDynamicRecord(value) && isDynamicRecord(value.error) && isString(value.error.message)
           ? value.error.message
@@ -383,8 +392,12 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
       }
     } catch (error) {
       if (!disposed && generation === sessionGeneration) {
-        // Signed in, the workspace stays usable. Signed out, the login screen offers a retry, as on desktop.
-        if (state.account)
+        // A missing session is the sign-in screen. Any other failure, while signed out, offers a retry.
+        if (error instanceof SessionSignedOut) {
+          setState((draft) => {
+            if (!draft.account) draft.login = signedOutState();
+          });
+        } else if (state.account)
           toast.error(
             text.sourceText(error instanceof Error ? error.message : text.t("webClient.login.sessionFailed")),
             { report: { operation: "other", source: "system", cause_code: classifyFailure(error) } },
@@ -455,7 +468,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
         credentials: "same-origin",
         cache: "no-store",
         headers: { "Content-Type": "application/json", "X-OpenBot-Browser": "1" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(email ? { email } : {}),
       },
     );
     const value = await response.json().catch(() => null);
@@ -518,13 +531,29 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
     clearSession();
     channel?.postMessage("session-changed");
   }
+  async function loadWorkosSignIn() {
+    try {
+      const response = await fetch("/api/browser/workos/start", {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) return;
+      const value = await response.json();
+      workosOnly = isDynamicRecord(value) && value.enabled === true;
+    } catch {
+      workosOnly = false;
+    }
+  }
   onSettled(() => {
     channel = new BroadcastChannel("openbot.web.session");
     channel.onmessage = () => {
       clearSession();
       void checkSession();
     };
-    void checkSession();
+    void loadWorkosSignIn().then(() => {
+      if (!disposed) void checkSession();
+    });
     // A page restored from the back-forward cache still has its session; its connection ends normally.
     // A browser also sends `pageshow` after a normal load, which can come after the session check.
     const restore = (event: PageTransitionEvent) => {
@@ -565,7 +594,9 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
                   onOpenCompanySignIn={() =>
                     state.login.status === "company_sign_in"
                       ? openCompanySignIn(state.login.email, state.login.provider ?? "company")
-                      : Promise.resolve()
+                      : state.login.status === "signed_out" && state.login.provider === "workos"
+                        ? openCompanySignIn("", "workos")
+                        : Promise.resolve()
                   }
                   onReset={async () => {
                     clearSession();

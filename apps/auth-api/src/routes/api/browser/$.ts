@@ -13,6 +13,7 @@ import {
   requestRemoteControlPlane,
   requestTeamInviteEmailDelivery,
   requestWorkosSignIn,
+  requestWorkosSignInEnabled,
 } from "../../../server/request-auth";
 import { requestSourceIp } from "../../../server/source-ip";
 
@@ -22,6 +23,7 @@ function handle({ request }: { request: Request }) {
     remote: requestRemoteControlPlane(),
     companySignIn: requestCompanySignIn,
     workosSignIn: requestWorkosSignIn,
+    workosEnabled: requestWorkosSignInEnabled(),
     hostLogo: (hostId, version) => readHostLogo(requestAvatarBucket(), hostId, version),
     hosting: requestHostedServerService,
     inviteEmailDelivery: requestTeamInviteEmailDelivery,

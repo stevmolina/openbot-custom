@@ -296,7 +296,7 @@ export type CentralAuthState =
    * `keyring_changed`: the Linux keyring did not open the saved sign-in, so OpenBot now keeps its
    * secrets in its own key file and the user signs in one more time.
    */
-  | { status: "signed_out"; reason?: CentralAuthSignedOutReason }
+  | { status: "signed_out"; reason?: CentralAuthSignedOutReason; provider?: "workos" }
   | { status: "signing_in" }
   | {
       status: "code_sent";

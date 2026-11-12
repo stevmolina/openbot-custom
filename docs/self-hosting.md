@@ -193,8 +193,10 @@ WORKOS_OIDC_CLIENT_SECRET. Set them through Wrangler secret input. Do not put th
 in a command argument or a log. The issuer is the AuthKit origin, not the WorkOS API origin.
 
 If any of these settings exists, email-code sign-in and the older company-provider account sign-in
-are closed. An incomplete configuration fails closed. Remove all three settings to return to the
-earlier email and company-provider paths. Existing sessions keep their normal revocation rules.
+are closed. An incomplete configuration fails closed. The sign-in screen then offers Continue with
+WorkOS and does not ask for an email code. WorkOS asks for the account. An email the client still
+sends is only a hint on the WorkOS page. Remove all three settings to return to the earlier email
+and company-provider paths. Existing sessions keep their normal revocation rules.
 
 The provider must return a signed ID token with the expected issuer, audience and nonce, an expiry,
 a subject, an email address and email_verified: true. A token that cannot be checked grants no

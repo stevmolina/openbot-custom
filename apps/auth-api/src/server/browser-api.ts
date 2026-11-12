@@ -79,6 +79,8 @@ export interface BrowserApiServices {
   /** The methods bind their service, so this is the whole service. */
   companySignIn: () => CompanySignInService;
   workosSignIn?: () => WorkosSignInService;
+  /** Whether this deployment uses WorkOS for the account. The sign-in screen reads it before a session. */
+  workosEnabled: boolean;
   /** The stored logo of one host version, or null. The handler checks membership and the version first. */
   hostLogo: (hostId: string, version: string) => ReturnType<typeof readHostLogo>;
   hosting: () => Pick<
@@ -312,10 +314,11 @@ const handleBrowserOperation = Effect.fn("BrowserApi.handleOperation")(function*
     response.headers.set("Set-Cookie", `${COOKIE}=${result.sessionToken}; ${COOKIE_ATTRIBUTES}; Max-Age=34560000`);
     return response;
   }
+  if (path === "workos/start" && request.method === "GET") return json({ enabled: services.workosEnabled });
   if (path === "workos/start" && request.method === "POST") {
-    // The email start answered `workos_sign_in_required`. The page goes to the answer in this tab.
+    // The page goes to WorkOS in this tab. The email is optional and is only a login hint.
     const body = yield* readJsonObject(request);
-    const email = yield* requiredString(body, "email");
+    const email = isString(body.email) ? body.email : "";
     const site = new URL(request.url);
     const clientState = randomToken(24);
     const verifier = randomToken(32);

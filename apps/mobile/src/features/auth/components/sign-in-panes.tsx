@@ -285,6 +285,9 @@ export function OptionsPane({
   onToggleHelp,
   onScan,
   onEmail,
+  workos = false,
+  busy = false,
+  issue,
   onLayout,
   onHelpLayout,
   reduced,
@@ -297,11 +300,16 @@ export function OptionsPane({
   onToggleHelp: () => void;
   onScan: () => void;
   onEmail: () => void;
+  /** This deployment signs in with WorkOS, so the email code is not offered. */
+  workos?: boolean;
+  busy?: boolean;
+  issue?: string;
   onLayout?: (height: number) => void;
   onHelpLayout?: (height: number) => void;
   reduced: boolean;
 }) {
   const { t } = useText();
+  const colors = useSignInColors();
   const riseStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -helpShift.get() }] }));
   return (
     <Animated.View style={riseStyle} onLayout={({ nativeEvent: { layout } }) => onLayout?.(layout.height)}>
@@ -320,7 +328,19 @@ export function OptionsPane({
       </PaneItem>
       <PaneItem index={2} motion={motion} className="mt-7 gap-3">
         <SignInButton brand icon={ScanLine} label={t("mobile.auth.scanQrCode")} onPress={onScan} reduced={reduced} />
-        <SignInButton brand={false} label={t("mobile.auth.signIn.emailButton")} onPress={onEmail} reduced={reduced} />
+        <SignInButton
+          brand={false}
+          label={t(workos ? "mobile.auth.email.workosContinue" : "mobile.auth.signIn.emailButton")}
+          labelKey={workos ? "workos" : "email"}
+          busy={busy}
+          onPress={onEmail}
+          reduced={reduced}
+        />
+        {issue ? (
+          <Typography.Paragraph type="body-sm" accessibilityRole="alert" style={{ color: colors.danger }}>
+            {issue}
+          </Typography.Paragraph>
+        ) : null}
       </PaneItem>
       <PaneItem index={3} motion={motion}>
         <HelpToggle open={helpOpen} onToggle={onToggleHelp} onBodyLayout={onHelpLayout} reduced={reduced} />

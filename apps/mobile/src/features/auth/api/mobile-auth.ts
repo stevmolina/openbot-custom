@@ -129,6 +129,21 @@ function mobileAccountApiUrl(): string {
   return (override && __DEV__ && normalizeAccountApiUrl(override)) || OPENBOT_CONTROL_PLANE_ORIGIN;
 }
 
+/** Whether this account service signs in with WorkOS. A failed look keeps the email code. */
+export async function workosAccountSignInEnabled(): Promise<boolean> {
+  try {
+    const response = await fetch(new URL("/v1/auth/workos/start", mobileAccountApiUrl()).toString(), {
+      method: "GET",
+      signal: AbortSignal.timeout(MOBILE_AUTH_REQUEST_TIMEOUT_MS),
+    });
+    if (!response.ok) return false;
+    const body = await response.json();
+    return isDynamicRecord(body) && body.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
 export interface MobileEmailChallenge {
   challengeId: string;
   email: string;
@@ -217,8 +232,8 @@ export async function signInMobileWithCompany(
   if (mobileConnectInFlight) throw new Error(currentText().t("mobile.auth.error.connectionInProgress"));
   mobileConnectInFlight = true;
   try {
-    const address = normalizeEmailAddress(email);
-    if (!address) {
+    const address = email.trim() ? normalizeEmailAddress(email) : "";
+    if (email.trim() ? !address : provider !== "workos") {
       throw new MobileEmailSignInError(currentText().t("mobile.auth.email.error.invalidEmail"), "invalid_email");
     }
     void retryMobileSessionRevocations();
@@ -233,7 +248,12 @@ export async function signInMobileWithCompany(
     );
     const start = await mobileEmailRequest(
       provider === "workos" ? "/v1/auth/workos/start" : "/v1/auth/company/start",
-      { email: address, returnTo: MOBILE_COMPANY_SIGN_IN_RETURN, clientState, clientChallenge: challenge },
+      {
+        ...(address ? { email: address } : {}),
+        returnTo: MOBILE_COMPANY_SIGN_IN_RETURN,
+        clientState,
+        clientChallenge: challenge,
+      },
       {},
       MOBILE_COMPANY_START_TIMEOUT_MS,
     );

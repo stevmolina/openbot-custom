@@ -95,6 +95,7 @@ const services: BrowserApiServices = {
   auth,
   remote,
   workosSignIn: () => workos,
+  workosEnabled: true,
   companySignIn: unused,
   hostLogo: unused,
   hosting: unused,
