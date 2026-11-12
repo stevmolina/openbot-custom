@@ -19,8 +19,6 @@ export const messages = {
   "webClient.login.responseInvalid": "サインインの応答が無効です。",
   "webClient.pane.navigation": "ワークスペースのナビゲーション",
   "webClient.tab.chats": "チャット",
-  "webClient.tab.servers": "サーバー",
-  "webClient.tab.search": "検索",
   "webClient.tab.settings": "設定",
   "webClient.notice.connecting": "サーバーに接続しています",
   "webClient.notice.findingHosts": "サーバーを探しています",

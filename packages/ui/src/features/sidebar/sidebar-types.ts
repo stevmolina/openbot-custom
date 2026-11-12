@@ -165,6 +165,8 @@ export interface SidebarProps {
    * phone.
    */
   largeTitle?: boolean | undefined;
+  /** Opens the list of servers from the large title. Without it, the title is plain text. */
+  onOpenServers?: (() => void) | undefined;
   /**
    * The server of the chats, as a small mark at the end of each row, with its name on hover. Set it
    * only while the user has more than one server, where the mark tells them apart.

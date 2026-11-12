@@ -68,7 +68,15 @@ function PillButton(props: {
   );
 }
 
-function PillMore(props: { pages: SidebarPages; list: readonly PillPage[]; vertical: boolean }) {
+/** Where the More menu opens: beside the dock, over the open pill, or under the top row of a phone. */
+type PillMorePlacement = "right-end" | "top-end" | "bottom-end";
+
+function PillMore(props: {
+  pages: SidebarPages;
+  list: readonly PillPage[];
+  vertical: boolean;
+  placement?: PillMorePlacement | undefined;
+}) {
   const { t } = useText();
   const [open, setOpen] = createSignal(false);
   let trigger: HTMLElement | undefined;
@@ -87,12 +95,16 @@ function PillMore(props: { pages: SidebarPages; list: readonly PillPage[]; verti
   };
   return (
     <DropdownMenu.Root
-      placement={props.vertical ? "right-end" : "top-end"}
+      placement={props.placement ?? (props.vertical ? "right-end" : "top-end")}
       gutter={8}
       onOpenChange={changeOpen}
       getAnchorRect={(element?: HTMLElement) => anchor ?? element?.getBoundingClientRect()}
     >
-      <MotionTooltip content={t("app.rail.more")} suppressed={open()} placement={props.vertical ? "right" : "top"}>
+      <MotionTooltip
+        content={t("app.rail.more")}
+        suppressed={open()}
+        placement={props.placement === "bottom-end" ? "bottom" : props.vertical ? "right" : "top"}
+      >
         <DropdownMenu.Trigger
           ref={(element: HTMLElement) => {
             trigger = element;
@@ -222,26 +234,39 @@ function AccountSwitch(props: { vertical: boolean; onOpenAppSettings: (trigger: 
   );
 }
 
+/** The pages that this server has, in pill order. */
+function usePillPages(pages: () => SidebarPages) {
+  const { t } = useText();
+  return createMemo((): PillPage[] => {
+    const list: PillPage[] = [];
+    const { onRoutines, onWorkflows, onTasks, onSchedule, onUsage, onLibrary, onMachines } = pages();
+    if (onRoutines)
+      list.push({ id: "routines", label: t("sidebar.view.routines"), icon: Workflow, open: () => onRoutines() });
+    if (onWorkflows) {
+      list.push({ id: "workflows", label: t("app.rail.workflows"), icon: Waypoints, open: () => onWorkflows() });
+    }
+    if (onTasks) list.push({ id: "tasks", label: t("app.rail.tasks"), icon: ListChecks, open: onTasks });
+    if (onSchedule) list.push({ id: "schedule", label: t("app.rail.schedule"), icon: CalendarClock, open: onSchedule });
+    list.push({ id: "usage", label: t("app.rail.usage"), icon: ChartArea, open: onUsage });
+    if (onLibrary)
+      list.push({ id: "library", label: t("app.rail.library"), icon: GalleryVerticalEnd, open: onLibrary });
+    if (onMachines) list.push({ id: "machines", label: t("app.rail.machines"), icon: Server, open: onMachines });
+    return list;
+  });
+}
+
+/**
+ * The More menu alone, for the top row of a phone: the phone has no pill, so the pages that its tab
+ * bar does not hold open from here.
+ */
+export function SidebarPillMore(props: { pages: SidebarPages }) {
+  const list = usePillPages(() => props.pages);
+  return <PillMore pages={props.pages} list={list()} vertical={false} placement="bottom-end" />;
+}
+
 export function SidebarPill(props: { pages: SidebarPages; vertical: boolean }) {
   const { t } = useText();
-  /** The pages that this server has, in pill order. */
-  const list = createMemo((): PillPage[] => {
-    const pages: PillPage[] = [];
-    const { onRoutines, onWorkflows, onTasks, onSchedule, onUsage, onLibrary, onMachines } = props.pages;
-    if (onRoutines)
-      pages.push({ id: "routines", label: t("sidebar.view.routines"), icon: Workflow, open: () => onRoutines() });
-    if (onWorkflows) {
-      pages.push({ id: "workflows", label: t("app.rail.workflows"), icon: Waypoints, open: () => onWorkflows() });
-    }
-    if (onTasks) pages.push({ id: "tasks", label: t("app.rail.tasks"), icon: ListChecks, open: onTasks });
-    if (onSchedule)
-      pages.push({ id: "schedule", label: t("app.rail.schedule"), icon: CalendarClock, open: onSchedule });
-    pages.push({ id: "usage", label: t("app.rail.usage"), icon: ChartArea, open: onUsage });
-    if (onLibrary)
-      pages.push({ id: "library", label: t("app.rail.library"), icon: GalleryVerticalEnd, open: onLibrary });
-    if (onMachines) pages.push({ id: "machines", label: t("app.rail.machines"), icon: Server, open: onMachines });
-    return pages;
-  });
+  const list = usePillPages(() => props.pages);
   return (
     <div class={["sidebar-pill", { "sidebar-pill-vertical": props.vertical }]}>
       <AccountSwitch vertical={props.vertical} onOpenAppSettings={props.pages.onSettings} />
