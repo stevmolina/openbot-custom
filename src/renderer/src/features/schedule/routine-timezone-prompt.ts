@@ -84,6 +84,43 @@ function eventOwner(owner: RoutineCalendarOwner): EventRoutineOwner {
 
 const zoneLabel = (zone: string) => zone.replaceAll("_", " ");
 
+const offsetFormats = new Map<string, Intl.DateTimeFormat>();
+
+function utcOffset(zone: string, at: Date): string {
+  let format = offsetFormats.get(zone);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "longOffset" });
+    offsetFormats.set(zone, format);
+  }
+  return format.formatToParts(at).find((part) => part.type === "timeZoneName")?.value ?? "";
+}
+
+const sameClockAnswers = new Map<string, boolean>();
+
+/**
+ * Whether `a` and `b` show the same clock time on each day of the next year, such as
+ * America/Argentina/Salta and America/Buenos_Aires. A move between them changes no run, so the
+ * prompt does not ask.
+ */
+function sameClock(a: string, b: string): boolean {
+  const key = `${a}>${b}`;
+  const known = sameClockAnswers.get(key);
+  if (known !== undefined) return known;
+  let same = true;
+  try {
+    const start = Date.now();
+    for (let day = 0; day <= 366 && same; day += 1) {
+      const at = new Date(start + day * 86_400_000);
+      same = utcOffset(a, at) === utcOffset(b, at);
+    }
+  } catch {
+    // An unknown zone name: ask, as before.
+    same = false;
+  }
+  sameClockAnswers.set(key, same);
+  return same;
+}
+
 /** The routines of `target` whose zone moves their clock times, by zone. */
 async function routinesByZone(target: RoutineZoneTarget): Promise<Map<string, RoutineCalendarRoutine[]>> {
   const from = new Date(Date.now() + 60_000);
@@ -183,7 +220,10 @@ export function createRoutineTimezonePrompt(targets: () => RoutineZoneTarget[]):
       const next = [...byZone.entries()]
         .filter(
           ([source]) =>
-            source !== zone && !answered.includes(source) && !dismissed.get(target.id)?.has(`${source}>${zone}`),
+            source !== zone &&
+            !sameClock(source, zone) &&
+            !answered.includes(source) &&
+            !dismissed.get(target.id)?.has(`${source}>${zone}`),
         )
         .sort((a, b) => b[1].length - a[1].length)[0];
       const key = next ? `${next[0]}>${zone}` : undefined;
