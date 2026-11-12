@@ -1,6 +1,19 @@
 import { defineMessages } from "../../../message";
 
 export const messages = defineMessages("mobile.server", {
+  "mobile.server.cloudComputers.title": "Cloud computers",
+  "mobile.server.cloudComputers.description":
+    "Connect this server to Agent Computer. The host encrypts the API key. Running computers keep running after you disconnect.",
+  "mobile.server.cloudComputers.unavailable": "Cloud computers are not available on this server.",
+  "mobile.server.cloudComputers.failed": "Could not read or change cloud computers.",
+  "mobile.server.cloudComputers.connected": "Agent Computer is connected",
+  "mobile.server.cloudComputers.test": "Test connection",
+  "mobile.server.cloudComputers.disconnect": "Disconnect",
+  "mobile.server.cloudComputers.apiKey": "API key",
+  "mobile.server.cloudComputers.connect": "Connect",
+  "mobile.server.cloudComputers.getKey": "Get an API key",
+  "mobile.server.cloudComputers.refresh": "Refresh",
+  "mobile.server.cloudComputers.empty": "No cloud computers yet.",
   "mobile.server.drawer.local": "Local",
   "mobile.server.remoteDesktop.title": "Control computer",
   "mobile.server.remoteDesktop.unlockPrompt": "Unlock to control the computer",

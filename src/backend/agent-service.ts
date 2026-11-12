@@ -245,6 +245,7 @@ import { WarmGenerations } from "./agent/warm-generations";
 import type { WebhookRoutineWriter } from "./agent/webhook-routine-tool";
 import type { AgentApiKeys } from "./agent-api-keys";
 import type { AgentProvider } from "./agent-client";
+import { AgentComputerApi } from "./agent-computer/agent-computer-api";
 import type { AgentTables } from "./agent-data/agent-tables";
 import {
   AgentHistoryTransfer,
@@ -255,7 +256,7 @@ import {
 } from "./agent-history-transfer";
 import type { AgentStore } from "./agent-store";
 import { type AgentTaskBranchFailed, AgentTasks } from "./agent-tasks/agent-tasks";
-import { CodingComputer } from "./agent-tasks/coding-computer";
+import { codingComputer } from "./agent-tasks/coding-computer";
 import { CodingJobs } from "./agent-tasks/coding-jobs";
 import { type AgentThreadRecord, AgentThreadStore } from "./agent-threads/agent-thread-store";
 import { AgentWaitStore } from "./agent-waits/agent-wait-store";
@@ -492,6 +493,11 @@ export interface AgentServiceOptions {
   passwordVault?: PasswordVault | null;
   /** The cards and contact info of the Vault, or `null`. The browser fills cards from it. */
   vaultItems?: VaultItems | null;
+  /**
+   * The Agent Computer API key of this server, read at each call, or `null` while none is connected.
+   * The built-in `computer_*` tools and coding jobs use it.
+   */
+  agentComputerKey?: () => string | null;
   /** The Link account of this computer, or `null`. Agents ask it for one-time cards. */
   linkWallet?: LinkWallet | null;
   /** Where the API keys that users enter through `request_api_key` are saved, or `null`. */
@@ -700,7 +706,8 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       (event) => this.#emit(event),
       () => this.listAgents(),
     );
-    this.#codingJobs = new CodingJobs(new CodingComputer(this.#mcp), (agentId, taskId) => {
+    const agentComputer = new AgentComputerApi({ key: options.agentComputerKey ?? (() => null) });
+    this.#codingJobs = new CodingJobs(codingComputer(agentComputer), (agentId, taskId) => {
       this.#tasks.failed(taskId, sourceText("error.backend.taskStartFailed"));
       this.#tasks.changed(agentId);
     });
@@ -1851,6 +1858,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
       mcpServers: mcpServersFromGateway(this.#mcp, options.prepareMcpTest),
       ...(options.marketplaceAppServer === undefined ? {} : { marketplaceAppServer: options.marketplaceAppServer }),
       githubConnected: () => Boolean(githubConnector?.mcpServer()),
+      agentComputer,
       feedbackFacts: options.feedbackFacts ?? null,
       feedback: options.feedback ?? null,
       serverClaims: options.serverClaims ?? null,

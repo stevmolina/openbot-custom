@@ -47,6 +47,7 @@ import {
   type AgentColorsSnapshot,
   decodeAgentColorsSnapshot,
 } from "@openbot/contracts/team-protocol/agent-colors-v1";
+import { AGENT_COMPUTER_CAPABILITY } from "@openbot/contracts/team-protocol/agent-computer-v1";
 import {
   AGENT_FAST_MODE_CAPABILITY,
   AGENT_FAST_MODE_ROUTES,
@@ -154,6 +155,7 @@ import { WORKFLOWS_CAPABILITY } from "@openbot/contracts/team-protocol/workflows
 import type { MobileTextKey } from "@openbot/i18n/mobile";
 import { sourceText } from "@openbot/i18n/source";
 import { readHostAnalytics } from "@openbot/team-client";
+import { createAgentComputerPort } from "@openbot/team-client/agent-computer";
 import { readPlanLimits } from "@openbot/team-client/plan-limits";
 import type { RemoteFileUpload } from "@openbot/team-client/remote-peer";
 import { buildRoutineCalendar, type RoutineCalendarSource } from "@openbot/team-client/routine-calendar";
@@ -431,6 +433,7 @@ type HostRequestActions = Pick<
   | "connectPasswordManager"
   | "cancelPasswordManager"
   | "disconnectPasswordManager"
+  | "agentComputer"
   | "loadVault"
   | "saveVaultItem"
   | "deleteVaultItem"
@@ -744,6 +747,9 @@ export function createHostRequestActions({
     },
   };
   const actions: HostRequestActions = {
+    agentComputer: createAgentComputerPort((serverId) =>
+      capabilityApi(serverId, AGENT_COMPUTER_CAPABILITY, "mobile.server.cloudComputers.unavailable"),
+    ),
     // Async, so a host without the capability rejects the promise and does not throw at the call.
     loadServerTimezone: async (serverId) => runTeamRequest(getHostTimezone(timezoneAdmin(serverId))),
     setServerTimezone: async (timezone, serverId) => runTeamRequest(setHostTimezone(timezoneAdmin(serverId), timezone)),

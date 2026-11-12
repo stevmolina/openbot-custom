@@ -144,6 +144,10 @@ export const messages = defineMessages("error.agent", {
   "error.agent.screenCaptureUnavailable": "Screen capture is not available on this computer.",
   "error.agent.screenCaptureShared":
     "Screen capture does not work in a Slack, Discord or Telegram conversation, because other people get its files.",
+  "error.agent.agentComputerDestroyDeclined":
+    "The user did not allow deleting this cloud computer. Nothing was deleted.",
+  "error.agent.agentComputerFileExists": "Too many files have this name. Give another saveAs.",
+  "error.agent.agentComputerPathOutside": "Save the file inside your workspace: saveAs must be a path in it.",
   "error.agent.screenCaptureDeclined": "The user did not allow this screen capture. Nothing was captured.",
   "error.agent.mcpServerDeclined": "The user did not allow this MCP server change. Nothing changed.",
   "error.agent.mcpServerNotSaved": "The MCP server did not answer, so it was not saved. {error}",

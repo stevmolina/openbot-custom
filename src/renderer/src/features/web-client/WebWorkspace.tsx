@@ -30,6 +30,7 @@ import type { PricingOrder } from "@openbot/contracts/license";
 import type { MarketplaceListingLink } from "@openbot/contracts/marketplace-links";
 import { AGENT_ACCESS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-access-v1";
 import { AGENT_BACKUP_MODELS_ROUTES } from "@openbot/contracts/team-protocol/agent-backup-models-v1";
+import { AGENT_COMPUTER_CAPABILITY } from "@openbot/contracts/team-protocol/agent-computer-v1";
 import { AGENT_FAST_MODE_ROUTES } from "@openbot/contracts/team-protocol/agent-fast-mode-v1";
 import { AGENT_HOST_SETTINGS_ROUTES } from "@openbot/contracts/team-protocol/agent-host-settings-v1";
 import { AGENT_IMPORT_CAPABILITY } from "@openbot/contracts/team-protocol/agent-import-v1";
@@ -87,6 +88,7 @@ import { WEBHOOK_TESTS_CAPABILITY } from "@openbot/contracts/team-protocol/webho
 import { WHATSAPP_CONNECTOR_CAPABILITY } from "@openbot/contracts/team-protocol/whatsapp-connector-v1";
 import { WORKFLOWS_CAPABILITY } from "@openbot/contracts/team-protocol/workflows-v1";
 import { runTeamEffect } from "@openbot/team-client";
+import { createAgentComputerPort } from "@openbot/team-client/agent-computer";
 import { channelForThread } from "@openbot/team-client/channel-notifications";
 import {
   cancelHostUpdate,
@@ -943,6 +945,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   function hostRequest(serverId?: string): TeamApiRequest {
     return hostAdmin(serverId).request;
   }
+  const cloudComputers = createAgentComputerPort(hostRequest);
   // The events routes answer only an owner or admin. A member keeps the released routine routes.
   const eventsEnabled = () =>
     workspace.state.capabilities.includes(EVENTS_CAPABILITY) && canAdministerServer(workspace.state.host?.role);
@@ -3135,6 +3138,14 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                         restoreFocusTarget={serverSettings.restoreTarget()}
                         initialSection={serverSettingsSection()}
                         platform="darwin"
+                        cloudComputers={
+                          serverCanAdminister(target(), AGENT_COMPUTER_CAPABILITY)
+                            ? {
+                                api: cloudComputers,
+                                openUrl: (url) => void window.open(url, "_blank", "noopener,noreferrer"),
+                              }
+                            : undefined
+                        }
                         remoteDesktopSupported={false}
                         server={target()}
                         hostStatus={null}

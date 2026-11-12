@@ -6,7 +6,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { Effect } from "effect";
-import type { z } from "zod";
 import { CodingComputerFailed, type CodingComputerPort } from "../src/backend/agent-tasks/coding-computer";
 import { CodingJobs } from "../src/backend/agent-tasks/coding-jobs";
 
@@ -24,37 +23,34 @@ const operations: string[] = [];
 let failures = 0;
 let refuseStop = false;
 const port: CodingComputerPort = {
-  call: Effect.fn("FixtureComputer.call")(function* (
-    _agent: string,
-    slug: string,
-    args: Record<string, string | number>,
-  ): Generator<
-    Effect.Effect<z.infer<ReturnType<typeof z.json>>, CodingComputerFailed>,
-    z.infer<ReturnType<typeof z.json>>,
-    z.infer<ReturnType<typeof z.json>>
-  > {
-    operations.push(slug);
-    if (slug.endsWith("START"))
-      return {
-        id: "fixture",
-        deadline_at: new Date(Date.now() + 120_000).toISOString(),
-        live_view_url: "https://example.invalid/live",
-      } satisfies z.infer<ReturnType<typeof z.json>>;
-    if (slug.endsWith("STOP")) return { paused: true };
-    if (refuseStop && String(args.cmd).includes('"action":"stop"'))
-      return yield* Effect.fail(new CodingComputerFailed({ cause: "fixture refusal" }));
-    return yield* Effect.tryPromise({
+  start: () => {
+    operations.push("START");
+    return Effect.succeed({
+      id: "fixture",
+      deadline_at: new Date(Date.now() + 120_000).toISOString(),
+      live_view_url: "https://example.invalid/live",
+    });
+  },
+  stop: () => {
+    operations.push("STOP");
+    return Effect.void;
+  },
+  bash: (_id, cmd) => {
+    operations.push("BASH");
+    if (refuseStop && cmd.includes('"action":"stop"'))
+      return Effect.fail(new CodingComputerFailed({ cause: "fixture refusal" }));
+    return Effect.tryPromise({
       try: async () => {
-        const output = await exec("bash", ["-c", String(args.cmd)], {
+        const output = await exec("bash", ["-c", cmd], {
           cwd: root,
           env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
           timeout: 25_000,
         });
-        return { stdout: output.stdout };
+        return { stdout: output.stdout, stderr: output.stderr };
       },
       catch: (cause) => new CodingComputerFailed({ cause }),
     });
-  }),
+  },
 };
 const jobs = new CodingJobs(port, () => failures++);
 const workspace = join(root, "workspace");
@@ -72,7 +68,7 @@ try {
   assert.equal(conflicting._tag, "Failure");
   await Effect.runPromise(jobs.control("agent", workspace, "job1", "pause"));
   assert.equal((await checkpoint()).phase, "paused");
-  assert.equal(operations.at(-1), "CUSTOM_COMPUTER_COMPUTER_STOP");
+  assert.equal(operations.at(-1), "STOP");
   jobs.dispose();
   const recovered = new CodingJobs(port, () => failures++);
   await Effect.runPromise(recovered.recover([{ id: "agent", workspacePath: workspace }]));

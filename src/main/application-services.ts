@@ -157,6 +157,7 @@ import { StorageUsageScanner, StorageUsageService } from "../backend/storage-usa
 import { TeamChatStore } from "../backend/team-chat-store";
 import { UserBrowsingLog } from "../backend/user-browsing-log";
 import { AGENT_ACCESS_FILE, AgentAccessStore } from "./agent-access-store";
+import { AgentComputerService } from "./agent-computer-service";
 import {
   type AgentDefaultsPreferenceStore,
   createAgentDefaultsPreferenceStore,
@@ -509,6 +510,8 @@ const LINK_ACCOUNT_FILE = "openbot-link-account-v1.json";
 const ONEPASSWORD_CONNECTOR_FILE = "openbot-onepassword-connector-v1.json";
 /** The Bitwarden API key and master password of a host connection (`bitwarden-connector-v1`), with the same cipher. */
 const BITWARDEN_CONNECTOR_FILE = "openbot-bitwarden-connector-v1.json";
+/** The Agent Computer API key of this server (`agent-computer-v1`), with the same cipher. */
+const AGENT_COMPUTER_FILE = "openbot-agent-computer-v1.json";
 /** The Proton Pass agent access key of this computer or host, with the same cipher. */
 const PROTONPASS_CONNECTOR_FILE = "openbot-protonpass-connector-v1.json";
 /** The logins, payment cards and contact info of the Vault in Server settings, with the same cipher. */
@@ -688,6 +691,7 @@ export interface ApplicationServices {
   linkAccount: LinkAccountService;
   onePasswordConnector: OnePasswordConnectorService;
   bitwardenConnector: BitwardenConnectorService;
+  agentComputer: AgentComputerService;
   passwordManagers: PasswordManagersService;
   vault: VaultService;
   mailbox: MailboxStore;
@@ -1851,6 +1855,15 @@ export async function createApplicationServices({
   teardown.push(TEARDOWN_ORDER.bitwardenConnector, "the Bitwarden connection", async () => {
     await runCauseEffect(bitwardenConnector.dispose());
   });
+  /*
+   * The Agent Computer account. Its API key lets every agent start cloud computers with the built-in
+   * `computer_*` tools; the file holds no resource, so nothing is torn down.
+   */
+  const agentComputer = new AgentComputerService({
+    path: join(app.getPath("userData"), AGENT_COMPUTER_FILE),
+    cipher: secretCipher,
+  });
+  await Effect.runPromise(agentComputer.load());
 
   /*
    * The Vault in Server settings. Every agent fills its logins, cards and contact info; the file
@@ -2276,6 +2289,7 @@ export async function createApplicationServices({
     ]),
     vaultItems: vault.items,
     linkWallet: linkAccount,
+    agentComputerKey: () => agentComputer.key(),
     agentApiKeys,
     localSkillTools: () => localSkillTools(skills),
     // The local read: `listInstalled` asks the marketplace for each skill's latest version.
@@ -3147,6 +3161,8 @@ export async function createApplicationServices({
     // Present, so the host advertises `bitwarden-connector-v1`. An owner or admin connects it with an
     // API key and the master password: a session key from their computer cannot open this vault.
     bitwardenConnector,
+    // Present, so the host advertises `agent-computer-v1`. An owner or admin connects it with an API key.
+    agentComputer,
     // Present, so the host advertises `password-managers-v1`. An owner or admin connects Proton Pass
     // with a sign-in on the host or with an agent access key. The routes are admin-only.
     passwordManagers,
@@ -4309,6 +4325,7 @@ export async function createApplicationServices({
     linkAccount,
     onePasswordConnector,
     bitwardenConnector,
+    agentComputer,
     passwordManagers,
     vault,
     mailbox,

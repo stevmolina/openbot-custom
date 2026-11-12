@@ -365,3 +365,33 @@ When Computer Use is off for the agent or the driver is unavailable, the thread 
 entry disabled. A registration failure stops the thread with steps to repair the configuration or
 turn off Computer Use. The application-access questions from the driver still use their existing
 approval flow.
+
+## Native Agent Computer
+
+`src/backend/agent-computer/agent-computer-api.ts` owns the Agent Computer REST adapter at
+`https://computer.mcpbox.dev/api/v1`. It decodes responses with installed Effect 4 schemas,
+uses abortable Node HTTP requests, and supports the API's 600-second bash limit.
+`agent-computer-tools.ts` adds start, bash, screenshot, get_file, publish, stop, destroy and
+list to every agent. Download paths must remain inside the workspace. Linked directories
+and linked targets are refused. Downloads create a new file and do not overwrite a file.
+Destroy uses an explicit approval even for Full access. Other permission rules stay intact.
+
+`src/main/agent-computer-service.ts` owns one encrypted key per OpenBot host. A semaphore
+serializes load, connect, test and disconnect, including validation requests and file writes.
+An unsuccessful connect keeps the last saved key. Machines list never wakes a machine.
+The API registers keys and human bearer links for redaction. Tools omit live-view and billing
+links and retain the useful briefing. Coding jobs use the REST `CodingComputerPort` and keep
+their existing runner, checkpoint, recovery, pause and stop behavior. They store no live link.
+A timed-out or unsuccessful shell command fails the coding adapter.
+
+The optional `agent-computer-v1` Team API routes require an owner or admin and the negotiated
+capability. Old hosts hide the controls. Desktop IPC routes to the local service or joined host.
+Host response decoders and preload response decoders have independent implementations.
+`@openbot/team-client/agent-computer` supplies the request port for web and mobile. Server
+settings injects that port into the view. Machines drops old responses after access changes.
+Mobile uses mounted screen state and does not cache bearer links in offline workspace data.
+
+Repeatable proof: `bun scripts/agent-computer-e2e.ts`, `bun run test:team-api-routes`, and
+`bun scripts/coding-jobs-controller-smoke.ts`. They write JSON reports under `.openbot-build/`.
+The REST proof uses a local HTTP server and does not start a paid cloud machine. The Team API
+CI job runs it before the route checks and uploads both reports.

@@ -68,6 +68,7 @@ import { CLAUDE_USER_SETUP_CAPABILITY } from "@openbot/contracts/team-protocol/c
 import { CODEX_API_KEY_CAPABILITY } from "@openbot/contracts/team-protocol/codex-api-key-v1";
 import {
   AGENT_ADMIN_CAPABILITY,
+  AGENT_COMPUTER_CAPABILITY,
   AGENT_HOST_SETTINGS_CAPABILITY,
   AGENT_IMPORT_CAPABILITY,
   AGENT_IMPORT_V2_CAPABILITY,
@@ -279,6 +280,7 @@ import {
   routeAgentTaskLimit,
 } from "./team-api/route-agent-admin";
 import { agentColorsOf, routeAgentColors, visibleAgentColors } from "./team-api/route-agent-colors";
+import { routeAgentComputer } from "./team-api/route-agent-computer";
 import { routeAgentFolders } from "./team-api/route-agent-folders";
 import { routeAgentHidden, visibleSnapshot } from "./team-api/route-agent-hidden";
 import { routeAgentImport } from "./team-api/route-agent-import";
@@ -1171,6 +1173,7 @@ export class TeamApiServer {
       if ((await routeWhatsAppConnector(context, this.#options.connectors)) === "handled") return;
       if ((await routeOnePasswordConnector(context, this.#options.onePasswordConnector)) === "handled") return;
       if ((await routeBitwardenConnector(context, this.#options.bitwardenConnector)) === "handled") return;
+      if ((await routeAgentComputer(context, this.#options.agentComputer)) === "handled") return;
       if ((await routePasswordManagers(context, this.#options.passwordManagers)) === "handled") return;
       if ((await routeVault(context, this.#options.vault)) === "handled") return;
       if ((await routeVaultImport(context, this.#options.vault)) === "handled") return;
@@ -2499,6 +2502,7 @@ export class TeamApiServer {
           if (capability === WHATSAPP_CONNECTOR_CAPABILITY) return this.#options.connectors !== undefined;
           if (capability === ONEPASSWORD_CONNECTOR_CAPABILITY) return this.#options.onePasswordConnector !== undefined;
           if (capability === BITWARDEN_CONNECTOR_CAPABILITY) return this.#options.bitwardenConnector !== undefined;
+          if (capability === AGENT_COMPUTER_CAPABILITY) return this.#options.agentComputer !== undefined;
           if (capability === PASSWORD_MANAGERS_CAPABILITY) return this.#options.passwordManagers !== undefined;
           if (capability === VAULT_CAPABILITY) return this.#options.vault !== undefined;
           if (capability === BROWSER_SECRET_VAULT_CAPABILITY) return this.#options.vault !== undefined;

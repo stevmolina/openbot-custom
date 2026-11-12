@@ -2110,3 +2110,27 @@ credentials, or conversations. The existing cloud service does not store those f
 ### Remote coding tasks in the custom app
 
 When you request a remote coding task, its task agent uses the connected Agent Computer service. Repository code, task instructions and check output can be processed on that remote machine and by its signed-in coding CLI provider. The local OpenBot task conversation remains on this host. Sign in on the remote machine; OpenBot does not copy host credentials for this workflow. The task agent is instructed to pause its machine when finished. Task Stop alone does not stop remote background processes.
+
+## Agent Computer cloud machines
+
+If an owner or admin connects Agent Computer in Server Settings > Cloud computers,
+OpenBot sends the API key to `https://computer.mcpbox.dev/api/v1` to authenticate requests.
+A joined client sends that key to its OpenBot host over the authenticated Team API first.
+The host encrypts the key with its operating-system credential cipher. Disconnect removes
+that saved key. It does not stop or delete a cloud machine.
+
+The built-in `computer_*` tools and `run_coding_task` send context labels, shell commands,
+working directories and remote file paths to Agent Computer. Screenshots and downloaded
+files return to the OpenBot host. A downloaded file stays in the calling agent's workspace.
+`computer_publish` asks Agent Computer to publish a remote file and returns an expiring
+public download link. A coding job sends the requested repository and task to its cloud
+machine and runs the remote Codex CLI there. Remote software and repository services can
+receive that work under their own policies. OpenBot does not copy local provider credentials.
+
+Cloud machine contents and logins stay with Agent Computer until the user deletes the
+machine. Pause preserves them. Destroy requires an explicit approval and deletes them.
+Live-view and billing links are bearer credentials. OpenBot keeps them out of agent tool
+results and local coding-job files, registers them for secret redaction, and shows live
+views only through human controls. Desktop, web and mobile clients keep machine lists in
+screen memory. Access loss clears the visible list. The phone does not put these lists or
+the API key in its offline workspace copy.

@@ -22,6 +22,7 @@ import {
   Blocks,
   Button,
   CalendarClock,
+  Cloud,
   Download,
   Globe2,
   HardDrive,
@@ -70,6 +71,7 @@ import { type ServerVaultOptions, ServerVaultPanel } from "../vault/ServerVaultP
 import type { McpServerConfig, McpTestResult } from "./mcp-servers";
 import { createServerAuditSection, type ServerAuditOptions } from "./ServerAuditSection";
 import type { ServerBrowsingMemoryOptions } from "./ServerBrowsingMemorySetting";
+import { type ServerCloudComputersOptions, ServerCloudComputersPanel } from "./ServerCloudComputersPanel";
 import { type CompanySignInCalls, createServerCompanySignInSection } from "./ServerCompanySignInSection";
 import { ServerDesktopPanel } from "./ServerDesktopPanel";
 import { createServerGeneralSection } from "./ServerGeneralSection";
@@ -294,6 +296,11 @@ export interface ServerSettingsModalProps {
   browserProfiles?: ServerBrowserProfilesOptions | undefined;
   /** The Vault section: this computer, or a joined server that serves `vault-v1` to an owner or admin. */
   vault?: ServerVaultOptions | undefined;
+  /**
+   * The Cloud computers section: this computer, or a joined server that serves `agent-computer-v1` to
+   * an owner or admin.
+   */
+  cloudComputers?: ServerCloudComputersOptions | undefined;
   /** The section to show when the dialog opens. Updates shows General when the server has no Updates section. */
   initialSection?: ServerSettingsSection | null;
   /** Where the settings page shows, or nothing while the page is not on screen. */
@@ -320,6 +327,7 @@ export type ServerSettingsSection =
   | "general"
   | "personality"
   | "vault"
+  | "cloud-computers"
   | "members"
   | "roles"
   | "audit"
@@ -339,6 +347,10 @@ const sections = {
   general: { title: "server.settings.generalTitle", description: "server.settings.generalDescription" },
   personality: { title: "server.settings.personalityTitle", description: "server.settings.personalityDescription" },
   vault: { title: "server.settings.vaultTitle", description: "server.settings.vaultDescription" },
+  "cloud-computers": {
+    title: "server.settings.cloudComputersTitle",
+    description: "server.settings.cloudComputersDescription",
+  },
   members: { title: "server.settings.membersTitle", description: "server.settings.membersDescription" },
   roles: { title: "server.settings.rolesTitle", description: "server.settings.rolesDescription" },
   audit: { title: "server.settings.auditTitle", description: "server.settings.auditDescription" },
@@ -359,6 +371,7 @@ const NAV_SECTIONS: ReadonlyArray<{ value: Section; icon: typeof Settings }> = [
   { value: "general", icon: Settings },
   { value: "personality", icon: Smile },
   { value: "vault", icon: KeyRound },
+  { value: "cloud-computers", icon: Cloud },
   { value: "members", icon: UsersRound },
   { value: "roles", icon: ShieldCheck },
   { value: "audit", icon: History },
@@ -503,6 +516,8 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
         return Boolean(personalityOptions());
       case "vault":
         return Boolean(props.vault);
+      case "cloud-computers":
+        return Boolean(props.cloudComputers);
       case "roles":
         return roles.available();
       case "audit":
@@ -707,6 +722,7 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
         value === "general" ||
         value === "personality" ||
         value === "vault" ||
+        value === "cloud-computers" ||
         value === "members" ||
         value === "roles" ||
         value === "audit" ||
@@ -905,6 +921,19 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
             <Tabs.Content value="vault" class="settings-modal-tab-panel server-settings-panel" data-tab="vault">
               <ServerVaultPanel {...vault()} menuMount={modalElement()} />
             </Tabs.Content>
+          )}
+        </Show>
+        <Show when={props.cloudComputers}>
+          {(api) => (
+            <>
+              <Tabs.Content
+                value="cloud-computers"
+                class="settings-modal-tab-panel server-settings-panel"
+                data-tab="cloud-computers"
+              >
+                <ServerCloudComputersPanel serverId={props.server.id} api={api().api} openUrl={api().openUrl} />
+              </Tabs.Content>
+            </>
           )}
         </Show>
         <Tabs.Content value="members" class="settings-modal-tab-panel server-settings-panel" data-tab="members">

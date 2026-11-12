@@ -62,6 +62,7 @@ import type {
   UpdateAgentTaskLimitInput,
 } from "./ipc-agent-admin";
 import type { AgentAnalytics, AgentAnalyticsInput } from "./ipc-agent-analytics";
+import type { AgentComputerMachineList, AgentComputerStatus } from "./ipc-agent-computer";
 import type {
   AgentDockAction,
   AgentDockDisplayInfo,
@@ -1452,6 +1453,15 @@ export const IPC_ENDPOINTS = {
   // in `connect`; every answer is the status only. The `host*` endpoints do the same for a joined
   // server (`bitwarden-connector-v1`), with an API key and the master password: a session key from
   // this computer cannot open the host's vault.
+  // The Agent Computer account of a server (`agent-computer-v1` on a joined server): its agents start
+  // cloud computers with it. The API key goes from the renderer to main once, in `connect`.
+  agentComputer: {
+    status: scopedQuery<AgentComputerStatus, "required">()("agent-computer:status"),
+    connect: scopedRequest<string, AgentComputerStatus, "required">()("agent-computer:connect"),
+    test: scopedQuery<AgentComputerStatus, "required">()("agent-computer:test"),
+    disconnect: scopedQuery<AgentComputerStatus, "required">()("agent-computer:disconnect"),
+    machines: scopedQuery<AgentComputerMachineList, "required">()("agent-computer:machines"),
+  },
   bitwardenConnector: {
     status: request<undefined, BitwardenConnectorStatus>()("bitwarden-connector:status"),
     connect: request<string, BitwardenConnectorStatus>()("bitwarden-connector:connect"),
@@ -2321,6 +2331,7 @@ export const IPC_GROUP_PATHS = {
   hostAdmin: "hostAdmin",
   githubConnector: "githubConnector",
   onePasswordConnector: "onePasswordConnector",
+  agentComputer: "agentComputer",
   bitwardenConnector: "bitwardenConnector",
   passwordManagers: "passwordManagers",
   linkAccount: "linkAccount",

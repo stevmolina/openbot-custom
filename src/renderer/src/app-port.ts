@@ -6,6 +6,7 @@ import type { CompanySignInCalls } from "./features/servers/ServerCompanySignInS
  * (`openUrl`, `openExternal`) that several domains share.
  */
 export interface AppPort {
+  agentComputer: OpenBotDesktopApi["agentComputer"];
   getAppInfo: OpenBotDesktopApi["getAppInfo"];
   getAppAppearancePreference: OpenBotDesktopApi["getAppAppearancePreference"];
   getAppInterfaceSizePreference: OpenBotDesktopApi["getAppInterfaceSizePreference"];

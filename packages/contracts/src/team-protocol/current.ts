@@ -7,6 +7,7 @@ import { AGENT_ACCESS_CAPABILITY } from "./agent-access-v1";
 import { AGENT_ADMIN_CAPABILITY } from "./agent-admin-v1";
 import { AGENT_BACKUP_MODELS_CAPABILITY } from "./agent-backup-models-v1";
 import { AGENT_COLORS_CAPABILITY } from "./agent-colors-v1";
+import { AGENT_COMPUTER_CAPABILITY } from "./agent-computer-v1";
 import { AGENT_FAST_MODE_CAPABILITY } from "./agent-fast-mode-v1";
 import { AGENT_FOLDERS_CAPABILITY } from "./agent-folders-v1";
 import { AGENT_HIDDEN_CAPABILITY } from "./agent-hidden-v1";
@@ -227,6 +228,7 @@ export {
   AGENT_ADMIN_CAPABILITY,
   AGENT_BACKUP_MODELS_CAPABILITY,
   AGENT_COLORS_CAPABILITY,
+  AGENT_COMPUTER_CAPABILITY,
   AGENT_FAST_MODE_CAPABILITY,
   AGENT_FOLDERS_CAPABILITY,
   AGENT_HIDDEN_CAPABILITY,
@@ -562,6 +564,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   CHANNEL_BROWSER_CAPABILITY,
   STORAGE_CHANNEL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
+  AGENT_COMPUTER_CAPABILITY,
 ] as const;
 
 export type TeamCurrentCapability = (typeof TEAM_CURRENT_CAPABILITIES)[number];
@@ -766,7 +769,8 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== PROVIDER_ACCOUNT_MODELS_CAPABILITY &&
     capability !== CHANNEL_BROWSER_CAPABILITY &&
     capability !== STORAGE_CHANNEL_CAPABILITY &&
-    capability !== REMOTE_COMPUTER_USE_CAPABILITY,
+    capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
+    capability !== AGENT_COMPUTER_CAPABILITY,
 );
 /**
  * The capabilities that only a protocol 9 peer sends and gets. Protocols 7 and 8 read at most 128
@@ -847,6 +851,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   CHANNEL_BROWSER_CAPABILITY,
   STORAGE_CHANNEL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
+  AGENT_COMPUTER_CAPABILITY,
 ]);
 // A v8 host reads at most 128 capabilities, so a client sends the protocol 9 ones only after it
 // negotiates protocol 9.
@@ -1010,6 +1015,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== PROVIDER_ACCOUNT_MODELS_CAPABILITY &&
       capability !== CHANNEL_BROWSER_CAPABILITY &&
       capability !== STORAGE_CHANNEL_CAPABILITY &&
-      capability !== REMOTE_COMPUTER_USE_CAPABILITY,
+      capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
+      capability !== AGENT_COMPUTER_CAPABILITY,
   );
 }
