@@ -165,14 +165,20 @@
   }
 }
 
+/* On a narrow screen, such as a phone, the actions move under the words, so the words keep the full width. */
 .server-connection-notice {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--openbot-space-3);
   padding: var(--openbot-space-3);
   background: var(--openbot-bg-canvas);
   border-bottom: 1px solid var(--openbot-border);
+}
+.server-connection-notice > :first-child {
+  flex: 1 1 16rem;
+  min-width: 0;
 }
 .server-connection-notice p {
   margin: 0;
@@ -184,6 +190,7 @@
 }
 .server-connection-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--openbot-space-2);
   -webkit-app-region: no-drag;
 }
