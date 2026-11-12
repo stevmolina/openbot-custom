@@ -85,6 +85,11 @@ function serializeNode(node: Node): string {
   return node.tagName === "DIV" || node.tagName === "P" ? `${content}\n` : content;
 }
 
+/** A plain-text editor: iOS shows no Bold, Italic and Underline buttons in its keyboard bar. */
+function isPlainTextEditor(editor: HTMLElement): boolean {
+  return getComputedStyle(editor).getPropertyValue("-webkit-user-modify") === "read-write-plaintext-only";
+}
+
 /* Use native edits for typing, paste, and line breaks so they share the undo history.
  * insertText splits multiline text into blocks. Escaped insertHTML keeps literal newlines. */
 function insertTextThroughBrowser(editor: HTMLDivElement, text: string): boolean {
@@ -94,6 +99,9 @@ function insertTextThroughBrowser(editor: HTMLDivElement, text: string): boolean
   if (!range || !editor.contains(range.commonAncestorContainer)) return false;
   if (!text) return document.execCommand("delete", false);
   if (!text.includes("\n")) return document.execCommand("insertText", false, text);
+  // In a plain-text editor the browser splits multiline text into blocks, which the text offsets of
+  // the editor do not count. The caller then inserts the text as one text node instead.
+  if (isPlainTextEditor(editor)) return false;
   const escaped = document.createElement("div");
   escaped.textContent = text;
   const atEnd = editorTextOffset(editor, range.endContainer, range.endOffset) === editorText(editor).length;
@@ -118,7 +126,8 @@ export function insertPlainText(editor: HTMLDivElement, text: string): void {
   }
   const caretOffset = editorTextOffset(editor, range.startContainer, range.startOffset) + text.length;
   if (!insertTextThroughBrowser(editor, text)) {
-    // jsdom has no editing commands. Keep the range path for that environment.
+    // jsdom has no editing commands, and a plain-text editor takes multiline text here. Keep the range
+    // path for both.
     if (!editor.textContent) editor.querySelector(":scope > br:last-child")?.remove();
     range.deleteContents();
     range.insertNode(document.createTextNode(text));
