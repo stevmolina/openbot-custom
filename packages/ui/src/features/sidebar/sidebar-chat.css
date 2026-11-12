@@ -133,12 +133,13 @@
   margin-top: var(--openbot-space-2);
 }
 
-/* The dock: one group open at a time, over the pill, under a hairline. It takes at most 60% of the
- * list, and the open group scrolls on its own. */
+/* The dock: one group open at a time, over the pill, under a hairline. It is as tall as its groups and
+ * grows into the free area. When the list is full, the open group shrinks and scrolls on its own, so
+ * the closed folders stay in view. */
 .sidebar-dock {
   display: flex;
-  max-height: 60%;
-  flex: none;
+  min-height: 0;
+  flex: 0 1 auto;
   flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
@@ -158,7 +159,7 @@
   justify-content: flex-start;
   gap: var(--openbot-space-2);
   border-radius: var(--openbot-radius-md);
-  padding: var(--openbot-space-2) var(--openbot-space-3);
+  padding: var(--openbot-space-3);
   color: var(--openbot-text-secondary);
   font-size: var(--openbot-text-sm);
   font-weight: var(--openbot-weight-medium);
@@ -198,12 +199,32 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A closed group keeps its height. The open one can shrink to the room that is left; its body scrolls. */
+.sidebar-dock-group {
+  display: flex;
+  min-height: 0;
+  flex: none;
+  flex-direction: column;
+}
+
+.sidebar-dock-group:has(> .sidebar-section-collapse:not([data-collapsed])) {
+  flex: 0 1 auto;
+}
+
 .sidebar-dock-group > .sidebar-section-collapse {
+  min-height: 0;
+  flex: 0 1 auto;
   grid-template-columns: minmax(0, 1fr);
 }
 
+.sidebar-dock-group > .sidebar-section-collapse > .sidebar-section-body {
+  display: flex;
+  flex-direction: column;
+}
+
 .sidebar-dock-body {
-  max-height: 40vh;
+  min-height: 0;
+  flex: 0 1 auto;
   overflow-x: hidden;
   overflow-y: auto;
   padding-bottom: var(--openbot-space-1);

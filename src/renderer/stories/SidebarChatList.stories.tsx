@@ -372,3 +372,66 @@ export const AllMachinesOffline: Story = {
 export const AllMachinesCollapsed: Story = {
   render: () => <SettledArgs>{() => <AllMachinesSidebar compact />}</SettledArgs>,
 };
+
+/* A folder with many agents: the open folder grows into the free room, and scrolls only when the list is full. */
+
+const bigFolderAgents = [
+  ["prototype", "Prototype Builder", "No messages yet"],
+  ["proto-bot", "Proto Bot", "No messages yet"],
+  ["call-center", "Call Center", "No messages yet"],
+  ["hackatwin", "HackaTwin", "I'd build Transfer Copilot first."],
+  ["coding-worker", "Coding Worker", "No messages yet"],
+  ["coding-bot", "Coding Bot", "No messages yet"],
+  ["reviewer", "Reviewer", "The pull request is ready."],
+].map(([id, name, preview], index) => ({
+  ...requireFixture(STORY_AGENTS[index % STORY_AGENTS.length], "Story agent"),
+  id,
+  name,
+  title: "",
+  threadId: `thread-${id}`,
+  avatarSeed: id,
+  preview,
+  updatedAt: minutesAgo(index * 5 + 2),
+}));
+
+const developmentId = "55555555-5555-4555-8555-555555555551";
+const personalId = "55555555-5555-4555-8555-555555555552";
+const learningId = "55555555-5555-4555-8555-555555555553";
+const bigFolderLayout: SidebarLayoutSnapshot = {
+  revision: 1,
+  sections: [
+    { id: developmentId, name: "Development & Projects" },
+    { id: personalId, name: "Personal & Everyday" },
+    { id: learningId, name: "Learning & Research" },
+  ],
+  order: [SIDEBAR_PEOPLE_SECTION_ID, developmentId, personalId, learningId, SIDEBAR_UNASSIGNED_SECTION_ID],
+  agentAssignments: {
+    ...Object.fromEntries(bigFolderAgents.map((agent) => [agent.id, developmentId])),
+    ...Object.fromEntries(agents.slice(0, 5).map((agent) => [agent.id, personalId])),
+    ...Object.fromEntries(agents.slice(5).map((agent) => [agent.id, learningId])),
+  },
+  agentOrder: [],
+};
+
+const bigFolderArgs = {
+  agents: [...bigFolderAgents, ...agents],
+  agentStates: {},
+  agentMoods: {},
+  channels: [],
+  layout: bigFolderLayout,
+  collapsedSectionIds: [`dock:open:${developmentId}`],
+};
+
+/** The open folder holds seven agents and shows them all, with the other folders under it. */
+export const BigFolderOpen: Story = { args: bigFolderArgs };
+
+/** The same folder under "Needs you": the open folder still takes the room that is left. */
+export const BigFolderNeedsYou: Story = {
+  args: {
+    ...bigFolderArgs,
+    agentStates: {
+      [thirdId]: { kind: "waiting", reason: "approval", detail: "Post 3 drafts to LinkedIn" },
+      scout: { kind: "waiting", reason: "question", detail: "Which month should the report cover?" },
+    },
+  },
+};
