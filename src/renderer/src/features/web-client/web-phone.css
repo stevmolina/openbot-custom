@@ -277,11 +277,6 @@
     color: var(--openbot-text-primary);
   }
 
-  /* The phone has no pill, so its More menu has nothing to pin. */
-  .ui-action-menu.sidebar-more-menu .sidebar-more-row .sidebar-more-pin[role="menuitemcheckbox"] {
-    display: none;
-  }
-
   /* Folder headings read as the sections of the list. */
   .web-app-frame > .sidebar-chat .sidebar-dock-head.ui-button {
     min-height: 52px;

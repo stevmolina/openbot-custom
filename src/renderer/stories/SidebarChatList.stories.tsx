@@ -254,6 +254,20 @@ export const Empty: Story = {
   args: { agents: [], channels: [], agentStates: {}, agentMoods: {} },
 };
 
+/**
+ * The dock with Workflows pinned in Customize pill, and a custom agent beside the providers: the stack
+ * shows the provider with the least left in front, two small logos behind it, and a count.
+ */
+export const PinnedPageAndCustomAgent: Story = {
+  args: {
+    pages: storySidebarPages({
+      usageRows,
+      pinned: ["workflows"],
+      customAgentUsage: [{ id: "agent-hermes", name: "Hermes", text: "Plan: Pro. 61% of the weekly limit left." }],
+    }),
+  },
+};
+
 /* "All machines": the chats of three machines in one list, with a chip per machine. */
 
 const machineAgent = (id: string, name: string, preview: string, minutes: number) => ({

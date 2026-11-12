@@ -55,10 +55,10 @@ mock. The separate web preview implements the browser runtime with that same moc
   Every write needs the same origin and `X-OpenBot-Browser: 1`; all send JSON except the avatar
   upload, which sends the image bytes. A site delete also needs an `Idempotency-Key`. A host logo is
   given to a member of that host, for its current `logoKey` only.
-- The pill of the chat sidebar is the same as on desktop: the account switch, Chats, the pinned pages
-  and More. More lists Routines and Tasks (when the host supports them), Schedule and Usage, each
-  with a pin that adds the page to the pill, then Marketplace, Help and Settings. Tasks starts pinned. This browser keeps the
-  pins (`openbot:rail-pins`). Settings opens a page with the desktop Profile tab
+- The pill of the chat sidebar is the same as on desktop: the account switch, Chats, the pinned pages,
+  the provider stack and More. More lists Routines and Tasks (when the host supports them), Schedule
+  and Usage, then Marketplace, Help, Settings and Customize pill, which pins a page to the pill. No
+  page starts pinned. This browser keeps the pins (`openbot:rail-pins`). Settings opens a page with the desktop Profile tab
   (with Sign out), Preferences (the interface language and the completion sound), and a Billing
   button below the tabs. The server menu opens the Server settings page of the connected host.
   This browser keeps both preferences, also before sign-in (`web-language-preference.ts`,
@@ -364,7 +364,8 @@ older hosts keep a read-only default layout. Late responses from a previous host
 layout revisions after a newer event, cannot replace the current layout. Pins and collapsed
 sections use the desktop's `createSidebarPreferences`, scoped to the account and host.
 
-The chat sidebar shows the usage rings above its pill, and More opens the Usage page, in the web client. Usage comes from the existing host Team API, with the same contract validation, refresh
+The chat sidebar shows the provider usage as a stack of logos in its pill, with a card for every
+provider, and More opens the Usage page, in the web client. Usage comes from the existing host Team API, with the same contract validation, refresh
 controls, and visual components as desktop. Switching hosts clears usage and rejects stale UI
 updates. The web preview uses the desktop mock for usage and sidebar layout too.
 

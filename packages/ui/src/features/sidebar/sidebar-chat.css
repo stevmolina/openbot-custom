@@ -4,20 +4,11 @@
 .sidebar.sidebar-chat {
   --sidebar-chat-face: 46px;
   --sidebar-chat-control: 34px;
-  /* The pill, and the usage tab that grows out of its top. The pill height sets the radius of its
-   * round ends, so the tab starts where they end. */
+  /* The pill at the bottom. */
   --sidebar-pill-button: 40px;
   --sidebar-pill-padding: 5px;
   --sidebar-pill-border: 1px;
-  --sidebar-pill-height: calc(
-    var(--sidebar-pill-button) +
-    2 *
-    (var(--sidebar-pill-padding) + var(--sidebar-pill-border))
-  );
   --sidebar-pill-bg: color-mix(in srgb, var(--openbot-text-primary) 5%, var(--openbot-bg-sidebar));
-  --sidebar-usage-fillet: 12px;
-  /* How far the fillets reach into the round ends of the pill. More makes the tab wider. */
-  --sidebar-usage-tab-overlap: 4px;
   --sidebar-usage-ring: 34px;
 
   position: relative;
@@ -519,116 +510,6 @@
   padding: 0;
 }
 
-/* One row of rings in a tab that grows out of the top of the pill, like a browser tab. The tab has
- * the fill and the edge of the pill. It covers the top edge of the pill below it, and two concave
- * fillets turn its sides into that edge, so the tab and the pill read as one shape. */
-.sidebar-usage.sidebar-usage-tab {
-  position: relative;
-  z-index: 1;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2px;
-  margin: 0 calc(var(--sidebar-pill-height) / 2 + var(--sidebar-usage-fillet) - var(--sidebar-usage-tab-overlap))
-    calc(-1 * var(--sidebar-pill-border));
-  border: var(--sidebar-pill-border) solid var(--openbot-border);
-  border-bottom: 0;
-  border-radius: var(--openbot-radius-xl) var(--openbot-radius-xl) 0 0;
-  background: var(--sidebar-pill-bg);
-  padding: 7px 14px calc(4px + var(--sidebar-pill-border));
-}
-
-/* A fillet fills the corner between a side of the tab and the pill. It has the fill of the pill
- * outside a circle that touches the side of the tab, with the edge color on the rim of the circle.
- * Without CSS math on lengths, the circle sits on the flat top of the pill: the round end drops less
- * than half a pixel at a 4px reach. */
-.sidebar-usage.sidebar-usage-tab::before,
-.sidebar-usage.sidebar-usage-tab::after {
-  --sidebar-usage-rim: calc(var(--sidebar-usage-fillet) - var(--sidebar-pill-border));
-
-  position: absolute;
-  bottom: 0;
-  width: var(--sidebar-usage-fillet);
-  height: var(--sidebar-usage-fillet);
-  content: "";
-  pointer-events: none;
-}
-
-.sidebar-usage.sidebar-usage-tab::before {
-  right: 100%;
-  background:
-    radial-gradient(
-      circle at calc(100% - var(--sidebar-usage-fillet)) 0,
-      transparent calc(var(--sidebar-usage-rim) - 0.25px),
-      var(--openbot-border) calc(var(--sidebar-usage-rim) + 0.25px),
-      var(--openbot-border) calc(var(--sidebar-usage-fillet) - 0.25px),
-      transparent calc(var(--sidebar-usage-fillet) + 0.25px)
-    ),
-    radial-gradient(
-      circle at calc(100% - var(--sidebar-usage-fillet)) 0,
-      transparent calc(var(--sidebar-usage-rim) - 0.5px),
-      var(--sidebar-pill-bg) var(--sidebar-usage-rim)
-    );
-}
-
-.sidebar-usage.sidebar-usage-tab::after {
-  left: 100%;
-  background:
-    radial-gradient(
-      circle at var(--sidebar-usage-fillet) 0,
-      transparent calc(var(--sidebar-usage-rim) - 0.25px),
-      var(--openbot-border) calc(var(--sidebar-usage-rim) + 0.25px),
-      var(--openbot-border) calc(var(--sidebar-usage-fillet) - 0.25px),
-      transparent calc(var(--sidebar-usage-fillet) + 0.25px)
-    ),
-    radial-gradient(
-      circle at var(--sidebar-usage-fillet) 0,
-      transparent calc(var(--sidebar-usage-rim) - 0.5px),
-      var(--sidebar-pill-bg) var(--sidebar-usage-rim)
-    );
-}
-
-/* With CSS math on lengths, the tab reaches further, and each fillet circle touches the round end
- * of the pill instead of its flat top. Lengths are from the top left corner of the pill, down is
- * positive. The circle center is `--sidebar-usage-shift` inside the round-end center across and
- * `--sidebar-usage-drop` above it. The fillet starts where the two circles touch, and reaches one
- * border below the top edge of the pill, so the round-end edge under it is covered. */
-@supports (width: calc(1px / 1px * 1px)) {
-  .sidebar.sidebar-chat {
-    --sidebar-usage-tab-overlap: 8px;
-  }
-
-  .sidebar-usage.sidebar-usage-tab::before,
-  .sidebar-usage.sidebar-usage-tab::after {
-    --sidebar-usage-end: calc(var(--sidebar-pill-height) / 2);
-    --sidebar-usage-reach: calc(var(--sidebar-usage-end) + var(--sidebar-usage-rim));
-    --sidebar-usage-shift: max(0px, calc(var(--sidebar-usage-tab-overlap) - var(--sidebar-pill-border)));
-    --sidebar-usage-drop: calc(
-      sqrt(pow(var(--sidebar-usage-reach) / 1px, 2) - pow(var(--sidebar-usage-shift) / 1px, 2)) *
-      1px
-    );
-    --sidebar-usage-start: calc(
-      var(--sidebar-usage-end) *
-      (1 - var(--sidebar-usage-shift) / var(--sidebar-usage-reach))
-    );
-
-    bottom: calc(-1 * var(--sidebar-pill-border));
-    width: calc(
-      var(--sidebar-usage-end) +
-      var(--sidebar-usage-fillet) -
-      var(--sidebar-usage-tab-overlap) +
-      var(--sidebar-pill-border) -
-      var(--sidebar-usage-start)
-    );
-    height: calc(var(--sidebar-usage-drop) - var(--sidebar-usage-end) + 2 * var(--sidebar-pill-border));
-  }
-}
-
-/* The rings share the row and shrink to fit, so the row never wraps or scrolls. */
-.sidebar-usage-tab > .ui-motion-tooltip-trigger {
-  min-width: 0;
-  flex: 0 1 28px;
-}
-
 /* A stack of rings in the dock: the first ring in front, up to two outer rims peeking out below it,
  * and the full stack fans out when hovered or focused. */
 .sidebar-usage.sidebar-usage-column {
@@ -717,11 +598,6 @@
   box-shadow: 0 0 0 1.5px var(--openbot-bg-sidebar);
 }
 
-.sidebar-chat .sidebar-usage-tab .sidebar-usage-button.ui-button {
-  width: 100%;
-  border: 0;
-}
-
 .sidebar-chat .sidebar-usage-button.ui-button:hover {
   background: var(--openbot-hover);
 }
@@ -737,10 +613,6 @@
   flex: none;
   aspect-ratio: 1;
   place-items: center;
-}
-
-.sidebar-usage-tab .sidebar-usage-ring-box {
-  width: 100%;
 }
 
 .sidebar-usage-ring {
@@ -928,72 +800,9 @@
   color: var(--openbot-text-secondary);
 }
 
-/* The More menu: a pin at the end of each page row. */
+/* The More menu: every page, then Help, Settings and Customize pill, which pins pages to the pill. */
 .sidebar-more-menu {
-  min-width: 220px;
-}
-
-.sidebar-more-menu .sidebar-more-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--openbot-control-md);
-  align-items: center;
-  border-radius: var(--ui-menu-item-radius);
-  transition: background-color var(--openbot-duration-hover) var(--openbot-ease-out);
-}
-
-/* The whole line highlights, for the page and for its pin. The items have no background of their own. */
-.ui-action-menu.sidebar-more-menu .sidebar-more-row:is(:hover, :has([data-highlighted])) {
-  background: var(--ui-menu-item-hover);
-}
-
-.ui-action-menu.sidebar-more-menu
-  .sidebar-more-row
-  :is([role="menuitem"], [role="menuitemcheckbox"]):is(:hover, :focus-visible, [data-highlighted]) {
-  background: transparent;
-}
-
-/* The pin shows on a pinned page, and on the row under the pointer or the keyboard. The shared
- * .ui-action-menu item rule outranks a single class, so this rule names the role to center the pin. */
-.ui-action-menu.sidebar-more-menu .sidebar-more-pin[role="menuitemcheckbox"] {
-  justify-content: center;
-  padding: 0;
-  opacity: 0;
-}
-
-.ui-action-menu.sidebar-more-menu .sidebar-more-row:is([data-pinned], :hover, :focus-within) .sidebar-more-pin {
-  opacity: 1;
-}
-
-/* A touch screen has no hover, so each pin shows. */
-@media (hover: none) {
-  .ui-action-menu.sidebar-more-menu .sidebar-more-pin[role="menuitemcheckbox"] {
-    opacity: 1;
-  }
-}
-
-/* Only a pinned page has a filled pin. A highlighted pin stays an outline. */
-.ui-action-menu.sidebar-more-menu .sidebar-more-pin > .agent-context-icon > * {
-  fill-opacity: 0;
-}
-
-.sidebar-more-menu .sidebar-more-row[data-pinned] .sidebar-more-pin > .agent-context-icon > * {
-  fill-opacity: 1;
-}
-
-/* The page icon follows the line, also when the pin is highlighted. */
-.ui-action-menu.sidebar-more-menu
-  .sidebar-more-row:is(:hover, :has([data-highlighted]))
-  > [role="menuitem"]
-  > .agent-context-icon {
-  color: var(--openbot-text-primary);
-}
-
-.ui-action-menu.sidebar-more-menu
-  .sidebar-more-row:is(:hover, :has([data-highlighted]))
-  > [role="menuitem"]
-  > .agent-context-icon
-  > * {
-  fill-opacity: 1;
+  min-width: 208px;
 }
 
 .sidebar-more-notice {
@@ -1087,4 +896,265 @@
 .sidebar-chat-tip strong {
   color: var(--openbot-text-primary);
   font-weight: var(--openbot-weight-semibold);
+}
+
+/* The providers in the open pill, before More: an avatar stack. The provider with the least left is in
+ * front with its rings; the next ones are small logos tucked behind it, each edged in its usage tone. */
+.sidebar-pill-spacer {
+  flex: 1;
+}
+
+.sidebar-chat .sidebar-pill-button.sidebar-provider-stack {
+  --sidebar-provider-stack-ring: 32px;
+  --sidebar-provider-stack-avatar: 20px;
+  --sidebar-provider-stack-overlap: 6px;
+
+  width: auto;
+  min-width: var(--sidebar-pill-button);
+  max-width: 100%;
+  justify-content: start;
+  overflow: hidden;
+  padding-inline: 4px 6px;
+}
+
+/* A narrow pill gives the stack less room: it cuts the logos at the back first, never the one in front. */
+.sidebar-pill-pages > .ui-motion-tooltip-trigger:has(> .sidebar-provider-stack) {
+  display: flex;
+  min-width: var(--sidebar-pill-button);
+  flex: 0 1 auto;
+}
+
+/* The logos wrap to a hidden second line when the stack has no room for them, so a logo is shown
+ * whole or not at all. */
+.sidebar-provider-stack-items {
+  display: flex;
+  height: var(--sidebar-provider-stack-ring);
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  overflow: hidden;
+  padding-inline-start: 2px;
+}
+
+.sidebar-provider-stack-front {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--sidebar-pill-bg);
+  box-shadow: 0 0 0 2px var(--sidebar-pill-bg);
+}
+
+.sidebar-provider-stack-front .sidebar-usage-ring-box {
+  width: var(--sidebar-provider-stack-ring);
+}
+
+/* The pill sizes every icon in its buttons. The ring fills its box and the logo keeps its share. */
+.sidebar-chat .sidebar-provider-stack .sidebar-usage-ring {
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar-chat .sidebar-provider-stack .sidebar-usage-logo {
+  width: 42%;
+  height: auto;
+}
+
+.sidebar-provider-stack-avatar {
+  --sidebar-provider-stack-edge: var(--openbot-border);
+
+  position: relative;
+  display: grid;
+  width: var(--sidebar-provider-stack-avatar);
+  height: var(--sidebar-provider-stack-avatar);
+  flex: none;
+  place-items: center;
+  margin-inline-start: calc(-1 * var(--sidebar-provider-stack-overlap));
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-bg-surface);
+  /* The inner line is the usage tone; the outer one cuts the avatar from the one in front. */
+  box-shadow:
+    inset 0 0 0 1.5px var(--sidebar-provider-stack-edge),
+    0 0 0 2px var(--sidebar-pill-bg);
+  color: var(--openbot-text-secondary);
+  transition: margin-inline-start var(--openbot-duration-normal) var(--openbot-ease-out);
+}
+
+.sidebar-provider-stack-avatar[data-usage-tone="neutral"] {
+  --sidebar-provider-stack-edge: var(--openbot-success);
+}
+
+.sidebar-provider-stack-avatar[data-usage-tone="warning"] {
+  --sidebar-provider-stack-edge: var(--openbot-warning);
+}
+
+.sidebar-provider-stack-avatar[data-usage-tone="critical"] {
+  --sidebar-provider-stack-edge: var(--openbot-danger);
+}
+
+.sidebar-provider-stack-avatar:nth-child(2) {
+  z-index: 3;
+}
+
+.sidebar-provider-stack-avatar:nth-child(3) {
+  z-index: 2;
+}
+
+.sidebar-provider-stack-avatar:nth-child(4) {
+  z-index: 1;
+}
+
+.sidebar-provider-stack-avatar-front {
+  --sidebar-provider-stack-avatar: var(--sidebar-provider-stack-ring);
+
+  margin-inline-start: 0;
+}
+
+.sidebar-chat .sidebar-provider-stack .sidebar-provider-stack-logo {
+  width: 55%;
+  height: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+  fill: var(--openbot-provider-current);
+}
+
+/* The count is a pill whose left part hides behind the logo before it, so its text starts after it. */
+.sidebar-provider-stack-count {
+  width: auto;
+  min-width: var(--sidebar-provider-stack-avatar);
+  padding-inline: calc(var(--sidebar-provider-stack-overlap) + 3px) 6px;
+  font-size: var(--openbot-text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--openbot-weight-semibold);
+  line-height: 1;
+}
+
+/* Hover spreads the stack a little, so each logo shows whole. */
+.sidebar-provider-stack:is(:hover, :focus-visible, [data-expanded]) .sidebar-provider-stack-avatar {
+  margin-inline-start: calc(-0.25 * var(--sidebar-provider-stack-overlap));
+}
+
+.sidebar-provider-stack:is(:hover, :focus-visible, [data-expanded]) .sidebar-provider-stack-avatar-front {
+  margin-inline-start: 0;
+}
+
+.sidebar-chat .sidebar-provider-stack:is(:hover, [data-expanded]) .sidebar-provider-stack-front {
+  background: color-mix(in srgb, var(--openbot-text-primary) 5%, var(--sidebar-pill-bg));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-provider-stack-avatar {
+    transition: none;
+  }
+}
+
+/* The card of every provider. */
+.sidebar-provider-card {
+  --sidebar-usage-ring: 36px;
+
+  z-index: var(--openbot-layer-popover);
+  display: grid;
+  width: min(320px, calc(100vw - var(--openbot-space-4)));
+  max-height: min(70vh, 480px);
+  overflow: auto;
+  padding: var(--openbot-space-2);
+  gap: var(--openbot-space-1);
+  border-radius: var(--ui-menu-radius);
+  background: var(--ui-menu-bg);
+  box-shadow: var(--ui-menu-panel-shadow);
+  transform-origin: var(--kb-popover-content-transform-origin);
+  animation: ui-menu-in var(--ui-menu-duration) var(--ui-menu-ease) both;
+}
+
+.sidebar-provider-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--openbot-space-1) var(--openbot-space-1) var(--openbot-space-1) var(--openbot-space-2);
+}
+
+.sidebar-provider-card-title {
+  margin: 0;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-md);
+  font-weight: var(--openbot-weight-semibold);
+  line-height: var(--openbot-leading-md);
+}
+
+.sidebar-provider-card .sidebar-provider-card-open.ui-button {
+  gap: var(--openbot-space-0-5);
+  padding-inline: var(--openbot-space-2) var(--openbot-space-1);
+  color: var(--openbot-text-secondary);
+}
+
+.sidebar-provider-card .sidebar-provider-card-open.ui-button svg {
+  width: var(--openbot-icon-sm);
+  height: var(--openbot-icon-sm);
+}
+
+/* Columns: ring, window label, bar, percent left, reset. The windows of each provider are a
+ * subgrid, so the bars line up across providers. */
+.sidebar-provider-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: auto minmax(0, max-content) minmax(var(--openbot-space-8), 1fr) max-content max-content;
+  column-gap: var(--openbot-space-2);
+  list-style: none;
+}
+
+.sidebar-provider-row {
+  display: grid;
+  align-items: center;
+  border-radius: var(--ui-menu-item-radius);
+  padding: var(--openbot-space-2);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  row-gap: var(--openbot-space-1);
+}
+
+.sidebar-provider-row + .sidebar-provider-row {
+  box-shadow: inset 0 1px 0 var(--openbot-border);
+  border-radius: 0;
+}
+
+.sidebar-provider-row-ring {
+  display: grid;
+  align-self: start;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  color: var(--openbot-text-primary);
+}
+
+.sidebar-provider-row-name {
+  min-width: 0;
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-semibold);
+  line-height: var(--openbot-leading-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-provider-row > .account-usage-windows {
+  grid-column: 2 / -1;
+}
+
+/* A custom agent has no rings: its logo, and its answer as the agent wrote it. */
+.sidebar-provider-row-agent {
+  width: var(--sidebar-usage-ring);
+  aspect-ratio: 1;
+  place-items: center;
+}
+
+.sidebar-provider-row-text {
+  margin: 0;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  line-height: var(--openbot-leading-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  grid-column: 2 / -1;
 }

@@ -3,15 +3,15 @@ import type { SidebarPages } from "@openbot/ui/features/sidebar/sidebar-pages";
 import { fn } from "storybook/test";
 
 /**
- * The pages of the chat sidebar for a story: every page opens, nothing is pinned but Workflows and
- * Tasks, and the help menu has no news. A story overrides what it shows.
+ * The pages of the chat sidebar for a story: every page opens, nothing is pinned, as in the app until
+ * the user pins a page, and the help menu has no news. A story overrides what it shows.
  */
 export function storySidebarPages(
   overrides: Partial<SidebarPages> & { usageRows?: readonly AccountUsageProviderRow[] } = {},
 ): SidebarPages {
   return {
     current: "chats",
-    pinned: ["workflows", "tasks"],
+    pinned: [],
     onPinChange: fn(),
     usageRows: [],
     onChats: fn(),
@@ -21,9 +21,12 @@ export function storySidebarPages(
     onSchedule: fn(),
     onUsage: fn(),
     onLibrary: fn(),
+    onMachines: fn(),
     onMarketplace: fn(),
     onSettings: fn(),
     onCollapse: fn(),
+    shortcutPlatform: "mac",
+    settingsShortcut: true,
     help: {
       news: [],
       onOpenWhatsNew: fn(),
