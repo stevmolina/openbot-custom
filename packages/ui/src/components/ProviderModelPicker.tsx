@@ -937,7 +937,10 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                         item={item}
                         type="button"
                         class={["provider-model-option", { "provider-model-option-selected": isSelected() }]}
-                        aria-keyshortcuts={shortcutKey(shortcutModels().indexOf(model))?.replace("⌘", "Meta+")}
+                        aria-keyshortcuts={
+                          shortcutKey(shortcutModels().indexOf(model)) &&
+                          `${props.shortcutPlatform === "mac" ? "Meta" : "Control"}+${shortcutModels().indexOf(model) + 1}`
+                        }
                         aria-label={spentLabel(
                           model.id === railDefaultModel(provider)
                             ? t("provider.picker.defaultModelLabel", { name: label() })
