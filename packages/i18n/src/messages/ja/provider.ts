@@ -140,6 +140,7 @@ export const messages = {
   "provider.picker.effort": "推論の強さ",
   "provider.picker.effortLabel": "エージェントの推論の強さ",
   "provider.picker.effortFixed": "{effort}（{provider} が固定）",
+  "provider.picker.reasoning": "推論",
   "provider.picker.fast": "高速",
   "provider.picker.fastText": "応答が速く、使用量が増えます",
   "provider.picker.speed": "速度",

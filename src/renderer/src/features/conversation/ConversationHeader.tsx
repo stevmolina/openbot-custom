@@ -1,9 +1,8 @@
-import { foreignProvider, isKnownAgentProvider } from "@openbot/contracts/agent-providers";
+import { isKnownAgentProvider } from "@openbot/contracts/agent-providers";
 import {
   type AgentModelId,
   type AgentProviderRef,
   type AgentReasoningEffort,
-  agentNextProviderAccountId,
   DEFAULT_PROVIDER_ACCOUNT_ID,
   providerDisplayName,
 } from "@openbot/contracts/ipc";
@@ -40,13 +39,8 @@ export function ConversationHeader() {
     agentActivity,
     browserControlAgent,
     channel,
-    fastMode,
-    ultrafast,
-    fastModeChange,
     props,
     runningTurnRuntime,
-    selectAndConfirmModel,
-    selectAndConfirmReasoning,
     setActiveRightPanel,
     settingsModel,
     settingsProvider,
@@ -161,33 +155,6 @@ export function ConversationHeader() {
       titleSelected={titleSelected()}
       tabbed={allAgentTabs()}
       pendingModel={pendingModel()}
-      modelPicker={{
-        provider: settingsProvider(),
-        foreignProvider: props.agent ? foreignProvider(props.agent.provider) : undefined,
-        value: settingsModel(),
-        reasoningEffort: settingsReasoning(),
-        modelOptions: props.modelOptions,
-        agentStatus: props.agentStatus,
-        runtimeStatuses: props.providerRuntimeStatuses,
-        customProviders: props.customProviders,
-        customAgents: props.customAgents,
-        onDownloadProvider: props.onDownloadProvider,
-        onCancelProviderDownload: props.onCancelProviderDownload,
-        onConnectProvider: props.onConnectProvider,
-        canConnectProvider: props.canConnectProvider,
-        onManageProviders: props.onManageProviders,
-        // A model, effort, provider or account chosen during a turn applies from the next turn.
-        disabledReason: t("conversation.header.modelsUnavailable"),
-        accountChoice: true,
-        providerAccountId: props.agent ? agentNextProviderAccountId(props.agent) : undefined,
-        accountUsage: props.accountUsage,
-        onChange: (model, provider, accountId, effort) =>
-          void selectAndConfirmModel(model, provider, accountId, effort),
-        onReasoningEffortChange: (effort) => void selectAndConfirmReasoning(effort),
-        fastMode: fastMode(),
-        ultrafast: ultrafast(),
-        onFastModeChange: fastModeChange(),
-      }}
       remoteControl={
         props.remoteDesktopEnabled !== false && props.server?.kind === "remote"
           ? {

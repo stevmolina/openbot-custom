@@ -20,6 +20,7 @@ import {
 import { sourceText } from "@openbot/i18n/source";
 import { spentUsageWindow } from "@openbot/team-client/plan-limits";
 import { Button, Input } from "@openbot/ui";
+import { ProviderModelPicker } from "@openbot/ui/components/ProviderModelPicker";
 import { AwaitingReplies } from "@openbot/ui/features/conversation/AwaitingReplies";
 import { BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
 import { ComposerAddMenu, ComposerArtifactChip } from "@openbot/ui/features/conversation/ComposerAddMenu";
@@ -49,6 +50,7 @@ import { reportErrorBanner, reportNotification } from "../../error-reports";
 import { deviceSendShortcut, sendShortcutAriaKey, sendShortcutHintKey } from "../../send-shortcut-preference";
 import { speechReading } from "../speech/speech-playback";
 import { stopSpokenReply } from "../speech/speech-replies";
+import { useAgentModelPicker } from "./agent-model-picker";
 import { backgroundWorkerItems } from "./background-worker-items";
 import { copyComposerSelection, readComposerCopy } from "./composer-clipboard";
 import { createComposerResize } from "./composer-resize";
@@ -146,6 +148,7 @@ export function ConversationComposer() {
     canTeachBrowserTask,
     openBrowserTeach,
   } = useConversationViewScope();
+  const modelPicker = useAgentModelPicker();
   const { t, format, sourceText: localizeSourceText } = useText();
   const messageLabel = () =>
     channel
@@ -731,8 +734,14 @@ export function ConversationComposer() {
           onPointerDown={(event) => {
             if (!(event.target instanceof Element)) return;
             // The "+" menu and the image viewer are in portals, but their events come here too. Focus taken
-            // from the menu closes it before the item gets the pointerup.
-            if (event.target.closest("button, .composer-editor-surface, .ui-action-menu, .image-lightbox")) return;
+            // from the menu closes it before the item gets the pointerup. The model picker panel opens
+            // inside the composer: its search field and its gaps keep the focus.
+            if (
+              event.target.closest(
+                "button, .composer-editor-surface, .ui-action-menu, .image-lightbox, .provider-model-popover",
+              )
+            )
+              return;
             event.preventDefault();
             setComposerFocusRequest((current) => current + 1);
           }}
@@ -842,6 +851,9 @@ export function ConversationComposer() {
               onVoice={openVoiceConversation()}
             />
             <div class="composer-primary-actions">
+              <Show when={props.agent}>
+                <ProviderModelPicker {...modelPicker()} />
+              </Show>
               <Show when={contextUsageView(context())}>
                 {(usage) => (
                   <ContextUsageMeter newChat={newChat()} compact={props.onCompactAgentContext} usage={usage()} />

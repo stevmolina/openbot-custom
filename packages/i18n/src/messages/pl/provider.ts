@@ -154,6 +154,7 @@ export const messages = {
   "provider.picker.effort": "Wysiłek",
   "provider.picker.effortLabel": "Wysiłek rozumowania agenta",
   "provider.picker.effortFixed": "{effort}, ustawia {provider}",
+  "provider.picker.reasoning": "Rozumowanie",
   "provider.picker.fast": "Szybki",
   "provider.picker.fastText": "Szybsze odpowiedzi, większe zużycie",
   "provider.picker.speed": "Szybkość",
