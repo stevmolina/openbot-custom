@@ -76,10 +76,13 @@ export const messages = {
   "conversation.threads.archived": "Archivés",
   "conversation.threads.restore": "Restaurer",
   "conversation.threads.deleteUndo.title": "{title} supprimé",
+  "conversation.threads.stop": "Arrêter",
+  "conversation.threads.stopThread": "Arrêter {title}",
   "conversation.threads.hold.threadLimit": {
     one: "En attente d’un fil libre. {count} fil est en cours.",
     other: "En attente d’un fil libre. {count} fils sont en cours.",
   },
+  "conversation.threads.hold.busyThreads": "Fils en cours",
   "conversation.threads.view.label": "Fil {title}",
   "conversation.threads.view.startedByAgent": "{name} a démarré ce fil.",
   "conversation.threads.view.loadOlder": "Charger les messages plus anciens",

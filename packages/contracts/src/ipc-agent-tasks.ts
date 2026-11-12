@@ -10,22 +10,30 @@ import {
 import { isQueueDelivery, type QueueDelivery } from "./ipc-queue";
 import { isDynamicRecord, isOneOf } from "./runtime-values";
 
-/** The most tasks of one agent that run a turn at the same time, next to the agent's own chat. */
+/** The highest limit that a person can set on the tasks of one agent that run a turn at the same time. */
 export const AGENT_TASK_LIMIT_MAX = 4;
-/** The task limit of an agent that has no limit of its own. */
-export const AGENT_TASK_LIMIT_DEFAULT = 4;
 
 export function isAgentTaskLimit(value: unknown): value is number {
   return integerInRange(value, 1, AGENT_TASK_LIMIT_MAX);
 }
 
 /**
- * How many tasks of the agent run a turn at the same time. A provider that runs one turn at a time
- * runs one task, and the agent's own chat waits for it.
+ * How many tasks of the agent run a turn at the same time, or null for no limit. An agent with no
+ * limit of its own has none: the memory of the computer (`server-busy`) still bounds its turns. A
+ * provider that runs one turn at a time runs one task, and the agent's own chat waits for it.
  */
-export function agentTaskLimit(agent: { provider: AgentProviderId; taskLimit?: number }): number {
+export function agentTaskLimit(agent: { provider: AgentProviderId; taskLimit?: number }): number | null {
   if (!agentProviderDescriptor(agent.provider).concurrentTurns) return 1;
-  return agent.taskLimit ?? AGENT_TASK_LIMIT_DEFAULT;
+  return agent.taskLimit ?? null;
+}
+
+/**
+ * The limit that a task list reports. The IPC and the frozen `agent-tasks-v1` snapshot carry a number
+ * from 1 to `AGENT_TASK_LIMIT_MAX`, so no limit reports the highest one. A host with no limit never
+ * holds a task for `task-limit`, so no client shows that number.
+ */
+export function reportedAgentTaskLimit(limit: number | null): number {
+  return limit ?? AGENT_TASK_LIMIT_MAX;
 }
 
 export const AGENT_TASK_STATES = ["running", "queued", "idle", "closed"] as const;
@@ -33,7 +41,7 @@ export type AgentTaskState = (typeof AGENT_TASK_STATES)[number];
 
 /**
  * Why the next message of a task waits:
- * - `task-limit`: the agent already runs as many tasks as its limit allows.
+ * - `task-limit`: the agent already runs as many tasks as the limit that a person set allows.
  * - `agent-restarting`: the agent's provider process restarts after another turn ends.
  * - `usage-limit`: the provider plan refused a turn, and the agent waits for the reset.
  * - `server-busy`: the computer runs as many turns as its memory allows.
@@ -127,7 +135,7 @@ export interface AgentTasksSnapshot {
   agentId: string;
   /** The open tasks first, then the newest closed ones. */
   tasks: AgentTask[];
-  /** How many tasks can run a turn at the same time. */
+  /** How many tasks can run a turn at the same time. `AGENT_TASK_LIMIT_MAX` also stands for no limit. */
   limit: number;
 }
 

@@ -15,6 +15,7 @@ import {
   type BranchAgentTaskInput,
   type ConversationMessage,
   type ConversationSnapshot,
+  reportedAgentTaskLimit,
 } from "@openbot/contracts/ipc";
 import { sourceText } from "@openbot/i18n/source";
 import { createOpenBotLogger } from "@openbot/logging";
@@ -147,7 +148,8 @@ export class AgentTasks implements TaskLanes {
     });
   }
 
-  limit(agentId: string): number {
+  /** Null: the agent has no task limit. */
+  limit(agentId: string): number | null {
     const agent = this.#hooks.agent(agentId);
     return agent ? agentTaskLimit(agent) : 1;
   }
@@ -170,7 +172,7 @@ export class AgentTasks implements TaskLanes {
     return {
       agentId,
       tasks: this.#store.list(agentId).map((task) => this.#publicTask(task)),
-      limit: this.limit(agentId),
+      limit: reportedAgentTaskLimit(this.limit(agentId)),
     };
   }
 

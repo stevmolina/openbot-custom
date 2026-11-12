@@ -162,7 +162,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "방향 지시",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider}은(는) 실행 중인 턴에 방향을 지시할 수 없어요. 작업 중에 보낸 메시지는 대기열에서 기다려요.",
-  "agentSettings.taskLimit.default": "기본값({count})",
+  "agentSettings.taskLimit.default": "기본값(제한 없음)",
   "agentSettings.taskLimit.oneTurn":
     "{provider}은(는) 한 번에 한 턴씩 실행해요. 이 에이전트의 스레드는 서로를 기다려요.",
   "agentSettings.notificationLevel.title": "내 알림",

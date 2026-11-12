@@ -174,7 +174,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Orienter",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} ne peut pas orienter un tour en cours. Les messages envoyés pendant son travail attendent dans la file.",
-  "agentSettings.taskLimit.default": "Par défaut ({count})",
+  "agentSettings.taskLimit.default": "Par défaut (sans limite)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} exécute un seul tour à la fois. Les fils de cet agent s’attendent les uns les autres.",
   "agentSettings.notificationLevel.title": "Me notifier",

@@ -1,5 +1,4 @@
 import {
-  AGENT_TASK_LIMIT_DEFAULT,
   AGENT_TASK_LIMIT_MAX,
   type AgentFastModeSettings,
   type AgentHostSettings,
@@ -30,7 +29,7 @@ import { queryKeys } from "@/features/workspace/model/query-keys";
 import { haptics } from "@/shared/lib/haptics";
 import { useText } from "@/shared/lib/text";
 
-/** `default` follows the host default. */
+/** `default` follows the host default: no limit. */
 type TaskLimitChoice = "default" | number;
 const TASK_LIMIT_CHOICES: readonly TaskLimitChoice[] = [
   "default",
@@ -261,10 +260,7 @@ export function AgentTaskLimitField(props: AgentHostFieldsProps) {
               value={choice}
               options={TASK_LIMIT_CHOICES.map((value) => ({
                 value,
-                label:
-                  value === "default"
-                    ? t("mobile.agent.taskLimit.default", { count: AGENT_TASK_LIMIT_DEFAULT })
-                    : format.number(value),
+                label: value === "default" ? t("mobile.agent.taskLimit.default") : format.number(value),
               }))}
               enabled={enabled && !oneTurnAtATime}
               dark={theme === "dark"}

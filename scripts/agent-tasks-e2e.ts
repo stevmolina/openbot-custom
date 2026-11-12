@@ -5,7 +5,8 @@
 // `bun scripts/agent-tasks-e2e.ts --allow-mutations --agent=<agent id>`.
 //
 // It checks the task limit and its hold, a raised limit that starts the waiting task, Stop, a
-// provider switch queued while a task runs, and that the task list reports the `error` field. Each
+// provider switch queued while a task runs, that the task list reports the `error` field, and that
+// with no limit (the default) five tasks run at the same time with no `task-limit` hold. Each
 // task turn is a real provider turn, so keep the prompts short. At the end it stops and closes the
 // tasks it started and gives the agent its task limit back.
 // Writes .openbot-build/agent-tasks-e2e/report.json.
@@ -41,8 +42,12 @@ const agentId: string = agentArgument;
 
 // Long enough that the first task still runs while the script reads the second one.
 const LONG_PROMPT = "Write a numbered list of 40 short facts about rivers. Do not use tools.";
+/** Long enough that the first of five tasks still runs when the fifth one starts. */
+const LONGER_PROMPT = "Write a numbered list of 150 short facts about oceans. Do not use tools.";
 const SHORT_PROMPT = "Reply with the single word ready. Do not use tools.";
 const WAIT_MS = 120_000;
+/** More than the highest limit a person can set, so no limit is the only reason they all run. */
+const NO_LIMIT_TASKS = 5;
 
 interface Report {
   agentId: string;
@@ -58,6 +63,7 @@ interface Report {
     pendingModel?: string | null;
   };
   errorField?: { present: boolean };
+  noLimit?: { running: number; holds: Array<string | null>; limit: number };
   restored?: { taskLimit: number | null };
   passed: boolean;
 }
@@ -220,6 +226,24 @@ try {
   // 5. The list reports the stored error of each task: null after a turn that did not fail.
   report.errorField = { present: stopped.tasks.every((task) => "error" in task) };
   assert.ok(report.errorField.present);
+
+  // 6. With no limit of its own, the agent runs each task at once: five tasks run at the same time,
+  // and no read shows a `task-limit` hold. The memory of the computer can still hold one.
+  await setTaskLimit(null);
+  const many: string[] = [];
+  for (let index = 0; index < NO_LIMIT_TASKS; index += 1) many.push((await startTask(LONGER_PROMPT)).id);
+  const holds = new Set<string | null>();
+  const together = await waitForTasks(`${NO_LIMIT_TASKS} tasks run at the same time`, (snapshot) => {
+    for (const taskId of many) holds.add(taskIn(snapshot, taskId).hold);
+    assert.ok(!holds.has("task-limit"), "A task waited for a task limit with no limit set.");
+    return many.every((taskId) => taskIn(snapshot, taskId).state === "running");
+  });
+  report.noLimit = {
+    running: many.filter((taskId) => taskIn(together, taskId).state === "running").length,
+    holds: [...holds],
+    limit: together.limit,
+  };
+  assert.equal(report.noLimit.running, NO_LIMIT_TASKS);
   report.passed = true;
 } finally {
   for (const taskId of started) {

@@ -176,7 +176,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "הכוונה",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} אינו יכול להכווין תור שרץ. הודעות שנשלחות בזמן שהוא עובד ממתינות בתור.",
-  "agentSettings.taskLimit.default": "ברירת מחדל ({count})",
+  "agentSettings.taskLimit.default": "ברירת מחדל (ללא הגבלה)",
   "agentSettings.taskLimit.oneTurn": "{provider} מריץ תור אחד בכל פעם. השרשורים של הסוכן הזה ממתינים זה לזה.",
 
   "agentSettings.notificationLevel.title": "התראות אליי",

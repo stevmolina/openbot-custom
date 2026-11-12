@@ -76,10 +76,13 @@ export const messages = {
   "conversation.threads.archived": "Arşivlenenler",
   "conversation.threads.restore": "Geri yükle",
   "conversation.threads.deleteUndo.title": "{title} silindi",
+  "conversation.threads.stop": "Durdur",
+  "conversation.threads.stopThread": "Durdur: {title}",
   "conversation.threads.hold.threadLimit": {
     one: "Boş bir mesaj dizisi bekleniyor. {count} mesaj dizisi çalışıyor.",
     other: "Boş bir mesaj dizisi bekleniyor. {count} mesaj dizisi çalışıyor.",
   },
+  "conversation.threads.hold.busyThreads": "Şu an çalışan konular",
   "conversation.threads.view.label": "Mesaj dizisi {title}",
   "conversation.threads.view.startedByAgent": "{name} bu mesaj dizisini başlattı.",
   "conversation.threads.view.loadOlder": "Daha eski mesajları yükle",

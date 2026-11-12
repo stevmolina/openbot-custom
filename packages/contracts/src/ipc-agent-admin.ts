@@ -213,8 +213,7 @@ export function parseUpdateAgentBackupModelsInput(value: unknown): UpdateAgentBa
 
 /**
  * How many tasks of one agent run a turn at the same time. The local window reads it from the agent
- * summary; an owner or admin of a joined server reads it here. Null: the default,
- * `AGENT_TASK_LIMIT_DEFAULT`.
+ * summary; an owner or admin of a joined server reads it here. Null: the default, no limit.
  */
 export interface AgentTaskLimitSettings {
   taskLimit: number | null;

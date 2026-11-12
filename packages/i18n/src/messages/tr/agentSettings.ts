@@ -169,7 +169,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Yönlendir",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} çalışan bir turu yönlendiremez. Çalışırken gönderilen mesajlar kuyrukta bekler.",
-  "agentSettings.taskLimit.default": "Varsayılan ({count})",
+  "agentSettings.taskLimit.default": "Varsayılan (sınırsız)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} aynı anda tek tur çalıştırır. Bu ajanın mesaj dizileri birbirini bekler.",
   "agentSettings.notificationLevel.title": "Bana bildir",

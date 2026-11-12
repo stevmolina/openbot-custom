@@ -380,7 +380,7 @@ export const messages = {
     "{provider} は実行中のターンの方向を修正できません。作業中に送ったメッセージはキューで待ちます。",
   "mobile.agent.taskLimit.label": "並列スレッド",
   "mobile.agent.taskLimit.footer": "同時に実行するスレッド",
-  "mobile.agent.taskLimit.default": "デフォルト ({count})",
+  "mobile.agent.taskLimit.default": "デフォルト (上限なし)",
   "mobile.agent.taskLimit.oneTurn":
     "{provider} は一度に1ターンずつ実行します。このエージェントのスレッドは互いに待ち合わせます。",
   "mobile.agent.browserProfile.label": "ブラウザープロファイル",

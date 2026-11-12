@@ -156,6 +156,7 @@ import {
   type RoutineFlowStep,
   type RoutineRun,
   type RoutineSchedule,
+  reportedAgentTaskLimit,
   type SendMessageInput,
   type ServerAuditEntry,
   type SetAgentAvatarInput,
@@ -935,7 +936,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
   function agentTaskLimitOf(agentId: string): number {
     const agent = agents.find((candidate) => candidate.id === agentId);
     // Tasks run on this computer, so an agent on a provider that this build does not know has none.
-    return agent && isAgentSummary(agent) ? agentTaskLimit(agent) : 1;
+    return agent && isAgentSummary(agent) ? reportedAgentTaskLimit(agentTaskLimit(agent)) : 1;
   }
 
   function hiddenAgents(): HiddenAgentsSnapshot {

@@ -378,7 +378,7 @@ export const messages = {
     "{provider} no puede orientar un turno en curso. Los mensajes enviados mientras trabaja esperan en la cola.",
   "mobile.agent.taskLimit.label": "Hilos en paralelo",
   "mobile.agent.taskLimit.footer": "Hilos que se ejecutan a la vez",
-  "mobile.agent.taskLimit.default": "Predeterminado ({count})",
+  "mobile.agent.taskLimit.default": "Predeterminado (sin límite)",
   "mobile.agent.taskLimit.oneTurn":
     "{provider} ejecuta un turno a la vez. Los hilos de este agente se esperan entre sí.",
   "mobile.agent.browserProfile.label": "Perfil del navegador",

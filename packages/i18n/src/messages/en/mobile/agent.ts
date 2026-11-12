@@ -370,7 +370,7 @@ export const messages = defineMessages("mobile.agent", {
     "{provider} cannot steer a running turn. Messages sent while it works wait in the queue.",
   "mobile.agent.taskLimit.label": "Parallel threads",
   "mobile.agent.taskLimit.footer": "Threads that run at the same time",
-  "mobile.agent.taskLimit.default": "Default ({count})",
+  "mobile.agent.taskLimit.default": "Default (no limit)",
   "mobile.agent.taskLimit.oneTurn":
     "{provider} runs one turn at a time. The threads of this agent wait for each other.",
   "mobile.agent.browserProfile.label": "Browser profile",

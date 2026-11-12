@@ -388,7 +388,7 @@ export const messages = {
     "{provider} ne peut pas orienter un tour en cours. Les messages envoyés pendant son travail attendent dans la file.",
   "mobile.agent.taskLimit.label": "Fils en parallèle",
   "mobile.agent.taskLimit.footer": "Fils exécutés en même temps",
-  "mobile.agent.taskLimit.default": "Par défaut ({count})",
+  "mobile.agent.taskLimit.default": "Par défaut (sans limite)",
   "mobile.agent.taskLimit.oneTurn":
     "{provider} exécute un seul tour à la fois. Les fils de cet agent s’attendent les uns les autres.",
   "mobile.agent.browserProfile.label": "Profil de navigateur",

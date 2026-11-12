@@ -407,7 +407,7 @@ export const messages = {
     "{provider} не умеет направлять выполняемый ход. Сообщения, отправленные во время работы, ждут в очереди.",
   "mobile.agent.taskLimit.label": "Параллельные ветки",
   "mobile.agent.taskLimit.footer": "Ветки, которые работают одновременно",
-  "mobile.agent.taskLimit.default": "По умолчанию ({count})",
+  "mobile.agent.taskLimit.default": "По умолчанию (без ограничений)",
   "mobile.agent.taskLimit.oneTurn": "{provider} выполняет один ход за раз. Ветки этого агента ждут друг друга.",
   "mobile.agent.browserProfile.label": "Профиль браузера",
   "mobile.agent.browserProfile.shared": "Общий",

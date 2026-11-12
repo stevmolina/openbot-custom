@@ -389,7 +389,7 @@ export const messages = {
     "{provider} çalışan bir turu yönlendiremez. Çalışırken gönderilen mesajlar kuyrukta bekler.",
   "mobile.agent.taskLimit.label": "Paralel mesaj dizileri",
   "mobile.agent.taskLimit.footer": "Aynı anda çalışan mesaj dizileri",
-  "mobile.agent.taskLimit.default": "Varsayılan ({count})",
+  "mobile.agent.taskLimit.default": "Varsayılan (sınırsız)",
   "mobile.agent.taskLimit.oneTurn":
     "{provider} aynı anda tek tur çalıştırır. Bu ajanın mesaj dizileri birbirini bekler.",
   "mobile.agent.browserProfile.label": "Tarayıcı profili",

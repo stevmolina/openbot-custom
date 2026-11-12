@@ -386,7 +386,7 @@ export const messages = {
     "{provider} kann einen laufenden Durchlauf nicht steuern. Während der Arbeit gesendete Nachrichten warten in der Warteschlange.",
   "mobile.agent.taskLimit.label": "Parallele Threads",
   "mobile.agent.taskLimit.footer": "Threads, die gleichzeitig laufen",
-  "mobile.agent.taskLimit.default": "Standard ({count})",
+  "mobile.agent.taskLimit.default": "Standard (kein Limit)",
   "mobile.agent.taskLimit.oneTurn":
     "{provider} führt immer nur einen Durchlauf aus. Die Threads dieses Agenten warten aufeinander.",
   "mobile.agent.browserProfile.label": "Browser-Profil",

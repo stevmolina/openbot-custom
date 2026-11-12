@@ -194,7 +194,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Направлять",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} не умеет направлять выполняемый ход. Сообщения, отправленные во время работы, ждут в очереди.",
-  "agentSettings.taskLimit.default": "По умолчанию ({count})",
+  "agentSettings.taskLimit.default": "По умолчанию (без ограничений)",
   "agentSettings.taskLimit.oneTurn": "{provider} выполняет один ход за раз. Ветки этого агента ждут друг друга.",
 
   "agentSettings.notificationLevel.title": "Уведомлять меня",

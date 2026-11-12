@@ -11,7 +11,7 @@ import type {
 } from "@openbot/contracts/ipc";
 import type { AppTextKey } from "@openbot/i18n";
 import { isAgentTaskActive } from "@openbot/team-client/agent-tasks";
-import { Button, Check, DropdownMenu, LoaderCircle, MessageSquareText } from "@openbot/ui";
+import { Button, Check, DropdownMenu, LoaderCircle, MessageSquareText, Square } from "@openbot/ui";
 import { createScrollFades } from "@openbot/ui/components/createScrollFades";
 import type {
   AgentMessage,
@@ -101,12 +101,21 @@ function shownInThread(message: AgentMessage): boolean {
   );
 }
 
-/** Why the next message of a queued thread waits. */
+/**
+ * Why the next message of a queued thread waits. Null when nothing holds it: the message starts in a
+ * moment, so no limit is named.
+ */
 export function agentThreadHoldText(task: AgentTask, limit: number, t: TextValue["t"]): string | null {
-  if (task.state !== "queued") return null;
-  if (task.hold === "task-limit" || task.hold === null)
-    return t("conversation.threads.hold.threadLimit", { count: limit });
+  if (task.state !== "queued" || task.hold === null) return null;
+  if (task.hold === "task-limit") return t("conversation.threads.hold.threadLimit", { count: limit });
   return t(HOLD_TEXT[task.hold]);
+}
+
+/** Another side thread of the agent whose turn runs, so the person can stop it to free a thread. */
+export interface AgentThreadBusy {
+  /** The task id. */
+  id: string;
+  title: string;
 }
 
 /** Dictation into the thread's message box, as in the agent's own chat. */
@@ -160,6 +169,13 @@ export interface AgentThreadViewProps {
   task: AgentTask | null;
   /** How many threads of the agent can run at the same time. */
   limit: number;
+  /**
+   * The other side threads of the agent that run a turn. They show under a thread-limit hold, each
+   * with a Stop button. Missing where the host cannot stop a thread.
+   */
+  busyThreads?: readonly AgentThreadBusy[] | undefined;
+  /** Stops the turn of another side thread by its task id and cancels its queued messages. */
+  onStopThread?: ((taskId: string) => void) | undefined;
   agent: AgentProfile;
   agents: AgentProfile[];
   /**
@@ -662,6 +678,13 @@ export function AgentThreadView(props: AgentThreadViewProps) {
     props.task?.state === "running" && !props.approval && !props.waitsForAnswer ? props.task : undefined;
   const queued = () => (props.task && props.task.queuedMessages.length > 0 ? props.task : undefined);
   const hold = () => (props.task ? agentThreadHoldText(props.task, props.limit, t) : null);
+  /** Under a thread-limit hold, the threads that hold it, so the person can stop one. */
+  const busyRows = () => {
+    const rows = props.busyThreads?.filter((thread) => thread.id !== props.task?.id) ?? [];
+    return props.task?.state === "queued" && props.task.hold === "task-limit" && props.onStopThread && rows.length > 0
+      ? rows
+      : undefined;
+  };
   const editingQueued = () => Boolean(props.queue?.editingDeliveryId);
   const sendLabel = () =>
     t(recording() ? "composer.send.voice" : editingQueued() ? "composer.send.saveQueued" : "composer.send.message");
@@ -1004,6 +1027,29 @@ export function AgentThreadView(props: AgentThreadViewProps) {
                 <LoaderCircle class="composer-notice-icon composer-spinner" aria-hidden="true" />
                 <p class="agent-thread-hold-copy">{text()}</p>
               </div>
+            )}
+          </Show>
+          <Show when={busyRows()}>
+            {(rows) => (
+              <ul class="agent-thread-busy" aria-label={t("conversation.threads.hold.busyThreads")}>
+                <For each={rows()} keyed={(row) => row.id}>
+                  {(row) => (
+                    <li class="agent-thread-busy-row">
+                      <span class="agent-thread-busy-title">{row().title}</span>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        class="agent-thread-busy-stop"
+                        aria-label={t("conversation.threads.stopThread", { title: row().title })}
+                        onClick={() => props.onStopThread?.(row().id)}
+                      >
+                        <Square aria-hidden="true" />
+                        <span>{t("conversation.threads.stop")}</span>
+                      </Button>
+                    </li>
+                  )}
+                </For>
+              </ul>
             )}
           </Show>
           <Show when={waitingRows()}>

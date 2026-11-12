@@ -189,7 +189,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Pokieruj",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} nie może kierować trwającą turą. Wiadomości wysłane w trakcie pracy czekają w kolejce.",
-  "agentSettings.taskLimit.default": "Domyślnie ({count})",
+  "agentSettings.taskLimit.default": "Domyślnie (bez limitu)",
   "agentSettings.taskLimit.oneTurn": "{provider} wykonuje jedną turę naraz. Wątki tego agenta czekają na siebie.",
   "agentSettings.notificationLevel.title": "Powiadamiaj mnie",
   "agentSettings.notificationLevel.server": "Domyślne serwera ({level})",

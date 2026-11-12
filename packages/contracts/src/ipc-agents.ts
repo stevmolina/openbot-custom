@@ -345,7 +345,7 @@ export interface AgentSummary {
   /**
    * How many tasks of the agent run a turn at the same time, 1 to `AGENT_TASK_LIMIT_MAX`. Local-only,
    * like `access`; an owner or admin of a joined server reads it on `agent-task-limit-v1`. Absent
-   * means `AGENT_TASK_LIMIT_DEFAULT`; see `agentTaskLimit`.
+   * means no limit; see `agentTaskLimit`.
    */
   taskLimit?: number;
   /**
@@ -497,7 +497,7 @@ export interface UpdateAgentInput {
   ultrafast?: boolean;
   /** `null` returns the agent to the app default. */
   busyMessageMode?: BusyMessageMode | null;
-  /** `null` returns the agent to the default task limit. */
+  /** `null` returns the agent to the default: no task limit. */
   taskLimit?: number | null;
   /** `null` returns the agent to the provider's own sign-in. */
   providerAccountId?: string | null;

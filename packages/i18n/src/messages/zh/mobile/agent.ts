@@ -361,7 +361,7 @@ export const messages = {
     "{provider} 无法引导运行中的对话。它工作期间发送的消息会留在队列中等待。",
   "mobile.agent.taskLimit.label": "并行话题数",
   "mobile.agent.taskLimit.footer": "同时运行的话题",
-  "mobile.agent.taskLimit.default": "默认（{count}）",
+  "mobile.agent.taskLimit.default": "默认（不限）",
   "mobile.agent.taskLimit.oneTurn": "{provider} 一次只运行一轮。该助手的话题会互相等待。",
   "mobile.agent.browserProfile.label": "浏览器配置文件",
   "mobile.agent.browserProfile.shared": "共享",
