@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Avanti",
   "browser.reload": "Ricarica la pagina",
   "browser.stopLoading": "Interrompi caricamento",
+  "browser.pageTheme.toDark": "Mostra pagina in modalità scura",
+  "browser.pageTheme.toLight": "Mostra pagina in modalità chiara",
   "browser.recording.label": "Registrazione del browser attiva",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -96,6 +98,7 @@ export const messages = {
   "browser.error.closeTab": "Impossibile chiudere la scheda del browser.",
   "browser.error.reloadTab": "Impossibile ricaricare la scheda del browser.",
   "browser.error.stopLoading": "Impossibile interrompere il caricamento della pagina.",
+  "browser.error.colorScheme": "Impossibile cambiare il tema della pagina.",
   "browser.error.teachStart": "Impossibile avviare la registrazione dell’attività.",
   "browser.error.teachStop": "Impossibile interrompere la registrazione dell’attività.",
   "browser.error.teachEmpty": "La registrazione non ha passaggi.",

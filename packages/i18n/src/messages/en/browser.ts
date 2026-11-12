@@ -43,6 +43,8 @@ export const messages = defineMessages("browser", {
   "browser.goForward": "Go forward",
   "browser.reload": "Reload page",
   "browser.stopLoading": "Stop loading",
+  "browser.pageTheme.toDark": "Show page in dark mode",
+  "browser.pageTheme.toLight": "Show page in light mode",
   "browser.recording.label": "Browser recording active",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -101,6 +103,7 @@ export const messages = defineMessages("browser", {
   "browser.error.closeTab": "Could not close the browser tab.",
   "browser.error.reloadTab": "Could not reload the browser tab.",
   "browser.error.stopLoading": "Could not stop loading the page.",
+  "browser.error.colorScheme": "Could not change the page theme.",
   "browser.error.teachStart": "Could not start the recording of the task.",
   "browser.error.teachStop": "Could not stop the recording of the task.",
   "browser.error.teachEmpty": "The recording has no steps.",

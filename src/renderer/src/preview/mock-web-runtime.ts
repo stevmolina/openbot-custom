@@ -30,6 +30,7 @@ export function mockWebRuntimeFor(mock: MockOpenBotControls, events: WebRuntimeE
     navigateBrowserTab: (input) => mock.api.browser.navigate(input),
     reloadBrowserTab: (tabId) => mock.api.browser.reload(tabId),
     stopBrowserTab: (tabId) => mock.api.browser.stop(tabId),
+    setBrowserColorScheme: (input) => mock.api.browser.setColorScheme(input),
     closeBrowserTab: (tabId) => mock.api.browser.close(tabId),
     takeBrowserControl: (tabId) => mock.api.browser.takeControl(tabId),
     releaseBrowserControl: (tabId) => mock.api.browser.releaseControl(tabId),

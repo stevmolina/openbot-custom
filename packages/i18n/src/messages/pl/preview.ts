@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "Pokaż źródło Markdown",
   "preview.panel.rawHtml": "Pokaż źródło HTML",
   "preview.panel.wrapLines": "Zawijaj długie wiersze",
+  "preview.panel.darkPage": "Pokaż stronę w trybie ciemnym",
+  "preview.panel.lightPage": "Pokaż stronę w trybie jasnym",
   "preview.folder.empty": "Ten folder jest pusty.",
   "preview.folder.truncated": "Wyświetlono tylko początkowe elementy, maksymalnie {limit}.",
   "preview.truncated": "Podgląd ucięty po {limit} znakach.",

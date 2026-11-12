@@ -12,6 +12,8 @@ import {
   FolderOpen,
   LabelTooltip,
   LabelTooltipTrigger,
+  Moon,
+  Sun,
   WrapText,
   X,
 } from "@openbot/ui";
@@ -27,6 +29,7 @@ import { holdFlag } from "@openbot/ui/utils";
 import type { JSX } from "@solidjs/web";
 import { createEffect, createMemo, createSignal, For, onCleanup, onSettled, Show, untrack } from "solid-js";
 
+import { documentColorScheme } from "../../document-color-scheme";
 import { MediaFilePreview } from "./MediaFilePreview";
 
 const PANEL_MIN = 220;
@@ -110,6 +113,9 @@ export default function FilePreviewPanel(props: FilePreviewPanelProps) {
   // first. Two frames guarantee that paint before the open state applies.
   const [revealed, setRevealed] = createSignal(false);
   const [rawSource, setRawSource] = createSignal(false);
+  // The scheme that the user chose for a page. Undefined: the page follows the app.
+  const [pageScheme, setPageScheme] = createSignal<"light" | "dark">();
+  const pageDark = () => (pageScheme() ?? documentColorScheme()) === "dark";
   const [wrapLines, setWrapLines] = createSignal(untrack(() => props.readWrapLines()));
   let currentPreviewUrl: string | null = null;
   let revealFrame: number | undefined;
@@ -268,6 +274,16 @@ export default function FilePreviewPanel(props: FilePreviewPanelProps) {
             <Code class="browser-toolbar-icon" />
           </HeaderButton>
         </Show>
+        <Show when={hasPage() && !rawSource()}>
+          <HeaderButton
+            label={t(pageDark() ? "preview.panel.lightPage" : "preview.panel.darkPage")}
+            onClick={() => setPageScheme(pageDark() ? "light" : "dark")}
+          >
+            <Show when={pageDark()} fallback={<Moon class="browser-toolbar-icon" />}>
+              <Sun class="browser-toolbar-icon" />
+            </Show>
+          </HeaderButton>
+        </Show>
         <Show when={showsSourceText()}>
           <HeaderButton label={t("preview.panel.wrapLines")} pressed={wrapLines()} onClick={toggleWrapLines}>
             <WrapText class="browser-toolbar-icon" />
@@ -385,6 +401,7 @@ export default function FilePreviewPanel(props: FilePreviewPanelProps) {
             isAppShortcut={props.isPageAppShortcut}
             quoteShortcut={props.quoteShortcut}
             macWindowControls={props.macWindowControls}
+            colorScheme={pageScheme()}
           />
         </Show>
         <Show when={showsSourceText()}>

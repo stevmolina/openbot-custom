@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Avanzar",
   "browser.reload": "Recargar página",
   "browser.stopLoading": "Detener carga",
+  "browser.pageTheme.toDark": "Ver página en modo oscuro",
+  "browser.pageTheme.toLight": "Ver página en modo claro",
   "browser.recording.label": "Grabación del navegador activa",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -96,6 +98,7 @@ export const messages = {
   "browser.error.closeTab": "No se pudo cerrar la pestaña del navegador.",
   "browser.error.reloadTab": "No se pudo recargar la pestaña del navegador.",
   "browser.error.stopLoading": "No se pudo detener la carga de la página.",
+  "browser.error.colorScheme": "No se pudo cambiar el tema de la página.",
   "browser.error.teachStart": "No se pudo iniciar la grabación de la tarea.",
   "browser.error.teachStop": "No se pudo detener la grabación de la tarea.",
   "browser.error.teachEmpty": "La grabación no tiene pasos.",

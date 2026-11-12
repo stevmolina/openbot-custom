@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Вперёд",
   "browser.reload": "Перезагрузить страницу",
   "browser.stopLoading": "Остановить загрузку",
+  "browser.pageTheme.toDark": "Показать страницу в тёмной теме",
+  "browser.pageTheme.toLight": "Показать страницу в светлой теме",
   "browser.recording.label": "Идёт запись браузера",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -98,6 +100,7 @@ export const messages = {
   "browser.error.closeTab": "Не удалось закрыть вкладку браузера.",
   "browser.error.reloadTab": "Не удалось перезагрузить вкладку браузера.",
   "browser.error.stopLoading": "Не удалось остановить загрузку страницы.",
+  "browser.error.colorScheme": "Не удалось изменить тему страницы.",
   "browser.error.teachStart": "Не удалось начать запись задачи.",
   "browser.error.teachStop": "Не удалось остановить запись задачи.",
   "browser.error.teachEmpty": "В записи нет шагов.",

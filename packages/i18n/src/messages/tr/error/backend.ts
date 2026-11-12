@@ -57,6 +57,7 @@ export const messages = {
   "error.backend.browserSignInOpenFailed": "OpenBot oturum açma penceresini açamadı.",
   "error.backend.browserSignInReadFailed": "OpenBot pencereden oturumu okuyamadı.",
   "error.backend.browserStopUnsupported": "Bu uzak ana makine sayfa yüklemesini durduramaz.",
+  "error.backend.browserColorSchemeUnsupported": "Bu uzak ana makine sayfa temasını değiştiremez.",
   "error.backend.sharedDataLocalOnly": "Paylaşılan veriler bu ajanları çalıştıran bilgisayarda yönetilir.",
   "error.backend.browserUrlProtocol": "Yalnızca HTTP(S) tarayıcı URL'lerine izin verilir.",
   "error.backend.sunshineNotReady": "Sunshine hazır hale gelmedi.",

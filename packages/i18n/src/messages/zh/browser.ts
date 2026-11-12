@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "前进",
   "browser.reload": "刷新页面",
   "browser.stopLoading": "停止加载",
+  "browser.pageTheme.toDark": "以深色模式显示页面",
+  "browser.pageTheme.toLight": "以浅色模式显示页面",
   "browser.recording.label": "浏览器录制中",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -102,6 +104,7 @@ export const messages = {
   "browser.error.closeTab": "无法关闭浏览器标签页。",
   "browser.error.reloadTab": "无法刷新浏览器标签页。",
   "browser.error.stopLoading": "无法停止加载页面。",
+  "browser.error.colorScheme": "无法更改页面主题。",
   "browser.error.teachStart": "无法开始录制任务。",
   "browser.error.teachStop": "无法停止录制任务。",
   "browser.error.teachEmpty": "录制内容没有步骤。",

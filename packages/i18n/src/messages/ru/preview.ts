@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "Показать исходный Markdown",
   "preview.panel.rawHtml": "Показать исходный HTML",
   "preview.panel.wrapLines": "Переносить длинные строки",
+  "preview.panel.darkPage": "Показать страницу в тёмной теме",
+  "preview.panel.lightPage": "Показать страницу в светлой теме",
   "preview.folder.empty": "Эта папка пуста.",
   "preview.folder.truncated": "Показаны только первые {limit} элементов.",
   "preview.truncated": "Просмотр обрезан после {limit} символов.",

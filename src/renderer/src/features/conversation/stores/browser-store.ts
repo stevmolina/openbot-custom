@@ -1,4 +1,10 @@
-import type { BrowserControlSession, BrowserPreview, BrowserTab, BrowserTeachStep } from "@openbot/contracts/ipc";
+import type {
+  BrowserColorScheme,
+  BrowserControlSession,
+  BrowserPreview,
+  BrowserTab,
+  BrowserTeachStep,
+} from "@openbot/contracts/ipc";
 import { BROWSER_TEACH_CAPABILITY } from "@openbot/contracts/team-protocol/browser-teach-v1";
 import { BROWSER_USER_CONTROL_CAPABILITY } from "@openbot/contracts/team-protocol/browser-user-control-v1";
 import { TEAM_BROWSER_NAVIGATION_CAPABILITY } from "@openbot/contracts/team-protocol/current";
@@ -615,6 +621,23 @@ export function createBrowserStore(deps: BrowserStoreDeps) {
     }
   }
 
+  async function setBrowserColorScheme(tabId: string, colorScheme: BrowserColorScheme) {
+    if (
+      !browserInteractionAvailable() ||
+      closingBrowserTabIds.has(tabId) ||
+      !browserTabs().some((tab) => tab.id === tabId)
+    ) {
+      return;
+    }
+    const agentId = deps.props.agent?.id;
+    const target = agentId ? { agentId, serverId: deps.props.server?.id ?? "local" } : undefined;
+    try {
+      await conversationRuntime(deps.props).browser.setColorScheme({ tabId, colorScheme });
+    } catch (error) {
+      deps.setComposerError(currentText().t("browser.error.colorScheme"), target, error);
+    }
+  }
+
   async function navigateBrowserTab(tabId: string, direction: "back" | "forward") {
     if (
       !browserInteractionAvailable() ||
@@ -863,6 +886,7 @@ export function createBrowserStore(deps: BrowserStoreDeps) {
     browserTabOwner,
     reloadBrowserTab,
     stopBrowserTab,
+    setBrowserColorScheme,
     navigateBrowserTab,
     takeBrowserControl,
     releaseBrowserControl,

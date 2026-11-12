@@ -59,6 +59,7 @@ export interface ConversationRuntime {
     | "openPictureInPicture"
     | "reload"
     | "stop"
+    | "setColorScheme"
     | "releaseControl"
     | "setVisible"
     | "startTeach"

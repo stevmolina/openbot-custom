@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "進む",
   "browser.reload": "ページを再読み込み",
   "browser.stopLoading": "読み込みを停止",
+  "browser.pageTheme.toDark": "ページをダークモードで表示",
+  "browser.pageTheme.toLight": "ページをライトモードで表示",
   "browser.recording.label": "ブラウザーを録画中",
   "browser.recording.badge": "録画",
   "browser.diagnosticErrors": {
@@ -95,6 +97,7 @@ export const messages = {
   "browser.error.closeTab": "ブラウザーのタブを閉じられませんでした。",
   "browser.error.reloadTab": "ブラウザーのタブを再読み込みできませんでした。",
   "browser.error.stopLoading": "ページの読み込みを停止できませんでした。",
+  "browser.error.colorScheme": "ページのテーマを変更できませんでした。",
   "browser.error.teachStart": "タスクの記録を開始できませんでした。",
   "browser.error.teachStop": "タスクの記録を停止できませんでした。",
   "browser.error.teachEmpty": "記録にステップがありません。",

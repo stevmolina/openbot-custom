@@ -88,6 +88,13 @@ export function createMockBrowser(
     },
     reload: async () => undefined,
     stop: async () => undefined,
+    setColorScheme: async ({ tabId, colorScheme }) => {
+      browserTabs = browserTabs.map((tab) =>
+        tab.id === tabId && tab.environment ? { ...tab, environment: { ...tab.environment, colorScheme } } : tab,
+      );
+      emit(browserDisplayListeners, { tabs: browserTabs, activeTabId: activeBrowserTabId });
+      emitAgentEvent({ type: "browser-changed", tabs: browserTabs, activeTabId: activeBrowserTabId });
+    },
     takeControl: async (tabId) => setUserControl(tabId, true),
     releaseControl: async (tabId) => setUserControl(tabId, false),
     // The preview has no page to record, so a saved recording gives the page of the tab and one click.

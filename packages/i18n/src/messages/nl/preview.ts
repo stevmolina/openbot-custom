@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "Markdown-bron tonen",
   "preview.panel.rawHtml": "HTML-bron tonen",
   "preview.panel.wrapLines": "Lange regels afbreken",
+  "preview.panel.darkPage": "Pagina donker tonen",
+  "preview.panel.lightPage": "Pagina licht tonen",
   "preview.folder.empty": "Deze map is leeg.",
   "preview.folder.truncated": "Alleen de eerste {limit} items worden getoond.",
   "preview.truncated": "Voorvertoning ingekort na {limit} tekens.",

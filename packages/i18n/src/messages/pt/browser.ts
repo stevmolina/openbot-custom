@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Avançar",
   "browser.reload": "Recarregar página",
   "browser.stopLoading": "Parar carregamento",
+  "browser.pageTheme.toDark": "Ver página no modo escuro",
+  "browser.pageTheme.toLight": "Ver página no modo claro",
   "browser.recording.label": "Gravação do navegador ativa",
   "browser.recording.badge": "GRAV",
   "browser.diagnosticErrors": {
@@ -96,6 +98,7 @@ export const messages = {
   "browser.error.closeTab": "Não foi possível fechar a aba do navegador.",
   "browser.error.reloadTab": "Não foi possível recarregar a aba do navegador.",
   "browser.error.stopLoading": "Não foi possível parar o carregamento da página.",
+  "browser.error.colorScheme": "Não foi possível mudar o tema da página.",
   "browser.error.teachStart": "Não foi possível iniciar a gravação da tarefa.",
   "browser.error.teachStop": "Não foi possível parar a gravação da tarefa.",
   "browser.error.teachEmpty": "A gravação não tem passos.",
