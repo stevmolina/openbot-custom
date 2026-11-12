@@ -625,7 +625,7 @@ export function ConversationComposer() {
             {() => (
               <div class="composer-reply-preview">
                 <div>
-                  <span>{t("composer.add.artifact")}</span>
+                  <span>{t("composer.artifact.chip")}</span>
                 </div>
                 <Button
                   variant="ghost"

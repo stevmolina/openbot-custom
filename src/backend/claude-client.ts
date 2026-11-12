@@ -1595,11 +1595,12 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     const wantTools = this.#claudeAiTools() || oneShot;
     this.#artifactForOpen.set(threadId, wantTools);
     const running = this.#threads.get(threadId);
-    if (running && running.artifactTools !== wantTools && running.backgroundTasks === 0 && !running.activeTurn)
-      yield* this.#threads.releaseNow(running).pipe(toProviderClientOperationError);
-    yield* this.#threads.wake(threadId).pipe(toProviderClientOperationError);
-    // A process that stayed open has already taken this value. A later resume must not.
-    this.#artifactForOpen.delete(threadId);
+    // A failed restart must not leave the value for the next open of this thread: it would leak to the next request.
+    yield* Effect.gen({ self: this }, function* () {
+      if (running && running.artifactTools !== wantTools && running.backgroundTasks === 0 && !running.activeTurn)
+        yield* this.#threads.releaseNow(running).pipe(toProviderClientOperationError);
+      yield* this.#threads.wake(threadId).pipe(toProviderClientOperationError);
+    }).pipe(Effect.ensuring(Effect.sync(() => this.#artifactForOpen.delete(threadId))));
     const runtime = yield* providerSync(() => this.#requireThread(threadId));
     if (runtime.activeTurn) return yield* providerFailure(this.#turnActiveError(runtime.activeTurn));
     runtime.contextRequest += 1;
