@@ -45,6 +45,10 @@ import { usePlatform } from "./platform";
 import { WorkspaceFrame } from "./WorkspaceFrame";
 import { WorkspaceOverlays } from "./WorkspaceOverlays";
 
+// After the first load of a start or a reload, a server switch loads the new server in the pane, so the
+// sidebar and the server rail stay and the switch does not look like a restart.
+let firstLoadDone = false;
+
 /**
  * The desktop application frame, and nothing else: which pane occupies the
  * middle and whether the whole frame is hidden behind the remote-desktop
@@ -241,6 +245,7 @@ export function WorkspaceShell(props: {
   // The first load covers the whole window. A server that is offline, sleeps, fails or waits shows its
   // screen in the pane only, so the user can select another server from the rail.
   const fullWindowLoading = () =>
+    !firstLoadDone &&
     connectionShown() &&
     !scope.connection.synced &&
     (connectionPhase() === "loading" || connectionPhase() === "connecting") &&
@@ -269,6 +274,12 @@ export function WorkspaceShell(props: {
     () => (fullWindowLoading() ? undefined : props.onStartupReady),
     (onStartupReady) => {
       onStartupReady?.();
+    },
+  );
+  createEffect(
+    () => serversLoaded() && !fullWindowLoading(),
+    (loaded) => {
+      if (loaded) firstLoadDone = true;
     },
   );
   const connectionNotice = (cover = false, screen = true) => (
