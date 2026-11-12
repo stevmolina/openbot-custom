@@ -1,0 +1,45 @@
+{
+  "agentId": "research",
+  "passed": true,
+  "provider": "claude",
+  "limitOne": {
+    "first": "running",
+    "second": "queued",
+    "secondHold": "task-limit",
+    "limit": 1
+  },
+  "raisedLimit": {
+    "second": "running",
+    "limit": 2
+  },
+  "providerSwitch": {
+    "refused": false,
+    "provider": "claude",
+    "pendingProvider": "muse",
+    "pendingModel": "muse-spark-1.3",
+    "target": "muse/muse-spark-1.3"
+  },
+  "stop": {
+    "states": [
+      "idle",
+      "idle"
+    ],
+    "outcomes": [
+      "interrupted",
+      "completed"
+    ]
+  },
+  "errorField": {
+    "present": true
+  },
+  "noLimit": {
+    "running": 5,
+    "holds": [
+      null
+    ],
+    "limit": 4
+  },
+  "restored": {
+    "taskLimit": null
+  }
+}
