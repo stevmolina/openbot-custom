@@ -136,9 +136,11 @@ export class WorkosSignInService {
     webOrigin?: string,
   ): Effect.fn.Return<{ authorizationUrl: string }, WorkosSignInFailure> {
     const configuration = yield* configured(this.#bindings);
-    const email = normalizeEmailAddress(input.email);
+    // An empty email is allowed. WorkOS asks for the account, and the email is only a login hint.
+    const hint = input.email.trim();
+    const email = hint ? normalizeEmailAddress(hint) : "";
     if (
-      !email ||
+      (hint && !email) ||
       !TOKEN_PATTERN.test(input.clientState) ||
       !CHALLENGE_PATTERN.test(input.clientChallenge) ||
       !URL.canParse(input.returnTo)
@@ -189,7 +191,7 @@ export class WorkosSignInService {
         .run(),
     );
     const url = new URL(metadata.authorizationEndpoint);
-    const values = {
+    const values: Record<string, string> = {
       response_type: "code",
       client_id: configuration.clientId,
       redirect_uri: redirectUri,
@@ -198,8 +200,8 @@ export class WorkosSignInService {
       nonce,
       code_challenge: yield* hash(verifier),
       code_challenge_method: "S256",
-      login_hint: email,
     };
+    if (email) values.login_hint = email;
     for (const [key, value] of Object.entries(values)) url.searchParams.set(key, value);
     return { authorizationUrl: url.toString() };
   });

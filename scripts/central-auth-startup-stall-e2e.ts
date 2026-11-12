@@ -53,8 +53,10 @@ try {
   status = (await runCauseEffect(auth.initialize())).status;
   await runCauseEffect(auth.dispose());
   assert.equal(status, "signed_out");
-  assert.ok(requests.length >= 2, `expected a retry after the block, saw ${requests.length} request(s)`);
-  assert.ok(requests.every((url) => url === "/health/live"));
+  const health = requests.filter((url) => url === "/health/live");
+  assert.ok(health.length >= 2, `expected a retry after the block, saw ${health.length} health request(s)`);
+  assert.equal(requests.at(-1), "/v1/auth/workos/start");
+  assert.ok(requests.slice(0, -1).every((url) => url === "/health/live"));
   passed = true;
 } catch (cause) {
   error = cause instanceof Error ? cause.message : String(cause);

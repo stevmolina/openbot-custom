@@ -210,6 +210,8 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
   #profileRefreshGeneration = 0;
   /** Ends the company sign-in that waits for the browser. A new one, a cancel, or the shutdown ends it. */
   #companySignInCancel: Deferred.Deferred<void> | null = null;
+  /** Whether this account service uses WorkOS. Null until the first probe. A failed probe stays false. */
+  #workosAccount: boolean | null = null;
   #companySignInTestCancel: Deferred.Deferred<void> | null = null;
   #unavailableRetryTimer: ReturnType<typeof setTimeout> | null = null;
   #unavailableRetryFailures = 0;
@@ -1542,9 +1544,8 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
     }
     if (!this.#sessionToken) {
       yield* this.#startupRequestEffect("/health/live", { method: "GET" }, decodeRecordHealth);
-      return this.#setState(
-        keyringChanged ? { status: "signed_out", reason: "keyring_changed" } : { status: "signed_out" },
-      );
+      yield* this.#rememberWorkosAccount();
+      return this.#setState(this.#signedOut(keyringChanged ? "keyring_changed" : undefined));
     }
     const sessionToken = this.#sessionToken;
     return yield* Effect.gen({ self: this }, function* () {
@@ -1555,7 +1556,8 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
         Effect.gen({ self: this }, function* () {
           if (error instanceof AuthApiError && error.status === 401) {
             yield* this.#clearStoredSessionEffect();
-            return this.#setState({ status: "signed_out" });
+            yield* this.#rememberWorkosAccount();
+            return this.#setState(this.#signedOut());
           }
           return yield* new CentralAuthOperationError({ cause: error });
         }),
@@ -1629,6 +1631,7 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
               (error.code === "company_sign_in_required" || error.code === "workos_sign_in_required")
             ) {
               if (this.#emailCodeRequest === request) this.#emailCodeRequest = null;
+              if (error.code === "workos_sign_in_required") this.#workosAccount = true;
               return this.#startCompanySignIn(
                 request.email,
                 error.code === "workos_sign_in_required" ? "workos" : "company",
@@ -1696,6 +1699,7 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
         Effect.catch(({ cause: error }) =>
           Effect.gen({ self: this }, function* () {
             if (challenge && error instanceof AuthApiError && error.code === "workos_sign_in_required") {
+              this.#workosAccount = true;
               return this.#startCompanySignIn(challenge.email, "workos");
             }
             // A wrong code or a failed request for a challenge leaves the stored session as it was: the
@@ -1719,13 +1723,15 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
     (operation) => this.#owned(operation),
   ).bind(this);
 
-  /** Opens the provider page again for the email that signs in with its company. */
+  /** Opens the provider page again. A WorkOS account starts with no email. */
   openCompanySignIn(): Effect.Effect<CentralAuthState> {
-    return Effect.sync(() =>
-      this.#state.status === "company_sign_in"
-        ? this.#startCompanySignIn(this.#state.email, this.#state.provider ?? "company")
-        : this.getState(),
-    );
+    return Effect.sync(() => {
+      if (this.#state.status === "company_sign_in")
+        return this.#startCompanySignIn(this.#state.email, this.#state.provider ?? "company");
+      if (this.#state.status === "signed_out" && this.#state.provider === "workos")
+        return this.#startCompanySignIn("", "workos");
+      return this.getState();
+    });
   }
 
   /** Ends the wait for the browser, so the user can enter another email. */
@@ -1733,7 +1739,7 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
     return Effect.sync(() => {
       this.#endCompanySignIn();
       if (this.#state.status !== "company_sign_in") return this.getState();
-      return this.#setState({ status: "signed_out" });
+      return this.#setState(this.#signedOut());
     });
   }
 
@@ -1749,6 +1755,7 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
 
   /** Sets the state at once, and waits for the browser apart from the request that asked for it. */
   #startCompanySignIn(email: string, provider: "company" | "workos" = "company"): CentralAuthState {
+    if (provider === "workos") this.#workosAccount = true;
     this.#endCompanySignIn();
     const browser = this.#options.companySignInBrowser;
     if (!browser) {
@@ -1787,7 +1794,12 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, returnTo, clientState, clientChallenge: challenge }),
+            body: JSON.stringify({
+              ...(email ? { email } : {}),
+              returnTo,
+              clientState,
+              clientChallenge: challenge,
+            }),
           },
           decodeAuthorizationUrl,
         ),
@@ -2055,7 +2067,8 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
         }
       }
       yield* this.#clearStoredSessionEffect();
-      return this.#setState({ status: "signed_out" });
+      yield* this.#rememberWorkosAccount();
+      return this.#setState(this.#signedOut());
     },
     (operation) => this.#owned(operation),
   ).bind(this);
@@ -2198,6 +2211,26 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
     (operation) => this.#owned(operation),
   ).bind(this);
 
+  /** The signed-out screen. WorkOS deployments skip the email code. */
+  #signedOut(reason?: "keyring_changed"): CentralAuthState {
+    return {
+      status: "signed_out",
+      ...(reason ? { reason } : {}),
+      ...(this.#workosAccount ? { provider: "workos" } : {}),
+    };
+  }
+
+  /** Reads whether the account service uses WorkOS. One look, after the service is up. A miss stays off. */
+  readonly #rememberWorkosAccount = Effect.fn("CentralAuth.rememberWorkosAccount")(function* (
+    this: CentralAuthManager,
+  ) {
+    if (this.#workosAccount !== null) return;
+    const probe = yield* Effect.result(
+      this.#requestEffect("/v1/auth/workos/start", { method: "GET" }, decodeWorkosAccountEnabled),
+    );
+    this.#workosAccount = Result.isSuccess(probe) ? probe.success : false;
+  });
+
   readonly #requestEffect = Effect.fn("CentralAuth.request")(function* <T>(
     this: CentralAuthManager,
     path: string,
@@ -2316,8 +2349,9 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
       logger.warn("The account service ended the session. This device is signed out.");
       this.#endCompanySignInTest();
       yield* this.#clearStoredSessionEffect();
+      yield* this.#rememberWorkosAccount();
       // A sign-in that runs now shows its own state and replaces the session when it ends.
-      if (this.#state.status === "signed_in") this.#setState({ status: "signed_out" });
+      if (this.#state.status === "signed_in") this.#setState(this.#signedOut());
     }).pipe(Effect.catch(() => Effect.void));
   }
 
@@ -2664,6 +2698,12 @@ function emailCodeRequestIssue(error: unknown): CentralAuthIssue {
 
 function companySignInPath(hostId: string): string {
   return `/v2/remote/hosts/${encodeURIComponent(hostId)}/company-sign-in`;
+}
+
+function decodeWorkosAccountEnabled(value: unknown): boolean {
+  const record = decodeRecord(value, "WorkOS sign-in");
+  if (!isBoolean(record.enabled)) throw new Error("Invalid WorkOS sign-in.");
+  return record.enabled;
 }
 
 function decodeAuthorizationUrl(value: unknown): string {

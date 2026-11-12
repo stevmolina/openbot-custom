@@ -113,4 +113,8 @@ export const messages = defineMessages("account", {
   "account.language.continue": "Continue",
   "account.language.change": "Change language",
   "account.login.workosDescription": "Continue in your browser to sign in as {email}.",
+  "account.login.workosTitle": "Sign in",
+  "account.login.workosStartDescription": "Use your invited account. WorkOS opens in the browser.",
+  "account.login.workosStart": "Continue with WorkOS",
+  "account.login.workosWaitingDescription": "Finish signing in on the page that opened in your browser.",
 });

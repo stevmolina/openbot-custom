@@ -309,6 +309,9 @@ export function useEmailSignIn({
   return {
     step,
     openEmail: () => go("email"),
+    startWorkos: () => {
+      void signInWithCompany("", "workos");
+    },
     back: () => void back(),
     email,
     setEmail: (value: string) => {

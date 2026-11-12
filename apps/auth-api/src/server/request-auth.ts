@@ -93,6 +93,11 @@ export function requestWorkosSignIn(): WorkosSignInService {
   });
 }
 
+/** True when this deployment has any WorkOS account setting. The value is not a secret. */
+export function requestWorkosSignInEnabled(): boolean {
+  return workosSignInEnabled(requireWorkerBindings(env));
+}
+
 export function workosSignInErrorResponse(error: unknown): Response {
   if (error instanceof WorkosSignInError) return apiError(error.status, error.code, error.message);
   return authErrorResponse(error);

@@ -165,6 +165,7 @@ const services: BrowserApiServices = {
   auth: workosAuth,
   remote,
   workosSignIn: () => workos,
+  workosEnabled: true,
   companySignIn: unused,
   hostLogo: unused,
   hosting: unused,
@@ -177,7 +178,7 @@ const services: BrowserApiServices = {
   errorResponse,
 };
 const startSchema = Schema.Struct({
-  email: Schema.String,
+  email: Schema.optional(Schema.String),
   returnTo: Schema.String,
   clientState: Schema.String,
   clientChallenge: Schema.String,
@@ -200,7 +201,9 @@ const app = Bun.serve({
       if (path === "/v1/auth/workos/start") {
         const input = Schema.decodeUnknownSync(startSchema)(await request.json());
         return Response.json(
-          await runApiEffect(workos.startSignIn({ ...input, sourceIp: randomToken(16) }, request.url)),
+          await runApiEffect(
+            workos.startSignIn({ ...input, email: input.email ?? "", sourceIp: randomToken(16) }, request.url),
+          ),
         );
       }
       if (path === "/v1/auth/workos/callback") {
@@ -345,6 +348,17 @@ try {
   const expiring = await start();
   now += 11 * 60_000;
   assert.equal((await callback(expiring.authorizationUrl)).result.status, 410);
+  const hinted = await start();
+  assert.ok(new URL(hinted.authorizationUrl).searchParams.get("login_hint")?.includes("@"));
+  const openResponse = await post("/v1/auth/workos/start", {
+    returnTo: "http://127.0.0.1:47999/company-sign-in",
+    clientState: randomToken(24),
+    clientChallenge: await runApiEffect(sha256(randomToken(32))),
+  });
+  assert.equal(openResponse.status, 200);
+  const opened = Schema.decodeUnknownSync(authorizationSchema)(await openResponse.json());
+  assert.equal(new URL(opened.authorizationUrl).searchParams.has("login_hint"), false);
+  checks.push("login hint only when an email is sent");
   checks.push("unknown state, foreign return, expired flow");
   now += 15 * 60_000;
 

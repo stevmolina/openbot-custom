@@ -322,10 +322,17 @@ export function decodeCentralAuthState(value: unknown): CentralAuthState {
     case "loading":
     case "signing_in":
       return { status: state.status };
-    case "signed_out":
-      if (state.reason === undefined) return { status: "signed_out" };
-      if (state.reason !== "keyring_changed") throw new Error("Invalid signed-out reason.");
-      return { status: "signed_out", reason: state.reason };
+    case "signed_out": {
+      if (state.reason !== undefined && state.reason !== "keyring_changed")
+        throw new Error("Invalid signed-out reason.");
+      if (state.provider !== undefined && state.provider !== "workos")
+        throw new Error("Invalid account sign-in provider.");
+      return {
+        status: "signed_out",
+        ...(state.reason === "keyring_changed" ? { reason: "keyring_changed" as const } : {}),
+        ...(state.provider === "workos" ? { provider: "workos" as const } : {}),
+      };
+    }
     case "code_sent": {
       const { developmentCode, issue } = state;
       if (developmentCode !== undefined && !isString(developmentCode)) throw new Error("Invalid developmentCode.");

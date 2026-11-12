@@ -100,6 +100,7 @@ export function AccountLogin(props: AccountLoginProps) {
   const verified = () => props.state.status === "signed_in";
   const companySignIn = () => (props.state.status === "company_sign_in" ? props.state : undefined);
   const workosSignIn = () => companySignIn()?.provider === "workos";
+  const workosOnly = () => props.state.status === "signed_out" && props.state.provider === "workos";
   const loginStep = (): LoginStep => (companySignIn() ? "company" : codeSent() || verified() ? "code" : "email");
   const challenge = () => (props.state.status === "code_sent" ? props.state : undefined);
   const connecting = () => props.state.status === "loading";
@@ -423,17 +424,19 @@ export function AccountLogin(props: AccountLoginProps) {
                     ? t("account.login.companyTitle")
                     : codeSent()
                       ? t("account.login.checkInboxTitle")
-                      : t("account.login.signInTitle")}
+                      : workosOnly()
+                        ? t("account.login.workosTitle")
+                        : t("account.login.signInTitle")}
           </h1>
           <p id="account-login-description" class="account-login-description">
             <Show
               when={!companySignIn()}
               fallback={
-                <>
+                <Show when={companySignIn()?.email} fallback={t("account.login.workosWaitingDescription")}>
                   {companyDescriptionParts()[0]}
                   <strong>{companySignIn()?.email}</strong>
                   {companyDescriptionParts()[1]}
-                </>
+                </Show>
               }
             >
               <Show
@@ -445,7 +448,9 @@ export function AccountLogin(props: AccountLoginProps) {
                       ? sourceText(currentIssue()?.message ?? t("account.login.unavailableDescription"))
                       : keyringChanged()
                         ? t("account.login.keyringChangedDescription")
-                        : t("account.login.signInDescription")
+                        : workosOnly()
+                          ? t("account.login.workosStartDescription")
+                          : t("account.login.signInDescription")
                 }
               >
                 {verified() ? (
@@ -536,24 +541,59 @@ export function AccountLogin(props: AccountLoginProps) {
                   </Show>
                 </Button>
               </Show>
-              <div class="account-login-code-actions">
-                <Button
-                  type="button"
-                  class="account-login-code-action account-login-code-action-change"
-                  variant="ghost"
-                  size="sm"
-                  disabled={pendingAction() !== null}
-                  data-cuelume-tap="navigate"
-                  onClick={() => void resetEmail()}
-                >
-                  <ArrowLeft size={14} aria-hidden="true" />
-                  {t("account.login.companyUseAnotherEmail")}
-                </Button>
+              <Show when={companySignIn()?.provider !== "workos" && companySignIn()?.email}>
+                <div class="account-login-code-actions">
+                  <Button
+                    type="button"
+                    class="account-login-code-action account-login-code-action-change"
+                    variant="ghost"
+                    size="sm"
+                    disabled={pendingAction() !== null}
+                    data-cuelume-tap="navigate"
+                    onClick={() => void resetEmail()}
+                  >
+                    <ArrowLeft size={14} aria-hidden="true" />
+                    {t("account.login.companyUseAnotherEmail")}
+                  </Button>
+                </div>
+              </Show>
+            </div>
+          </Show>
+
+          <Show when={workosOnly()}>
+            <div class="account-login-form" data-auth-panel="workos" aria-busy={pendingAction() ? "true" : "false"}>
+              <Show when={localError()}>
+                {(failure) => (
+                  <p class="account-login-error" role="alert">
+                    {failure().message}
+                    <ErrorReference reference={failure().reference} />
+                  </p>
+                )}
+              </Show>
+              <Button
+                variant="default"
+                type="button"
+                class="account-login-primary"
+                disabled={pendingAction() !== null || !props.onOpenCompanySignIn}
+                onClick={() => void openCompanySignIn()}
+              >
+                <Show when={pendingAction() === "company"} fallback={t("account.login.workosStart")}>
+                  <span class="account-login-button-spinner" aria-hidden="true" />
+                  {t("account.login.companyOpening")}
+                </Show>
+              </Button>
+              {props.consent}
+              <div class="account-login-footer">
+                <p class="account-login-local-data">
+                  <Lock size={13} aria-hidden="true" />
+                  {t("account.login.localData")}
+                </p>
+                {props.notice}
               </div>
             </div>
           </Show>
 
-          <Show when={!connecting() && !unavailable() && !companySignIn()}>
+          <Show when={!connecting() && !unavailable() && !companySignIn() && !workosOnly()}>
             <Show
               when={challenge() || verified()}
               fallback={
