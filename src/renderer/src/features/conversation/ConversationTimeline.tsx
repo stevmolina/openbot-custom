@@ -74,7 +74,7 @@ import { conversationRuntime } from "./conversation-runtime";
 import { useConversationViewScope } from "./conversation-scope";
 import { agentSkillsMode } from "./installed-skills-source";
 import { MarketplaceSuggestionChatCard, marketplaceSuggestionKnown } from "./MarketplaceSuggestionChatCard";
-import { McpSignInChatCard } from "./McpSignInChatCard";
+import { McpSignInChatCard, mcpSignInRepliedIds } from "./McpSignInChatCard";
 import { createMessageImageFiles } from "./message-image-files";
 import { RoutineChatCard } from "./RoutineChatCard";
 import { createChatWebhookRoutines, RoutineWebhookChatCard } from "./RoutineWebhookChatCard";
@@ -671,6 +671,7 @@ export function ConversationTimeline() {
     marker.kind === "mcp-sign-in"
       ? mcpServers().find((config) => config.id === marker.mcpServerId && config.transport === "http")
       : undefined;
+  const mcpSignInReplied = createMemo(() => mcpSignInRepliedIds(timelineMessages()));
   /** An install command card, where this client can watch its server list. Elsewhere it keeps the marker. */
   const serverInstallCard = (marker: ChatActionMarkerModel) => {
     const watch = props.serverInstall;
@@ -1184,6 +1185,7 @@ export function ConversationTimeline() {
                                               <McpSignInChatCard
                                                 config={config()}
                                                 signedIn={props.mcpSignedIn?.(config().id) ?? false}
+                                                replied={mcpSignInReplied().has(message()?.id ?? initialMessage.id)}
                                                 onSignIn={
                                                   props.onOpenMcpSignIn
                                                     ? (trigger) => props.onOpenMcpSignIn?.(config().id, trigger)

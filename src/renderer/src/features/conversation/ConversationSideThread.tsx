@@ -117,7 +117,10 @@ export function ConversationSideThread(props: { threadId: string }) {
     ) : undefined;
   /** Continue on a sign-in card goes to this thread, as the person's next message there. */
   const extras = useCustomThreadExtras({ messages, excludeTaskId: () => props.threadId });
-  const mcpSignInCard = useThreadMcpSignInCard((body) => thread()?.onSend(body, [], null) ?? Promise.resolve(false));
+  const mcpSignInCard = useThreadMcpSignInCard(
+    messages,
+    (body) => thread()?.onSend(body, [], null) ?? Promise.resolve(false),
+  );
   /** Branches this thread through an answer. The branch opens as a chat tab. */
   const branch = () => {
     if (!view.threads?.onBranch) return undefined;
