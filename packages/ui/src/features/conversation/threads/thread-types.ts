@@ -78,6 +78,11 @@ export interface ThreadHeaderProps {
   onCloseToTheRight: (id: string) => void;
   onMove: (id: string, index: number) => void;
   onArchive: (id: string) => void;
+  /**
+   * Stops the running turn of a side thread and cancels its queued messages. The thread stays open.
+   * Missing when the host cannot stop a thread.
+   */
+  onStop?: ((id: string) => void) | undefined;
   /** Restores an archived thread and opens it. */
   onRestore: (id: string) => void;
   onRename?: ((id: string, title: string) => void) | undefined;

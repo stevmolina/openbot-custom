@@ -168,7 +168,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Orientar",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} não pode orientar um turno em andamento. As mensagens enviadas enquanto ele trabalha esperam na fila.",
-  "agentSettings.taskLimit.default": "Padrão ({count})",
+  "agentSettings.taskLimit.default": "Padrão (sem limite)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} executa um turno por vez. Os tópicos deste agente esperam uns pelos outros.",
   "agentSettings.notificationLevel.title": "Me notificar",

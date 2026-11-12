@@ -502,6 +502,8 @@ export interface ConversationThreads {
    */
   onSend: (text: string, attachmentDraftIds: string[], replyToMessageId?: string | null) => Promise<boolean>;
   onStop: () => void;
+  /** Stops any side thread of the agent by its task id. Missing where the host cannot stop a thread. */
+  onStopTask?: ((taskId: string) => void) | undefined;
   /** The person sees the open side thread through this message. */
   onRead: (messageId: string) => void;
   onRespondApproval: (decision: "accept" | "decline", options?: PromptAnswerOptions) => Promise<boolean>;

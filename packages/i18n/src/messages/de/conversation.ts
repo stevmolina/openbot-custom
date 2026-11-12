@@ -76,10 +76,13 @@ export const messages = {
   "conversation.threads.archived": "Archiviert",
   "conversation.threads.restore": "Wiederherstellen",
   "conversation.threads.deleteUndo.title": "{title} gelöscht",
+  "conversation.threads.stop": "Stoppen",
+  "conversation.threads.stopThread": "{title} stoppen",
   "conversation.threads.hold.threadLimit": {
     one: "Warten auf einen freien Thread. {count} Thread läuft gerade.",
     other: "Warten auf einen freien Thread. {count} Threads laufen gerade.",
   },
+  "conversation.threads.hold.busyThreads": "Threads, die jetzt laufen",
   "conversation.threads.view.label": "Thread {title}",
   "conversation.threads.view.startedByAgent": "{name} hat diesen Thread gestartet.",
   "conversation.threads.view.loadOlder": "Ältere Nachrichten laden",

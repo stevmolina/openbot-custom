@@ -169,7 +169,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Bijsturen",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} kan een lopende beurt niet bijsturen. Berichten die je stuurt terwijl hij werkt, wachten in de wachtrij.",
-  "agentSettings.taskLimit.default": "Standaard ({count})",
+  "agentSettings.taskLimit.default": "Standaard (geen limiet)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} voert één beurt tegelijk uit. De threads van deze agent wachten op elkaar.",
   "agentSettings.notificationLevel.title": "Meld mij",

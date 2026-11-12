@@ -171,7 +171,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Indirizza",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} non può indirizzare un turno in corso. I messaggi inviati mentre lavora restano in coda.",
-  "agentSettings.taskLimit.default": "Predefinito ({count})",
+  "agentSettings.taskLimit.default": "Predefinito (nessun limite)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} esegue un turno alla volta. I thread di questo agente si aspettano a vicenda.",
 

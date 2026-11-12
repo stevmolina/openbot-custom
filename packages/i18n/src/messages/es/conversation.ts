@@ -76,10 +76,13 @@ export const messages = {
   "conversation.threads.archived": "Archivados",
   "conversation.threads.restore": "Restaurar",
   "conversation.threads.deleteUndo.title": "{title} eliminado",
+  "conversation.threads.stop": "Detener",
+  "conversation.threads.stopThread": "Detener {title}",
   "conversation.threads.hold.threadLimit": {
     one: "Esperando un hilo libre. Se ejecuta {count} hilo.",
     other: "Esperando un hilo libre. Se ejecutan {count} hilos.",
   },
+  "conversation.threads.hold.busyThreads": "Hilos que se ejecutan ahora",
   "conversation.threads.view.label": "Hilo {title}",
   "conversation.threads.view.startedByAgent": "{name} inició este hilo.",
   "conversation.threads.view.loadOlder": "Cargar mensajes anteriores",

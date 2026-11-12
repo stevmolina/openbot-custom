@@ -169,7 +169,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "Steuern",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} kann einen laufenden Durchlauf nicht steuern. Während der Arbeit gesendete Nachrichten warten in der Warteschlange.",
-  "agentSettings.taskLimit.default": "Standard ({count})",
+  "agentSettings.taskLimit.default": "Standard (kein Limit)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} führt immer nur einen Durchlauf aus. Die Threads dieses Agenten warten aufeinander.",
   "agentSettings.notificationLevel.title": "Mich benachrichtigen",

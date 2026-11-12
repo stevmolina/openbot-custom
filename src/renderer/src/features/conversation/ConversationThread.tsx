@@ -256,6 +256,10 @@ export function ConversationThread() {
             }
             task={current().threads.open ?? null}
             limit={current().threads.limit}
+            busyThreads={current()
+              .threads.tasks.filter((task) => task.state === "running")
+              .map((task) => ({ id: task.id, title: task.title }))}
+            onStopThread={current().threads.onStopTask}
             agent={current().agent}
             agents={props.agents}
             onChangeAgent={current().threads.onChangeDraftAgent}

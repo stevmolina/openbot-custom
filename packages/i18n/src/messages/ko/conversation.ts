@@ -76,9 +76,12 @@ export const messages = {
   "conversation.threads.archived": "보관됨",
   "conversation.threads.restore": "복원",
   "conversation.threads.deleteUndo.title": "{title}을(를) 삭제했어요",
+  "conversation.threads.stop": "중지",
+  "conversation.threads.stopThread": "{title} 중지",
   "conversation.threads.hold.threadLimit": {
     other: "빈 자리를 기다리는 중이에요. 지금 스레드 {count}개가 실행 중이에요.",
   },
+  "conversation.threads.hold.busyThreads": "지금 실행 중인 스레드",
   "conversation.threads.view.label": "스레드 {title}",
   "conversation.threads.view.startedByAgent": "{name}이(가) 이 스레드를 시작했어요.",
   "conversation.threads.view.loadOlder": "이전 메시지 불러오기",

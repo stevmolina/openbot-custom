@@ -373,7 +373,7 @@ export const messages = {
     "{provider} לא יכול להכווין תור שרץ. הודעות שנשלחות בזמן שהוא עובד ממתינות בתור.",
   "mobile.agent.taskLimit.label": "שרשורים מקבילים",
   "mobile.agent.taskLimit.footer": "שרשורים שרצים באותו זמן",
-  "mobile.agent.taskLimit.default": "ברירת מחדל ({count})",
+  "mobile.agent.taskLimit.default": "ברירת מחדל (ללא הגבלה)",
   "mobile.agent.taskLimit.oneTurn": "{provider} מריץ תור אחד בכל פעם. השרשורים של הסוכן הזה ממתינים זה לזה.",
   "mobile.agent.browserProfile.label": "פרופיל דפדפן",
   "mobile.agent.browserProfile.shared": "משותף",

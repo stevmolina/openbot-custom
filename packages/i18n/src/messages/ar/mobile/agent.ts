@@ -410,7 +410,7 @@ export const messages = {
     "لا يستطيع {provider} توجيه دور قيد التشغيل. تنتظر الرسائل المرسلة أثناء عمله في قائمة الانتظار.",
   "mobile.agent.taskLimit.label": "السلاسل المتوازية",
   "mobile.agent.taskLimit.footer": "السلاسل التي تعمل في الوقت نفسه",
-  "mobile.agent.taskLimit.default": "افتراضي ({count})",
+  "mobile.agent.taskLimit.default": "افتراضي (بلا حد)",
   "mobile.agent.taskLimit.oneTurn": "يشغّل {provider} دورًا واحدًا في كل مرة. تنتظر سلاسل هذا الوكيل بعضها بعضًا.",
   "mobile.agent.browserProfile.label": "ملف تعريف المتصفح",
   "mobile.agent.browserProfile.shared": "مشترك",

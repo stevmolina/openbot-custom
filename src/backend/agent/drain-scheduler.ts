@@ -122,8 +122,8 @@ export interface TaskLanes {
   threadId(taskId: string): string | null;
   /** The open tasks of this agent. */
   openTaskIds(agentId: string): readonly string[];
-  /** How many tasks of this agent may run a turn at the same time. */
-  limit(agentId: string): number;
+  /** How many tasks of this agent may run a turn at the same time. Null: no limit. */
+  limit(agentId: string): number | null;
   /** Whether the agent's provider runs one turn at a time, across its own chat and its tasks. */
   oneTurnAtATime(agentId: string): boolean;
   /** Whether this task is the side thread of a routine, whose runs each get their own session. */
@@ -382,10 +382,15 @@ export class DrainScheduler {
       return "channel-turn";
     if (taskId !== null && channelId === null) {
       if (this.#tasks.threadId(taskId) === null) return "task-closed";
-      const running = this.#tasks
-        .openTaskIds(agentId)
-        .filter((other) => other !== taskId && this.#laneRunning({ agentId, taskId: other })).length;
-      if (running >= this.#tasks.limit(agentId)) return "task-limit";
+      // An agent with no task limit runs each task at once; the memory of the computer still bounds its turns.
+      const limit = this.#tasks.limit(agentId);
+      if (
+        limit !== null &&
+        this.#tasks
+          .openTaskIds(agentId)
+          .filter((other) => other !== taskId && this.#laneRunning({ agentId, taskId: other })).length >= limit
+      )
+        return "task-limit";
     }
     // The agent's own process restarts when its access or account changed. A turn of another lane
     // runs on it, so this lane waits for that turn to end.

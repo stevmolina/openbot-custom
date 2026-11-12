@@ -167,7 +167,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "方向を修正",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} は実行中のターンの方向を修正できません。作業中に送ったメッセージはキューで待ちます。",
-  "agentSettings.taskLimit.default": "デフォルト ({count})",
+  "agentSettings.taskLimit.default": "デフォルト (上限なし)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} は一度に1ターンずつ実行します。このエージェントのスレッドは互いに待ち合わせます。",
 

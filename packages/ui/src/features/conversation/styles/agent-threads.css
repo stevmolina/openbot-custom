@@ -914,6 +914,38 @@
   white-space: nowrap;
 }
 
+/* The other threads that run, under a thread-limit hold, each with a Stop button. */
+.agent-thread-busy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--openbot-space-1);
+  margin: 0;
+  padding: 0 var(--openbot-space-3) var(--openbot-space-2);
+  list-style: none;
+}
+
+.agent-thread-busy-row {
+  display: flex;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  min-width: 0;
+}
+
+.agent-thread-busy-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-thread-busy-stop svg {
+  width: var(--openbot-icon-sm);
+  height: var(--openbot-icon-sm);
+}
+
 /* The messages that wait, under the hold, when the queue panel does not list them. */
 .agent-thread-queued {
   display: flex;

@@ -200,7 +200,7 @@ export const messages = {
   "agentSettings.busyMessage.steer": "توجيه",
   "agentSettings.busyMessage.steerUnsupported":
     "لا يستطيع {provider} توجيه دور قيد التشغيل. تنتظر الرسائل المرسلة أثناء عمله في قائمة الانتظار.",
-  "agentSettings.taskLimit.default": "افتراضي ({count})",
+  "agentSettings.taskLimit.default": "افتراضي (بلا حد)",
   "agentSettings.taskLimit.oneTurn": "يشغّل {provider} دورًا واحدًا في كل مرة. تنتظر سلاسل هذا الوكيل بعضها بعضًا.",
 
   "agentSettings.notificationLevel.title": "إشعاري",

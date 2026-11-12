@@ -168,6 +168,7 @@ export function conversationThreads(input: ConversationThreadsInput): Conversati
     onCloseToTheRight: (id) => tabs.closeToTheRight(agentId, id),
     onMove: (id, index) => tabs.move(agentId, id, index),
     onArchive: (id) => void tabs.archive(agentId, id),
+    onStop: (id) => tasks.stopTask(agentId, id),
     onRestore: (id) => void tabs.restore(agentId, id),
     onRename: editable ? (id, title) => void tabs.rename(agentId, id, title) : undefined,
     onDelete: editable ? (id) => void tabs.remove(agentId, id) : undefined,
@@ -200,6 +201,7 @@ export function conversationThreads(input: ConversationThreadsInput): Conversati
     onStop: () => {
       if (open) tasks.stopTask(agentId, open.id);
     },
+    onStopTask: (taskId) => tasks.stopTask(agentId, taskId),
     onRead: (messageId) => {
       if (open) tasks.markTaskRead(agentId, open.id, messageId);
     },
@@ -375,6 +377,10 @@ function allAgentHeader(
     onArchive: (id) => {
       const target = resolve(id);
       void tabs.archive(target.agentId, target.threadId);
+    },
+    onStop: (id) => {
+      const target = resolve(id);
+      tasks.stopTask(target.agentId, target.threadId);
     },
     onRestore: (id) => {
       const target = resolve(id);

@@ -2,7 +2,6 @@ import type { ExpressionId } from "@norbert_bodziony/bloub";
 import { agentProviderDescriptor, agentProviderName, foreignProvider } from "@openbot/contracts/agent-providers";
 import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
 import {
-  AGENT_TASK_LIMIT_DEFAULT,
   AGENT_TASK_LIMIT_MAX,
   type AgentBackupModels,
   type AgentBrowserProfile,
@@ -301,7 +300,7 @@ interface AgentSettingsDraft {
   browserProfile: BrowserProfileChoice;
   /** `default` follows the app setting. */
   busyMessage: BusyMessageChoice;
-  /** `default` is `AGENT_TASK_LIMIT_DEFAULT`. */
+  /** `default` is no limit. */
   taskLimit: TaskLimitChoice;
   /** Null asks first, with no saved order. */
   backupModels: AgentBackupModels | null;
@@ -984,9 +983,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
     return provider !== undefined && !agentProviderDescriptor(provider).concurrentTurns;
   };
   const taskLimitLabel = (choice: TaskLimitChoice) =>
-    choice === "default"
-      ? t("agentSettings.taskLimit.default", { count: AGENT_TASK_LIMIT_DEFAULT })
-      : format.number(Number(choice));
+    choice === "default" ? t("agentSettings.taskLimit.default") : format.number(Number(choice));
 
   async function saveComputerUse(next: boolean): Promise<void> {
     const agentId = props.agent.id;

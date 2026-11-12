@@ -169,7 +169,7 @@ export const messages = defineMessages("agentSettings", {
   "agentSettings.busyMessage.steer": "Steer",
   "agentSettings.busyMessage.steerUnsupported":
     "{provider} cannot steer a running turn. Messages sent while it works wait in the queue.",
-  "agentSettings.taskLimit.default": "Default ({count})",
+  "agentSettings.taskLimit.default": "Default (no limit)",
   "agentSettings.taskLimit.oneTurn":
     "{provider} runs one turn at a time. The threads of this agent wait for each other.",
 

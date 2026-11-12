@@ -160,7 +160,7 @@ export const messages = {
   "agentSettings.busyMessage.queue": "排队",
   "agentSettings.busyMessage.steer": "引导",
   "agentSettings.busyMessage.steerUnsupported": "{provider} 无法在运行中引导。助手工作期间发送的消息会进入队列等待。",
-  "agentSettings.taskLimit.default": "默认（{count}）",
+  "agentSettings.taskLimit.default": "默认（不限）",
   "agentSettings.taskLimit.oneTurn": "{provider} 一次只运行一轮。该助手的话题会互相等待。",
 
   "agentSettings.notificationLevel.title": "通知我",

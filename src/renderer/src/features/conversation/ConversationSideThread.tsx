@@ -168,6 +168,10 @@ export function ConversationSideThread(props: { threadId: string }) {
           <AgentThreadView
             task={current().thread.task}
             limit={view.threads?.limit ?? 1}
+            busyThreads={view.threads?.tasks
+              .filter((task) => task.state === "running")
+              .map((task) => ({ id: task.id, title: task.title }))}
+            onStopThread={view.threads?.onStopTask}
             agent={current().agent}
             agents={view.agents}
             messages={messages}

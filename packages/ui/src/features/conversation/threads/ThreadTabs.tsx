@@ -8,6 +8,7 @@ import {
   PanelRight,
   PencilLine,
   SlidingTabs,
+  Square,
   Trash2,
   X,
 } from "@openbot/ui";
@@ -613,6 +614,15 @@ export function ThreadTabs(props: ThreadHeaderProps) {
     return thread ? threadBusy(thread.status) : false;
   };
   const canRename = () => renamable(props, target());
+  /** A side thread with a turn that runs or messages that wait can be stopped from its tab. */
+  const canStop = () => {
+    const thread = target();
+    return (
+      thread?.kind === "side" &&
+      props.onStop !== undefined &&
+      (threadBusy(thread.status) || thread.status.kind === "queued")
+    );
+  };
   const canDelete = () => isSide() && props.onDelete !== undefined;
   const canMoveToSide = () =>
     isSide() &&
@@ -681,6 +691,13 @@ export function ThreadTabs(props: ThreadHeaderProps) {
               <ContextMenu.Item onSelectAfterClose={() => startRename(targetId())}>
                 <PencilLine class="agent-context-icon size-4" aria-hidden="true" />
                 <span>{t("common.rename")}</span>
+              </ContextMenu.Item>
+              <ContextMenu.Separator />
+            </Show>
+            <Show when={canStop()}>
+              <ContextMenu.Item onSelect={() => props.onStop?.(targetId())}>
+                <Square class="agent-context-icon size-4" aria-hidden="true" />
+                <span>{t("conversation.threads.stop")}</span>
               </ContextMenu.Item>
               <ContextMenu.Separator />
             </Show>

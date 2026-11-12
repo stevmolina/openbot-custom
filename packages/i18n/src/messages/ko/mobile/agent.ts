@@ -373,7 +373,7 @@ export const messages = {
     "{provider}은(는) 진행 중인 턴에 방향을 지시할 수 없어요. 작업 중에 보낸 메시지는 대기열에서 기다려요.",
   "mobile.agent.taskLimit.label": "병렬 스레드",
   "mobile.agent.taskLimit.footer": "동시에 실행되는 스레드",
-  "mobile.agent.taskLimit.default": "기본값({count})",
+  "mobile.agent.taskLimit.default": "기본값(제한 없음)",
   "mobile.agent.taskLimit.oneTurn":
     "{provider}은(는) 한 번에 한 턴씩 실행해요. 이 에이전트의 스레드는 서로를 기다려요.",
   "mobile.agent.browserProfile.label": "브라우저 프로필",

@@ -75,10 +75,13 @@ export const messages = defineMessages("conversation", {
   "conversation.threads.archived": "Archived",
   "conversation.threads.restore": "Restore",
   "conversation.threads.deleteUndo.title": "{title} deleted",
+  "conversation.threads.stop": "Stop",
+  "conversation.threads.stopThread": "Stop {title}",
   "conversation.threads.hold.threadLimit": {
     one: "Waiting for a free thread. {count} thread runs now.",
     other: "Waiting for a free thread. {count} threads run now.",
   },
+  "conversation.threads.hold.busyThreads": "Threads that run now",
   "conversation.threads.view.label": "Thread {title}",
   "conversation.threads.view.startedByAgent": "{name} started this thread.",
   "conversation.threads.view.loadOlder": "Load older messages",

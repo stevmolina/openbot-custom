@@ -76,10 +76,13 @@ export const messages = {
   "conversation.threads.archived": "Gearchiveerd",
   "conversation.threads.restore": "Herstellen",
   "conversation.threads.deleteUndo.title": "{title} verwijderd",
+  "conversation.threads.stop": "Stoppen",
+  "conversation.threads.stopThread": "{title} stoppen",
   "conversation.threads.hold.threadLimit": {
     one: "Wachten op een vrije thread. Er draait nu {count} thread.",
     other: "Wachten op een vrije thread. Er draaien nu {count} threads.",
   },
+  "conversation.threads.hold.busyThreads": "Threads die nu lopen",
   "conversation.threads.view.label": "Thread {title}",
   "conversation.threads.view.startedByAgent": "{name} heeft deze thread gestart.",
   "conversation.threads.view.loadOlder": "Laad oudere berichten",
