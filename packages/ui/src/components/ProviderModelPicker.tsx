@@ -1139,6 +1139,14 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                 </div>
                 {/* A box of its own only in the composer, beside the reasoning column. */}
                 <div class="provider-model-main">
+                  {/* The heading is hidden in the composer, so its limit chip shows here, under the search. */}
+                  <Show when={composer() && headingSpent()}>
+                    {(window) => (
+                      <Badge as="small" variant="destructive-light" class="provider-model-limit">
+                        {spentChipText(window())}
+                      </Badge>
+                    )}
+                  </Show>
                   <Show when={!available()}>
                     <div class="provider-model-empty" role="status">
                       <span>{runtimeMessage()}</span>

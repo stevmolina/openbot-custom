@@ -973,6 +973,13 @@
   flex: 0 0 15px;
 }
 
+/* The limit chip of a spent account, under the search, as the composer hides the heading. */
+.provider-model-popover-composer .provider-model-main > .provider-model-limit {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-bottom: var(--openbot-space-2);
+}
+
 .provider-model-popover-composer .provider-model-search {
   height: 38px;
   flex: 1 1 auto;
