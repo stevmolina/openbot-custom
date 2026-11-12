@@ -46,6 +46,7 @@ export function ConversationSideThread(props: { threadId: string }) {
     copiedMessageId,
     openQuote,
     branchThread,
+    messagePins,
   } = useConversationViewScope();
   const { t, errorMessage } = useText();
   const failureToast = (fallback: AppTextKey) => ({
@@ -121,6 +122,14 @@ export function ConversationSideThread(props: { threadId: string }) {
   const branch = () => {
     if (!view.threads?.onBranch) return undefined;
     return (messageId: string) => void branchThread(props.threadId, messageId);
+  };
+  /** Pin and Unpin on the messages of this thread. A host without `message-pins-v1` has no such item. */
+  const threadPins = (taskId: string) => {
+    if (!messagePins.available()) return undefined;
+    return {
+      isPinned: (messageId: string) => messagePins.isPinned(taskId, messageId),
+      onToggle: (messageId: string, pinned: boolean) => messagePins.set(taskId, messageId, pinned),
+    };
   };
   /** Deletes a message of this thread. A host without `message-delete-v1` has no Delete item. */
   const deleteMessage = () => {
@@ -212,6 +221,8 @@ export function ConversationSideThread(props: { threadId: string }) {
             messageCard={(message) => extras.visualCard(message) ?? mcpSignInCard(message)}
             aboveComposer={extras.aboveComposer()}
             olderMessages={current().thread.olderMessages}
+            newerMessages={current().thread.newerMessages}
+            focusMessage={current().thread.focusMessage}
             stepsAbove={turnSteps.stepsAbove}
             factsAbove={turnSteps.factsAbove}
             activeSteps={turnSteps.activeSteps()}
@@ -224,6 +235,7 @@ export function ConversationSideThread(props: { threadId: string }) {
             compactMessageActions={compactMessageActions()}
             onBranch={branch()}
             onDeleteMessage={deleteMessage()}
+            messagePins={threadPins(current().thread.task.id)}
             canDeleteMessage={view.canDeleteMessage}
             branchSource={branchSource(current().thread, current().agent.name)}
             onReply={reply()}

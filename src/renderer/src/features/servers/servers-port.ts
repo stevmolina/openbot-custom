@@ -16,6 +16,7 @@ export interface ServersPort {
     | "markConversationRead"
     | "readConversationPage"
     | "listHiddenAgents"
+    | "listAgentNotificationLevels"
     | "listMcpServers"
     | "listModels"
     | "onScopedEvent"

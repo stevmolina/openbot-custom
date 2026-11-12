@@ -347,10 +347,11 @@ export class McpGateway {
 
   /**
    * Rows installed from the old catalog's `mcp-remote` bridge definitions reach their servers
-   * natively from here on. Exact matches only; anything the user changed stays as it is.
+   * natively from here on, and rows on a package version an earlier catalog pinned run the version
+   * it pins now. Exact matches only; anything the user changed stays as it is.
    */
-  migrateCatalogBridgesToHttp(): void {
-    this.#servers.migrateCatalogBridgesToHttp();
+  migrateCatalogRows(): void {
+    this.#servers.migrateCatalogRows();
   }
 
   /**
@@ -580,6 +581,18 @@ export class McpGateway {
    */
   enabled(audience?: McpServerAudience): McpServerConfig[] {
     const configured = this.#servers.listEnabled();
+    return this.#handoff.record([...configured, ...this.#builtIn(configured, audience)]);
+  }
+
+  /**
+   * The entries that `enabled` adds and no row holds. The agent's MCP tools list them, so the
+   * names they report are the names the agents get (#7088).
+   */
+  builtIn(): McpServerConfig[] {
+    return this.#builtIn(this.#servers.listEnabled());
+  }
+
+  #builtIn(configured: readonly McpServerConfig[], audience?: McpServerAudience): McpServerConfig[] {
     const builtIn: McpServerConfig[] = [];
     const computerUse = this.#computerUseMcpServer(audience ?? null);
     if (computerUse) builtIn.push(computerUse);
@@ -593,7 +606,7 @@ export class McpGateway {
       for (const header of remote.headers)
         if (header.value.startsWith("Bearer ")) this.#handoff.recordSecret(header.value.slice("Bearer ".length));
     }
-    return this.#handoff.record([...configured, ...builtIn]);
+    return builtIn;
   }
 
   /**

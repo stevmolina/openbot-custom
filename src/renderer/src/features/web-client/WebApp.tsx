@@ -39,6 +39,7 @@ import { createOnboardingTeam, onboardingSessionSeed } from "../onboarding/onboa
 import { deleteRemoteWorkspaceFrames } from "../servers/remote-workspace-frame";
 import type { WebWorkspace } from "./WebWorkspace";
 import { createWebAccountCalls } from "./web-account";
+import { deleteSavedAgentPictures } from "./web-agent-pictures";
 import { createWebAppearancePreference } from "./web-appearance-preference";
 import { takeWebAppStart, WEB_APP_BILLING_PARAM, type WebAppStart } from "./web-billing";
 import type { WebRuntimeFactory } from "./web-client-context";
@@ -259,7 +260,10 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
   function clearSession(ended = true) {
     sessionEnded = ended;
     // The saved workspace frames name the agents of the account's servers.
-    if (ended) deleteRemoteWorkspaceFrames(null);
+    if (ended) {
+      deleteRemoteWorkspaceFrames(null);
+      void deleteSavedAgentPictures(null);
+    }
     sessionGeneration += 1;
     setState((draft) => {
       draft.account = null;

@@ -25,6 +25,9 @@ export const LibraryPanel = lazy(() =>
 export const MachinesPanel = lazy(() =>
   import("./features/servers/MachinesPanel").then((module) => ({ default: module.MachinesPanel })),
 );
+export const ServerLibrary = lazy(() =>
+  import("./features/files/ServerLibrary").then((module) => ({ default: module.ServerLibrary })),
+);
 export const AccountLogin = lazy(() =>
   import("@openbot/ui/features/account/AccountLogin").then((module) => ({ default: module.AccountLogin })),
 );

@@ -1,4 +1,5 @@
 import type { ChatWindowTarget } from "@openbot/contracts/ipc";
+import { AGENT_NOTIFICATION_LEVELS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-notification-levels-v1";
 import { CONVERSATION_UNREAD_FROM_CAPABILITY } from "@openbot/contracts/team-protocol/conversation-unread-from-v1";
 import { AGENT_HIDDEN_CAPABILITY } from "@openbot/contracts/team-protocol/current";
 import { Sidebar } from "@openbot/ui/features/sidebar/Sidebar";
@@ -91,10 +92,22 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
     openAgentSetup,
     userHiddenAgents,
     userHiddenAgentIds,
+    userPausedAgentIds,
+    userHiddenAgentsWork,
+    mutedAgentIds,
   } = useAgents();
-  const { editAgent, duplicateAgent, duplicateSection, duplicatingSectionIds, deleteAgent, setAgentHiddenByUser } =
-    useAgentActions();
-  // The host refuses a member: a hidden agent stops for every member, as a deleted one does.
+  const {
+    editAgent,
+    duplicateAgent,
+    duplicateSection,
+    duplicatingSectionIds,
+    deleteAgent,
+    setAgentHiddenByUser,
+    setAgentMuted,
+  } = useAgentActions();
+  // A server that keeps no levels has no mute item: the item must not fail.
+  const muteSupported = () => activeServerSupportsCapability(AGENT_NOTIFICATION_LEVELS_CAPABILITY);
+  // The host refuses a member: an agent is hidden for every member.
   const hideAllowed = () =>
     activeServerSupportsCapability(AGENT_HIDDEN_CAPABILITY) && serverRoleCanAdminister(activeServer());
   const { pendingPrompts, approvals } = useTurns();
@@ -297,7 +310,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         hasUnread={(() => {
           const filter = allMachinesOn() ? allMachines.filter() : null;
           const ownUnread = agentList().some(
-            (agent) => !userHiddenAgentIds().has(agent.id) && (agentUnreadReplies()[agent.id] ?? 0) > 0,
+            (agent) => !userPausedAgentIds().has(agent.id) && (agentUnreadReplies()[agent.id] ?? 0) > 0,
           );
           if (filter === activeServerId()) return ownUnread;
           if (filter !== null) return allMachines.hasUnread(activeServerId(), filter);
@@ -434,6 +447,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         onDuplicateAgent={duplicateAgent}
         onDeleteAgent={deleteAgent}
         userHiddenAgents={allMachinesOn() ? [] : userHiddenAgents()}
+        userHiddenAgentsWork={userHiddenAgentsWork()}
         threadLanes={threadLanes()}
         unreadAgentIds={unreadAgentIds()}
         onMarkAgentRead={(agentId) => void markAgentChatRead(agentId)}
@@ -442,6 +456,8 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
             ? (agentId) => void markAgentChatUnread(agentId)
             : undefined
         }
+        mutedAgentIds={muteSupported() ? mutedAgentIds() : undefined}
+        onSetAgentMuted={muteSupported() ? (agentId, muted) => void setAgentMuted(agentId, muted) : undefined}
         onHideAgent={hideAllowed() ? (agentId) => void setAgentHiddenByUser(agentId, true) : undefined}
         onRestoreAgent={hideAllowed() ? (agentId) => void setAgentHiddenByUser(agentId, false) : undefined}
         onNewAgentThread={newAgentThread()}
@@ -454,6 +470,7 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
         compact={layout.leftPanelCompact()}
         pages={pages()}
         onExpand={layout.expandSidebar}
+        onCollapse={() => layout.setSidebarClosed(true)}
         onOpenSearch={() => setGlobalSearchVisibility(true)}
         footer={
           <>

@@ -63,6 +63,7 @@
 @import "@openbot/ui/features/transfer/instance-transfer.css";
 @import "@openbot/ui/features/settings/settings-modal.css";
 @import "./features/settings/settings-modal.css";
+@import "@openbot/ui/features/window/page-header.css";
 @import "./features/window/window.css";
 @import "./features/files/library.css";
 @import "@openbot/ui/features/settings/opencode-key-dialog.css";

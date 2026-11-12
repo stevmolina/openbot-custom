@@ -11,8 +11,13 @@ import { reasoningLabel } from "@openbot/ui/components/ProviderModelPicker";
 import { findModelOption, providerAccountName } from "@openbot/ui/components/provider-accounts";
 import { ConversationHeader as SharedConversationHeader } from "@openbot/ui/features/conversation/ConversationHeader";
 import { ThreadHeader } from "@openbot/ui/features/conversation/threads/ThreadHeader";
-import { MAIN_THREAD_ID, parseThreadTabKey } from "@openbot/ui/features/conversation/threads/thread-types";
+import {
+  DRAFT_THREAD_ID,
+  MAIN_THREAD_ID,
+  parseThreadTabKey,
+} from "@openbot/ui/features/conversation/threads/thread-types";
 import { Show } from "solid-js";
+import { actionToast } from "../../action-toast";
 import { useConversationViewScope } from "./conversation-scope";
 
 const loadAgentSettingsPanel = () => import("./AgentSettingsPanel");
@@ -48,6 +53,8 @@ export function ConversationHeader() {
     settingsReasoning,
     sidePanelOpen,
     sideThreadOpen,
+    messagePins,
+    replyJump,
     toggleSidePanel,
     moveThreadToPanel,
   } = useConversationViewScope();
@@ -66,6 +73,42 @@ export function ConversationHeader() {
     const tab = parseThreadTabKey(id);
     if (!tab) moveThreadToPanel(id);
     else if (tab.agentId === props.agent?.id) moveThreadToPanel(tab.threadId);
+  };
+  /** The chat in the main view: the open side thread, a new thread, or undefined for the agent's own chat. */
+  const viewTaskId = () => (sideThreadOpen() ? (props.threads?.open?.id ?? DRAFT_THREAD_ID) : undefined);
+  /**
+   * Opens a pin in its chat: in place in the agent's own chat, else in the tab of its thread, which
+   * reads the part around it. A pin whose message or thread is gone shows a toast, and the list reads again.
+   * A later click replaces an earlier one that is still loading, so the earlier one shows no toast.
+   */
+  let pinOpens = 0;
+  async function openPin(key: string): Promise<void> {
+    const pin = messagePins.pin(key);
+    if (!pin) return;
+    const open = ++pinOpens;
+    const opened =
+      pin.taskId === null && !sideThreadOpen()
+        ? await replyJump.jumpTo(pin.messageId)
+        : ((await props.threads?.onOpenMessage(pin.taskId, pin.messageId)) ?? false);
+    if (opened || open !== pinOpens) return;
+    actionToast.error(t("chat.pins.missing"));
+    messagePins.load();
+  }
+  /** The pins of all chats of the agent. The pins of the chat in view come first. */
+  const pinnedMessages = () => {
+    if (!messagePins.available()) return undefined;
+    return {
+      pins: messagePins.items(viewTaskId()),
+      agents: props.agents,
+      onOpenChange: (open: boolean) => {
+        if (open) messagePins.load();
+      },
+      onJump: (key: string) => void openPin(key),
+      onUnpin: (key: string) => {
+        const pin = messagePins.pin(key);
+        if (pin) messagePins.set(pin.taskId ?? undefined, pin.messageId, false);
+      },
+    };
   };
   const working = () => agentActivity() === "Working";
   const providerName = (provider: AgentProviderRef) =>
@@ -162,6 +205,7 @@ export function ConversationHeader() {
           {(threads) => <ThreadHeader {...threads().header} onMoveToSide={moveTabToPanel} />}
         </Show>
       }
+      pinnedMessages={pinnedMessages()}
       sidePanel={
         channel?.readOnly()
           ? undefined

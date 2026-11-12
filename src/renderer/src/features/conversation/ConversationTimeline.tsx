@@ -230,6 +230,7 @@ export function ConversationTimeline() {
     shownSubagentId,
     toggleSubagentPanel,
     sideThreadOpen,
+    messagePins,
   } = useConversationViewScope();
   const { t, format, sourceText } = useText();
   // A folder path chip opens its path in the side panel only on this computer, where the agent may read
@@ -278,6 +279,13 @@ export function ConversationTimeline() {
     return () => setDeleteTargetId(message.id);
   };
   const deleteMessage = (messageId: string) => props.onDeleteMessage?.(messageId) ?? Promise.resolve();
+  /** A finished message that the host stores can be pinned to the agent's chat. A channel has no pins yet. */
+  const pinAction = (message: AgentMessage) => {
+    if (!messagePins.available() || message.streaming || message.id.startsWith(PENDING_SEND_ID_PREFIX)) return;
+    if (message.actionMarker) return;
+    const pinned = messagePins.isPinned(undefined, message.id);
+    return { pinned, onToggle: () => messagePins.set(undefined, message.id, !pinned) };
+  };
   /** A finished message of an agent chat can start work in a channel. A channel message stays where it is. */
   const sendToChannelAction = (message: AgentMessage) => {
     const target = props.sendToChannel;
@@ -1538,6 +1546,7 @@ export function ConversationTimeline() {
                   sendToChannel: sendToChannelAction(message() ?? initialMessage),
                   onBranch: branchAction(message() ?? initialMessage),
                   branchDisabled: Boolean(props.activeTurnId),
+                  pin: pinAction(message() ?? initialMessage),
                   onDelete: deleteAction(message() ?? initialMessage),
                 });
                 /*
