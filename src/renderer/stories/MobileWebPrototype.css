@@ -199,4 +199,48 @@
   .proto-tab:active {
     opacity: 0.6;
   }
+
+  /* ---------------------------------------------------------------- the chat */
+
+  /* The small icons under each message go: a long press on the message opens the same actions. */
+  .proto-a .server-connection-workspace .message-action-row {
+    display: none;
+  }
+
+  /* The header keeps Back, the agent and two buttons. The model shows as its logo only; a tap still
+   * opens the picker. */
+  .proto-a
+    .server-connection-workspace
+    .conversation-header
+    .provider-model-trigger
+    :is(.provider-model-trigger-name, .provider-model-trigger-effort) {
+    display: none;
+  }
+
+  .proto-a .server-connection-workspace .conversation-header .provider-model-trigger {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    border-radius: var(--openbot-radius-pill);
+    padding: 0;
+  }
+
+  .proto-a .server-connection-workspace .conversation-header .provider-model-trigger > svg:last-child {
+    display: none;
+  }
+
+  .proto-a .server-connection-workspace .conversation-header .conversation-title {
+    font-size: var(--openbot-text-2xl);
+    font-weight: var(--openbot-weight-semibold);
+  }
+
+  /* The composer floats like the tab bar of the list. */
+  .proto-a .server-connection-workspace .composer-wrap {
+    padding: var(--openbot-space-2) var(--openbot-space-3)
+      calc(var(--openbot-space-3) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .proto-a .server-connection-workspace .composer-wrap > * {
+    box-shadow: 0 10px 30px var(--openbot-shadow-dialog);
+  }
 }
