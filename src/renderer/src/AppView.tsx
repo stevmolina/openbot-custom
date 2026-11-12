@@ -20,6 +20,8 @@ import { WorkspaceShell } from "./WorkspaceShell";
 
 // A server switch mounts this gate again. Only the first splash of a start or a reload plays through.
 let startupSplashPlayed = false;
+// A server switch shows no splash: the workspace keeps its sidebar and loads the new server in its pane.
+let gateMounted = false;
 
 /**
  * Lets the next start fade the splash as soon as the app is ready, as after a server switch.
@@ -69,7 +71,8 @@ export function AppAccessGate() {
   const languageLoaded = createMemo<boolean>((was) => was === true || i18n.ready());
   const started = () => setup.setupLoaded() && platform.appInfo() !== null && languageLoaded();
   // The landing demo opens on the workspace at once, with no splash.
-  const [splashShown, setSplashShown] = createSignal(!platform.landingPreview);
+  const [splashShown, setSplashShown] = createSignal(!platform.landingPreview && !gateMounted);
+  gateMounted = true;
   // A chat window is a new page too, but it fades as soon as it is ready.
   const splashPlaysThrough = !startupSplashPlayed && platform.chatWindow === null;
   // The splash lets the workspace mount its heavy views before the crew hop out.
