@@ -5,6 +5,7 @@ import { createEffect, createSignal, createStore, For, onCleanup, Show } from "s
 import { createScrollFades } from "../../components/createScrollFades";
 import { createVerticalDragPreview } from "../../components/createVerticalDragPreview";
 import { useText } from "../../text";
+import pokebotsIcon from "./assets/pokebots-icon.png";
 import { type ServerActionCallbacks, ServerActionItems, serverMuteDescription } from "./ServerActionItems";
 import { ServerMonogram } from "./ServerMonogram";
 
@@ -611,7 +612,7 @@ function ServerRailButton(
 export type ServerMarkServer = Pick<ServerSummary, "id" | "logoUrl"> &
   Partial<Pick<ServerSummary, "name" | "kind">> & { thisComputer?: boolean | undefined };
 
-/** The server logo, or the monogram of the server when it has none or the logo does not load. */
+/** The server logo, this computer's Pokebots plush, or the monogram when there is no logo. */
 export function ServerMark(props: { server: ServerMarkServer }) {
   const [failed, setFailed] = createSignal(false);
   createEffect(
@@ -620,14 +621,14 @@ export function ServerMark(props: { server: ServerMarkServer }) {
       setFailed(false);
     },
   );
+  const thisComputer = () => props.server.kind === "local" || props.server.thisComputer === true;
   return (
     <Show
       when={!failed() ? props.server.logoUrl : null}
       fallback={
-        <ServerMonogram
-          name={props.server.name}
-          thisComputer={props.server.kind === "local" || props.server.thisComputer === true}
-        />
+        <Show when={thisComputer()} fallback={<ServerMonogram name={props.server.name} thisComputer={false} />}>
+          <img class="server-rail-logo" src={pokebotsIcon} alt="" draggable={false} />
+        </Show>
       }
     >
       {(url) => <img class="server-rail-logo" src={url()} alt="" draggable={false} onError={() => setFailed(true)} />}

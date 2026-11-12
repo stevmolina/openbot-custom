@@ -139,6 +139,8 @@ export const messages = defineMessages("agentSettings", {
   "agentSettings.avatar.autoColor": "Automatic avatar color",
   "agentSettings.avatar.autoInitial": "A",
   "agentSettings.avatar.hueColor": "{hue} avatar color",
+  "agentSettings.avatar.mascots": "Pokebots mascots",
+  "agentSettings.avatar.mascotOption": "Mascot {number}",
   "agentSettings.avatar.saveFailed": "Could not save the agent avatar.",
   "agentSettings.avatar.processFailed": "Could not process the agent avatar.",
 
