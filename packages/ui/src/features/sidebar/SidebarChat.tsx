@@ -29,6 +29,8 @@ import type { JSX } from "@solidjs/web";
 import { createMemo, For, Show } from "solid-js";
 import { useText } from "../../text";
 import { ServerMark } from "../servers/ServerRail";
+import { ShortcutLabel } from "../shortcuts/ShortcutHint";
+import { type ShortcutId, type ShortcutPlatform, shortcutAria, shortcutText } from "../shortcuts/shortcut-registry";
 import { SidebarChatDock, SidebarChatNeedsYou, useSidebarChatDockGroups } from "./SidebarChatDock";
 import { SidebarChatRow } from "./SidebarChatRow";
 import { SidebarEmptyState } from "./SidebarEmptyState";
@@ -41,15 +43,27 @@ import { sidebarPinnedItemKey } from "./sidebar-pins";
 import { sidebarRecentChats } from "./sidebar-recent-chats";
 import { useSidebarScope } from "./sidebar-scope";
 
+/** The tooltip of a top row button: its name, and its keys when it has a shortcut. */
+function buttonTip(label: string, shortcut: ShortcutId | undefined, platform: ShortcutPlatform | undefined) {
+  return shortcut ? <ShortcutLabel label={label} shortcut={shortcut} platform={platform} /> : label;
+}
+
 /** A round button of the top row, with its name as a tooltip. */
-function RoundButton(props: { label: string; onClick: () => void; children: JSX.Element }) {
+function RoundButton(props: {
+  label: string;
+  onClick: () => void;
+  children: JSX.Element;
+  shortcut?: ShortcutId;
+  platform?: ShortcutPlatform | undefined;
+}) {
   return (
-    <MotionTooltip content={props.label}>
+    <MotionTooltip content={buttonTip(props.label, props.shortcut, props.platform)}>
       <Button
         variant="ghost"
         type="button"
         class="sidebar-chat-round no-drag"
         aria-label={props.label}
+        aria-keyshortcuts={props.shortcut && props.platform ? shortcutAria(props.shortcut, props.platform) : undefined}
         onClick={() => props.onClick()}
       >
         {props.children}
@@ -95,7 +109,7 @@ function NewOnServerButton() {
 }
 
 /** New: a new agent, or a menu with a new agent and a new channel when the server has channels. */
-function NewButton() {
+function NewButton(newProps: { platform: ShortcutPlatform | undefined }) {
   const { props } = useSidebarScope();
   const { t } = useText();
   return (
@@ -104,7 +118,12 @@ function NewButton() {
         when={props.onCreateChannel}
         fallback={
           <Show when={props.createSupported !== false}>
-            <RoundButton label={t("sidebar.new.agent")} onClick={props.onCreateAgent}>
+            <RoundButton
+              label={t("sidebar.new.agent")}
+              onClick={props.onCreateAgent}
+              shortcut="newChat"
+              platform={newProps.platform}
+            >
               <Plus aria-hidden="true" />
             </RoundButton>
           </Show>
@@ -112,7 +131,7 @@ function NewButton() {
       >
         {(createChannel) => (
           <DropdownMenu.Root placement="bottom-end" gutter={6}>
-            <MotionTooltip content={t("sidebar.chat.newMenu")}>
+            <MotionTooltip content={buttonTip(t("sidebar.chat.newMenu"), "newChat", newProps.platform)}>
               <DropdownMenu.Trigger class="sidebar-chat-round no-drag" aria-label={t("sidebar.chat.newMenu")}>
                 <Plus aria-hidden="true" />
               </DropdownMenu.Trigger>
@@ -123,6 +142,9 @@ function NewButton() {
                   <DropdownMenu.Item onSelectAfterClose={props.onCreateAgent}>
                     <Bot aria-hidden="true" />
                     {t("sidebar.new.agent")}
+                    <Show when={newProps.platform}>
+                      {(platform) => <span class="ui-menu-trailing">{shortcutText("newChat", platform())}</span>}
+                    </Show>
                   </DropdownMenu.Item>
                 </Show>
                 <DropdownMenu.Item onSelectAfterClose={() => createChannel()()}>
@@ -164,9 +186,10 @@ function SidebarChatTopbar(topProps: { pages: SidebarPages }) {
   const { props } = useSidebarScope();
   const { t } = useText();
   const label = () => (props.compact ? t("sidebar.topbar.expand") : t("sidebar.chat.collapse"));
+  const platform = () => topProps.pages.shortcutPlatform;
   return (
     <div class="window-drag sidebar-chat-top">
-      <MotionTooltip content={label()}>
+      <MotionTooltip content={buttonTip(label(), "toggleSidebar", platform())}>
         <Button
           variant="ghost"
           type="button"
@@ -181,10 +204,15 @@ function SidebarChatTopbar(topProps: { pages: SidebarPages }) {
       </MotionTooltip>
       <span class="sidebar-chat-spacer" />
       <UpdateButton />
-      <RoundButton label={t("sidebar.chat.search")} onClick={props.onOpenSearch}>
+      <RoundButton
+        label={t("sidebar.chat.search")}
+        onClick={props.onOpenSearch}
+        shortcut="search"
+        platform={platform()}
+      >
         <Search aria-hidden="true" />
       </RoundButton>
-      <NewButton />
+      <NewButton platform={platform()} />
     </div>
   );
 }

@@ -33,6 +33,7 @@ import type { AppAppearancePreference, SetAppAppearancePreferenceInput } from ".
 import type { AppInterfaceSizePreference, SetAppInterfaceSizePreferenceInput } from "./app-interface-size";
 import type { AppLanguagePreference, SetAppLanguagePreferenceInput } from "./app-language";
 import type { AppLogoColorPreference, SetAppLogoColorPreferenceInput } from "./app-logo-color";
+import type { AppShortcutCommand } from "./app-shortcut";
 import type { BillingPortalRequest, BillingState } from "./billing";
 import type {
   CreateHostedServerInput,
@@ -796,6 +797,9 @@ export const IPC_ENDPOINTS = {
     // The native Check for Updates menu item opens the Updates tab, because only that tab shows
     // the check and its result.
     openUpdateSettings: event<undefined>()("app:open-update-settings"),
+    // A native menu item of a keyboard shortcut that the renderer owns, such as New Chat. The item
+    // only shows the key; a click sends the command to the focused window.
+    runShortcut: event<AppShortcutCommand>()("app:run-shortcut"),
     openExternal: request<ExternalDestination, void>()("app:open-external"),
     // Read only. The social toast asks for it to know how long and how much the user used OpenBot.
     getSentMessageStats: request<undefined, SentMessageStats>()("app:get-sent-message-stats"),

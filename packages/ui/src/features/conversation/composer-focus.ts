@@ -20,3 +20,28 @@ export function shouldRestoreComposerFocus(editor: HTMLElement): boolean {
   if (!active || active === document.body || active === document.documentElement) return true;
   return !active.matches(TEXT_ENTRY) && !active.matches(":focus-visible");
 }
+
+/**
+ * Puts the caret at the end of the message box in view, for ⇧Esc and for a key typed while nothing
+ * that takes text has the focus. It runs during the keydown, so the typed character goes to the box.
+ * Returns false when no message box takes text, such as on a page without a chat.
+ */
+export function focusComposerEditor(root: Document): boolean {
+  const editor = [...root.querySelectorAll<HTMLElement>(".composer-editor-surface[contenteditable='true']")].find(
+    (element) =>
+      element.closest("[inert], [aria-hidden='true'], [role='dialog'], [role='alertdialog']") === null &&
+      element.getClientRects().length > 0,
+  );
+  if (!editor) return false;
+  if (root.activeElement === editor) return true;
+  editor.focus({ preventScroll: true });
+  const selection = root.getSelection();
+  if (selection) {
+    const range = root.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  return true;
+}

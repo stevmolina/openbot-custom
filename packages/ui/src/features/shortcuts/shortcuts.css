@@ -1,0 +1,223 @@
+/* The shortcut sheet: one dialog, the filter on top, the groups in columns that fold to one on a
+   narrow window. It sits on the surface and the ring of global search, so both read as one family. */
+.shortcut-sheet-overlay {
+  z-index: calc(var(--openbot-layer-dialog) + 1);
+}
+
+/* The content is a sibling of the overlay, not its child, so it centers itself on the window. */
+.ui-dialog-content.shortcut-sheet {
+  position: fixed;
+  z-index: calc(var(--openbot-layer-dialog) + 2);
+  top: max(var(--openbot-space-6), calc((100dvh - min(680px, 100dvh - 2 * var(--openbot-space-6))) / 2));
+  inset-inline: 0;
+  display: flex;
+  width: min(760px, calc(100vw - 2 * var(--openbot-space-6)));
+  max-height: min(680px, calc(100dvh - 2 * var(--openbot-space-6)));
+  margin-inline: auto;
+  flex-direction: column;
+  overflow: hidden;
+  outline: 0;
+  border-radius: var(--openbot-radius-xl);
+  background: var(--openbot-bg-control);
+  box-shadow:
+    0 0 0 1px var(--openbot-dialog-ring),
+    var(--openbot-shadow-dialog);
+  color: var(--openbot-text-primary);
+  animation: shortcut-sheet-in var(--openbot-duration-normal) var(--openbot-ease-out);
+}
+
+@keyframes shortcut-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.shortcut-sheet-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  padding-block: var(--openbot-space-3) 0;
+  padding-inline: var(--openbot-space-4) var(--openbot-space-2);
+}
+
+.shortcut-sheet-head h2 {
+  min-width: 0;
+  flex: 1;
+}
+
+.shortcut-sheet-mark {
+  display: inline-grid;
+  width: var(--openbot-control-sm);
+  height: var(--openbot-control-sm);
+  place-items: center;
+  border-radius: var(--openbot-radius-md);
+  background: var(--openbot-bg-control-active);
+  color: var(--openbot-text-secondary);
+}
+
+.shortcut-sheet-mark > svg {
+  width: var(--openbot-icon-sm);
+  height: var(--openbot-icon-sm);
+  stroke-width: var(--openbot-icon-stroke);
+}
+
+.shortcut-sheet-filter {
+  display: flex;
+  height: var(--openbot-control-lg);
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  margin: var(--openbot-space-3) var(--openbot-space-4) 0;
+  border-radius: var(--openbot-radius-md);
+  background: var(--openbot-bg-control-active);
+  padding-inline: var(--openbot-space-3);
+  color: var(--openbot-text-muted);
+}
+
+.shortcut-sheet-filter > svg {
+  width: var(--openbot-icon-sm);
+  height: var(--openbot-icon-sm);
+  flex: 0 0 auto;
+  stroke-width: var(--openbot-icon-stroke);
+}
+
+.shortcut-sheet-filter .shortcut-sheet-input {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  color: var(--openbot-text-primary);
+  font-size: var(--openbot-text-md);
+}
+
+.shortcut-sheet-filter .shortcut-sheet-input:focus {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+
+.shortcut-sheet-filter .shortcut-sheet-input::placeholder {
+  color: var(--openbot-text-placeholder);
+}
+
+.shortcut-sheet-body {
+  min-height: 0;
+  flex: 1;
+  columns: 2 300px;
+  column-gap: var(--openbot-space-6);
+  overflow-y: auto;
+  padding: var(--openbot-space-4);
+}
+
+.shortcut-sheet-group {
+  break-inside: avoid;
+  margin-bottom: var(--openbot-space-4);
+}
+
+.shortcut-sheet-group-title {
+  margin: 0 0 var(--openbot-space-1);
+  padding-inline: var(--openbot-space-2);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+  letter-spacing: var(--openbot-tracking-wide);
+  line-height: var(--openbot-leading-sm);
+}
+
+.shortcut-sheet-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shortcut-sheet-row {
+  display: flex;
+  min-height: var(--openbot-control-sm);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--openbot-space-3);
+  border-radius: var(--openbot-radius-md);
+  padding: var(--openbot-space-1) var(--openbot-space-2);
+  font-size: var(--openbot-text-sm);
+  line-height: var(--openbot-leading-sm);
+  transition: background var(--openbot-duration-hover) var(--openbot-ease-out);
+}
+
+.shortcut-sheet-row:hover {
+  background: var(--openbot-bg-control-hover);
+}
+
+.shortcut-sheet-label {
+  min-width: 0;
+  color: var(--openbot-text-primary);
+}
+
+.shortcut-sheet-chords {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--openbot-space-1-5);
+}
+
+.shortcut-sheet-or {
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+}
+
+.shortcut-sheet-empty {
+  margin: 0;
+  padding: var(--openbot-space-6) var(--openbot-space-2);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  text-align: center;
+}
+
+.shortcut-sheet-foot {
+  display: flex;
+  height: var(--openbot-control-lg);
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  border-top: 1px solid var(--openbot-border);
+  padding: 0 var(--openbot-space-4);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  line-height: var(--openbot-leading-sm);
+}
+
+/* The caps of one chord sit close together, as on the key row of a menu. Key glyphs such as ⌘ and ↑
+   are small in a mono font, so the caps use the interface font. */
+.shortcut-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--openbot-space-0-5);
+  direction: ltr;
+}
+
+.shortcut-keys .ui-kbd {
+  border: 0;
+  background: var(--openbot-bg-control-active);
+  color: var(--openbot-text-secondary);
+  font-family: var(--openbot-font-sans);
+  font-weight: var(--openbot-weight-medium);
+}
+
+/* A control's name with its keys, in a tooltip. */
+.shortcut-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--openbot-space-2);
+}
+
+.shortcut-label .ui-kbd {
+  min-width: 18px;
+  height: 18px;
+}

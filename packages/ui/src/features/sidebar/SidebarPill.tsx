@@ -31,6 +31,7 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import { useText } from "../../text";
 import { ServerMenu } from "../servers/ServerMenu";
 import { ServerMark } from "../servers/ServerRail";
+import { shortcutText } from "../shortcuts/shortcut-registry";
 import { HelpMenuItems } from "../updates/HelpMenu";
 import type { SidebarPage, SidebarPages, SidebarPinnablePage } from "./sidebar-pages";
 import { useSidebarScope } from "./sidebar-scope";
@@ -162,7 +163,14 @@ function PillMore(props: { pages: SidebarPages; list: readonly PillPage[]; verti
           <DropdownMenu.Item onSelectAfterClose={openFromTrigger(props.pages.onSettings)}>
             <Settings class="agent-context-icon size-4" aria-hidden="true" />
             <span>{t("app.rail.settings")}</span>
-            <Show when={props.pages.settingsNotice}>
+            <Show
+              when={props.pages.settingsNotice}
+              fallback={
+                <Show when={props.pages.settingsShortcut ? props.pages.shortcutPlatform : undefined}>
+                  {(platform) => <span class="ui-menu-trailing">{shortcutText("settings", platform())}</span>}
+                </Show>
+              }
+            >
               {(notice) => <span class="ui-menu-trailing sidebar-more-notice">{notice()}</span>}
             </Show>
           </DropdownMenu.Item>

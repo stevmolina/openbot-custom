@@ -11,6 +11,7 @@ import { Portal } from "@solidjs/web";
 import type { Element as SolidElement } from "solid-js";
 import { createEffect, createMemo, createSignal, For, onCleanup, onSettled, Show } from "solid-js";
 import { useText } from "../../text";
+import { shortcutMatches } from "../shortcuts/shortcut-registry";
 
 const MESSAGE_TEXT_SELECTOR = "[data-selection-message-id]";
 /**
@@ -649,8 +650,7 @@ export function isQuoteShortcut(
   event: Pick<KeyboardEvent, "metaKey" | "ctrlKey" | "shiftKey" | "altKey" | "code">,
   modifier: QuoteShortcutModifier,
 ): boolean {
-  const modifierDown = modifier === "meta" ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-  return modifierDown && event.shiftKey && !event.altKey && event.code === "Period";
+  return shortcutMatches("quoteSelection", event, modifier === "meta" ? "mac" : "pc");
 }
 
 function selectionScope(node: Node): HTMLElement | null {

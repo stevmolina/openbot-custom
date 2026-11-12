@@ -1,4 +1,5 @@
 import type { AccountUsageProviderRow } from "../account/account-usage-view";
+import type { ShortcutPlatform } from "../shortcuts/shortcut-registry";
 import type { HelpMenuProps } from "../updates/HelpMenu";
 
 /**
@@ -73,4 +74,8 @@ export interface SidebarPages {
   help: Omit<HelpMenuProps, "triggerClass">;
   /** Collapses the sidebar to the face dock. */
   onCollapse: () => void;
+  /** The keyboard of the device, so the buttons name their shortcut keys. Absent until it is known. */
+  shortcutPlatform?: ShortcutPlatform | undefined;
+  /** Whether ⌘, opens Settings here, so the Settings item names the key. The web client has no such key. */
+  settingsShortcut?: boolean | undefined;
 }

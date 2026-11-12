@@ -16,6 +16,7 @@ import {
 import { AGENT_FAST_MODE_CAPABILITY } from "@openbot/contracts/team-protocol/agent-fast-mode-v1";
 import { toast } from "@openbot/ui";
 import type { QuestionPromptComposerAnswer } from "@openbot/ui/components/QuestionPromptBubble";
+import type { AgentMessage } from "@openbot/ui/data";
 import type { QuoteRequest } from "@openbot/ui/features/conversation/ComposerEditor";
 import { currentText } from "@openbot/ui/text";
 import { prefersReducedMotion, usesTouchLayout } from "@openbot/ui/utils";
@@ -32,9 +33,12 @@ import {
   useContext,
 } from "solid-js";
 import { actionToast } from "../../action-toast";
+import { toAgentMessage } from "../../app-message-projection";
+import { writeClipboardText } from "../../clipboard";
 import { createScopeGuard } from "../../scope-lifetime";
 import { appendVoiceTranscript } from "../../voice-recording";
 import { serverSupportsCapability } from "../servers/server-capabilities";
+import { onShortcutCommand } from "../shortcuts/shortcut-commands";
 import { codexLiveAccess } from "../speech/codex-live-access";
 import { createAttachmentImportSounds } from "./attachment-import-sounds";
 import type { ChatSearchMatch } from "./chat-search";
@@ -49,6 +53,7 @@ import type {
   ConversationTarget,
   SidePanelPane,
 } from "./conversation-types";
+import { lastAgentReply, lastCodeBlock } from "./last-reply";
 import {
   clearQuotedTextHighlight,
   highlightQuotedText,
@@ -1548,7 +1553,8 @@ export function createConversationViewScope(props: ConversationProps) {
       }
     });
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
+      // ⇧Esc focuses the message box; it closes nothing and cancels no edit.
+      if (event.key !== "Escape" || event.shiftKey || event.defaultPrevented) return;
       // An open popover or menu, such as a routine chip, the model picker or the side panel's add
       // menu, closes on this key from a document listener that runs after this one. Closing the
       // panel under it too discards the edit the person was making.
@@ -1624,6 +1630,72 @@ export function createConversationViewScope(props: ConversationProps) {
     };
     const escapeListener = whenVisible(closeOnEscape);
     const chatSearchListener = whenVisible(handleChatSearchShortcut);
+    // The menu items and the keys of the shortcut list that act on the chat in view.
+    const whenShown = (handler: () => boolean) => () => (props.workspaceCovered ? false : handler());
+    /** The messages in view: the open side thread's, which covers the agent's own chat. */
+    const shownMessages = (): readonly AgentMessage[] => {
+      const thread = sideThreadOpen() ? props.threads?.conversation : undefined;
+      if (!thread) return props.messages;
+      return thread.messages.map((message) => toAgentMessage(message, thread.agentId));
+    };
+    const removeShortcutCommands = [
+      onShortcutCommand(
+        "findInChat",
+        whenShown(() => {
+          (sideThreadOpen() ? threadSearch : search).openChatSearch();
+          return true;
+        }),
+      ),
+      onShortcutCommand(
+        "copyLastReply",
+        whenShown(() => {
+          const reply = lastAgentReply(shownMessages());
+          const { t } = currentText();
+          if (!reply) {
+            actionToast.warning(t("app.shortcuts.noReply"), { id: "shortcut-copy" });
+            return true;
+          }
+          // A failed copy shows its error by the message box, and sets no copied mark.
+          void copyMessage(reply).then(() => {
+            if (copiedMessageId() === reply.id)
+              actionToast.success(t("app.shortcuts.copiedReply"), { id: "shortcut-copy" });
+          });
+          return true;
+        }),
+      ),
+      onShortcutCommand(
+        "copyLastCode",
+        whenShown(() => {
+          const reply = lastAgentReply(shownMessages());
+          const code = reply ? lastCodeBlock(reply.body) : undefined;
+          const { t, errorMessage } = currentText();
+          if (code === undefined) {
+            actionToast.warning(t(reply ? "app.shortcuts.noCode" : "app.shortcuts.noReply"), { id: "shortcut-copy" });
+            return true;
+          }
+          void writeClipboardText(code).then(
+            () => actionToast.success(t("app.shortcuts.copiedCode"), { id: "shortcut-copy" }),
+            (error: unknown) =>
+              actionToast.error(errorMessage(error, t("chat.actions.copyFailed")), { id: "shortcut-copy" }),
+          );
+          return true;
+        }),
+      ),
+      onShortcutCommand(
+        "stopAgent",
+        whenShown(() => {
+          // The open side thread's Stop, as its own button does, or the agent's own chat.
+          if (sideThreadOpen()) {
+            if (!props.threads?.conversation?.activeTurnId) return false;
+            props.threads.onStop();
+            return true;
+          }
+          if (!props.activeTurnId) return false;
+          props.onStop();
+          return true;
+        }),
+      ),
+    ];
     keyboardTarget.addEventListener("keydown", escapeListener);
     keyboardWindow.addEventListener("keydown", closeActiveRemoteBrowserTab);
     keyboardTarget.addEventListener("keydown", chatSearchListener);
@@ -1688,6 +1760,7 @@ export function createConversationViewScope(props: ConversationProps) {
       keyboardTarget.removeEventListener("keydown", escapeListener);
       keyboardWindow.removeEventListener("keydown", closeActiveRemoteBrowserTab);
       keyboardTarget.removeEventListener("keydown", chatSearchListener);
+      for (const remove of removeShortcutCommands) remove();
       window.removeEventListener("pointerdown", closeMessageMenus);
       readerInput?.removeEventListener("wheel", readerWheel);
       readerInput?.removeEventListener("touchmove", readerTouchMove);

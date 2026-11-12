@@ -11,6 +11,7 @@ import { Effect } from "effect";
  */
 
 import { join } from "node:path";
+import type { AppShortcutCommand } from "@openbot/contracts/app-shortcut";
 import {
   type AgentSummary,
   type AppVariant,
@@ -1067,6 +1068,49 @@ function macQuitItem(
   };
 }
 
+/** Whether a window shows the app page (the main window or a chat window), not a helper page. */
+function loadsAppPage(window: BrowserWindow): boolean {
+  if (window.isDestroyed()) return false;
+  try {
+    const { pathname } = new URL(window.webContents.getURL());
+    return pathname.endsWith("/") || pathname.endsWith("/index.html");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A menu item for a key that the window owns, such as New Chat. The menu bar lists the key, but the
+ * renderer reads it, also in a text field and a visual reply page, and checks where the focus is.
+ * `registerAccelerator: false` keeps the key off Windows and Linux. On macOS a key that the page
+ * does not take still reaches the menu, such as ⌘N in an open dialog. Electron marks a click from
+ * the Accessibility API as a key too, so main cannot tell them apart: the renderer drops a command
+ * that a key it just saw already decided (`shortcut-commands.ts`). A click sends the command to the
+ * focused window, or to the main window when no OpenBot window has the focus.
+ */
+function rendererShortcutItem(
+  translate: AppTranslate,
+  getMainWindow: () => BrowserWindow | null,
+  label: AppTextKey,
+  accelerator: string,
+  command: AppShortcutCommand,
+): MenuItemConstructorOptions {
+  return {
+    label: translate(label),
+    accelerator,
+    registerAccelerator: false,
+    click: (_item, focusedWindow) => {
+      const focused = focusedWindow ?? BrowserWindow.getFocusedWindow();
+      // Only the app page runs shortcuts. A helper page, such as the agent dock or the browser
+      // picture-in-picture, sends the command to the main window instead.
+      const target = focused instanceof BrowserWindow && loadsAppPage(focused) ? focused : getMainWindow();
+      if (!target || target.isDestroyed()) return;
+      if (target !== focused) showMainWindow(target);
+      sendToRenderer(target, IPC_ENDPOINTS.app.runShortcut, command);
+    },
+  };
+}
+
 /**
  * The native application menu.
  *
@@ -1091,6 +1135,9 @@ export function configureApplicationMenu(
   quitGuard: () => QuitGuard,
   quit: (source: MenuQuitSource) => void,
 ): void {
+  const mac = process.platform === "darwin";
+  const item = (label: AppTextKey, accelerator: string, command: AppShortcutCommand) =>
+    rendererShortcutItem(translate, getMainWindow, label, accelerator, command);
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       {
@@ -1145,11 +1192,37 @@ export function configureApplicationMenu(
             : { role: "quit" },
         ],
       },
+      {
+        // The role keeps the system "File" title. Its default Close item would take ⌘W from the
+        // browser tabs, so the submenu replaces it.
+        role: "fileMenu",
+        submenu: [
+          item("menu.newChat", "CommandOrControl+N", "newChat"),
+          { type: "separator" },
+          item("menu.search", "CommandOrControl+K", "search"),
+          item("menu.findInChat", "CommandOrControl+F", "findInChat"),
+          { type: "separator" },
+          item("menu.focusComposer", "Shift+Escape", "focusComposer"),
+          item("menu.copyLastReply", "CommandOrControl+Shift+C", "copyLastReply"),
+          item("menu.copyLastCode", "CommandOrControl+Shift+;", "copyLastCode"),
+          { type: "separator" },
+          item("menu.stopAgent", "CommandOrControl+Alt+.", "stopAgent"),
+        ],
+      },
       { role: "editMenu" },
       {
         // The role keeps the system "View" title. The submenu replaces its default items.
         role: "viewMenu",
         submenu: [
+          item("menu.toggleSidebar", "CommandOrControl+B", "toggleSidebar"),
+          { type: "separator" },
+          item("menu.previousChat", "Alt+Up", "previousChat"),
+          item("menu.nextChat", "Alt+Down", "nextChat"),
+          item("menu.previousUnreadChat", "Alt+Shift+Up", "previousUnreadChat"),
+          item("menu.nextUnreadChat", "Alt+Shift+Down", "nextUnreadChat"),
+          item("menu.back", mac ? "Command+[" : "Alt+Left", "historyBack"),
+          item("menu.forward", mac ? "Command+]" : "Alt+Right", "historyForward"),
+          { type: "separator" },
           { role: "reload" },
           { role: "forceReload" },
           { role: "toggleDevTools" },
@@ -1179,6 +1252,7 @@ export function configureApplicationMenu(
       process.platform === "darwin"
         ? { role: "windowMenu" }
         : { role: "windowMenu", submenu: [{ role: "minimize" }, { role: "close", accelerator: "Alt+F4" }] },
+      { role: "help", submenu: [item("menu.keyboardShortcuts", "CommandOrControl+/", "shortcuts")] },
     ]),
   );
 }

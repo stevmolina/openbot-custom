@@ -33,6 +33,7 @@ import { useServerSettings } from "../servers/server-settings";
 import { serverUpdateBadge, showServerUpdate } from "../servers/server-update-flow";
 import { useServers } from "../servers/servers-context";
 import { useSettings } from "../settings/settings-context";
+import { onShortcutCommand } from "../shortcuts/shortcut-commands";
 import { usePresence } from "../team/team-context";
 import { SidebarUpdateIsland } from "../updates/SidebarUpdateIsland";
 import { useWindowPage } from "../window/window-page-context";
@@ -209,6 +210,13 @@ export function WorkspaceSidebar(props: { peopleEnabled: boolean }) {
     channels.close();
     openAgentSetup();
   };
+  // ⌘N and the New Chat menu item do what the sidebar's New does.
+  onSettled(() =>
+    onShortcutCommand("newChat", () => {
+      createAgentHere();
+      return true;
+    }),
+  );
 
   /**
    * New in the "All machines" view names a server. The form of another server opens after the switch

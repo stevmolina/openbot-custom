@@ -1,8 +1,10 @@
+import type { ShortcutPlatform } from "@openbot/ui/features/shortcuts/shortcut-registry";
 import type { HelpMenuNews, HelpMenuProps } from "@openbot/ui/features/updates/HelpMenu";
 import { whatsNewEntry } from "@openbot/ui/features/updates/whats-new";
 import { createSignal } from "solid-js";
 import { desktopAnalytics } from "../../analytics";
 import { useI18n } from "../../i18n-context";
+import { runShortcutCommand } from "../shortcuts/shortcut-commands";
 import { compareReleaseVersions } from "../updates/whats-new-history";
 import { loadWhatsNewReleases } from "../updates/whats-new-releases";
 
@@ -20,6 +22,8 @@ export function createHelpMenu(options: {
   version: () => string | null;
   onOpenWhatsNew: () => void;
   onOpenLink: (destination: HelpDestination) => void;
+  /** The keyboard of the device, so the shortcut item names its key. */
+  shortcutPlatform?: () => ShortcutPlatform | undefined;
 }): Omit<HelpMenuProps, "triggerClass"> {
   const i18n = useI18n();
   const [news, setNews] = createSignal<readonly HelpMenuNews[]>([]);
@@ -70,5 +74,9 @@ export function createHelpMenu(options: {
     onOpenDiscord: () => openLink("discord"),
     onReportProblem: () => openLink("report-problem"),
     onSendFeedback: () => openLink("feedback"),
+    onOpenShortcuts: () => void runShortcutCommand("shortcuts"),
+    get shortcutPlatform() {
+      return options.shortcutPlatform?.();
+    },
   };
 }
