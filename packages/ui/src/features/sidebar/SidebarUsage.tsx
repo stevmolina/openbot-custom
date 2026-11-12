@@ -156,8 +156,9 @@ function CustomAgentUsage(props: {
 }
 
 /**
- * The usage of each provider: a row of rings in a tab on top of the pill in the open sidebar, a column
- * in the dock. Empty, it shows nothing.
+ * The usage of each provider: a row of rings in a tab on top of the pill in the open sidebar, a
+ * vertical stack of overlapping rings in the dock that fans out on hover or focus. Empty, it shows
+ * nothing.
  */
 export function SidebarUsage(props: {
   usageRows: readonly AccountUsageProviderRow[];

@@ -629,12 +629,62 @@
   flex: 0 1 28px;
 }
 
-/* Two rings to a line in the dock, so the faces above keep their room. */
+/* A stack of rings in the dock: the first ring in front, the others peeking out below it, and the
+ * stack fans out when hovered or focused. */
 .sidebar-usage.sidebar-usage-column {
-  display: grid;
-  grid-template-columns: repeat(2, var(--sidebar-usage-ring));
-  gap: 2px;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger {
+  position: relative;
+  display: flex;
+  transition: margin-top var(--openbot-duration-normal) var(--openbot-ease-out);
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(1) {
+  z-index: 6;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(2) {
+  z-index: 5;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(3) {
+  z-index: 4;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(4) {
+  z-index: 3;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(5) {
+  z-index: 2;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(n + 6) {
+  z-index: 1;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger + .ui-motion-tooltip-trigger {
+  margin-top: -26px;
+}
+
+.sidebar-usage-column:is(:hover, :focus-within) > .ui-motion-tooltip-trigger + .ui-motion-tooltip-trigger {
+  margin-top: 2px;
+}
+
+@media (hover: none) {
+  .sidebar-usage-column > .ui-motion-tooltip-trigger + .ui-motion-tooltip-trigger {
+    margin-top: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-usage-column > .ui-motion-tooltip-trigger {
+    transition: none;
+  }
 }
 
 .sidebar-chat .sidebar-usage-button.ui-button {
@@ -650,6 +700,11 @@
   font-weight: inherit;
 }
 
+.sidebar-chat .sidebar-usage-column .sidebar-usage-button.ui-button {
+  background: var(--openbot-bg-sidebar);
+  box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
+}
+
 .sidebar-chat .sidebar-usage-tab .sidebar-usage-button.ui-button {
   width: 100%;
   border: 0;
@@ -657,6 +712,10 @@
 
 .sidebar-chat .sidebar-usage-button.ui-button:hover {
   background: var(--openbot-hover);
+}
+
+.sidebar-chat .sidebar-usage-column .sidebar-usage-button.ui-button:hover {
+  background: color-mix(in srgb, var(--openbot-text-primary) 8%, var(--openbot-bg-sidebar));
 }
 
 .sidebar-usage-ring-box {
