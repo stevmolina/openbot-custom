@@ -41,6 +41,7 @@ export function createSidebarScope(props: SidebarProps) {
   const [pointerInList, setPointerInList] = createSignal(false);
   const {
     assignedSectionId,
+    chatIsUnread,
     chatKind,
     chatName,
     chatPinnedItems,
@@ -265,6 +266,7 @@ export function createSidebarScope(props: SidebarProps) {
     deleteTarget,
     channelDeleteTarget,
     deleting,
+    chatIsUnread,
     chatPinnedItems,
     chatsDraggable,
     directThreadByMember,

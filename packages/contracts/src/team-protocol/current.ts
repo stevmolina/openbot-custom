@@ -48,6 +48,7 @@ import { BROWSER_PROFILES_CAPABILITY } from "./browser-profiles-v1";
 import { BROWSER_PROXIES_CAPABILITY } from "./browser-proxies-v1";
 import { BROWSER_SECRET_VAULT_CAPABILITY } from "./browser-secret-vault-v1";
 import { BROWSER_SIGN_IN_CAPABILITY } from "./browser-sign-in-v1";
+import { BROWSER_TEACH_CAPABILITY } from "./browser-teach-v1";
 import { BROWSER_USER_CONTROL_CAPABILITY } from "./browser-user-control-v1";
 import {
   TEAM_BROWSER_VIEW_CAPABILITY,
@@ -93,22 +94,26 @@ import { HOST_UPDATE_CAPABILITY } from "./host-update-v1";
 import { HOSTED_SITES_CAPABILITY } from "./hosted-sites-v1";
 import { INSTANCE_TRANSFER_CHUNKS_CAPABILITY } from "./instance-transfer-chunks-v1";
 import { INSTANCE_TRANSFER_CAPABILITY } from "./instance-transfer-v1";
+import { LIBRARY_FOLDERS_CAPABILITY } from "./library-folders-v1";
 import { LIVE_ACTIVITY_PUSH_CAPABILITY } from "./live-activity-push-v1";
 import { LIVE_VOICE_CAPABILITY } from "./live-voice-v1";
 import { LOCAL_SERVERS_CAPABILITY } from "./local-servers-v1";
 import { MACHINE_RESOURCES_CAPABILITY } from "./machine-resources-v1";
+import { MCP_ACCESS_CAPABILITY } from "./mcp-access-v1";
 import { MCP_MANY_SERVERS_CAPABILITY } from "./mcp-many-servers-v1";
 import { MCP_SIGN_IN_APP_CAPABILITY } from "./mcp-sign-in-app-v1";
 import { MCP_SIGN_IN_CAPABILITY } from "./mcp-sign-in-v1";
 import { MEMORY_REVIEW_CAPABILITY } from "./memory-review-v1";
 import { TEAM_MESSAGE_CLIENT_ID_CAPABILITY } from "./message-client-id-v1";
 import { MESSAGE_DELETE_CAPABILITY } from "./message-delete-v1";
+import { MESSAGE_PINS_CAPABILITY } from "./message-pins-v1";
 import { MODEL_VISIBILITY_CAPABILITY } from "./model-visibility-v1";
 import { ONEPASSWORD_CONNECTOR_CAPABILITY } from "./onepassword-connector-v1";
 import { PASSWORD_MANAGERS_CAPABILITY } from "./password-managers-v1";
 import { PROMPT_CACHE_TTL_CAPABILITY } from "./prompt-cache-ttl-v1";
 import { TEAM_PROMPT_MULTI_SELECT_CAPABILITY } from "./prompt-multi-select-v1";
 import { PROVIDER_ACCOUNT_MODELS_CAPABILITY } from "./provider-account-models-v1";
+import { PROVIDER_ACCOUNT_POOL_CAPABILITY } from "./provider-account-pool-v1";
 import { PROVIDER_ACCOUNT_RELAY_CAPABILITY } from "./provider-account-relay-v1";
 import { PROVIDER_ACCOUNT_RELAY_V2_CAPABILITY } from "./provider-account-relay-v2";
 import { PROVIDER_ACCOUNTS_CAPABILITY } from "./provider-accounts-v1";
@@ -162,6 +167,7 @@ import { VAULT_V3_CAPABILITY } from "./vault-v3";
 import { WEBHOOK_SENDER_SECRET_CAPABILITY } from "./webhook-sender-secret-v1";
 import { WEBHOOK_TESTS_CAPABILITY } from "./webhook-tests-v1";
 import { WHATSAPP_CONNECTOR_CAPABILITY } from "./whatsapp-connector-v1";
+import { WHATSAPP_WORKING_MESSAGE_CAPABILITY } from "./whatsapp-working-message-v1";
 import { WORKFLOWS_CHANNELS_CAPABILITY } from "./workflows-channels-v1";
 import { WORKFLOWS_CHATS_CAPABILITY } from "./workflows-chats-v1";
 import { WORKFLOWS_GITHUB_CAPABILITY } from "./workflows-github-v1";
@@ -183,6 +189,12 @@ export const TEAM_EML_ATTACHMENTS_CAPABILITY = "eml-attachments";
 export const TEAM_ZIP_ATTACHMENTS_CAPABILITY = "zip-attachments";
 export const TEAM_MP4_ATTACHMENTS_CAPABILITY = "mp4-attachments";
 export const TEAM_SVG_ATTACHMENTS_CAPABILITY = "svg-attachments";
+/**
+ * A host on which a hidden agent works as each other agent does: its routines run and it gets
+ * messages. A host with `agent-hidden-v1` and without this stops a hidden agent, so a client shows
+ * such an agent as paused only when the host does not advertise this.
+ */
+export const AGENT_HIDDEN_WORK_CAPABILITY = "agent-hidden-work";
 /**
  * A host that accepts a file with any name. A file with no known type is stored as an opaque `file`
  * attachment, and the agent gets its path. An older host refuses a name outside the known types.
@@ -267,6 +279,7 @@ export {
   BROWSER_PROXIES_CAPABILITY,
   BROWSER_SECRET_VAULT_CAPABILITY,
   BROWSER_SIGN_IN_CAPABILITY,
+  BROWSER_TEACH_CAPABILITY,
   BROWSER_USER_CONTROL_CAPABILITY,
   BROWSING_MEMORY_CAPABILITY,
   CHANNEL_BROWSER_CAPABILITY,
@@ -297,15 +310,18 @@ export {
   HOSTED_SITES_CAPABILITY,
   INSTANCE_TRANSFER_CAPABILITY,
   INSTANCE_TRANSFER_CHUNKS_CAPABILITY,
+  LIBRARY_FOLDERS_CAPABILITY,
   LIVE_ACTIVITY_PUSH_CAPABILITY,
   LOCAL_SERVERS_CAPABILITY,
   MACHINE_RESOURCES_CAPABILITY,
+  MCP_ACCESS_CAPABILITY,
   MCP_MANY_SERVERS_CAPABILITY,
   MCP_SERVERS_CAPABILITY,
   MCP_SIGN_IN_APP_CAPABILITY,
   MCP_SIGN_IN_CAPABILITY,
   MEMORY_REVIEW_CAPABILITY,
   MESSAGE_DELETE_CAPABILITY,
+  MESSAGE_PINS_CAPABILITY,
   MODEL_VISIBILITY_CAPABILITY,
   ONEPASSWORD_CONNECTOR_CAPABILITY,
   PASSWORD_MANAGERS_CAPABILITY,
@@ -370,6 +386,7 @@ export {
   WEBHOOK_SENDER_SECRET_CAPABILITY,
   WEBHOOK_TESTS_CAPABILITY,
   WHATSAPP_CONNECTOR_CAPABILITY,
+  WHATSAPP_WORKING_MESSAGE_CAPABILITY,
   WORKFLOWS_CAPABILITY,
   WORKFLOWS_CHANNELS_CAPABILITY,
   WORKFLOWS_CHATS_CAPABILITY,
@@ -504,6 +521,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   CHANNEL_TASK_CANCEL_CAPABILITY,
   WORKFLOWS_GITHUB_CAPABILITY,
   TEAM_SVG_ATTACHMENTS_CAPABILITY,
+  AGENT_HIDDEN_WORK_CAPABILITY,
   MCP_ACCOUNTS_CAPABILITY,
   SIDEBAR_PINS_CAPABILITY,
   SIDEBAR_FOLDERS_CAPABILITY,
@@ -534,6 +552,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   ROUTINE_RUN_PLACE_CAPABILITY,
   HOST_PERSONALITY_CAPABILITY,
   MCP_MEMBER_ACCESS_CAPABILITY,
+  MCP_ACCESS_CAPABILITY,
   LIVE_VOICE_CAPABILITY,
   AGENT_WELCOME_CAPABILITY,
   SKILL_LEARNING_CAPABILITY,
@@ -543,11 +562,13 @@ export const TEAM_CURRENT_CAPABILITIES = [
   INSTANCE_TRANSFER_CHUNKS_CAPABILITY,
   CHAT_HISTORY_CAPABILITY,
   BROWSING_MEMORY_CAPABILITY,
+  BROWSER_TEACH_CAPABILITY,
   CHANNEL_PICTURE_CAPABILITY,
   AGENT_IMPORT_V2_CAPABILITY,
   THREAD_MESSAGE_SEARCH_CAPABILITY,
   WORKFLOWS_CHANNELS_CAPABILITY,
   AGENT_WAITS_CAPABILITY,
+  MESSAGE_PINS_CAPABILITY,
   AGENT_QUEUE_TASK_CAPABILITY,
   BACKGROUND_PROCESSES_CAPABILITY,
   PROVIDER_USE_CAPABILITY,
@@ -563,6 +584,9 @@ export const TEAM_CURRENT_CAPABILITIES = [
   PROVIDER_ACCOUNT_MODELS_CAPABILITY,
   CHANNEL_BROWSER_CAPABILITY,
   STORAGE_CHANNEL_CAPABILITY,
+  WHATSAPP_WORKING_MESSAGE_CAPABILITY,
+  LIBRARY_FOLDERS_CAPABILITY,
+  PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
 ] as const;
@@ -710,6 +734,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== CHANNEL_TASK_CANCEL_CAPABILITY &&
     capability !== WORKFLOWS_GITHUB_CAPABILITY &&
     capability !== TEAM_SVG_ATTACHMENTS_CAPABILITY &&
+    capability !== AGENT_HIDDEN_WORK_CAPABILITY &&
     capability !== MCP_ACCOUNTS_CAPABILITY &&
     capability !== SIDEBAR_PINS_CAPABILITY &&
     capability !== SIDEBAR_FOLDERS_CAPABILITY &&
@@ -740,6 +765,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== ROUTINE_RUN_PLACE_CAPABILITY &&
     capability !== HOST_PERSONALITY_CAPABILITY &&
     capability !== MCP_MEMBER_ACCESS_CAPABILITY &&
+    capability !== MCP_ACCESS_CAPABILITY &&
     capability !== LIVE_VOICE_CAPABILITY &&
     capability !== AGENT_WELCOME_CAPABILITY &&
     capability !== SKILL_LEARNING_CAPABILITY &&
@@ -749,11 +775,13 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== INSTANCE_TRANSFER_CHUNKS_CAPABILITY &&
     capability !== CHAT_HISTORY_CAPABILITY &&
     capability !== BROWSING_MEMORY_CAPABILITY &&
+    capability !== BROWSER_TEACH_CAPABILITY &&
     capability !== CHANNEL_PICTURE_CAPABILITY &&
     capability !== AGENT_IMPORT_V2_CAPABILITY &&
     capability !== THREAD_MESSAGE_SEARCH_CAPABILITY &&
     capability !== WORKFLOWS_CHANNELS_CAPABILITY &&
     capability !== AGENT_WAITS_CAPABILITY &&
+    capability !== MESSAGE_PINS_CAPABILITY &&
     capability !== AGENT_QUEUE_TASK_CAPABILITY &&
     capability !== BACKGROUND_PROCESSES_CAPABILITY &&
     capability !== PROVIDER_USE_CAPABILITY &&
@@ -769,6 +797,9 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== PROVIDER_ACCOUNT_MODELS_CAPABILITY &&
     capability !== CHANNEL_BROWSER_CAPABILITY &&
     capability !== STORAGE_CHANNEL_CAPABILITY &&
+    capability !== WHATSAPP_WORKING_MESSAGE_CAPABILITY &&
+    capability !== LIBRARY_FOLDERS_CAPABILITY &&
+    capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
     capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
     capability !== AGENT_COMPUTER_CAPABILITY,
 );
@@ -791,6 +822,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   CHANNEL_TASK_CANCEL_CAPABILITY,
   WORKFLOWS_GITHUB_CAPABILITY,
   TEAM_SVG_ATTACHMENTS_CAPABILITY,
+  AGENT_HIDDEN_WORK_CAPABILITY,
   MCP_ACCOUNTS_CAPABILITY,
   SIDEBAR_PINS_CAPABILITY,
   SIDEBAR_FOLDERS_CAPABILITY,
@@ -821,6 +853,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   ROUTINE_RUN_PLACE_CAPABILITY,
   HOST_PERSONALITY_CAPABILITY,
   MCP_MEMBER_ACCESS_CAPABILITY,
+  MCP_ACCESS_CAPABILITY,
   LIVE_VOICE_CAPABILITY,
   AGENT_WELCOME_CAPABILITY,
   SKILL_LEARNING_CAPABILITY,
@@ -830,11 +863,13 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   INSTANCE_TRANSFER_CHUNKS_CAPABILITY,
   CHAT_HISTORY_CAPABILITY,
   BROWSING_MEMORY_CAPABILITY,
+  BROWSER_TEACH_CAPABILITY,
   CHANNEL_PICTURE_CAPABILITY,
   AGENT_IMPORT_V2_CAPABILITY,
   THREAD_MESSAGE_SEARCH_CAPABILITY,
   WORKFLOWS_CHANNELS_CAPABILITY,
   AGENT_WAITS_CAPABILITY,
+  MESSAGE_PINS_CAPABILITY,
   AGENT_QUEUE_TASK_CAPABILITY,
   BACKGROUND_PROCESSES_CAPABILITY,
   PROVIDER_USE_CAPABILITY,
@@ -850,6 +885,9 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   PROVIDER_ACCOUNT_MODELS_CAPABILITY,
   CHANNEL_BROWSER_CAPABILITY,
   STORAGE_CHANNEL_CAPABILITY,
+  WHATSAPP_WORKING_MESSAGE_CAPABILITY,
+  LIBRARY_FOLDERS_CAPABILITY,
+  PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
 ]);
@@ -956,6 +994,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== CHANNEL_TASK_CANCEL_CAPABILITY &&
       capability !== WORKFLOWS_GITHUB_CAPABILITY &&
       capability !== TEAM_SVG_ATTACHMENTS_CAPABILITY &&
+      capability !== AGENT_HIDDEN_WORK_CAPABILITY &&
       capability !== MCP_ACCOUNTS_CAPABILITY &&
       capability !== SIDEBAR_PINS_CAPABILITY &&
       capability !== SIDEBAR_FOLDERS_CAPABILITY &&
@@ -986,6 +1025,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== ROUTINE_RUN_PLACE_CAPABILITY &&
       capability !== HOST_PERSONALITY_CAPABILITY &&
       capability !== MCP_MEMBER_ACCESS_CAPABILITY &&
+      capability !== MCP_ACCESS_CAPABILITY &&
       capability !== LIVE_VOICE_CAPABILITY &&
       capability !== AGENT_WELCOME_CAPABILITY &&
       capability !== SKILL_LEARNING_CAPABILITY &&
@@ -995,11 +1035,13 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== INSTANCE_TRANSFER_CHUNKS_CAPABILITY &&
       capability !== CHAT_HISTORY_CAPABILITY &&
       capability !== BROWSING_MEMORY_CAPABILITY &&
+      capability !== BROWSER_TEACH_CAPABILITY &&
       capability !== CHANNEL_PICTURE_CAPABILITY &&
       capability !== AGENT_IMPORT_V2_CAPABILITY &&
       capability !== THREAD_MESSAGE_SEARCH_CAPABILITY &&
       capability !== WORKFLOWS_CHANNELS_CAPABILITY &&
       capability !== AGENT_WAITS_CAPABILITY &&
+      capability !== MESSAGE_PINS_CAPABILITY &&
       capability !== AGENT_QUEUE_TASK_CAPABILITY &&
       capability !== BACKGROUND_PROCESSES_CAPABILITY &&
       capability !== PROVIDER_USE_CAPABILITY &&
@@ -1015,6 +1057,9 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== PROVIDER_ACCOUNT_MODELS_CAPABILITY &&
       capability !== CHANNEL_BROWSER_CAPABILITY &&
       capability !== STORAGE_CHANNEL_CAPABILITY &&
+      capability !== WHATSAPP_WORKING_MESSAGE_CAPABILITY &&
+      capability !== LIBRARY_FOLDERS_CAPABILITY &&
+      capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
       capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
       capability !== AGENT_COMPUTER_CAPABILITY,
   );

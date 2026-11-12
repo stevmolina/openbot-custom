@@ -35,6 +35,14 @@
   padding-top: var(--left-header-height);
 }
 
+/* The padding of each top row: the chat header, a page header and the Workflows bar. The buttons of
+ * the frame are 2px below its top (`.sidebar-topbar`), so each top row has their centre line, and
+ * its content starts 8px after them. */
+.app-window {
+  --top-row-padding-block: 2px 0;
+  --top-row-padding-inline: var(--openbot-space-2) var(--openbot-space-3);
+}
+
 /* A window with no macOS window buttons starts the server menu at the left edge of the search field
  * and the rows below it, at all widths. The web frame has the macOS class but no buttons. The
  * selector must out-rank the macOS rule below, which also matches the web frame. */
@@ -235,10 +243,7 @@
     gap: var(--openbot-space-2);
   }
 
-  .app-window
-    > .app-frame-edge
-    :is(.conversation-header, .tasks-page-header)
-    :is(.provider-model-trigger, .header-panel-toggle) {
+  .app-window > .app-frame-edge .conversation-header :is(.provider-model-trigger, .header-panel-toggle) {
     height: var(--openbot-control-sm);
     border-color: transparent;
     border-radius: var(--openbot-radius-md);
@@ -247,7 +252,7 @@
     color: var(--openbot-text-secondary);
   }
 
-  .app-window > .app-frame-edge :is(.conversation-header, .tasks-page-header) .header-panel-toggle {
+  .app-window > .app-frame-edge .conversation-header .header-panel-toggle {
     width: var(--openbot-control-sm);
     min-width: var(--openbot-control-sm);
     padding: 0;
@@ -255,10 +260,7 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .app-window
-      > .app-frame-edge
-      :is(.conversation-header, .tasks-page-header)
-      :is(.provider-model-trigger, .header-panel-toggle):hover {
+    .app-window > .app-frame-edge .conversation-header :is(.provider-model-trigger, .header-panel-toggle):hover {
       border-color: transparent;
       background: var(--openbot-bg-control-hover);
       color: var(--openbot-text-primary);
@@ -303,53 +305,45 @@
     background: transparent;
   }
 
-  .app-window > .app-frame-edge > .window-page .agent-usage-header,
-  .app-window > .app-frame-edge > .window-page .routine-planner-title {
+  /* The header of a page (`PageHeader`) is its top row. Each top row starts 8px after the buttons of
+   * the frame, or after the end of the open sidebar, and has the centre line of those buttons. The
+   * rail is the way back, so the page gives the header the `window` frame: no Back button and no
+   * server name (`createPageHeaderFrame`). */
+  .app-window > .app-frame-edge .page-header {
+    box-sizing: border-box;
     flex: none;
     height: var(--left-header-height);
     flex-wrap: nowrap;
-    padding: 0 var(--openbot-space-3);
+    padding-block: var(--top-row-padding-block);
+    padding-inline: var(--top-row-padding-inline);
     border-bottom: 0;
     -webkit-app-region: drag;
   }
 
-  .app-window
-    > .app-frame-edge
-    > .window-page
-    :is(.agent-usage-header, .routine-planner-title)
-    > :is(.agent-usage-identity, .agent-usage-controls, .routine-planner-identity, p) {
+  .app-window > .app-frame-edge .page-header > * {
     flex-wrap: nowrap;
     gap: var(--openbot-space-2);
     -webkit-app-region: no-drag;
   }
 
-  .app-window > .app-frame-edge > .window-page :is(.agent-usage-identity, .routine-planner-identity) .ui-icon-button {
-    margin-inline-start: 0;
-  }
-
-  .app-window > .app-frame-edge > .window-page :is(.agent-usage-identity, .routine-planner-title) h2 {
-    gap: var(--openbot-space-2);
-    font-size: var(--openbot-text-md);
-    font-weight: var(--openbot-weight-medium);
-    white-space: nowrap;
-    color: var(--openbot-text-primary);
-  }
-
   /* In a narrow window, the title gets shorter and the controls keep their size. */
-  .app-window > .app-frame-edge > .window-page :is(.agent-usage-identity, .routine-planner-identity) {
-    overflow: hidden;
-  }
-
-  .app-window > .app-frame-edge > .window-page :is(.agent-usage-controls, .routine-planner-title > p) {
+  .app-window > .app-frame-edge .page-header > :not(.page-header-identity) {
     flex: none;
   }
 
+  .app-window > .app-frame-edge .page-header-identity {
+    overflow: hidden;
+  }
+
+  .app-window > .app-frame-edge .page-header-title {
+    font-size: var(--openbot-text-md);
+    font-weight: var(--openbot-weight-medium);
+    line-height: var(--openbot-leading-md);
+    white-space: nowrap;
+  }
+
   /* Flat controls, as in the chat header. */
-  .app-window
-    > .app-frame-edge
-    > .window-page
-    :is(.agent-usage-header, .routine-planner-title)
-    :is(.ui-select-trigger, .ui-icon-button) {
+  .app-window > .app-frame-edge .page-header :is(.ui-select-trigger, .ui-icon-button) {
     height: var(--openbot-control-sm);
     border-color: transparent;
     border-radius: var(--openbot-radius-md);
@@ -358,16 +352,12 @@
     color: var(--openbot-text-secondary);
   }
 
-  .app-window > .app-frame-edge > .window-page :is(.agent-usage-header, .routine-planner-title) .ui-icon-button {
+  .app-window > .app-frame-edge .page-header .ui-icon-button {
     width: var(--openbot-control-sm);
   }
 
   @media (hover: hover) {
-    .app-window
-      > .app-frame-edge
-      > .window-page
-      :is(.agent-usage-header, .routine-planner-title)
-      :is(.ui-select-trigger, .ui-icon-button):hover {
+    .app-window > .app-frame-edge .page-header :is(.ui-select-trigger, .ui-icon-button):hover {
       background: var(--openbot-bg-control-hover);
       color: var(--openbot-text-primary);
     }
@@ -433,32 +423,12 @@
     background: transparent;
   }
 
-  /* The header spans the top row of the pane, and its title is plain text, so the whole row moves the
-   * window. */
+  /* The header spans the top row of the pane. */
   .app-window > .app-frame-edge > .app-frame-panes .tasks-page-header {
     position: absolute;
     top: 0;
     right: 0;
     left: 0;
-    height: var(--left-header-height);
-    padding: 0 var(--openbot-space-3);
-    -webkit-app-region: drag;
-  }
-
-  .app-window > .app-frame-edge > .app-frame-panes .tasks-page-header h2 {
-    font-size: var(--openbot-text-md);
-    font-weight: var(--openbot-weight-medium);
-    white-space: nowrap;
-  }
-
-  /* The rail and the agent list are the way back, so the title has no Back button and no server name. */
-  .app-window > .app-frame-edge > .app-frame-panes .tasks-page-header > .ui-icon-button,
-  .app-window > .app-frame-edge > .app-frame-panes .tasks-page-header > h2 > span {
-    display: none;
-  }
-
-  .app-frame-edge > .app-frame-panes .tasks-page-header h2:focus {
-    outline: none;
   }
 
   .app-window > .app-frame-edge > .app-frame-panes .tasks-page-column {
@@ -502,13 +472,14 @@
   .app-frame-edge[data-window-page-kind="settings"]
     > .window-page
     > .settings-page
-    :is(.settings-page-nav, .settings-page-content, .settings-page-path) {
+    :is(.settings-page-nav, .settings-page-content, .settings-page-path, .settings-page-close) {
     pointer-events: auto;
     -webkit-app-region: no-drag;
   }
 
   .app-frame-edge[data-window-page-kind="settings"] > .window-page > .settings-page > .settings-page-path-row {
-    padding: 0 var(--openbot-space-3);
+    padding-block: 0;
+    padding-inline-start: 0;
     -webkit-app-region: drag;
   }
 
@@ -521,8 +492,9 @@
     width: auto;
     flex: 0 1 auto;
     max-width: none;
-    margin-inline: 0;
-    padding-inline: 0;
+    /* The page starts 1px after the start of the frame. */
+    margin-inline: -1px 0;
+    padding-inline: var(--top-row-padding-inline);
   }
 
   .app-frame-edge[data-window-page-kind="titled"] > .window-page {
@@ -557,24 +529,19 @@
     display: none;
   }
 
-  .app-window
-    > .app-frame-edge[data-window-page-kind="titled"]:not(:has(> .sidebar-chat))
-    > .window-page
-    :is(.agent-usage-header, .routine-planner-title, .skills-marketplace-topbar) {
-    margin-inline-start: var(--left-panel-width);
+  .app-window > .app-frame-edge[data-window-page-kind="titled"]:not(:has(> .sidebar-chat)) > .window-page .page-header {
+    margin-inline-start: var(--top-row-tabs-start, var(--left-panel-width));
   }
 
   .app-frame-edge[data-window-page-kind="titled"]
     > .window-page
     :is(
-      .agent-usage-header,
-      .routine-planner-title,
+      .page-header,
       .agent-usage-body,
       .routine-planner-toolbar,
       .routine-planner-body,
       .routine-planner-empty,
       .routine-planner-error,
-      .marketplace-heading,
       .marketplace-nav,
       .skills-marketplace-body
     ) {
@@ -589,29 +556,9 @@
 
   .app-window > .app-frame-edge > .window-page .skills-marketplace-topbar {
     min-height: 0;
-    padding: 0 var(--openbot-space-3);
+    padding: 0;
     border-bottom: 0;
     -webkit-app-region: drag;
-  }
-
-  .app-window > .app-frame-edge > .window-page .marketplace-heading {
-    flex: 0 1 auto;
-    -webkit-app-region: no-drag;
-  }
-
-  .app-window > .app-frame-edge > .window-page .skills-marketplace-topbar .marketplace-title {
-    font-size: var(--openbot-text-md);
-    font-weight: var(--openbot-weight-medium);
-    white-space: nowrap;
-  }
-
-  .app-window > .app-frame-edge > .window-page :is(.agent-usage-identity, .routine-planner-identity) > .ui-icon-button,
-  .app-window > .app-frame-edge > .window-page :is(.agent-usage-identity, .routine-planner-identity) > h2 > span {
-    display: none;
-  }
-
-  .app-frame-edge > .window-page :is(.agent-usage-identity, .routine-planner-identity) h2:focus {
-    outline: none;
   }
 }
 
@@ -632,11 +579,24 @@
   grid-column: 2;
   grid-row: 1;
   align-items: center;
-  padding: var(--openbot-space-4) 0 0;
+  padding-block: var(--openbot-space-4) 0;
+  /* The room of the Close button. */
+  padding-inline: 0 calc(var(--openbot-space-8) + var(--openbot-space-4));
 }
 
 .settings-page-path-row:empty {
   display: none;
+}
+
+/* Close is at the end of the row of the path, above it, so a long path stops before the button. */
+.settings-page-close {
+  z-index: 1;
+  border-radius: var(--openbot-radius-pill);
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  justify-self: end;
+  margin-inline-end: var(--openbot-space-3);
 }
 
 /* Below the top row, the path takes the column and the inline padding of the panel, so both start on one edge. */
@@ -963,10 +923,18 @@
   .settings-page-path-row {
     grid-column: 1;
     grid-row: 2;
+    padding-inline-end: 0;
   }
 
   .settings-page-path-row > .settings-page-path {
     padding-inline: var(--openbot-space-4);
+  }
+
+  /* Close is at the end of the heading. */
+  .settings-page-close {
+    grid-column: 1;
+    align-self: start;
+    margin-block-start: var(--openbot-space-3);
   }
 
   .settings-page-content {
@@ -984,6 +952,8 @@
 
   .settings-page-title {
     margin-bottom: var(--openbot-space-2);
+    /* The room of the Close button. */
+    padding-inline-end: calc(var(--openbot-space-8) + var(--openbot-space-2));
   }
 
   .settings-page-sections,

@@ -10,6 +10,7 @@ import {
   type InitializeResponse,
   type LoadSessionRequest,
   type LoadSessionResponse,
+  type McpServer,
   type PermissionOption,
   type PromptResponse,
   RequestError,
@@ -70,6 +71,7 @@ import { runCauseEffect } from "./effect-boundary";
 import { IdleThreadPool } from "./idle-thread-pool";
 import { type DynamicToolNamespace, LocalMcpBridge, type LocalMcpSession } from "./local-mcp-bridge";
 import {
+  acpMcpServerName,
   acpMcpServers,
   agentMcpServers,
   computerUseParam,
@@ -80,7 +82,6 @@ import {
   mcpAgentParam,
   mcpAudience,
   mcpThreadParam,
-  providerMcpServerName,
   usableMcpServers,
 } from "./mcp-provider-shapes";
 import { PendingServerRequests } from "./pending-server-requests";
@@ -285,7 +286,8 @@ interface AcpThread {
   developerInstructions: string;
   /**
    * The instructions that the session already has in its context, or null when the next prompt must
-   * carry them: a new or loaded session, a changed text, a compaction, or a failed prompt.
+   * carry them: a new session, a loaded session that lost its prompts, a changed text, a compaction,
+   * or a failed prompt.
    */
   instructionsSent: string | null;
   /** Tokens in the session's context at the last `usage_update`; null while the agent sends none. */
@@ -325,10 +327,22 @@ interface AcpThread {
   backgroundReplay: Deferred.Deferred<void> | null;
 }
 
-/** What a closed idle session needs to be loaded again. Completed history lives in storage. */
+/**
+ * What a closed idle session needs to be loaded again. Completed history lives in storage. The
+ * instruction state goes back to a session that opens again with its prompts (`reopenKeepsPrompts`).
+ */
 type ReleasedAcpThread = Pick<
   AcpThread,
-  "cwd" | "developerInstructions" | "dynamicTools" | "workspaceRoots" | "computerUse" | "agentId" | "openbotThreadId"
+  | "cwd"
+  | "developerInstructions"
+  | "dynamicTools"
+  | "workspaceRoots"
+  | "computerUse"
+  | "agentId"
+  | "openbotThreadId"
+  | "instructionsSent"
+  | "contextUsed"
+  | "promptsSinceInstructions"
 >;
 
 /** Persistence hooks for provider history. The database owns the data; ACP only streams it. */
@@ -555,9 +569,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     // A session with a process of its own closes when that process ends.
     // A watched session stays open: a closed one would not report the end of its background task.
     canRelease: (thread) =>
-      this.#loadsSessions &&
-      (thread.transport !== null || Boolean(this.#initialization?.agentCapabilities?.sessionCapabilities?.close)) &&
-      thread.backgroundUntil === 0,
+      this.#loadsSessions && (thread.transport !== null || this.#closesSessions) && thread.backgroundUntil === 0,
     snapshot: ({
       cwd,
       developerInstructions,
@@ -566,6 +578,9 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
       computerUse,
       agentId,
       openbotThreadId,
+      instructionsSent,
+      contextUsed,
+      promptsSinceInstructions,
     }) => ({
       cwd,
       developerInstructions,
@@ -574,6 +589,9 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
       computerUse,
       agentId,
       openbotThreadId,
+      instructionsSent,
+      contextUsed,
+      promptsSinceInstructions,
     }),
     dispose: (thread) => this.#closeSession(thread),
     reopen: (threadId, released) =>
@@ -1531,6 +1549,11 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     return this.#initialization?.agentCapabilities?.loadSession === true;
   }
 
+  /** Whether the agent answers `session/close`, which it advertises in its initialization. */
+  get #closesSessions(): boolean {
+    return Boolean(this.#initialization?.agentCapabilities?.sessionCapabilities?.close);
+  }
+
   /** Whether the agent takes audio blocks in a prompt. Antigravity does; Grok and OpenCode do not. */
   get #acceptsAudio(): boolean {
     return this.#initialization?.agentCapabilities?.promptCapabilities?.audio === true;
@@ -1611,6 +1634,18 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     this.#startingThreads.set(requestedThreadId, completion);
     // A session's own process ends with its harness, which can still run the stopped turn.
     if (recovering && held.transport) yield* held.transport.stop(Effect.void).pipe(Effect.ignore);
+    // A shared process that still holds the session can refuse to load it again: GitHub Copilot CLI
+    // 1.0.108 answers "Session <id> is already loaded" to each load (#6962). `session/close` also
+    // cancels the stopped turn, and the load then opens the session as after an idle release. A resume
+    // keeps the held session until it succeeds, and a watched session stays open, as `canRelease` says.
+    // As at each close, its subagents end here: the agent sends no end for them after it (#6448).
+    else if (recovering && this.#closesSessions && !this.#supportsSessionResume && held.backgroundUntil === 0) {
+      this.#stopThreadSubagents(requestedThreadId);
+      yield* providerCall(() => this.#requireConnection().closeSession({ sessionId: requestedThreadId })).pipe(
+        this.#backgroundTimeout("session/close"),
+        Effect.ignore,
+      );
+    }
     const exit = yield* Effect.exit(this.#openThread(params, true));
     // session/resume closes the old Antigravity harness and restores its saved trajectory.
     // Keep its bridge until the replacement succeeds, so a failure can be retried in this session.
@@ -1680,13 +1715,14 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
               providerResult(
                 yield* Effect.result(
                   usableMcpServers(
-                    agentMcpServers(this.options.mcpServers?.(audience) ?? [], computerUse, agentId),
+                    agentMcpServers(this.options.mcpServers?.(agentId, audience) ?? [], computerUse, agentId),
                     this.options.mcpToolRuntimes?.(),
                     this.options.mcpEndpoint,
                     agentId,
                   ).pipe(toProviderClientOperationError),
                 ),
               ),
+              this.#ownMcpServerNames(cwd),
             );
             this.options.reportMcpDrops?.(this.provider, handoff.dropped);
             const mcpServers = [...handoff.servers, ...mcp.servers];
@@ -1732,13 +1768,15 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
             if (this.#flavor.mcpServersLoadWithSession && !mcp.reached())
               throw new Error(sourceText("error.provider.acpMcpNotLoaded", { provider: this.#label }));
             mcp.setThreadId(id);
+            // The same session, opened again after an idle release, still has the instructions it got.
+            const kept = resume && this.#flavor.reopenKeepsPrompts ? this.#threads.released(id) : undefined;
             const thread: AcpThread = {
               id,
               cwd,
               developerInstructions: getString(params, "developerInstructions") ?? "",
-              instructionsSent: null,
-              contextUsed: null,
-              promptsSinceInstructions: 0,
+              instructionsSent: kept?.instructionsSent ?? null,
+              contextUsed: kept?.contextUsed ?? null,
+              promptsSinceInstructions: kept?.promptsSinceInstructions ?? 0,
               configOptions,
               currentModelId,
               mcp,
@@ -2384,7 +2422,7 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
           if (!((turn.receivedOutput || turn.answerOptional) && sdkHarness.emptyOutputFailure?.test(detail))) {
             turn.accountLink = sdkHarness.accountLink?.(detail) ?? null;
             turn.failureCause = turn.accountLink ? "authentication" : classifyFailure(detail);
-            turn.providerError = sdkHarness.turnFailure(detail);
+            turn.providerError = this.#mcpLoadFailureMessage(thread, detail) ?? sdkHarness.turnFailure(detail);
             turn.sessionLost = sdkHarness.sessionLost?.test(detail) === true;
           }
         }
@@ -2561,9 +2599,8 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     response: PromptResponse,
     params: unknown,
   ): Effect.fn.Return<boolean, ProviderClientOperationError> {
-    const mcpLoadFailure = this.#flavor.sdkHarness?.mcpLoadFailure;
     if (
-      !mcpLoadFailure ||
+      !this.#flavor.sdkHarness ||
       thread.activeTurn !== turn ||
       turn.completing ||
       turn.stopped ||
@@ -2575,25 +2612,32 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
       !this.#supportsSessionResume
     )
       return false;
-    const failure = mcpLoadFailure(turn.text);
-    const server = failure
-      ? thread.restore.mcpServers.find(
-          (entry) => entry.name === failure.name && !thread.mcp.servers.some((bridge) => bridge === entry),
-        )
-      : undefined;
-    if (!failure || !server) return false;
-    const configured = this.options
-      .mcpServers?.()
-      .find((config) => providerMcpServerName(config.name) === failure.name);
+    const failed = this.#failedMcpServer(thread, turn.text);
+    if (!failed) return false;
+    const { server, detail, started } = failed;
+    const own = this.#ownMcpServerNames(thread.cwd);
+    const configured = this.options.mcpServers?.().find((config) => acpMcpServerName(config, own) === server.name);
     this.options.reportMcpDrops?.(this.provider, [
-      {
-        name: configured?.name ?? failure.name,
-        reason: "failed_to_start",
-        detail: sourceText("error.backend.mcpServerFailedToStart", { reason: failure.reason }),
-      },
+      { name: configured?.name ?? server.name, reason: "failed_to_start", detail },
     ]);
+    // Antigravity 1.5.6 keeps the servers that a session's process started, also after a resume
+    // without them. A server that started leaves only with that process (#7228).
+    const stale = thread.transport;
+    if (started && stale) {
+      const transport = yield* this.#startSessionProcess(() => thread);
+      this.#openingSessionProcesses.delete(transport);
+      thread.transport = transport;
+      yield* stale.stop(Effect.void).pipe(Effect.ignore);
+    }
     const restore = { ...thread.restore, mcpServers: thread.restore.mcpServers.filter((entry) => entry !== server) };
-    yield* this.#resumeWithTurnSettings(thread, restore, params);
+    yield* this.#resumeWithTurnSettings(thread, restore, params).pipe(
+      // The new process holds the session only after the resume. The next prompt opens it again.
+      Effect.onError(() =>
+        Effect.sync(() => {
+          if (started && stale) thread.needsResume = true;
+        }),
+      ),
+    );
     turn.text = "";
     turn.sdkFailureAt = null;
     turn.receivedOutput = false;
@@ -2603,6 +2647,64 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     turn.lastChunkAt = null;
     return true;
   });
+
+  /**
+   * The server that OpenBot gave whose failure ended the turn, and the reason for the user. A server
+   * that did not start is named in the failure text. A tool schema that the agent refused is named
+   * only in the agent's log, as the tool `mcp_<server>_<tool>` (#7228). A server name can hold `_`,
+   * so the longest name wins, also against the agent's own servers: a tool of the user's
+   * `github_enterprise` does not leave out OpenBot's `github`. `started`: the server started, as a
+   * server with tools did.
+   */
+  #failedMcpServer(
+    thread: AcpThread,
+    text: string,
+  ): { server: McpServer; detail: string; started: boolean } | undefined {
+    const harness = this.#flavor.sdkHarness;
+    const given = thread.restore.mcpServers.filter((entry) => !thread.mcp.servers.some((bridge) => bridge === entry));
+    const failure = harness?.mcpLoadFailure(text);
+    if (failure) {
+      const server = given.find((entry) => entry.name === failure.name);
+      const detail = sourceText("error.backend.mcpServerFailedToStart", { reason: failure.reason });
+      return server && { server, detail, started: false };
+    }
+    if (given.length === 0 || !harness?.refusedMcpTools) return undefined;
+    const names = [...given.map((entry) => entry.name), ...this.#ownMcpServerNames(thread.cwd)];
+    for (const tool of harness.refusedMcpTools(text, this.options.argv, thread.id)) {
+      const name = names
+        .filter((candidate) => tool.startsWith(`mcp_${candidate}_`))
+        .sort((a, b) => b.length - a.length)[0];
+      const server = given.find((entry) => entry.name === name);
+      if (server) {
+        const shown = tool.slice(`mcp_${server.name}_`.length);
+        return { server, detail: sourceText("error.backend.mcpToolSchemaRefused", { tool: shown }), started: true };
+      }
+    }
+    return undefined;
+  }
+
+  /** The names in the agent's own MCP files for `cwd`. A file that cannot be read gives no names. */
+  #ownMcpServerNames(cwd: string): readonly string[] {
+    return this.#flavor.ownMcpServerNames?.(cwd, this.options.argv) ?? [];
+  }
+
+  /**
+   * The message of a turn that an MCP server's failed start ended, or `null` for another failure.
+   * The server's own reason is runtime output, often a traceback with a Windows path, which the chat
+   * replaced with a message that names no cause (#7046). It goes to the diagnostics instead. A
+   * bridge server of OpenBot's own tools is in no settings that the user can change, so its failure
+   * keeps the server's text.
+   */
+  #mcpLoadFailureMessage(thread: AcpThread, detail: string): string | null {
+    const failure = this.#flavor.sdkHarness?.mcpLoadFailure(detail);
+    if (!failure || thread.mcp.servers.some((bridge) => bridge.name === failure.name)) return null;
+    this.emit("diagnostic", this.#redact(detail));
+    const own = this.#ownMcpServerNames(thread.cwd);
+    const configured = this.options.mcpServers?.().find((config) => acpMcpServerName(config, own) === failure.name);
+    return configured
+      ? sourceText("error.backend.mcpServerFailedForProvider", { provider: this.#label, name: configured.name })
+      : sourceText("error.provider.acpOwnMcpServerFailed", { provider: this.#label, name: failure.name });
+  }
 
   #sessionUpdate(notification: SessionNotification): void {
     if (notification.sessionId === this.#privateSession?.sessionId) {
@@ -2918,10 +3020,12 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     thread: AcpThread,
     turn: AcpTurn,
   ) {
-    const limit = this.options.turnStallMs ?? ACP_TURN_STALL_MS;
+    const agentLimit = this.options.turnStallMs ?? ACP_TURN_STALL_MS;
     let answeredAt = 0;
     // A stopped turn ends by its stop, as interrupted, and not as a stall.
     while (thread.activeTurn === turn && !turn.completing && !turn.stopped) {
+      // Read on each pass: the model of the thread can change while the turn runs.
+      const limit = this.options.customEndpoint?.(thread.currentModelId)?.stallMs ?? agentLimit;
       if (this.#flavor.promptOpenForBackgroundTasks) {
         const silentFor = Date.now() - Math.max(turn.lastActivityAt, answeredAt);
         if (silentFor < limit) {
@@ -3417,6 +3521,22 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
         : ["edit", "delete", "move"].includes(params.toolCall.kind ?? "")
           ? "file-change"
           : "permissions";
+    // A confined process is a Workspace only agent: the sandbox limits its writes, so a call to OpenBot's
+    // own tools is not a step outside that limit. The tools ask the user themselves where they must,
+    // and a Claude agent at Workspace only runs them without a card, too (#7086). Only once: an "always"
+    // answer stays in the agent's own state, also after the user chooses Ask first.
+    if (
+      this.options.confine &&
+      kind === "permissions" &&
+      thread &&
+      turn &&
+      !turn.stopped &&
+      !turn.completing &&
+      callsBridgeTool(thread, params.toolCall.title)
+    ) {
+      const option = params.options.find((candidate) => candidate.kind === "allow_once");
+      if (option) return { outcome: { outcome: "selected", optionId: option.optionId } };
+    }
     const requestedPermissions = kind === "permissions" ? { [params.toolCall.kind ?? "file-system"]: true } : null;
     const result = yield* this.#waitForUser(
       turn,
@@ -3468,18 +3588,38 @@ export class AcpAgentClient extends EventEmitter<ClientEvents> {
     params: DynamicRecord,
   ): Effect.fn.Return<DynamicRecord, ProviderClientOperationError> {
     const sessionId = getString(params, "sessionId") ?? [...this.#threads.ids()][0];
-    if (sessionId && this.#historyReplays.has(sessionId)) return {};
+    // The agent's own question method has questions without ids, and needs its own reply shape.
+    const own = this.#flavor.userQuestions;
+    const isOwn = own?.method === method.replace(/^_/u, "");
+    if (sessionId && this.#historyReplays.has(sessionId)) return own && isOwn ? own.reply([], {}) : {};
     const thread = sessionId ? this.#threads.get(sessionId) : undefined;
+    const asked = isOwn
+      ? getArray(params, "questions")
+          .filter(isRecord)
+          .map((question, index) => ({
+            ...question,
+            id: `question-${index}`,
+            question: getString(question, "question") ?? "",
+          }))
+      : null;
     const result = yield* this.#waitForUser(
       thread?.activeTurn,
       this.#serverRequests.call("item/tool/requestUserInput", {
         ...params,
+        ...(asked ? { questions: asked } : {}),
         threadId: sessionId,
         turnId: thread?.activeTurn?.id ?? randomUUID(),
         sourceMethod: method,
       }),
     ).pipe(toProviderClientOperationError);
-    return yield* providerSync(() => (isRecord(result) ? result : {}));
+    return yield* providerSync(() => {
+      if (!(own && asked)) return isRecord(result) ? result : {};
+      const answers = getRecord(result, "answers") ?? {};
+      return own.reply(
+        asked,
+        Object.fromEntries(asked.map(({ id }) => [id, getArray(answers[id], "answers").filter(isString)])),
+      );
+    });
   });
 
   readonly #createElicitation = Effect.fn("AcpAgentClient.createElicitation")(function* (
@@ -3645,6 +3785,18 @@ function toolOutputText(rawOutput: unknown): string {
 function bestPermissionOption(options: PermissionOption[], accepted: boolean): PermissionOption | null {
   const kinds = accepted ? ["allow_once", "allow_always"] : ["reject_once", "reject_always"];
   return kinds.flatMap((kind) => options.filter((option) => option.kind === kind))[0] ?? null;
+}
+
+/**
+ * Whether a permission request names a tool that the session's OpenBot bridge servers give. Grok names
+ * an MCP tool `<server>__<tool>`, such as `openbot__tool_call`. Only the exact name of a bridge tool
+ * matches: a user's server cannot take a bridge server's name (`isReservedMcpServerName`), and a name
+ * such as `openbot__files` gives tools named `openbot__files__<tool>`.
+ */
+function callsBridgeTool(thread: AcpThread, title: string | null | undefined): boolean {
+  return thread.dynamicTools.some((namespace) =>
+    namespace.tools.some((tool) => title === `${namespace.name}__${tool.name}`),
+  );
 }
 
 function isDynamicToolResult(value: unknown): value is DynamicToolResult {

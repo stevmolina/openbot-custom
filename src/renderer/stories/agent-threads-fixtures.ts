@@ -174,6 +174,70 @@ export const THREAD_OPTIONS: MockOpenBotOptions = {
   },
 };
 
+const COMPETITORS = requireThread("competitors");
+
+function requireThread(id: string): AgentTask {
+  const task = THREADS.find((candidate) => candidate.id === id);
+  if (!task) throw new Error(`No thread fixture: ${id}`);
+  return task;
+}
+
+function queued(id: string, position: number, text: string): QueueDelivery {
+  return {
+    id,
+    messageId: `message-${id}`,
+    recipientAgentId: AGENT_ID,
+    sender: { kind: "user" },
+    text,
+    attachments: [],
+    replyToMessageId: null,
+    status: "queued",
+    position,
+    turnId: null,
+    error: null,
+    createdAt: "2026-08-19T10:01:00.000Z",
+    expectsReply: false,
+  };
+}
+
+/**
+ * "Competitor scan" works, and two messages wait in its queue. Reply to a message of the thread to see
+ * the reply card under the queue.
+ */
+export const THREAD_QUEUE_OPTIONS: MockOpenBotOptions = {
+  ...THREAD_OPTIONS,
+  tasks: {
+    [AGENT_ID]: THREADS.map((task) =>
+      task.id === COMPETITORS.id
+        ? {
+            ...task,
+            queue: [
+              queued("competitors-queue-1", 1, "Also add the two newest competitors."),
+              queued("competitors-queue-2", 2, "Keep the summary under one page."),
+            ],
+          }
+        : task,
+    ),
+  },
+  taskConversations: {
+    ...THREAD_OPTIONS.taskConversations,
+    competitors: snapshot(COMPETITORS, [
+      message(
+        "competitors-queue-message-1",
+        "user",
+        "Compare the pricing pages of our three closest competitors.",
+        "2026-08-19T09:50:00.000Z",
+      ),
+      message(
+        "competitors-queue-message-2",
+        "assistant",
+        "I have the first two pages. The third one loads its prices late, so I read it again.",
+        "2026-08-19T09:56:00.000Z",
+      ),
+    ]),
+  },
+};
+
 const COMPETITORS_DONE = thread("competitors", "Competitor scan", "2026-08-19T10:07:00.000Z");
 
 /**
@@ -203,7 +267,7 @@ export const UNREAD_OPTIONS: MockOpenBotOptions = {
   taskUnread: { pricing: 1, competitors: 1, "pricing-orphan": 2 },
 };
 
-function queued(id: string, text: string, createdAt: string, position: number): QueueDelivery {
+function serverBusyQueued(id: string, text: string, createdAt: string, position: number): QueueDelivery {
   return {
     id,
     messageId: `${id}-message`,
@@ -221,9 +285,9 @@ function queued(id: string, text: string, createdAt: string, position: number): 
 }
 
 const SERVER_BUSY_QUEUE = [
-  queued("busy-1", "Help me create a bot for our hackathon space, please.", "2026-08-19T10:10:00.000Z", 0),
-  queued("busy-2", "What happened?", "2026-08-19T10:14:00.000Z", 1),
-  queued("busy-3", "What?", "2026-08-19T10:15:00.000Z", 2),
+  serverBusyQueued("busy-1", "Help me create a bot for our hackathon space, please.", "2026-08-19T10:10:00.000Z", 0),
+  serverBusyQueued("busy-2", "What happened?", "2026-08-19T10:14:00.000Z", 1),
+  serverBusyQueued("busy-3", "What?", "2026-08-19T10:15:00.000Z", 2),
 ];
 
 const SERVER_BUSY = thread("hackathon-bot", "Hackathon bot", "2026-08-19T10:15:00.000Z", {
