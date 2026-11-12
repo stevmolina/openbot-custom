@@ -1,11 +1,14 @@
 import { focusComposerEditor } from "@openbot/ui/features/conversation/composer-focus";
+import { ShortcutPeek, type ShortcutPeekExtra } from "@openbot/ui/features/shortcuts/ShortcutPeek";
 import { ShortcutSheet } from "@openbot/ui/features/shortcuts/ShortcutSheet";
 import type { ShortcutId, ShortcutPlatform } from "@openbot/ui/features/shortcuts/shortcut-registry";
 import { sidebarChatStep } from "@openbot/ui/features/sidebar/sidebar-chat-step";
-import { createSignal, onSettled } from "solid-js";
+import { createMemo, createSignal, onSettled } from "solid-js";
 import { playActionSound } from "../../action-sounds";
 import { appPort } from "../../app-port";
 import { useLayout } from "../../layout";
+import { useSendShortcutMode } from "../../send-shortcut-preference";
+import { watchModifierHold } from "./modifier-hold";
 import { installShortcutKeys, onShortcutCommand, runMenuCommand } from "./shortcut-commands";
 
 /**
@@ -22,6 +25,32 @@ export function AppShortcuts(props: {
 }) {
   const layout = useLayout();
   const [open, setOpen] = createSignal(false);
+  /** The list that shows while the primary key is held alone. */
+  const [peek, setPeek] = createSignal(false);
+  const sendMode = useSendShortcutMode();
+  /** The keys that the shortcut list does not own: the send key follows its setting. */
+  const peekExtra = createMemo((): ShortcutPeekExtra[] => {
+    const sendWithMod = sendMode() === "mod-enter";
+    const extra: ShortcutPeekExtra[] = [
+      {
+        id: "sendMessage",
+        group: "chat",
+        label: "app.shortcuts.sendMessage",
+        combos: [sendWithMod ? { key: "Enter", mod: "primary" } : { key: "Enter" }],
+      },
+      {
+        id: "newLine",
+        group: "chat",
+        label: "app.shortcuts.newLine",
+        combos: sendWithMod ? [{ key: "Enter" }, { key: "Enter", shift: true }] : [{ key: "Enter", shift: true }],
+      },
+    ];
+    // The Mac menu owns ⌘Q. The Windows and Linux menus quit with the system's own keys.
+    if (props.nativeMenu && props.platform === "mac") {
+      extra.unshift({ id: "quit", group: "general", label: "menu.quit", combos: [{ key: "q", mod: "primary" }] });
+    }
+    return extra;
+  });
   /** Opens the next chat of the sidebar the way a click on its row does. */
   const stepChat = (offset: 1 | -1, unread: boolean) => {
     const row = sidebarChatStep(document, offset, unread);
@@ -35,6 +64,12 @@ export function AppShortcuts(props: {
   onSettled(() => {
     const removals = [
       installShortcutKeys(window, () => props.platform),
+      watchModifierHold(
+        window,
+        () => props.platform,
+        // The sheet already lists every key.
+        (held) => setPeek(held && !open()),
+      ),
       onShortcutCommand("shortcuts", () => {
         setOpen((current) => !current);
         return true;
@@ -57,6 +92,9 @@ export function AppShortcuts(props: {
     };
   });
   return (
-    <ShortcutSheet open={open()} onOpenChange={setOpen} platform={props.platform ?? "mac"} hidden={props.hidden} />
+    <>
+      <ShortcutSheet open={open()} onOpenChange={setOpen} platform={props.platform ?? "mac"} hidden={props.hidden} />
+      <ShortcutPeek open={peek()} platform={props.platform ?? "mac"} hidden={props.hidden} extra={peekExtra()} />
+    </>
   );
 }

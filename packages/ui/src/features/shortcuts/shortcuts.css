@@ -221,3 +221,90 @@
   min-width: 18px;
   height: 18px;
 }
+
+/* The list that shows while ⌘ (Ctrl elsewhere) is held alone. It looks like the sheet, but it
+   takes no click and no focus, and it fades in and out with the key. It sits above the dialogs, as
+   the quit hint does, because a held key can come from any screen. */
+.shortcut-peek-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--openbot-layer-tooltip);
+  display: grid;
+  place-items: center;
+  padding: var(--openbot-space-6);
+  background: var(--openbot-dialog-overlay);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity var(--openbot-duration-fast) var(--openbot-ease-out),
+    visibility 0s linear var(--openbot-duration-fast);
+}
+
+.shortcut-peek-backdrop[data-open] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--openbot-duration-normal) var(--openbot-ease-out),
+    visibility 0s;
+}
+
+.shortcut-peek {
+  display: flex;
+  width: min(1040px, 100%);
+  max-height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--openbot-radius-xl);
+  background: var(--openbot-bg-control);
+  box-shadow:
+    0 0 0 1px var(--openbot-dialog-ring),
+    var(--openbot-shadow-dialog);
+  color: var(--openbot-text-primary);
+  transform: translateY(-4px) scale(0.98);
+  transition: transform var(--openbot-duration-normal) var(--openbot-ease-out);
+}
+
+.shortcut-peek-backdrop[data-open] .shortcut-peek {
+  transform: none;
+}
+
+.shortcut-peek-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  padding: var(--openbot-space-3) var(--openbot-space-4) 0;
+}
+
+.shortcut-peek-body {
+  min-height: 0;
+  flex: 1;
+  columns: 3 280px;
+  column-gap: var(--openbot-space-6);
+  overflow: hidden;
+  padding: var(--openbot-space-4);
+}
+
+.shortcut-peek-row {
+  display: flex;
+  min-height: var(--openbot-control-sm);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--openbot-space-3);
+  padding: var(--openbot-space-0-5) var(--openbot-space-2);
+  font-size: var(--openbot-text-sm);
+  line-height: var(--openbot-leading-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shortcut-peek-backdrop,
+  .shortcut-peek-backdrop[data-open],
+  .shortcut-peek {
+    transition: none;
+  }
+
+  .shortcut-peek {
+    transform: none;
+  }
+}
