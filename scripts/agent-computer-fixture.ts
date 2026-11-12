@@ -62,7 +62,8 @@ export async function startAgentComputerFixture() {
       });
     }
     if (path === "/api/v1/machines/start") {
-      if (body.context === "exhausted") return fail("ALLOWANCE_EXHAUSTED", 402);
+      if (body.context === "exhausted")
+        return json({ error: { code: "ALLOWANCE_EXHAUSTED", message: `Upgrade at ${FIXTURE_BILLING}?t=signed` } }, 402);
       if (body.context === "malformed") return json({ id: 4 });
       return json({
         id: "demo-machine",
@@ -91,7 +92,8 @@ export async function startAgentComputerFixture() {
       }
       if (body.cmd === "paused") return fail("MACHINE_PAUSED", 409);
       return json({
-        stdout: body.cmd === "secret" ? FIXTURE_LIVE : "fixture stdout",
+        stdout:
+          body.cmd === "secret" ? FIXTURE_LIVE : body.cmd === "huge" ? `${"x".repeat(200_000)}END` : "fixture stdout",
         stderr: "fixture stderr",
         exit_code: body.cmd === "failed" ? 3 : 0,
         timed_out: body.cmd === "timeout",

@@ -180,7 +180,15 @@ export const handleAgentComputerTool = Effect.fn("AgentComputerTools.handle")(fu
       }
       case "computer_bash": {
         const input = yield* parse(bashSchema, request.arguments);
-        return textResult(yield* api.bash(input.id, input));
+        const output = yield* api.bash(input.id, input);
+        const stdout = keepEnd(output.stdout);
+        const stderr = keepEnd(output.stderr);
+        return textResult({
+          ...output,
+          stdout: stdout.text,
+          stderr: stderr.text,
+          ...(stdout.cut || stderr.cut ? { truncated: true } : {}),
+        });
       }
       case "computer_screenshot": {
         const input = yield* parse(idSchema, request.arguments);
@@ -201,15 +209,13 @@ export const handleAgentComputerTool = Effect.fn("AgentComputerTools.handle")(fu
             workspaceTarget(request.workspacePath, input.saveAs ?? join("computer-files", basename(input.path))),
           catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
         });
-        yield* Effect.tryPromise({
-          try: async () => {
-            await saveWorkspaceFile(request.workspacePath, target, file.bytes);
-          },
+        const saved = yield* Effect.tryPromise({
+          try: () => saveWorkspaceFile(request.workspacePath, target, file.bytes, input.saveAs === undefined),
           catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
         });
         const text = textPreview(file.bytes, file.mimeType);
         const result = {
-          path: target,
+          path: saved,
           bytes: file.bytes.length,
           mimeType: file.mimeType,
           ...(text === null ? {} : { text }),
@@ -288,8 +294,26 @@ function textPreview(bytes: Buffer, mimeType: string): string | null {
   return text.includes("�") ? null : text;
 }
 
-/** Refuse symlink ancestors and create a fresh file, so a linked or existing file cannot be overwritten. */
-async function saveWorkspaceFile(workspace: string, target: string, bytes: Buffer): Promise<void> {
+/** The most of stdout or stderr that one result carries. The end of a log says the most. */
+const OUTPUT_LIMIT = 64 * 1024;
+
+function keepEnd(text: string): { text: string; cut: boolean } {
+  return text.length > OUTPUT_LIMIT ? { text: text.slice(-OUTPUT_LIMIT), cut: true } : { text, cut: false };
+}
+
+/** `name.ext`, then `name (2).ext`, `name (3).ext`: a file that is already there is never overwritten. */
+function numberedName(name: string, attempt: number): string {
+  if (attempt === 1) return name;
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? `${name.slice(0, dot)} (${attempt})${name.slice(dot)}` : `${name} (${attempt})`;
+}
+
+/**
+ * Refuse symlink ancestors and create a fresh file, so a linked or existing file cannot be overwritten.
+ * When the default name is taken, the file gets the next free number; a name the agent chose that is
+ * taken is refused. Returns the saved path.
+ */
+async function saveWorkspaceFile(workspace: string, target: string, bytes: Buffer, numbered: boolean): Promise<string> {
   const root = await realpath(workspace);
   const parts = relative(resolve(workspace), target).split(sep);
   let parent = root;
@@ -302,16 +326,25 @@ async function saveWorkspaceFile(workspace: string, target: string, bytes: Buffe
     if (!info.isDirectory() || info.isSymbolicLink() || (await realpath(parent)) !== parent)
       throw new Error(sourceText("error.agent.agentComputerPathOutside"));
   }
-  const destination = join(parent, parts.at(-1) ?? "");
-  const file = await open(
-    destination,
-    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
-    0o600,
-  );
-  try {
-    if ((await realpath(parent)) !== parent) throw new Error(sourceText("error.agent.agentComputerPathOutside"));
-    await file.writeFile(bytes);
-  } finally {
-    await file.close();
+  const name = parts.at(-1) ?? "";
+  for (let attempt = 1; attempt <= 100; attempt++) {
+    const destination = join(parent, numberedName(name, attempt));
+    const file = await open(
+      destination,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      0o600,
+    ).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "EEXIST" && numbered) return null;
+      throw error;
+    });
+    if (!file) continue;
+    try {
+      if ((await realpath(parent)) !== parent) throw new Error(sourceText("error.agent.agentComputerPathOutside"));
+      await file.writeFile(bytes);
+    } finally {
+      await file.close();
+    }
+    return destination;
   }
+  throw new Error(sourceText("error.agent.agentComputerFileExists"));
 }

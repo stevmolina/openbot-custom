@@ -74,7 +74,11 @@ export function agentComputerIpcHandlers({
       }),
       machines: scopedQueryHandler({
         local: () => runCauseEffect(agentComputer.machines()),
-        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.machines, decodeAgentComputerMachineListFromHost),
+        remote: async (serverId) => {
+          const list = await post(serverId, AGENT_COMPUTER_ROUTES.machines, decodeAgentComputerMachineListFromHost);
+          for (const machine of list.machines) if (machine.liveViewUrl) registerSecretValue(machine.liveViewUrl);
+          return list;
+        },
       }),
     },
   };

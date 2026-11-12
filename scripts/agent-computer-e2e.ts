@@ -90,18 +90,32 @@ try {
   assert.ok(!JSON.stringify(await tool("computer_list", {})).includes(FIXTURE_LIVE));
   assert.ok(!JSON.stringify(await tool("computer_bash", { id: "demo-machine", cmd: "secret" })).includes(FIXTURE_LIVE));
   checks.push("start/list/bash results, logs, exports and send redaction keep human bearer links private");
-  assert.equal((await tool("computer_start", { context: "exhausted" })).success, false);
+  const exhausted = JSON.stringify(await tool("computer_start", { context: "exhausted" }));
+  assert.match(exhausted, /ALLOWANCE_EXHAUSTED/u);
+  assert.ok(!exhausted.includes("billing/demo-human-only"));
+  assert.ok(!redactText(`log ${FIXTURE_BILLING}?t=signed`).includes("demo-human-only"));
+  const hugeItem = (await tool("computer_bash", { id: "demo-machine", cmd: "huge" })).contentItems[0];
+  const huge = JSON.parse(hugeItem?.type === "inputText" ? hugeItem.text : "{}");
+  assert.equal(huge.truncated, true);
+  assert.ok(huge.stdout.length <= 64 * 1024 && huge.stdout.endsWith("END"));
   assert.equal(fixture.requests.filter((request) => request.body.context === "exhausted").length, 1);
   assert.match(JSON.stringify(await tool("computer_start", { context: "malformed" })), /BAD_RESPONSE/u);
   assert.match(JSON.stringify(await tool("computer_start", { context: "INVALID" })), /error/u);
   assert.match(JSON.stringify(await tool("computer_bash", { id: "demo-machine", cmd: "paused" })), /MACHINE_PAUSED/u);
   assert.equal((await run(account.api.bash("demo-machine", { cmd: "ok", timeout_s: 600, cwd: "/tmp" }))).exit_code, 0);
   assert.ok(fixture.requests.some((r) => r.body.timeout_s === 600 && r.body.cwd === "/tmp"));
-  checks.push("input, malformed response, allowance, paused machine and 600-second command contract");
+  checks.push(
+    "input, malformed response, allowance without billing link, output cap, paused machine and 600-second command contract",
+  );
   assert.deepEqual((await run(account.api.screenshot("demo-machine"))).bytes, FIXTURE_PNG);
   assert.equal((await tool("computer_screenshot", { id: "demo-machine" })).contentItems[1]?.type, "inputImage");
   assert.equal((await tool("computer_get_file", { id: "demo-machine", path: "/result.txt" })).success, true);
   assert.equal(await readFile(join(workspace, "computer-files/result.txt"), "utf8"), "fixture file");
+  assert.match(
+    JSON.stringify(await tool("computer_get_file", { id: "demo-machine", path: "/result.txt" })),
+    /result \(2\)\.txt/u,
+  );
+  assert.equal(await readFile(join(workspace, "computer-files/result (2).txt"), "utf8"), "fixture file");
   assert.equal(
     (await tool("computer_get_file", { id: "demo-machine", path: "/image.png" })).contentItems[1]?.type,
     "inputImage",

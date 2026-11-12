@@ -15,6 +15,8 @@ export const messages = defineMessages("error.connector", {
   // Agent Computer, the cloud computers of a server (computer.mcpbox.dev).
   "error.connector.agentComputerNotConnected":
     "Agent Computer is not connected. Add an API key in Server settings > Cloud computers.",
+  "error.connector.agentComputerAllowanceExhausted":
+    "The Agent Computer runtime allowance is used up. The account owner can add minutes at computer.mcpbox.dev.",
   "error.connector.agentComputerHttp": "Agent Computer answered HTTP {status}.",
   "error.connector.agentComputerUnexpected": "Agent Computer sent an answer that OpenBot cannot read.",
   "error.connector.agentComputerUnreachable": "OpenBot cannot reach Agent Computer. Check the network and try again.",

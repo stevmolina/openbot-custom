@@ -260,9 +260,15 @@ function decode<S extends Schema.Top>(schema: S, value: unknown) {
 function apiError(answer: RawResponse): AgentComputerFailed {
   try {
     const parsed = Schema.decodeUnknownSync(errorSchema)(JSON.parse(answer.body.toString("utf8")));
+    // An allowance error carries a signed billing link for the person: it never reaches an agent or a log.
+    for (const url of parsed.error.message.match(/https?:\/\/\S+/gu) ?? []) registerSecretValue(url);
+    const code = parsed.error.code.slice(0, 64);
     return new AgentComputerFailed({
-      code: parsed.error.code.slice(0, 64),
-      message: redactSecrets(parsed.error.message).slice(0, 1_000),
+      code,
+      message:
+        code === "ALLOWANCE_EXHAUSTED"
+          ? sourceText("error.connector.agentComputerAllowanceExhausted")
+          : redactSecrets(parsed.error.message).slice(0, 1_000),
       status: answer.status,
     });
   } catch {
