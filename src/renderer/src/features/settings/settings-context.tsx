@@ -112,8 +112,13 @@ const Settings = createSimpleContext({
      */
     const [pendingPluginSlug, setPendingPluginSlug] = createSignal<string | null>(null);
     /**
-     * Set with the slug when the person pressed Connect on a suggestion card in the chat, so the
-     * page starts the connect step. A link never sets it.
+     * The app whose Connect the person pressed on a suggestion card in the chat. Its connect step
+     * runs in a dialog over the chat, so the person stays there. A link never sets it.
+     */
+    const [pendingAppConnect, setPendingAppConnect] = createSignal<string | null>(null);
+    /**
+     * Set with the slug when the person pressed Connect for a connector on a suggestion card, so the
+     * page starts the connector's connect step. A link never sets it.
      */
     const [pendingPluginConnect, setPendingPluginConnect] = createSignal(false);
     /**
@@ -720,6 +725,8 @@ const Settings = createSimpleContext({
       setSkillsMarketplaceOpen,
       pendingPluginSlug,
       setPendingPluginSlug,
+      pendingAppConnect,
+      setPendingAppConnect,
       pendingPluginConnect,
       setPendingPluginConnect,
       pendingMarketplaceListing,

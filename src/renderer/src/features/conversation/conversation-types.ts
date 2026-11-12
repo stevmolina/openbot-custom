@@ -152,8 +152,9 @@ export interface ConversationProps {
   onOpenUsage?: ((trigger: HTMLButtonElement) => void) | undefined;
   onOpenMarketplace?: (() => void) | undefined;
   /**
-   * Opens Marketplace at one app, from a suggestion card. `connect` is true only when the person
-   * pressed Connect or Install on the card: the page then starts the connect step.
+   * An app of a suggestion card. `connect` is true only when the person pressed Connect on the card:
+   * a catalog plugin then connects in a dialog over the chat, and a connector's page starts its connect
+   * step. Otherwise Marketplace opens at the app.
    */
   onOpenMarketplaceApp?: ((request: { appId: string; connect: boolean }) => void) | undefined;
   /** The connectors of the server on screen, which a suggestion card for a connector reads. */

@@ -146,6 +146,7 @@ import { BillingDialog } from "@openbot/ui/features/billing/BillingDialog";
 import { createBillingStore } from "@openbot/ui/features/billing/billing-store";
 import { LicenseSection } from "@openbot/ui/features/billing/LicenseSection";
 import { createLicenseStore } from "@openbot/ui/features/billing/license-store";
+import { isConnectorId } from "@openbot/ui/features/connectors/connectors";
 import { unloadedHistory } from "@openbot/ui/features/conversation/ChatScrollRail";
 import type { DiagramModelChoice } from "@openbot/ui/features/diagrams/DiagramNewAgentCard";
 import { LeaveServerDialog } from "@openbot/ui/features/servers/LeaveServerDialog";
@@ -215,6 +216,7 @@ import {
   ChannelCreateOverlay,
   GlobalSearchOverlay,
   JoinServerOverlay,
+  MarketplaceAppConnectOverlay,
   MarketplaceOverlay,
   ServerSettingsOverlay,
   SharedAgentInstallOverlay,
@@ -1394,6 +1396,8 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   });
   /** The app that a suggestion card opens in Marketplace. A plugin link from the address comes in props. */
   const [suggestedApp, setSuggestedApp] = createSignal<{ appId: string; connect: boolean } | null>(null);
+  /** The app whose Connect the person pressed on a suggestion card. It connects in a dialog over the chat. */
+  const [connectingApp, setConnectingApp] = createSignal<string | null>(null);
   const agentTemplateCalls = createWebAgentTemplateCalls(props.accountFetch, hostRequest);
   // A sign-in can change in another tab, so the Marketplace reads the connectors again when it opens.
   createEffect(marketplaceOpen, (open) => {
@@ -3793,7 +3797,13 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   runtime={runtime}
                   onOpenMarketplace={openMarketplace}
                   connectors={connectors}
+                  // As in the desktop app: Connect on a catalog plugin runs over the chat. A connector and the
+                  // name open the app in Marketplace.
                   onOpenMarketplaceApp={(request) => {
+                    if (request.connect && !isConnectorId(request.appId)) {
+                      setConnectingApp(request.appId);
+                      return;
+                    }
                     setSuggestedApp(request);
                     openMarketplace();
                   }}
@@ -3859,9 +3869,14 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   }
                   turnStepLines={workspace.stepLines()}
                   skillsMarketplaceOpen={marketplaceOpen()}
-                  mcpSettingsOpen={serverSettings.state.open || marketplaceOpen()}
+                  mcpSettingsOpen={serverSettings.state.open || marketplaceOpen() || connectingApp() !== null}
                   globalOverlayOpen={
-                    joinOpen() || serverSettings.state.open || searchOpen() || marketplaceOpen() || hasVisibleToasts()
+                    joinOpen() ||
+                    serverSettings.state.open ||
+                    searchOpen() ||
+                    marketplaceOpen() ||
+                    connectingApp() !== null ||
+                    hasVisibleToasts()
                   }
                   settingsRequest={settingsRequest()}
                   messageFocusRequest={messageFocusRequest()}
@@ -3970,6 +3985,20 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   }}
                 />
                 <ProviderSignInDialogs api={providerSettings()?.connection} opener="composer" />
+                <MarketplaceAppConnectOverlay
+                  appId={connectingApp()}
+                  server={server()}
+                  agents={workspace.shownAgents()}
+                  activeAgentId={workspace.state.selectedId ?? ""}
+                  connectors={connectors}
+                  calls={marketplaceCalls}
+                  onDone={() => setConnectingApp(null)}
+                  onOpenPage={(appId) => {
+                    setConnectingApp(null);
+                    setSuggestedApp({ appId, connect: false });
+                    openMarketplace();
+                  }}
+                />
               </Show>
             </WorkspaceFrame>
             <Show when={loadingCover()}>{connectionNotice(true)}</Show>

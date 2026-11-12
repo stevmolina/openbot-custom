@@ -90,6 +90,7 @@ import {
   ChannelCreateOverlay,
   GlobalSearchOverlay,
   JoinServerOverlay,
+  MarketplaceAppConnectOverlay,
   MarketplaceOverlay,
   ServerSettingsOverlay,
   SharedAgentInstallOverlay,
@@ -140,7 +141,36 @@ export function WorkspaceOverlays(props: AccountProps) {
       <DesktopShortcuts />
       <RemoteDesktop />
       <ChannelCreateOverlay />
+      <AppConnect />
     </>
+  );
+}
+
+/**
+ * Connect on a chat suggestion card for a catalog plugin. The connect step runs in a dialog over the
+ * chat; an app that cannot connect here opens its Marketplace page, which tells why.
+ */
+function AppConnect() {
+  const { pendingAppConnect, setPendingAppConnect, setPendingPluginSlug, setSkillsMarketplaceOpen } = useSettings();
+  const { agentList, activeAgent } = useAgents();
+  const { activeServer } = useServers();
+  const connectors = useConnectors();
+  const platform = usePlatform();
+  return (
+    <MarketplaceAppConnectOverlay
+      appId={pendingAppConnect()}
+      server={activeServer()}
+      agents={agentList()}
+      activeAgentId={activeAgent()?.id ?? ""}
+      connectors={connectors.active}
+      macOS={platform.appInfo()?.platform === "darwin"}
+      onDone={() => setPendingAppConnect(null)}
+      onOpenPage={(appId) => {
+        setPendingAppConnect(null);
+        setPendingPluginSlug(appId);
+        setSkillsMarketplaceOpen(true);
+      }}
+    />
   );
 }
 

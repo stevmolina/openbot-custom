@@ -15,6 +15,7 @@ import { MESSAGE_DELETE_CAPABILITY } from "@openbot/contracts/team-protocol/mess
 import { MESSAGE_PINS_CAPABILITY } from "@openbot/contracts/team-protocol/message-pins-v1";
 import { hasVisibleToasts } from "@openbot/ui";
 import type { AgentMessage } from "@openbot/ui/data";
+import { isConnectorId } from "@openbot/ui/features/connectors/connectors";
 import type { UsageLimitAskCardProps } from "@openbot/ui/features/conversation/BackupModels";
 import { unloadedHistory } from "@openbot/ui/features/conversation/ChatScrollRail";
 import { sidebarAgentWaits } from "@openbot/ui/features/sidebar/sidebar-agent-states";
@@ -95,6 +96,8 @@ export function WorkspaceConversation(props: { account: () => CentralAuthUser })
     skillsMarketplaceOpen,
     setSkillsMarketplaceOpen,
     setPendingPluginSlug,
+    pendingAppConnect,
+    setPendingAppConnect,
     setPendingPluginConnect,
     agentAutoApproves,
     generalSettings,
@@ -541,7 +544,13 @@ export function WorkspaceConversation(props: { account: () => CentralAuthUser })
         platform={platform.appInfo()?.platform}
         onOpenMarketplace={() => setSkillsMarketplaceOpen(true)}
         connectors={connectors.active}
+        // Connect on a catalog plugin runs over the chat, so the person stays in it. A connector's
+        // connect step is on its page, so it and the name open the app in Marketplace.
         onOpenMarketplaceApp={(request) => {
+          if (request.connect && !isConnectorId(request.appId)) {
+            setPendingAppConnect(request.appId);
+            return;
+          }
           setPendingPluginConnect(request.connect);
           setPendingPluginSlug(request.appId);
           setSkillsMarketplaceOpen(true);
@@ -640,13 +649,14 @@ export function WorkspaceConversation(props: { account: () => CentralAuthUser })
         activityKind={activeAgent() ? turnProgress()[activeAgent()?.id ?? ""]?.activity : undefined}
         turnStepLines={turnStepLines()}
         skillsMarketplaceOpen={skillsMarketplaceOpen()}
-        mcpSettingsOpen={serverSettingsOpen() || skillsMarketplaceOpen()}
+        mcpSettingsOpen={serverSettingsOpen() || skillsMarketplaceOpen() || pendingAppConnect() !== null}
         globalOverlayOpen={
           globalSearchOpen() ||
           joinServerOpen() ||
           serverSettingsOpen() ||
           appSettingsOpen() ||
           skillsMarketplaceOpen() ||
+          pendingAppConnect() !== null ||
           hasVisibleToasts() ||
           quitShortcutHintShown()
         }

@@ -30,8 +30,8 @@ export function marketplaceSuggestionKnown(appId: string): boolean {
 }
 
 /**
- * The Marketplace app an agent suggested in this chat. Connect and the name open the app in
- * Marketplace, where the connect step and its dialogs run.
+ * The Marketplace app an agent suggested in this chat. Connect on a catalog plugin runs the connect
+ * step in a dialog over the chat. Connect on a connector, and the name, open the app in Marketplace.
  */
 export function MarketplaceSuggestionChatCard(props: MarketplaceSuggestionChatCardProps) {
   const { t } = useText();

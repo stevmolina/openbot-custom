@@ -227,6 +227,9 @@ interface AddedRecord {
   serverId: string | undefined;
 }
 
+/** The Marketplace model and the dialogs it opens, as `MarketplaceDialogs` shows them. */
+export type MarketplaceController = ReturnType<typeof createMarketplaceController>;
+
 /**
  * The Marketplace model on the real IPC, and the dialogs that the window shows over itself. The
  * install, connect and uninstall flows are the flows of the previous Marketplace, with their
