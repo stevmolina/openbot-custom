@@ -7,6 +7,8 @@
  * - `data-web-mobile-pane`: "workspace" is the list at the root; "conversation" is a chat pushed over it.
  * - `data-web-phone-servers`: the server drawer is open over the list.
  * - `data-web-phone-swiping` and `--web-phone-swipe` (0 to 1): a finger drags the chat back to the list.
+ * - `data-web-phone-tab-page`: a page of the tab bar (Tasks, Workflows, Settings) shows. It is a root, so
+ *   the tab bar stays over it and the page has no Back button.
  *
  * Layers, from the back: the list, the drawer scrim, the server drawer, a page, the fade under the tab
  * bar, the tab bar, the chat. The chat covers the tab bar, as a pushed screen on iOS does. The tab bar
@@ -122,10 +124,11 @@
     box-shadow: 0 10px 30px var(--openbot-shadow-dialog);
   }
 
-  /* The list fades out under the bar, so no row shows in the gap at the screen edge. */
+  /* The list fades out under the bar, so no row shows in the gap at the screen edge. It stays under the
+   * server drawer, its scrim and the pages. */
   .web-app-frame::before {
     position: absolute;
-    z-index: 5;
+    z-index: 1;
     inset-inline: 0;
     bottom: 0;
     height: calc(var(--web-phone-tab-bar-space) + var(--openbot-space-6));
@@ -214,7 +217,7 @@
     display: none;
   }
 
-  /* Search is a tab of the tab bar. */
+  /* Search is the field under the title. */
   .web-app-frame > .sidebar-chat .sidebar-chat-top .sidebar-chat-round:has(> .lucide-search) {
     display: none;
   }
@@ -239,11 +242,18 @@
 
   .web-app-frame > .sidebar-chat .sidebar-dock {
     border-top: 0;
-    padding-bottom: var(--web-phone-tab-bar-space);
+  }
+
+  /* The end of the list leaves room for the tab bar, whatever group comes last. */
+  .web-app-frame > .sidebar-chat .sidebar-chat-list::after {
+    display: block;
+    height: var(--web-phone-tab-bar-space);
+    flex: none;
+    content: "";
   }
 
   /* The tab bar, the title and the More menu of the top row take the places of the pill and the usage. */
-  .web-app-frame > .sidebar-chat :is(.sidebar-chat-bottom, .sidebar-community-card) {
+  .web-app-frame > .sidebar-chat .sidebar-chat-bottom {
     display: none;
   }
 
@@ -547,6 +557,32 @@
   /* The message box floats, as the tab bar of the list does. */
   .web-app-frame > .server-connection-workspace .composer-wrap > .composer {
     box-shadow: 0 10px 30px var(--openbot-shadow-dialog);
+  }
+
+  /* A page of the tab bar is a root: the tab bar stays over it, and it has no Back button or swipe. */
+  .web-app-frame[data-web-phone-tab-page] > .web-phone-tab-bar {
+    z-index: 7;
+    transform: none;
+    visibility: visible;
+  }
+
+  .web-app-frame[data-web-phone-tab-page] > :is(.server-connection-workspace, .window-page) {
+    padding-bottom: var(--web-phone-tab-bar-space);
+  }
+
+  .web-app-frame[data-web-phone-tab-page] :is(.web-phone-back, .web-phone-swipe-edge) {
+    display: none;
+  }
+
+  .web-app-frame[data-web-phone-tab-page][data-web-mobile-pane="conversation"]
+    :is(
+      .conversation-header,
+      .direct-conversation-header,
+      .diagram-view-header,
+      .first-agent-setup-header,
+      .remote-desktop-header
+    ) {
+    padding-inline-start: var(--openbot-space-3);
   }
 
   /* ---------------------------------------------------------------- dialogs as bottom sheets */

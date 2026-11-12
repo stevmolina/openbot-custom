@@ -641,7 +641,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   const [mobilePane, setMobilePane] = createSignal<WebMobilePane>(
     window.matchMedia?.(PHONE_QUERY).matches ? "workspace" : "conversation",
   );
-  /** On a phone: the server drawer of the Servers tab, over the chat list. */
+  /** On a phone: the server drawer, over the chat list. The title of the list opens it. */
   const [serversOpen, setServersOpen] = createSignal(false);
   const [settingsRequest, setSettingsRequest] = createSignal<AgentSettingsRequest | null>(null);
   const account = createMemo(() => ({
@@ -2959,6 +2959,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
               data-web-mobile-pane={mobilePane()}
               data-web-phone-servers={phone() && serversOpen() ? "" : undefined}
               data-web-phone-connect={phone() && noHost() ? "" : undefined}
+              data-web-phone-tab-page={phone() && phoneTab() !== null && phoneTab() !== "chats" ? "" : undefined}
               compact={compact()}
               blockedServer={blockedServer()}
               initialLoading={hostOffline()}
@@ -3176,7 +3177,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
               }
               left={
                 <>
-                  {/* A phone always has the rail: it is the drawer of the Servers tab. */}
+                  {/* A phone always has the rail: it is the server drawer that the list title opens. */}
                   <Show when={layout.serverRailVisible() || phone()}>
                     <ServerRail
                       servers={servers()}
@@ -3314,7 +3315,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                           members={workspace.state.presence?.members ?? []}
                           onOpenStorage={(serverId) => void openServerSettings(serverId, null, "storage")}
                         />
-                        <Show when={!alertCards.shown() && !communityCard.dismissed()}>
+                        <Show when={!phone() && !alertCards.shown() && !communityCard.dismissed()}>
                           <SidebarCommunityCard
                             onJoinDiscord={() => void openWebDestination("discord")}
                             onFollowX={() => void openWebDestination("x")}

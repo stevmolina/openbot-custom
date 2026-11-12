@@ -13,7 +13,7 @@ export function SidebarCommunityCard(props: {
 }) {
   const { t } = useText();
   return (
-    <section class="sidebar-mobile-app sidebar-community-card" aria-labelledby="sidebar-community-title">
+    <section class="sidebar-mobile-app" aria-labelledby="sidebar-community-title">
       <div class="sidebar-mobile-app-header">
         <DiscordMark class="sidebar-mobile-app-icon" />
         <strong id="sidebar-community-title">{t("sidebar.community.title")}</strong>
