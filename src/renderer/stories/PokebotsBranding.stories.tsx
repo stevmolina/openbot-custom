@@ -56,7 +56,7 @@ function useStored(key: string, value: string): void {
 
 function Variant(props: { mascots: boolean; logo: boolean }) {
   useStored(LEFT_PANEL_COLLAPSED_STORAGE_KEY, "false");
-  useStored(SERVER_VIEW_STORAGE_KEY, "rail");
+  useStored(SERVER_VIEW_STORAGE_KEY, "menu");
   const servers = STORY_SERVERS.map((server) =>
     props.logo && server.kind === "local" ? { ...server, name: "Pokebots", logoUrl: icon } : server,
   );
