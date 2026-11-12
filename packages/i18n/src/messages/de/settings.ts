@@ -278,6 +278,9 @@ export const messages = {
   "settings.agentDock.autoHide.title": "Ausblenden, wenn nicht benutzt",
   "settings.agentDock.autoHide.description":
     "Das Dock gleitet in den Rand. Beweg den Zeiger an den Rand, um es zu zeigen.",
+  "settings.agentDock.peek.title": "Zeigen, wenn ein Agent dich braucht",
+  "settings.agentDock.peek.description":
+    "Das ausgeblendete Dock kommt heraus, wenn ein Agent dich etwas fragt oder dir antwortet. Es bleibt sichtbar, solange eine Frage wartet.",
   "settings.agentDock.edgeStrip.title": "Streifen am Rand zeigen",
   "settings.agentDock.edgeStrip.description":
     "Ein schmaler Streifen bleibt dort, wo das Dock verschwindet. Beweg den Zeiger in seine Nähe, um das Dock zu zeigen. Wenn ein Agent dich etwas fragt, läuft eine Farbwelle über den Streifen.",

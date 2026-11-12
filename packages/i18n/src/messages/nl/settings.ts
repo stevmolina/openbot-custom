@@ -275,6 +275,9 @@ export const messages = {
   "settings.agentDock.autoHide.title": "Verbergen als het niet wordt gebruikt",
   "settings.agentDock.autoHide.description":
     "Het dock schuift in de rand. Beweeg de aanwijzer naar de rand om het te tonen.",
+  "settings.agentDock.peek.title": "Tonen als een agent je nodig heeft",
+  "settings.agentDock.peek.description":
+    "Het verborgen dock komt tevoorschijn als een agent je iets vraagt of je antwoordt. Het blijft zichtbaar zolang er een vraag wacht.",
   "settings.agentDock.edgeStrip.title": "Een strook aan de rand tonen",
   "settings.agentDock.edgeStrip.description":
     "Een smalle strook blijft waar het dock verdwijnt. Beweeg de aanwijzer ernaartoe om het dock te tonen. Een kleurgolf gaat door de strook als een agent je iets vraagt.",

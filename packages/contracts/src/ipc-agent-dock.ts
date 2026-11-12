@@ -165,6 +165,11 @@ export interface AgentDockPresentation {
   autoHide: boolean;
   /** While hidden, a thin strip stays at the edge. It grows as the pointer comes near and shows the dock when the pointer is close. */
   edgeStrip: boolean;
+  /**
+   * A hidden dock comes out by itself when an agent needs the user: it stays out while a seat waits, and
+   * for some seconds after a new reply. Used only when `autoHide` is on.
+   */
+  peekOnAttention: boolean;
   /** See `AGENT_DOCK_SIZE_LIMITS`. */
   sizePercent: number;
   /** The saved positions. A display without one has the dock in the centre. */
@@ -237,6 +242,7 @@ export function isAgentDockPresentation(value: unknown): value is AgentDockPrese
     (value.edge === "left" || value.edge === "right") &&
     isBoolean(value.autoHide) &&
     isBoolean(value.edgeStrip) &&
+    isBoolean(value.peekOnAttention) &&
     integerInRange(value.sizePercent, AGENT_DOCK_SIZE_LIMITS.min, AGENT_DOCK_SIZE_LIMITS.max) &&
     isList(value.offsets, AGENT_DOCK_LIMITS.displays, isAgentDockOffset) &&
     isList(value.seats, AGENT_DOCK_LIMITS.seats, isSeat) &&

@@ -164,7 +164,12 @@ const STORY_TUCK_DELAY_MS = 900;
  * finished-work shelf until you open that chat. With `edgeStrip`, the dock hides when not in use and
  * leaves the edge strip, as "Show a strip at the edge" in Settings does.
  */
-function AgentDockStory(props: { seats: AgentDockSeatRef[]; results?: AgentDockShelfResult[]; edgeStrip?: boolean }) {
+function AgentDockStory(props: {
+  seats: AgentDockSeatRef[];
+  results?: AgentDockShelfResult[];
+  edgeStrip?: boolean;
+  calling?: AgentDockSeatRef[];
+}) {
   const [state, setState] = createStore({
     seats: props.seats.map(agentDockSeatKey),
     messages: structuredClone(MESSAGES),
@@ -295,6 +300,7 @@ function AgentDockStory(props: { seats: AgentDockSeatRef[]; results?: AgentDockS
         }}
         onOpenInMain={() => undefined}
         agents={AGENTS}
+        calling={props.calling?.map(agentDockSeatKey)}
       />
       <Show when={props.edgeStrip}>
         <AgentDockEdgeStrip
@@ -381,6 +387,15 @@ export const Empty: Story = {
  */
 export const EdgeStrip: Story = {
   render: () => <AgentDockStory seats={agentSeats("chief", "research", "sales")} edgeStrip />,
+};
+
+/**
+ * An agent needs you: the hidden dock came out by itself, as "Show when an agent needs you" in Settings
+ * does. Research asks a question, so a soft halo breathes behind its face three times and then stays
+ * faint. With reduced motion, the halo does not move.
+ */
+export const NeedsYou: Story = {
+  render: () => <AgentDockStory seats={agentSeats("chief", "research", "sales")} calling={agentSeats("research")} />,
 };
 
 /** The edge strip while no agent asks anything: the strip stays dark and nothing moves. */

@@ -92,6 +92,7 @@ import {
   seatViewTop,
   stagedCurve,
   TUCK,
+  TUCK_CALM,
   TUCK_DISTANCE,
   WOBBLY,
 } from "./agent-dock-motion";
@@ -227,6 +228,13 @@ export interface AgentDockProps {
   side?: "left" | "right" | undefined;
   /** The dock slides into the window edge. */
   tucked?: boolean | undefined;
+  /**
+   * The dock comes out of the edge by itself, not under the pointer: it slides out slower and with no
+   * overshoot, so it does not jump at the user.
+   */
+  calmReveal?: boolean | undefined;
+  /** The seats that need the user now, by `agentDockSeatKey`. They get a soft ring that pulses a few times. */
+  calling?: readonly string[] | undefined;
   /** When set, the user drags the handle below the dock to move the dock along the edge. */
   onDrag?: ((phase: AgentDockDragPhase) => void) | undefined;
   /** The unread results of the seated agents, oldest first. The shelf beside the dock shows the newest. */
@@ -1099,12 +1107,13 @@ export function AgentDock(props: AgentDockProps) {
 
   /* The dock slides into the edge and out of it on a spring. */
   createEffect(
-    () => props.tucked ?? false,
-    (tucked) => {
-      tuck.to(tucked ? TUCK_DISTANCE : 0);
+    () => ({ tucked: props.tucked ?? false, calm: props.calmReveal ?? false }),
+    ({ tucked, calm }) => {
+      tuck.to(tucked ? TUCK_DISTANCE : 0, undefined, !tucked && calm ? TUCK_CALM : TUCK);
       motion.kick();
     },
   );
+  const calling = createMemo(() => new Set(props.calling ?? []));
 
   /* The edge changes the place of the dock without a spring. */
   createEffect(
@@ -1253,6 +1262,7 @@ export function AgentDock(props: AgentDockProps) {
                             aria-label={t("agent.dock.chatWith", { name: seatName(seat()) })}
                             aria-pressed={state.open === id ? "true" : "false"}
                             data-open={state.open === id ? "" : undefined}
+                            data-calling={calling().has(id) ? "" : undefined}
                             onPointerDown={(event: PointerEvent & { currentTarget: HTMLElement }) =>
                               pressSeat(id, event)
                             }

@@ -23,6 +23,8 @@ export interface AgentDockPreference {
   autoHide: boolean;
   /** While hidden, a thin strip stays at the edge in place of the whole edge. */
   edgeStrip: boolean;
+  /** A hidden dock comes out by itself when an agent asks something or answers. */
+  peekOnAttention: boolean;
   /** The size of the dock above the other apps, in percent. */
   sizePercent: number;
   /** Work that the agents finished shows beside the dock for a short time. */
@@ -37,9 +39,11 @@ const DEFAULT_PREFERENCE: AgentDockPreference = {
   placement: "screen",
   display: { kind: "window" },
   edge: "right",
-  autoHide: false,
+  // The dock stays in the edge until the pointer touches the edge or an agent needs the user.
+  autoHide: true,
   // The dock stays full by default; the strip is a choice in Settings.
   edgeStrip: false,
+  peekOnAttention: true,
   sizePercent: AGENT_DOCK_SIZE_LIMITS.default,
   results: true,
   offsets: [],
@@ -64,6 +68,8 @@ const preferenceSchema = z
     edge: z.enum(["left", "right"]).catch(DEFAULT_PREFERENCE.edge),
     autoHide: z.boolean().catch(DEFAULT_PREFERENCE.autoHide),
     edgeStrip: z.boolean().catch(DEFAULT_PREFERENCE.edgeStrip),
+    // A preference saved before this setting has no value for it, and gets the default.
+    peekOnAttention: z.boolean().catch(DEFAULT_PREFERENCE.peekOnAttention),
     sizePercent: z
       .number()
       .int()

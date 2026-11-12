@@ -269,6 +269,9 @@ export const messages = {
     "드래그하여 다른 앱 위에 표시되는 독의 크기를 바꿉니다. 기본 창에서는 독이 인터페이스 크기를 따릅니다.",
   "settings.agentDock.autoHide.title": "사용하지 않을 때 숨기기",
   "settings.agentDock.autoHide.description": "독이 가장자리 안으로 들어갑니다. 포인터를 가장자리로 옮기면 나타납니다.",
+  "settings.agentDock.peek.title": "에이전트가 나를 필요로 할 때 표시",
+  "settings.agentDock.peek.description":
+    "에이전트가 질문하거나 답하면 숨은 독이 나옵니다. 질문이 기다리는 동안에는 계속 보입니다.",
   "settings.agentDock.edgeStrip.title": "가장자리에 띠 표시",
   "settings.agentDock.edgeStrip.description":
     "독이 숨은 자리에 얇은 띠가 남습니다. 포인터를 가까이 가져가면 독이 나타납니다. 에이전트가 질문하면 띠에 색 물결이 올라갑니다.",

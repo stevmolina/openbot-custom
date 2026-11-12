@@ -30,6 +30,8 @@ import { createAgentDockVoice } from "./agent-dock-voice";
 
 /** The time without use before the dock slides into the edge, when the user wants it hidden. */
 const TUCK_DELAY_MS = 900;
+/** A new reply keeps a hidden dock out this long. A question keeps it out until the question ends. */
+const REPLY_PEEK_MS = 6000;
 /** The width of the strip at the screen edge where the pointer brings a hidden dock back. */
 const EDGE_STRIP = 4;
 /**
@@ -52,13 +54,21 @@ const POINTER_ZONE_WINDOW = currentDevicePlatform() === "win32";
  * The window lets the pointer through, except over the dock shapes. It takes key input while a chat
  * or a menu is open, and a click in another app closes the chat. When the user wants it hidden, the dock
  * slides into the edge while nobody uses it, and comes back when the pointer touches the edge. With the
- * edge strip on, only the pointer near the strip brings it back.
+ * edge strip on, only the pointer near the strip brings it back. With "show when an agent needs you" on,
+ * it also comes out by itself, calmly: while an agent waits for the user, and for a short time after a
+ * new reply. It does not take the focus then.
  */
 export function AgentDockSurface() {
   const { t, errorMessage } = useText();
   const [presentation, setPresentation] = createSignal<AgentDockPresentation | null>(null);
   const [closeRequest, setCloseRequest] = createSignal(0);
   const [tucked, setTuckedSignal] = createSignal(false);
+  /** The dock came out by itself, not under the pointer. */
+  const [calmReveal, setCalmReveal] = createSignal(false);
+  /** The seats that need the user, by seat key. */
+  const [calling, setCallingSignal] = createSignal<readonly string[]>([]);
+  /* A plain copy, read outside a tracking scope. */
+  let callingKeys: readonly string[] = [];
   /* A plain copy: a signal write shows in a read only after the next flush. */
   let isTucked = false;
   const setTucked = (value: boolean) => {
@@ -79,6 +89,17 @@ export function AgentDockSurface() {
   let edgeStrip = false;
   /** The pointer is close to the edge strip. */
   let near = false;
+  /** A plain copy of the "show when an agent needs you" setting. */
+  let peekOn = false;
+  /** The seats that wait for the user, by seat key. */
+  let waitingSeats: readonly string[] = [];
+  /** The seats with a new reply that keep the dock out until `replyTimer` ends. */
+  let replySeats = new Set<string>();
+  let replyTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The last unread count of each agent seat, by seat key. A working or waiting mark hides the count. */
+  let unreadCounts = new Map<string, number>();
+  /** The server of the counts. The first presentation of a server only records them. */
+  let countedServer: string | null = null;
   let tuckTimer: ReturnType<typeof setTimeout> | undefined;
   let sent = { interactive: false, keyboard: false };
   /** The dock parts at rest, or null while the dock moves. */
@@ -95,7 +116,12 @@ export function AgentDockSurface() {
   const perform = (action: AgentDockAction) => agentDockPort().agentDock.performAction(action);
 
   const menuOpen = () => document.querySelector(".ui-action-menu") !== null;
-  const inUse = () => pointerIn || near || chatOpen || dragging || shelfShown || menuOpen();
+  /** The user is on the dock or works with it. */
+  const handsOn = () => pointerIn || near || chatOpen || dragging || menuOpen();
+  /* A result on the shelf keeps the dock out like a use, but the dock comes out by itself for it. */
+  const inUse = () => handsOn() || shelfShown;
+  /** An agent needs the user, and the user wants the hidden dock to come out for it. */
+  const wantsYou = () => autoHide && peekOn && (waitingSeats.length > 0 || replySeats.size > 0);
   const stopTuckTimer = () => {
     clearTimeout(tuckTimer);
     tuckTimer = undefined;
@@ -103,24 +129,87 @@ export function AgentDockSurface() {
 
   /** Slides the dock into the edge a moment after the use ends; a use in the meantime keeps it out. */
   const updateTuck = () => {
-    if (!autoHide || inUse()) {
+    if (!autoHide || inUse() || wantsYou()) {
       stopTuckTimer();
+      if (isTucked) setCalmReveal(autoHide && !handsOn());
       setTucked(false);
       return;
     }
     if (isTucked || tuckTimer !== undefined) return;
     tuckTimer = setTimeout(() => {
       tuckTimer = undefined;
-      if (autoHide && !inUse()) setTucked(true);
+      if (autoHide && !inUse() && !wantsYou()) setTucked(true);
     }, TUCK_DELAY_MS);
   };
-  createEffect(
-    () => presentation()?.autoHide ?? false,
-    (value) => {
-      autoHide = value;
-      updateTuck();
-    },
-  );
+  /** Shows the dock now because the pointer came to the edge or the strip. */
+  const revealByPointer = () => {
+    stopTuckTimer();
+    setCalmReveal(false);
+    setTucked(false);
+  };
+
+  const stopReplyPeek = () => {
+    clearTimeout(replyTimer);
+    replyTimer = undefined;
+    replySeats = new Set();
+  };
+  /**
+   * Reads which seats need the user. A seat that waits keeps the dock out. A rise of an agent's unread
+   * count is a new reply: it keeps the dock out for `REPLY_PEEK_MS`. A count that goes down (the user read
+   * it), a working mark and the user's own message do not show the dock.
+   */
+  const noticeAttention = (next: AgentDockPresentation | null) => {
+    if (!next) return;
+    const first = next.serverId !== countedServer;
+    countedServer = next.serverId;
+    if (first) stopReplyPeek();
+    const waiting: string[] = [];
+    const counts = new Map<string, number>();
+    let replied = false;
+    for (const seat of next.seats) {
+      const key = agentDockSeatKey(seatRefOf(seat));
+      if (seat.state?.kind === "waiting") waiting.push(key);
+      // A channel counts the messages of all its members, so its count does not mean a reply to the user.
+      if (seat.kind !== "agent") continue;
+      const before = unreadCounts.get(key);
+      const state = seat.state;
+      const count =
+        state === null || state.kind === "responded" ? 0 : state.kind === "unread" ? state.count : (before ?? 0);
+      counts.set(key, count);
+      if (before === undefined) continue;
+      if (count > before && !first && autoHide && peekOn) {
+        replySeats.add(key);
+        replied = true;
+      } else if (count < before) replySeats.delete(key);
+    }
+    for (const key of replySeats) if (!counts.has(key)) replySeats.delete(key);
+    unreadCounts = counts;
+    waitingSeats = waiting;
+    if (replied) {
+      clearTimeout(replyTimer);
+      replyTimer = setTimeout(() => {
+        replyTimer = undefined;
+        replySeats = new Set();
+        showCalling();
+        updateTuck();
+      }, REPLY_PEEK_MS);
+    }
+    showCalling();
+  };
+  /** Marks the seats that need the user, while the dock can come out for them. */
+  const showCalling = () => {
+    const next = autoHide && peekOn ? [...new Set([...waitingSeats, ...replySeats])] : [];
+    if (next.length === callingKeys.length && next.every((key, index) => key === callingKeys[index])) return;
+    callingKeys = next;
+    setCallingSignal(next);
+  };
+  createEffect(presentation, (value) => {
+    autoHide = value?.autoHide ?? false;
+    peekOn = value?.peekOnAttention ?? false;
+    if (!autoHide || !peekOn) stopReplyPeek();
+    noticeAttention(value);
+    updateTuck();
+  });
   createEffect(
     () => presentation()?.edgeStrip ?? false,
     (value) => {
@@ -203,10 +292,7 @@ export function AgentDockSurface() {
 
     // The dock shapes take the pointer; the empty page, the body and the root let it through.
     const onPointer = (event: MouseEvent) => {
-      if (isTucked && !edgeStrip && atEdge(event)) {
-        stopTuckTimer();
-        setTucked(false);
-      }
+      if (isTucked && !edgeStrip && atEdge(event)) revealByPointer();
       const target = event.target;
       pointerIn =
         target instanceof Element &&
@@ -239,6 +325,7 @@ export function AgentDockSurface() {
       document.documentElement.removeEventListener("mouseleave", onLeave);
       window.removeEventListener("blur", onBlur);
       stopTuckTimer();
+      stopReplyPeek();
     };
   });
 
@@ -303,6 +390,8 @@ export function AgentDockSurface() {
             voice={voice}
             side={presentation()?.edge ?? "right"}
             tucked={tucked()}
+            calmReveal={calmReveal()}
+            calling={calling()}
             onShapeChange={
               SHAPED_WINDOW || POINTER_ZONE_WINDOW
                 ? (parts) => {
@@ -388,10 +477,7 @@ export function AgentDockSurface() {
                 near = value;
                 sync();
               }}
-              onShow={() => {
-                stopTuckTimer();
-                setTucked(false);
-              }}
+              onShow={revealByPointer}
             />
           </Show>
         </>
@@ -403,6 +489,11 @@ export function AgentDockSurface() {
 /** The members of a channel as the shared channel avatar reads them. */
 function uiChannel(channel: AgentDockChannel): AgentDockUiChannel {
   return { ...channel, members: channel.members.map((agentId) => ({ agentId })) };
+}
+
+/** The reference of a seat that the dock shows. */
+function seatRefOf(seat: AgentDockPresentation["seats"][number]): AgentDockSeatRef {
+  return seat.kind === "agent" ? { kind: "agent", id: seat.agent.id } : { kind: "channel", id: seat.channel.id };
 }
 
 /** A plain seat for the action: the dock state can hold a store copy. */

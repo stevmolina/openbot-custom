@@ -264,6 +264,9 @@ export const messages = {
     "גררו כדי לשנות את גודל המעגן מעל אפליקציות אחרות. בחלון הראשי, המעגן עוקב אחר גודל הממשק.",
   "settings.agentDock.autoHide.title": "הסתרה כשלא בשימוש",
   "settings.agentDock.autoHide.description": "המעגן נכנס לקצה. הזזת המצביע לקצה מציגה אותו.",
+  "settings.agentDock.peek.title": "הצגה כשסוכן צריך אותך",
+  "settings.agentDock.peek.description":
+    "המעגן המוסתר יוצא כשסוכן שואל אותך משהו או עונה לך. הוא נשאר גלוי כל עוד שאלה ממתינה.",
   "settings.agentDock.edgeStrip.title": "הצגת פס בקצה",
   "settings.agentDock.edgeStrip.description":
     "פס דק נשאר במקום שבו המעגן נעלם. קירוב המצביע אליו מציג את המעגן. גל צבע עולה בפס כשסוכן שואל אותך משהו.",

@@ -274,6 +274,9 @@ export const messages = {
     "اسحب لتغيير حجم الشريط فوق التطبيقات الأخرى. في النافذة الرئيسية، يتبع الشريط حجم الواجهة.",
   "settings.agentDock.autoHide.title": "إخفاء عند عدم الاستخدام",
   "settings.agentDock.autoHide.description": "ينزلق الشريط داخل الحافة. حرّك المؤشر إلى الحافة لإظهاره.",
+  "settings.agentDock.peek.title": "الإظهار عندما يحتاجك وكيل",
+  "settings.agentDock.peek.description":
+    "يخرج الشريط المخفي عندما يسألك وكيل عن شيء أو يرد عليك. يبقى ظاهرًا ما دام هناك سؤال ينتظر.",
   "settings.agentDock.edgeStrip.title": "إظهار شريط رفيع عند الحافة",
   "settings.agentDock.edgeStrip.description":
     "يبقى شريط رفيع حيث يختفي الشريط. قرّب المؤشر منه لإظهار الشريط. تمر موجة ألوان على الشريط عندما يسألك وكيل عن شيء.",

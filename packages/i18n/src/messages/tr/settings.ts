@@ -271,6 +271,9 @@ export const messages = {
     "Diğer uygulamaların üstündeki yuvanın boyutunu değiştirmek için sürükleyin. Ana pencerede yuva arayüz boyutunu izler.",
   "settings.agentDock.autoHide.title": "Kullanılmadığında gizle",
   "settings.agentDock.autoHide.description": "Yuva kenarın içine kayar. Göstermek için işaretçiyi kenara getirin.",
+  "settings.agentDock.peek.title": "Bir ajan sizi beklediğinde göster",
+  "settings.agentDock.peek.description":
+    "Bir ajan size bir şey sorduğunda veya yanıt verdiğinde gizli yuva dışarı çıkar. Bir soru beklediği sürece görünür kalır.",
   "settings.agentDock.edgeStrip.title": "Kenarda bir şerit göster",
   "settings.agentDock.edgeStrip.description":
     "Yuvanın gizlendiği yerde ince bir şerit kalır. Yuvayı göstermek için işaretçiyi yaklaştırın. Bir ajan size bir şey sorduğunda şeritten bir renk dalgası geçer.",
