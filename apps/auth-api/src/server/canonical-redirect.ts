@@ -17,6 +17,19 @@ export function canonicalHostRedirect(request: Request): Response | null {
 }
 
 /**
+ * A self-hosted deploy can give the web client its own address, such as `app.example.com`, next to the
+ * API address that installed apps use. On a host whose first label is `app`, the home page opens the
+ * web client at `/app`. Every other path, the API included, stays as it is. 302, because the address
+ * can later serve something else.
+ */
+export function webAppHostRedirect(request: Request): Response | null {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const url = new URL(request.url);
+  if (!url.hostname.startsWith("app.") || url.pathname !== "/") return null;
+  return Response.redirect(`${url.origin}/app${url.search}`, 302);
+}
+
+/**
  * The router answers a page address that ends in `/` with a 307 to the address
  * without it. A 307 is temporary, so search engines keep both addresses. This
  * makes that one redirect permanent and leaves every other 307 as it is.
