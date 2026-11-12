@@ -63,6 +63,31 @@
   will-change: transform;
 }
 
+/* Pokebots: the headphones mascot, with a soft shadow that shrinks while it bobs up. */
+.app-loading-mascot {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.app-loading-mascot img {
+  display: block;
+  user-select: none;
+  filter: drop-shadow(0 14px 18px color-mix(in srgb, var(--openbot-accent) 22%, transparent));
+}
+
+.app-loading-mascot::after {
+  content: "";
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  width: 72px;
+  height: 10px;
+  border-radius: var(--openbot-radius-pill);
+  background: color-mix(in srgb, var(--openbot-text-muted) 30%, transparent);
+  translate: -50% 0;
+}
+
 .app-loading-status {
   min-height: 20px;
   margin: 0;
@@ -95,6 +120,14 @@
   .app-loading-stage {
     animation: app-loading-enter var(--openbot-duration-overlay) var(--openbot-ease-out)
       calc(250ms - var(--app-loading-at)) both;
+  }
+
+  .app-loading-mascot img {
+    animation: app-loading-bob 1.6s var(--openbot-ease-in-out) infinite;
+  }
+
+  .app-loading-mascot::after {
+    animation: app-loading-shadow 1.6s var(--openbot-ease-in-out) infinite;
   }
 
   .app-loading-line {
@@ -199,4 +232,17 @@
 }
 .server-connection-content[hidden] {
   display: none;
+}
+
+@keyframes app-loading-bob {
+  50% {
+    transform: translateY(-14px) rotate(-3deg);
+  }
+}
+
+@keyframes app-loading-shadow {
+  50% {
+    opacity: 0.55;
+    scale: 0.8;
+  }
 }
