@@ -329,19 +329,16 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
     ...(settledShown() ? [SIDEBAR_UNASSIGNED_SECTION_ID] : []),
   ]);
   /**
-   * The open group. One group is always open, so the chats never all hide behind closed groups. When
-   * the saved one is not on screen, such as "Working" while no chat works, or no group is saved, the
-   * dock opens "Settled", or else its first group.
+   * The open group, or null when the user closed all of them. When the saved one is not on screen,
+   * such as "Working" while no chat works, the dock opens "Settled", or else its first group.
    */
   const openId = createMemo(() => {
     const saved = dockOpenGroup();
-    if (saved !== null && shownIds().includes(saved)) return saved;
+    if (saved === null || shownIds().includes(saved)) return saved;
     return shownIds().includes(SIDEBAR_UNASSIGNED_SECTION_ID) ? SIDEBAR_UNASSIGNED_SECTION_ID : (shownIds()[0] ?? null);
   });
-  /** A click opens a closed group. The open group stays open: an accordion always shows one group. */
-  const toggle = (groupId: string) => {
-    if (openId() !== groupId) setDockOpenGroup(groupId);
-  };
+  /** A click opens a closed group and closes the open one, so the user can close all groups. */
+  const toggle = (groupId: string) => setDockOpenGroup(openId() === groupId ? null : groupId);
   const draftShown = () => {
     const target = pending.sectionEditor?.target;
     return target?.kind === "create" && (target.parentId ?? null) === null;
