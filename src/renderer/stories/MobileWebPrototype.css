@@ -1,0 +1,329 @@
+/* Prototype: phone layouts of the web client. Every rule is scoped under `.proto-mobile`. */
+
+@media (max-width: 720px) {
+  /* All variants: the Discord card, the usage rings and the pill leave the phone. The pill stays in the
+   * DOM, so the new tab bar can open its pages. */
+  .proto-a .sidebar-chat-footer,
+  .proto-b .sidebar-chat-footer,
+  .proto-c .sidebar-chat-footer,
+  .proto-a .sidebar-chat-bottom,
+  .proto-b .sidebar-chat-bottom,
+  .proto-c .sidebar-chat-bottom {
+    display: none;
+  }
+
+  /* All variants: the title, the open folders and the closed ones scroll as one list. */
+  .proto-a .sidebar-chat .sidebar-chat-list,
+  .proto-b .sidebar-chat .sidebar-chat-list,
+  .proto-c .sidebar-chat .sidebar-chat-list {
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  :is(.proto-a, .proto-b, .proto-c) .sidebar-chat-scroll,
+  :is(.proto-a, .proto-b, .proto-c) .sidebar-dock,
+  :is(.proto-a, .proto-b, .proto-c) .sidebar-dock-group,
+  :is(.proto-a, .proto-b, .proto-c) .sidebar-dock-body {
+    flex: none;
+    overflow: visible;
+  }
+
+  :is(.proto-a, .proto-b, .proto-c) .sidebar-dock {
+    border-top: 0;
+    padding-bottom: var(--openbot-space-6);
+  }
+
+  :is(.proto-a, .proto-b, .proto-c) .sidebar-chat .sidebar-chat-list > .sidebar-list-context-trigger {
+    display: none;
+  }
+
+  .proto-mobile .agent-list-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .proto-mobile .agent-list-content > * {
+    order: 2;
+  }
+
+  .proto-mobile .agent-list-content > .sidebar-chat-large-title {
+    order: 0;
+  }
+
+  .proto-mobile .agent-list-content > .proto-search {
+    order: 1;
+  }
+
+  /* The search field. */
+  .proto-search {
+    display: flex;
+    height: 40px;
+    align-items: center;
+    gap: var(--openbot-space-2);
+    margin: 0 var(--openbot-space-1) var(--openbot-space-2);
+    border: 0;
+    border-radius: var(--openbot-radius-lg);
+    background: var(--openbot-bg-surface);
+    padding: 0 var(--openbot-space-3);
+    color: var(--openbot-text-muted);
+    font: inherit;
+    font-size: var(--openbot-text-lg);
+    text-align: start;
+  }
+
+  .proto-search > svg {
+    width: var(--openbot-icon-md);
+    height: var(--openbot-icon-md);
+  }
+
+  /* ---------------------------------------------------------------- A. One list */
+
+  .proto-a .web-phone-tab-bar {
+    display: none;
+  }
+
+  /* The server name opens the server drawer, so it carries a chevron. */
+  .proto-a .sidebar-chat-large-title {
+    cursor: pointer;
+  }
+
+  .proto-a .sidebar-chat-large-title::after {
+    display: inline-block;
+    width: 0.32em;
+    height: 0.32em;
+    margin-inline-start: 0.3em;
+    border-right: 3px solid var(--openbot-text-muted);
+    border-bottom: 3px solid var(--openbot-text-muted);
+    content: "";
+    transform: translateY(-0.12em) rotate(45deg);
+  }
+
+  .proto-tab-bar {
+    position: absolute;
+    z-index: 5;
+    inset-inline: 0;
+    bottom: 0;
+    display: grid;
+    height: var(--web-phone-tab-bar-space);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+    border-top: 0.5px solid var(--openbot-border-strong);
+    background: var(--openbot-bg-chrome-blur);
+    padding-bottom: var(--web-phone-bottom-inset);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  .web-app-frame[data-web-mobile-pane="conversation"] > .proto-tab-bar {
+    visibility: hidden;
+  }
+
+  .proto-tab {
+    display: flex;
+    height: var(--web-phone-tab-bar-height);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--openbot-space-0-5);
+    border: 0;
+    background: transparent;
+    padding: var(--openbot-space-1) 0 0;
+    color: var(--openbot-text-muted);
+    font: inherit;
+    font-size: var(--openbot-text-sm);
+    font-weight: var(--openbot-weight-medium);
+  }
+
+  .proto-tab > svg {
+    width: var(--openbot-icon-lg);
+    height: var(--openbot-icon-lg);
+  }
+
+  .proto-tab[aria-current="page"] {
+    color: var(--openbot-accent-text);
+  }
+
+  /* ---------------------------------------------------------------- B. Folder chips */
+
+  .proto-b .web-phone-tab-bar,
+  .proto-b .sidebar-chat-top,
+  .proto-b .sidebar-chat-large-title {
+    display: none;
+  }
+
+  .proto-b .web-app-frame > .sidebar {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .proto-b-head {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    order: -1;
+    gap: var(--openbot-space-2);
+    padding: var(--openbot-space-2) var(--openbot-space-3) var(--openbot-space-1);
+  }
+
+  .proto-b-bar {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    align-items: center;
+  }
+
+  .proto-avatar,
+  .proto-round {
+    display: flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--openbot-radius-pill);
+    background: var(--openbot-bg-surface);
+    color: var(--openbot-text-primary);
+    font: inherit;
+    font-weight: var(--openbot-weight-bold);
+  }
+
+  .proto-round > svg {
+    width: var(--openbot-icon-md);
+    height: var(--openbot-icon-md);
+  }
+
+  .proto-server {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: var(--openbot-space-1);
+    border: 0;
+    background: transparent;
+    color: var(--openbot-text-primary);
+    font: inherit;
+    font-size: var(--openbot-text-xl);
+    font-weight: var(--openbot-weight-semibold);
+  }
+
+  .proto-server > svg {
+    width: var(--openbot-icon-md);
+    height: var(--openbot-icon-md);
+    color: var(--openbot-text-muted);
+  }
+
+  .proto-b-head .proto-search {
+    margin: 0;
+  }
+
+  .proto-chips {
+    display: flex;
+    gap: var(--openbot-space-2);
+    margin-inline: calc(var(--openbot-space-3) * -1);
+    overflow-x: auto;
+    padding: var(--openbot-space-1) var(--openbot-space-3);
+    scrollbar-width: none;
+  }
+
+  .proto-chip {
+    display: flex;
+    height: 34px;
+    flex: none;
+    align-items: center;
+    gap: var(--openbot-space-1-5);
+    border: 1px solid var(--openbot-border);
+    border-radius: var(--openbot-radius-pill);
+    background: transparent;
+    padding: 0 var(--openbot-space-3);
+    color: var(--openbot-text-secondary);
+    font: inherit;
+    font-size: var(--openbot-text-md);
+    font-weight: var(--openbot-weight-medium);
+  }
+
+  .proto-chip[aria-selected="true"] {
+    border-color: transparent;
+    background: var(--openbot-text-primary);
+    color: var(--openbot-bg-canvas);
+  }
+
+  .proto-chip-count {
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .proto-b .sidebar-dock-group[data-proto-hidden] {
+    display: none;
+  }
+
+  /* One folder in view: its heading is the chip, so it hides. */
+  .proto-b:not([data-chip="all"]) .sidebar-dock-group > header,
+  .proto-b:not([data-chip="all"]) .sidebar-dock-group > .sidebar-section-header {
+    display: none;
+  }
+
+  /* ---------------------------------------------------------------- C. Folder screens */
+
+  .proto-c .sidebar-dock {
+    padding-top: 0;
+  }
+
+  /* A folder is a row of the home list: folder icon, name, count, and a chevron that points in. */
+  .proto-c .sidebar-chat .sidebar-dock-head.ui-button {
+    min-height: 56px;
+    gap: var(--openbot-space-3);
+    border-bottom: 0.5px solid var(--openbot-border);
+    border-radius: 0;
+    padding: var(--openbot-space-3) var(--openbot-space-2);
+    color: var(--openbot-text-primary);
+    font-size: var(--openbot-text-lg);
+  }
+
+  .proto-c .sidebar-dock-head .sidebar-dock-chevron {
+    order: 9;
+    width: 18px;
+    height: 18px;
+    color: var(--openbot-text-muted);
+  }
+
+  .proto-c .sidebar-dock-head .sidebar-dock-folder {
+    width: 22px;
+    height: 22px;
+    color: var(--openbot-accent-text);
+  }
+
+  .proto-c .sidebar-dock-head .sidebar-dock-count {
+    color: var(--openbot-text-muted);
+  }
+
+  .proto-c .sidebar-dock-chevron-open {
+    transform: none;
+  }
+
+  /* A folder open: it is the whole screen. Its row turns into a Back row with the folder name. */
+  .proto-c[data-folder-open] .sidebar-chat-scroll,
+  .proto-c[data-folder-open] .sidebar-dock-group:not([data-proto-current]) {
+    display: none;
+  }
+
+  .proto-c[data-folder-open] .sidebar-dock-group[data-proto-current] .sidebar-dock-head.ui-button {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--openbot-bg-chrome-blur);
+    font-size: var(--openbot-text-xl);
+    font-weight: var(--openbot-weight-semibold);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  .proto-c[data-folder-open] .sidebar-dock-group[data-proto-current] .sidebar-dock-chevron {
+    order: -1;
+    width: 24px;
+    height: 24px;
+    color: var(--openbot-accent-text);
+    transform: rotate(180deg);
+  }
+
+  .proto-c[data-folder-open] .sidebar-dock-group[data-proto-current] .sidebar-dock-folder {
+    display: none;
+  }
+}
