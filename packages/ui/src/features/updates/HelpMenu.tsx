@@ -1,7 +1,8 @@
-import { BookOpen, Bug, CircleQuestionMark, DropdownMenu, Gift, Megaphone, MotionTooltip } from "@openbot/ui";
+import { BookOpen, Bug, CircleQuestionMark, DropdownMenu, Gift, Keyboard, Megaphone, MotionTooltip } from "@openbot/ui";
 import { createSignal, For, Show } from "solid-js";
 import { useText } from "../../text";
 import { DiscordMark } from "../settings/brand-marks";
+import { type ShortcutPlatform, shortcutText } from "../shortcuts/shortcut-registry";
 
 /** One line of the What's new list: the headline of a release note and the date of its release. */
 export interface HelpMenuNews {
@@ -23,6 +24,10 @@ export interface HelpMenuProps {
   onOpenDiscord: () => void;
   onReportProblem: () => void;
   onSendFeedback: () => void;
+  /** Opens the keyboard shortcut sheet. */
+  onOpenShortcuts?: (() => void) | undefined;
+  /** The keyboard of the device, so the shortcut item names its key. */
+  shortcutPlatform?: ShortcutPlatform | undefined;
 }
 
 /** A release date in local time. `new Date("YYYY-MM-DD")` reads UTC and can show the day before. */
@@ -92,6 +97,17 @@ export function HelpMenuItems(props: Omit<HelpMenuProps, "triggerClass" | "onOpe
         <BookOpen class="agent-context-icon size-4" aria-hidden="true" />
         <span>{t("app.help.guides")}</span>
       </DropdownMenu.Item>
+      <Show when={props.onOpenShortcuts}>
+        {(openShortcuts) => (
+          <DropdownMenu.Item onSelectAfterClose={() => openShortcuts()()}>
+            <Keyboard class="agent-context-icon size-4" aria-hidden="true" />
+            <span>{t("app.shortcuts.title")}</span>
+            <Show when={props.shortcutPlatform}>
+              {(platform) => <span class="ui-menu-trailing">{shortcutText("shortcuts", platform())}</span>}
+            </Show>
+          </DropdownMenu.Item>
+        )}
+      </Show>
       <DropdownMenu.Item onSelect={() => props.onOpenDiscord()}>
         <DiscordMark class="agent-context-icon size-4" />
         <span>{t("app.help.discord")}</span>

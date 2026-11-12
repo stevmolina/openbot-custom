@@ -5,12 +5,14 @@ import type { SidebarView } from "@openbot/ui/features/sidebar/sidebar-types";
 import { useText } from "@openbot/ui/text";
 import { appPort } from "../../app-port";
 import { useLayout } from "../../layout";
+import { usePlatform } from "../../platform";
 import { useChannels } from "../channels/channels-context";
 import { useCustomAgents } from "../custom-agents/custom-agents-context";
 import { serverHasStorage } from "../files/storage-usage";
 import { serverSupportsCapability } from "../servers/server-capabilities";
 import { useServers } from "../servers/servers-context";
 import { useSettings } from "../settings/settings-context";
+import { shortcutPlatform as devicePlatform } from "../shortcuts/shortcut-platform";
 import { useUpdates } from "../updates/updates-context";
 import { useWhatsNew } from "../updates/whats-new-context";
 import { usePlanLimitRows } from "../usage/plan-limit-rows";
@@ -23,6 +25,12 @@ import { useWindowPage } from "./window-page-context";
  * Settings change the page in the card.
  */
 export function useWorkspaceSidebarPages(): () => SidebarPages {
+  const platform = usePlatform();
+  /** The keyboard of this computer, once main has reported the system. */
+  const shortcutPlatform = () => {
+    const info = platform.appInfo();
+    return info ? devicePlatform(info.platform) : undefined;
+  };
   const text = useText();
   const windowPage = useWindowPage();
   const { openAppSettings, setSkillsMarketplaceOpen } = useSettings();
@@ -62,6 +70,7 @@ export function useWorkspaceSidebarPages(): () => SidebarPages {
     version: () => whatsNew.state.version,
     onOpenWhatsNew: whatsNew.reopen,
     onOpenLink: (destination) => void appPort().openExternal(destination),
+    shortcutPlatform,
   });
   return () => ({
     current: current(),
@@ -84,5 +93,6 @@ export function useWorkspaceSidebarPages(): () => SidebarPages {
     settingsNotice: updateNotice(),
     help,
     onCollapse: () => layout.setSidebarCollapsed(true),
+    shortcutPlatform: shortcutPlatform(),
   });
 }

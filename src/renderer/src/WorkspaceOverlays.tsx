@@ -22,7 +22,7 @@ import { RestartServerDialog } from "@openbot/ui/features/servers/RestartServerD
 import type { HostedSiteDeleteResult } from "@openbot/ui/features/settings/stores/hosted-sites-store";
 import { sidebarAgentOrder } from "@openbot/ui/features/sidebar/sidebar-agent-order";
 import { currentText } from "@openbot/ui/text";
-import { createEffect, createMemo, Loading, Show, untrack } from "solid-js";
+import { createEffect, createMemo, Loading, onSettled, Show, untrack } from "solid-js";
 import { actionToast } from "./action-toast";
 import { desktopAnalytics } from "./analytics";
 import { appPort } from "./app-port";
@@ -67,6 +67,9 @@ import { serversPort } from "./features/servers/servers-port";
 import type { HostProviderSettings } from "./features/settings/ProviderSettingsSection";
 import { useSettings } from "./features/settings/settings-context";
 import { settingsPort } from "./features/settings/settings-port";
+import { AppShortcuts } from "./features/shortcuts/AppShortcuts";
+import { onShortcutCommand } from "./features/shortcuts/shortcut-commands";
+import { shortcutPlatform } from "./features/shortcuts/shortcut-platform";
 import { useSidebar } from "./features/sidebar/sidebar-context";
 import { codexLiveAccess as codexLiveAccessOf } from "./features/speech/codex-live-access";
 import { useUpdates } from "./features/updates/updates-context";
@@ -133,10 +136,44 @@ export function WorkspaceOverlays(props: AccountProps) {
       <ServerSettings />
       <AppSettings account={props.account} />
       <GlobalMessageSearch />
+      <DesktopShortcuts />
       <RemoteDesktop />
       <ChannelCreateOverlay />
     </>
   );
+}
+
+/**
+ * The shortcut keys and the shortcut sheet of this window. Search, Back and Forward keep their own
+ * key listeners; the commands here are what their native menu items run.
+ */
+function DesktopShortcuts() {
+  const platform = usePlatform();
+  const { setGlobalSearchVisibility, chatHistory } = useNavigation();
+  onSettled(() => {
+    const removals = [
+      onShortcutCommand("search", () => {
+        setGlobalSearchVisibility(true);
+        return true;
+      }),
+      onShortcutCommand("historyBack", () => {
+        chatHistory.goBack();
+        return true;
+      }),
+      onShortcutCommand("historyForward", () => {
+        chatHistory.goForward();
+        return true;
+      }),
+    ];
+    return () => {
+      for (const remove of removals) remove();
+    };
+  });
+  const system = () => {
+    const info = platform.appInfo();
+    return info ? shortcutPlatform(info.platform) : undefined;
+  };
+  return <AppShortcuts platform={platform.landingPreview ? undefined : system()} nativeMenu />;
 }
 
 /**

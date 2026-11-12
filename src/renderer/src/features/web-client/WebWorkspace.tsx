@@ -153,6 +153,7 @@ import {
 import { ServerRail } from "@openbot/ui/features/servers/ServerRail";
 import type { SettingsPagePlacement } from "@openbot/ui/features/settings/SettingsDialogShell";
 import { createSettingsHostedServersStore } from "@openbot/ui/features/settings/stores/hosted-servers-store";
+import type { ShortcutId } from "@openbot/ui/features/shortcuts/shortcut-registry";
 import { Sidebar } from "@openbot/ui/features/sidebar/Sidebar";
 import { SidebarCommunityCard } from "@openbot/ui/features/sidebar/SidebarCommunityCard";
 import { sidebarAgentOrder } from "@openbot/ui/features/sidebar/sidebar-agent-order";
@@ -278,6 +279,9 @@ import type { HostClaudeCompactWindowCalls } from "../settings/provider-claude-c
 import type { HostClaudeUserSetupCalls } from "../settings/provider-claude-user-setup";
 import type { HostModelVisibilityCalls } from "../settings/provider-model-visibility";
 import type { HostPromptCacheTtlCalls } from "../settings/provider-prompt-cache";
+import { AppShortcuts } from "../shortcuts/AppShortcuts";
+import { onShortcutCommand } from "../shortcuts/shortcut-commands";
+import { shortcutPlatform } from "../shortcuts/shortcut-platform";
 import { createCommunityCardVisibility } from "../sidebar/community-card";
 import { createSidebarAlertCards, SidebarAlertCards } from "../sidebar/SidebarAlertCards";
 import { isReaderAuthor } from "../team/reader-identity";
@@ -333,6 +337,38 @@ import { createWebUsagePort } from "./web-usage-port";
 import { webVaultCalls } from "./web-vault";
 import { webHostWhatsApp } from "./web-whatsapp-connector";
 import { webWorkflowHost } from "./web-workflows";
+
+/**
+ * The shortcuts the web client leaves out of its sheet. The browser keeps ⌘N, its own zoom and its
+ * tab keys, and the web chat has no Back and Forward, server numbers, Find or menu bar.
+ */
+const WEB_HIDDEN_SHORTCUTS = [
+  "newChat",
+  "historyBack",
+  "historyForward",
+  "switchServer",
+  "settings",
+  "findInChat",
+  "findNext",
+  "findPrevious",
+  "copyLastReply",
+  "copyLastCode",
+  "stopAgent",
+  "stopAllAgents",
+  "zoomIn",
+  "zoomOut",
+  "actualSize",
+  "browserNewTab",
+  "browserReopenTab",
+  "browserCloseTab",
+  "browserAddress",
+  "browserReload",
+  "browserBack",
+  "browserForward",
+  "browserNextTab",
+  "browserPreviousTab",
+  "browserSelectTab",
+] as const satisfies readonly ShortcutId[];
 
 const CONNECTING_STATUS: AgentStatus = {
   phase: "starting",
@@ -819,6 +855,12 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     messageId: string;
     nonce: number;
   } | null>(null);
+  onSettled(() =>
+    onShortcutCommand("search", () => {
+      setSearchOpen(true);
+      return true;
+    }),
+  );
   onSettled(() => {
     const toggleSearch = (event: KeyboardEvent) => {
       if (!isGlobalSearchShortcut(event)) return;
@@ -2527,6 +2569,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     version: () => null,
     onOpenWhatsNew: () => void openWebDestination("changelog"),
     onOpenLink: (destination) => void openWebDestination(destination),
+    shortcutPlatform: () => shortcutPlatform(),
   });
   /** As on desktop: the pages, the provider usage and the account switch of the chat sidebar. */
   const sidebarPages = (): SidebarPages => ({
@@ -2555,6 +2598,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     onSettings: openAccountSettings,
     help,
     onCollapse: () => layout.setSidebarCollapsed(true),
+    shortcutPlatform: shortcutPlatform(),
   });
   /** The settings page on screen, if any. */
   const settingsKind = (): SettingsKind | null =>
@@ -3259,6 +3303,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     }
                   />
                   <ChannelCreateOverlay />
+                  <AppShortcuts platform={shortcutPlatform()} nativeMenu={false} hidden={WEB_HIDDEN_SHORTCUTS} />
                   <GlobalSearchOverlay
                     open={searchOpen()}
                     agents={searchAgents()}

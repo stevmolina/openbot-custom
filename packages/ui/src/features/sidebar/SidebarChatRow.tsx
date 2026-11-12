@@ -32,6 +32,8 @@ export type SidebarChatLook = "row" | "face";
 
 /** What one chat shows, the same for its row and its face. */
 interface ChatView {
+  /** The chat's id, unique across agents and channels. */
+  id: string;
   name: string;
   preview: string;
   waiting: boolean;
@@ -94,6 +96,9 @@ function useAgentView(agent: () => AgentProfile, pinned: () => boolean): ChatVie
     return current ? sidebarAgentStateLabel(current, t, format) : "";
   };
   return {
+    get id() {
+      return `agent:${agent().id}`;
+    },
     get name() {
       return agent().name;
     },
@@ -142,6 +147,9 @@ function useChannelView(channel: () => ChannelSummary, pinned: () => boolean): C
   // A channel from a saved frame has no last message yet: it shows no preview until the list loads.
   const previewPending = () => props.channelPreviewsPending === true && !channel().lastMessage;
   return {
+    get id() {
+      return `channel:${channel().id}`;
+    },
     get name() {
       return channel().name;
     },
@@ -216,6 +224,8 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
         aria-label={label()}
         aria-current={view.active ? "page" : undefined}
         data-cuelume-navigate=""
+        data-sidebar-chat={view.id}
+        data-unread={view.unread ? "" : undefined}
         onClick={() => view.open()}
       >
         <span class="sidebar-chat-avatar">

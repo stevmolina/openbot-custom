@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@openbot/ui/data";
+import { matchShortcut, shortcutMatches } from "@openbot/ui/features/shortcuts/shortcut-registry";
 import { prefersReducedMotion } from "@openbot/ui/utils";
 import { createEffect, onCleanup } from "solid-js";
 import type { ChatSearchMatch } from "../chat-search";
@@ -189,18 +190,18 @@ export function createSearchStore(deps: SearchStoreDeps) {
   function handleChatSearchShortcut(event: KeyboardEvent): void {
     // A control that used the key, such as the search of a trace dialog, keeps it.
     if (event.defaultPrevented) return;
-    const primaryModifier = event.metaKey || event.ctrlKey;
-    const key = event.key.toLocaleLowerCase();
-    if (primaryModifier && !event.altKey && !event.shiftKey && key === "f") {
+    // The Find keys take ⌘ or Ctrl on every system, so the platform does not change the match.
+    if (shortcutMatches("findInChat", event, "mac")) {
       event.preventDefault();
       event.stopPropagation();
       openChatSearch();
       return;
     }
-    if (!deps.chatSearchOpen() || !primaryModifier || event.altKey || key !== "g") return;
+    const move = matchShortcut(["findNext", "findPrevious"] as const, event, "mac");
+    if (!deps.chatSearchOpen() || !move) return;
     event.preventDefault();
     event.stopPropagation();
-    moveChatSearch(event.shiftKey ? -1 : 1);
+    moveChatSearch(move === "findPrevious" ? -1 : 1);
   }
 
   const setChatSearchInputElement = (element: HTMLInputElement) => {

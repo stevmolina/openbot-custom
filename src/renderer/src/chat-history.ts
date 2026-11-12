@@ -1,3 +1,4 @@
+import { isEditableTarget, matchShortcut, shortcutText } from "@openbot/ui/features/shortcuts/shortcut-registry";
 import { createStore } from "solid-js";
 
 /** A chat that the window opened: an agent chat, a channel, or a direct conversation with a person. */
@@ -67,22 +68,17 @@ export function chatHistoryShortcut(
   event: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey" | "target">,
   mac: boolean,
 ): "back" | "forward" | undefined {
-  if (event.shiftKey) return undefined;
-  if (mac) {
-    if (!event.metaKey || event.altKey || event.ctrlKey) return undefined;
-    return event.key === "[" ? "back" : event.key === "]" ? "forward" : undefined;
-  }
-  if (!event.altKey || event.metaKey || event.ctrlKey || editableTarget(event.target)) return undefined;
-  return event.key === "ArrowLeft" ? "back" : event.key === "ArrowRight" ? "forward" : undefined;
-}
-
-function editableTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+  const command = matchShortcut(
+    ["historyBack", "historyForward"] as const,
+    event,
+    mac ? "mac" : "pc",
+    isEditableTarget(event.target),
   );
+  return command === "historyBack" ? "back" : command === "historyForward" ? "forward" : undefined;
 }
 
 /** The keys of Back and Forward, as a tooltip shows them on this platform. */
 export function chatHistoryKeys(mac: boolean) {
-  return mac ? { back: "⌘[", forward: "⌘]" } : { back: "Alt+←", forward: "Alt+→" };
+  const platform = mac ? "mac" : "pc";
+  return { back: shortcutText("historyBack", platform), forward: shortcutText("historyForward", platform) };
 }

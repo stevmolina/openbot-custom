@@ -1,4 +1,5 @@
 import { ServerRail } from "@openbot/ui/features/servers/ServerRail";
+import { shortcutMatches } from "@openbot/ui/features/shortcuts/shortcut-registry";
 import { onSettled, Show } from "solid-js";
 import { playActionSound } from "../../action-sounds";
 import { useLayout } from "../../layout";
@@ -37,10 +38,7 @@ export function WorkspaceServerRail() {
         event.defaultPrevented ||
         event.isComposing ||
         event.repeat ||
-        event.altKey ||
-        event.shiftKey ||
-        (isMac ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey) ||
-        !/^[1-9]$/.test(event.key)
+        !shortcutMatches("switchServer", event, isMac ? "mac" : "pc")
       ) {
         return;
       }

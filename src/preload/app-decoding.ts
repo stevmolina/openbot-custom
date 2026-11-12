@@ -5,6 +5,7 @@
 // carries, so a value the renderer reads always has the shape its type says.
 
 import { isAgentTemplateId } from "@openbot/contracts/agent-template-links";
+import { type AppShortcutCommand, isAppShortcutCommand } from "@openbot/contracts/app-shortcut";
 import { type BillingState, parseBillingState } from "@openbot/contracts/billing";
 import {
   type HostedServerCatalog,
@@ -191,6 +192,11 @@ export function decodeAppInfo(value: unknown): AppInfo {
     ...(hourCycle === undefined ? {} : { hourCycle }),
     ...(aboveAppsSupport === undefined ? {} : { aboveAppsSupport }),
   };
+}
+
+export function decodeAppShortcutCommand(value: unknown): AppShortcutCommand {
+  if (!isAppShortcutCommand(value)) throw new Error("Invalid shortcut command.");
+  return value;
 }
 
 export function decodeSentMessageStats(value: unknown): SentMessageStats {
