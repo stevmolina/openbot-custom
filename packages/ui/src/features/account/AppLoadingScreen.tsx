@@ -1,8 +1,8 @@
 import type { AppTextKey } from "@openbot/i18n";
 import { createEffect, createSignal, For, onCleanup, onSettled, untrack } from "solid-js";
-import { PlushLoader } from "../../plush-loader";
 import { useText } from "../../text";
 import { prefersReducedMotion } from "../../utils";
+import mascotBlue from "../agents/assets/pokebots/blue.webp";
 import { type CrewHop, CrewPileStage } from "./CrewPileStage";
 import { CrewPile, randomCrewSeed } from "./crew-pile";
 
@@ -13,6 +13,9 @@ import { CrewPile, randomCrewSeed } from "./crew-pile";
  * the screen, then the crew hop out while the screen fades. The `thinking` scene shows the lilac plush, which
  * watches three felt balls bounce, and joke status lines change below it unless the screen has a title.
  * The pile scene shows no text: its label is for a screen reader only.
+ *
+ * Pokebots: the default is the `thinking` scene, and it shows the blue Pokebots mascot, which bobs,
+ * in place of the lilac plush. The crew pile shows only when a caller asks for `scene="pile"`.
  */
 const STATUS_EVERY_S = 2.4;
 // When the app is ready before this time, the screen only fades. The crew do not hop out.
@@ -144,7 +147,7 @@ export interface AppLoadingScreenProps {
    * calls this when its fade starts: the compositor runs the fade.
    */
   onMountViews?: (() => void) | undefined;
-  /** `pile` is the crew pile-up. `thinking` is the lilac plush with its three balls. */
+  /** `pile` is the crew pile-up. `thinking`, the default, is the Pokebots mascot. */
   scene?: "pile" | "thinking";
   /** The same seed always makes the same crew, for a story. The default is a new crew each run. */
   seed?: number;
@@ -168,7 +171,7 @@ export function AppLoadingScreen(props: AppLoadingScreenProps) {
   const { t } = useText();
   const reducedMotion = prefersReducedMotion();
   // A screen keeps its scene and its pile.
-  const pileScene = untrack(() => props.scene !== "thinking");
+  const pileScene = untrack(() => props.scene === "pile");
   const seat = pileScene
     ? takeSeat(
         untrack(() => props.seed),
@@ -298,7 +301,9 @@ export function AppLoadingScreen(props: AppLoadingScreenProps) {
         {seat ? (
           <CrewPileStage pile={seat.pile} start={seat.start} hop={hop()} onHop={handleHop} />
         ) : (
-          <PlushLoader layout="stack" size={THINKING_SIZE} />
+          <span class="app-loading-mascot" aria-hidden="true">
+            <img src={mascotBlue} alt="" width={THINKING_SIZE} height={THINKING_SIZE} draggable={false} />
+          </span>
         )}
         {!pileScene && (
           <p class="app-loading-status">

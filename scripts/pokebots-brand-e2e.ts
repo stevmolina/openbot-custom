@@ -3,6 +3,7 @@
 // - with `OPENBOT_BRAND_NAME=Pokebots`, no catalog value keeps the product word "OpenBot", except
 //   the kept phrases; every key stays; each `openbot.run` and `openbot://` stays;
 // - each literal rule and the account defaults of the main process apply;
+// - the installable web app gets the Pokebots name and icons, and only the web output changes;
 // - with the setting off, the layer gives no Vite plugin, so the builds are the same as without it.
 // The catalogs load from a copy of `packages/i18n/src` under `.openbot-build`, with each catalog
 // module replaced by the code the plugin gives the bundler.
@@ -19,6 +20,7 @@ import {
   brandText,
   LITERAL_RULES,
   readBrandSettings,
+  WEB_ICON_FILES,
 } from "./brand-layer";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -189,6 +191,34 @@ for (const name of (await readdir(join(ROOT, "src/renderer"))).filter((file) => 
   check(!branded.includes(">OpenBot"), `src/renderer/${name} still shows OpenBot.`);
 }
 
+// 5. The installable web app: the plugin brands a copy of the Worker's static files after a build
+// writes them, and leaves an output folder without a manifest alone.
+const webOut = join(OUT, "web-client");
+await cp(join(ROOT, "apps/auth-api/public"), webOut, { recursive: true });
+const workerOut = join(OUT, "worker");
+await mkdir(workerOut, { recursive: true });
+plugin.writeBundle.call(pluginContext, { dir: webOut });
+plugin.writeBundle.call(pluginContext, { dir: workerOut });
+const manifest = await readFile(join(webOut, "site.webmanifest"), "utf8");
+const manifestHas = (field: string, value: string) =>
+  manifest.includes(`${JSON.stringify(field)}: ${JSON.stringify(value)}`);
+check(
+  manifestHas("name", "Pokebots") && manifestHas("short_name", "Pokebots"),
+  "The web app manifest keeps the OpenBot name.",
+);
+check(manifestHas("start_url", "/app"), "The web app manifest lost its start URL.");
+const webIcons: Record<string, boolean> = {};
+for (const file of WEB_ICON_FILES) {
+  const [built, brand] = await Promise.all([
+    readFile(join(webOut, file)),
+    readFile(join(ROOT, "build/custom/web", file)),
+  ]);
+  webIcons[file] = built.equals(brand);
+  check(webIcons[file], `The web app ${file} is not the Pokebots icon.`);
+}
+check((await readdir(workerOut)).length === 0, "The brand layer wrote into an output folder without a web app.");
+const web = { manifest: JSON.parse(manifest), icons: webIcons };
+
 const report = {
   passed: failures.length === 0,
   failures,
@@ -210,6 +240,7 @@ const report = {
   outsideCatalogs,
   accountDefaults,
   html,
+  web,
 };
 await writeFile(join(OUT, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
 await rm(MIRROR, { recursive: true, force: true });

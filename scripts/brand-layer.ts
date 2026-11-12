@@ -23,9 +23,16 @@
 //   `OPENBOT_BRAND_SIGNAL_URL` are set. The app then uses them as if `OPENBOT_AUTH_API_URL` and
 //   `OPENBOT_REMOTE_SIGNAL_URL` were set when it starts. A variable set at start still wins.
 //
+// - The installable web app of the account Worker: the name in `site.webmanifest`, and the icons
+//   and favicons next to it, from `build/custom/web/` (or the folder in `OPENBOT_BRAND_WEB_ICONS`).
+//   This runs after the build writes the static files, so `vite dev` still shows the OpenBot icons.
+//
 // It does not change `app.setName("OpenBot")` or anything that names the data folder, the keychain
 // item "OpenBot Safe Storage" or the local signing certificate: a new name there loses the data or
 // the macOS privacy grants.
+
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 /** The build-time setting that turns the brand layer on, and the product name it shows. */
 export const BRAND_NAME_ENV = "OPENBOT_BRAND_NAME";
@@ -171,6 +178,17 @@ export const LITERAL_RULES: readonly LiteralRule[] = [
     find: 'context.fillText("OpenBot",',
     replace: (name) => `context.fillText(${JSON.stringify(name)},`,
   },
+  // Web client: the app name that its views show, and the name of a server that has none.
+  {
+    file: "src/renderer/src/features/web-client/WebWorkspace.tsx",
+    find: 'const WEB_APP_INFO: AppInfo = { name: "OpenBot",',
+    replace: (name) => `const WEB_APP_INFO: AppInfo = { name: ${JSON.stringify(name)},`,
+  },
+  {
+    file: "src/renderer/src/features/web-client/WebWorkspace.tsx",
+    find: 'workspace.state.host?.name ?? "OpenBot"',
+    replace: (name) => `workspace.state.host?.name ?? ${JSON.stringify(name)}`,
+  },
   // Account Worker: the site header lockup, the web client title, the missing page title, and email sender name.
   {
     file: "apps/auth-api/src/components/brand/SiteLogoLink.tsx",
@@ -261,12 +279,63 @@ export function brandHtml(html: string, settings: BrandSettings): string {
   return html.replace(/(<title>|<noscript>)OpenBot/g, (_match, tag: string) => `${tag}${settings.name}`);
 }
 
+/** The folder of web icons that replaces the account Worker's own, from the repository root. */
+export const BRAND_WEB_ICONS_ENV = "OPENBOT_BRAND_WEB_ICONS";
+const DEFAULT_WEB_ICONS = "build/custom/web";
+/** The static files of the installable web app that the brand folder can replace. */
+export const WEB_ICON_FILES = [
+  "favicon.ico",
+  "favicon-32x32.png",
+  "apple-touch-icon.png",
+  "icon-192x192.png",
+  "icon-512x512.png",
+  "icon-maskable-192x192.png",
+  "icon-maskable-512x512.png",
+] as const;
+const WEB_MANIFEST = "site.webmanifest";
+const WEB_DESCRIPTION = "Bots with their own computers, in chats, rooms, and calls.";
+
+/** The web app manifest with the product name. Its icon paths stay, because the files keep their names. */
+export function brandWebManifest(manifest: string, settings: BrandSettings): string {
+  const fields = new Map([
+    ["name", settings.name],
+    ["short_name", settings.name],
+    ["description", WEB_DESCRIPTION],
+  ]);
+  // The manifest's icons have no such fields, so only the top-level values change.
+  return `${JSON.stringify(
+    JSON.parse(manifest, (key, value) => fields.get(key) ?? value),
+    null,
+    2,
+  )}\n`;
+}
+
+/**
+ * Brands the installable web app in a build output folder. Only a folder that holds the manifest is
+ * a web app, so the desktop and Worker outputs stay as they are. Returns the files that changed.
+ */
+export function brandWebOutput(outDir: string, root: string, settings: BrandSettings, iconFolder: string): string[] {
+  const manifestPath = join(outDir, WEB_MANIFEST);
+  if (!existsSync(manifestPath)) return [];
+  writeFileSync(manifestPath, brandWebManifest(readFileSync(manifestPath, "utf8"), settings));
+  const changed: string[] = [WEB_MANIFEST];
+  const icons = resolve(root, iconFolder);
+  for (const file of WEB_ICON_FILES) {
+    const source = join(icons, file);
+    if (!existsSync(source)) continue;
+    copyFileSync(source, join(outDir, file));
+    changed.push(file);
+  }
+  return changed;
+}
+
 /** The part of a Vite plugin that this layer uses, so that this file needs no Vite dependency. */
 interface BrandPlugin {
   readonly name: string;
   readonly enforce: "pre";
   transform(this: { warn(message: string): void }, code: string, id: string): { code: string; map: null } | null;
   transformIndexHtml(html: string): string;
+  writeBundle(this: { warn(message: string): void }, options: { dir?: string | undefined }): void;
 }
 
 /**
@@ -294,6 +363,12 @@ export function brandPlugins(
         return { code: result.code, map: null };
       },
       transformIndexHtml: (html) => brandHtml(html, settings),
+      writeBundle(options) {
+        if (!options.dir) return;
+        const iconFolder = env[BRAND_WEB_ICONS_ENV]?.trim() || DEFAULT_WEB_ICONS;
+        const changed = brandWebOutput(options.dir, root, settings, iconFolder);
+        if (changed.length === 1) this.warn(`The brand layer found no web icons in ${iconFolder}.`);
+      },
     },
   ];
 }
