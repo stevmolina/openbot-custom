@@ -1,0 +1,228 @@
+{
+  "generatedAt": "2026-11-12T03:11:21.685Z",
+  "platform": "mac",
+  "passed": 5,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Hold shows the list",
+      "status": "passed",
+      "detail": "38 rows; dialog by name: 1; focus moved into it: false",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-ee92b6c5/.openbot-build/shortcut-peek/peek-dark.png"
+    },
+    {
+      "name": "Release hides the list",
+      "status": "passed",
+      "detail": "dialog by name after release: 0"
+    },
+    {
+      "name": "Meta+K opens search and never the list",
+      "status": "passed",
+      "detail": "list opened: false; search layers: 1",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-ee92b6c5/.openbot-build/shortcut-peek/cmd-k.png"
+    },
+    {
+      "name": "Meta+click never shows the list",
+      "status": "passed",
+      "detail": "list opened: false"
+    },
+    {
+      "name": "List in the light theme",
+      "status": "passed",
+      "detail": "light, then dark again",
+      "screenshot": "/Users/usuario/.t3/worktrees/openbot-custom/t3-ee92b6c5/.openbot-build/shortcut-peek/peek-light.png"
+    }
+  ],
+  "rows": [
+    {
+      "group": "General",
+      "label": "Quit OpenBot",
+      "keys": "⌘Q"
+    },
+    {
+      "group": "Navigation",
+      "label": "Search everything",
+      "keys": "⌘K"
+    },
+    {
+      "group": "Navigation",
+      "label": "New chat",
+      "keys": "⌘N"
+    },
+    {
+      "group": "Navigation",
+      "label": "Previous chat",
+      "keys": "⌥↑"
+    },
+    {
+      "group": "Navigation",
+      "label": "Next chat",
+      "keys": "⌥↓"
+    },
+    {
+      "group": "Navigation",
+      "label": "Previous unread chat",
+      "keys": "⌥⇧↑"
+    },
+    {
+      "group": "Navigation",
+      "label": "Next unread chat",
+      "keys": "⌥⇧↓"
+    },
+    {
+      "group": "Navigation",
+      "label": "Back",
+      "keys": "⌘["
+    },
+    {
+      "group": "Navigation",
+      "label": "Forward",
+      "keys": "⌘]"
+    },
+    {
+      "group": "Navigation",
+      "label": "Switch server",
+      "keys": "⌘1–9"
+    },
+    {
+      "group": "Navigation",
+      "label": "Settings",
+      "keys": "⌘,"
+    },
+    {
+      "group": "Chat",
+      "label": "Send message",
+      "keys": "↩"
+    },
+    {
+      "group": "Chat",
+      "label": "New line",
+      "keys": "⇧↩"
+    },
+    {
+      "group": "Chat",
+      "label": "Focus the message box",
+      "keys": "⇧Esc"
+    },
+    {
+      "group": "Chat",
+      "label": "Find in chat",
+      "keys": "⌘F"
+    },
+    {
+      "group": "Chat",
+      "label": "Next match",
+      "keys": "⌘G"
+    },
+    {
+      "group": "Chat",
+      "label": "Previous match",
+      "keys": "⇧⌘G"
+    },
+    {
+      "group": "Chat",
+      "label": "Copy the last reply",
+      "keys": "⇧⌘C"
+    },
+    {
+      "group": "Chat",
+      "label": "Copy the last code block",
+      "keys": "⇧⌘;"
+    },
+    {
+      "group": "Chat",
+      "label": "Quote the selected text",
+      "keys": "⇧⌘."
+    },
+    {
+      "group": "Chat",
+      "label": "Close search or panel",
+      "keys": "Esc"
+    },
+    {
+      "group": "Agents",
+      "label": "Stop this agent",
+      "keys": "⌥⌘."
+    },
+    {
+      "group": "Agents",
+      "label": "Stop all agents",
+      "keys": "⌘."
+    },
+    {
+      "group": "View",
+      "label": "Keyboard shortcuts",
+      "keys": "⌘/ / ?"
+    },
+    {
+      "group": "View",
+      "label": "Show or hide the sidebar",
+      "keys": "⌘B"
+    },
+    {
+      "group": "View",
+      "label": "Zoom in",
+      "keys": "⌘="
+    },
+    {
+      "group": "View",
+      "label": "Zoom out",
+      "keys": "⌘-"
+    },
+    {
+      "group": "View",
+      "label": "Actual size",
+      "keys": "⌘0"
+    },
+    {
+      "group": "Browser",
+      "label": "New tab",
+      "keys": "⌘T"
+    },
+    {
+      "group": "Browser",
+      "label": "Reopen closed tab",
+      "keys": "⇧⌘T"
+    },
+    {
+      "group": "Browser",
+      "label": "Close tab",
+      "keys": "⌘W"
+    },
+    {
+      "group": "Browser",
+      "label": "Go to the address bar",
+      "keys": "⌘L"
+    },
+    {
+      "group": "Browser",
+      "label": "Reload page",
+      "keys": "⌘R"
+    },
+    {
+      "group": "Browser",
+      "label": "Page back",
+      "keys": "⌘["
+    },
+    {
+      "group": "Browser",
+      "label": "Page forward",
+      "keys": "⌘]"
+    },
+    {
+      "group": "Browser",
+      "label": "Next tab",
+      "keys": "⌃⇥"
+    },
+    {
+      "group": "Browser",
+      "label": "Previous tab",
+      "keys": "⌃⇧⇥"
+    },
+    {
+      "group": "Browser",
+      "label": "Go to tab 1–9",
+      "keys": "⌘1–9"
+    }
+  ]
+}
