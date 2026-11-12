@@ -12,7 +12,7 @@ import {
   SIDEBAR_UNASSIGNED_SECTION_ID,
   type SidebarLayoutSnapshot,
 } from "@openbot/contracts/ipc";
-import { ChevronDown, ListChecks, MessageCircle, Plus, Search, Settings, Toaster, Waypoints } from "@openbot/ui";
+import { ListChecks, MessageCircle, Search, Settings, Toaster, Waypoints } from "@openbot/ui";
 import { Dynamic, Portal } from "@solidjs/web";
 import { createSignal, For, onSettled, Show } from "solid-js";
 import { WebWorkspace } from "../src/features/web-client/WebWorkspace";
@@ -303,6 +303,10 @@ export function OneListVariant() {
     });
     whenDock(element, () => {
       setAllFoldersSettled(element, true);
+      // The whole list scrolls now, so the small title of the top bar follows the list's scroll.
+      const scroller = element.querySelector<HTMLElement>(".sidebar-chat-list");
+      const barTitle = element.querySelector<HTMLElement>(".sidebar-chat-bar-title");
+      scroller?.addEventListener("scroll", () => barTitle?.toggleAttribute("data-shown", scroller.scrollTop > 48));
       const list = element.querySelector<HTMLElement>(".agent-list-content");
       const frame = element.querySelector<HTMLElement>(".web-app-frame");
       if (list && frame) setMounts({ list, frame });
@@ -322,6 +326,7 @@ export function OneListVariant() {
               <SearchField root={() => root} />
             </Portal>
             <Portal mount={m().frame}>
+              <div class="proto-tab-fade" aria-hidden="true" />
               <nav class="proto-tab-bar" aria-label="Pages">
                 <For
                   each={[
@@ -348,155 +353,6 @@ export function OneListVariant() {
           </>
         )}
       </Show>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- B. Folder chips
-
-/**
- * B. Folder chips: a top bar with the account, the server name and New; a search field; a row of
- * chips, one per folder. A chip shows the agents of that folder only. No bar at the bottom.
- */
-export function FolderChipsVariant() {
-  let root: HTMLDivElement | undefined;
-  const [mount, setMount] = createSignal<HTMLElement | null>(null);
-  const [chip, setChip] = createSignal("all");
-  const show = (id: string) => {
-    setChip(id);
-    const element = root;
-    if (!element) return;
-    for (const group of element.querySelectorAll<HTMLElement>(".sidebar-dock .sidebar-dock-group")) {
-      const match = id === "all" || group.dataset.sectionId === id;
-      group.toggleAttribute("data-proto-hidden", !match);
-    }
-    element.querySelector(".sidebar-chat-list")?.scrollTo({ top: 0 });
-  };
-  onSettled(() => {
-    const element = root;
-    if (!element) return;
-    whenDock(element, () => {
-      setAllFoldersSettled(element, true);
-      setMount(element.querySelector<HTMLElement>(".web-app-frame > .sidebar"));
-    });
-  });
-  const counts = (folder: ProtoFolder) => folder.agents.length;
-  return (
-    <div class="proto-mobile proto-b" ref={root} data-chip={chip()}>
-      <ProtoWorkspace />
-      <Show when={mount()}>
-        {(m) => (
-          <Portal mount={m()}>
-            <div class="proto-b-head">
-              <div class="proto-b-bar">
-                <button
-                  type="button"
-                  class="proto-avatar"
-                  aria-label="Account and pages"
-                  onClick={() => root && clickTab(root, TAB.settings)}
-                >
-                  S
-                </button>
-                <button
-                  type="button"
-                  class="proto-server"
-                  aria-label="Switch server"
-                  onClick={() => root && clickTab(root, TAB.servers)}
-                >
-                  <span>Personal VPS</span>
-                  <ChevronDown aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  class="proto-round"
-                  aria-label="New agent"
-                  onClick={() =>
-                    root?.querySelector<HTMLButtonElement>(".sidebar-chat-top .sidebar-chat-round:last-child")?.click()
-                  }
-                >
-                  <Plus aria-hidden="true" />
-                </button>
-              </div>
-              <SearchField root={() => root} />
-              <div class="proto-chips" role="tablist" aria-label="Folders">
-                <button
-                  type="button"
-                  role="tab"
-                  class="proto-chip"
-                  aria-selected={chip() === "all" ? "true" : "false"}
-                  onClick={() => show("all")}
-                >
-                  All
-                </button>
-                <For each={PROTO_FOLDERS}>
-                  {(folder) => (
-                    <button
-                      type="button"
-                      role="tab"
-                      class="proto-chip"
-                      aria-selected={chip() === folder.id ? "true" : "false"}
-                      onClick={() => show(folder.id)}
-                    >
-                      {folder.name.split(" & ")[0]}
-                      <span class="proto-chip-count">{counts(folder)}</span>
-                    </button>
-                  )}
-                </For>
-              </div>
-            </div>
-          </Portal>
-        )}
-      </Show>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- C. Folder screens
-
-/**
- * C. Folder screens: the home shows each folder as a row with its count. A tap opens the folder as its
- * own screen, with a Back row at the top. The tab bar of today stays; nothing else is at the bottom.
- */
-export function FolderScreensVariant() {
-  let root: HTMLDivElement | undefined;
-  const [open, setOpen] = createSignal<string | null>(null);
-  const sync = () => {
-    const element = root;
-    if (!element) return;
-    let current: string | null = null;
-    for (const group of element.querySelectorAll<HTMLElement>(".sidebar-dock .sidebar-dock-group")) {
-      const expanded = group.querySelector(".sidebar-dock-head")?.getAttribute("aria-expanded") === "true";
-      group.toggleAttribute("data-proto-current", expanded);
-      if (expanded) current = group.dataset.sectionId ?? "working";
-    }
-    setOpen(current);
-  };
-  onSettled(() => {
-    const element = root;
-    if (!element) return;
-    // A folder row keeps its own toggle. The frame listens, so one folder is open at a time and the
-    // screen follows the open state.
-    element.addEventListener("click", (event) => {
-      if (!(event.target instanceof Element)) return;
-      const head = event.target.closest<HTMLButtonElement>(".sidebar-dock .sidebar-dock-head");
-      if (!head) return;
-      requestAnimationFrame(() => {
-        if (head.getAttribute("aria-expanded") === "true") {
-          for (const other of folderHeads(element)) {
-            if (other !== head && other.getAttribute("aria-expanded") === "true") other.click();
-          }
-        }
-        element.querySelector(".sidebar-chat-list")?.scrollTo({ top: 0 });
-        requestAnimationFrame(sync);
-      });
-    });
-    whenDock(element, () => {
-      setAllFoldersSettled(element, false, sync);
-    });
-  });
-  return (
-    <div class="proto-mobile proto-c" ref={root} data-folder-open={open() ? "" : undefined}>
-      <ProtoWorkspace />
     </div>
   );
 }
