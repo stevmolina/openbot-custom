@@ -1,8 +1,9 @@
 /**
- * The plan usage of each AI provider account, above the pill of the chat sidebar. Each provider
- * shows as rings around its logo: the outer ring is the longest window, the inner ring the shortest,
- * and each arc shows how much is left. The open sidebar shows the rings in one row, in a tab on top of the
- * pill. The hover card lists the windows with their reset times, and a click opens the usage page.
+ * The plan usage of each AI provider account, above the pill of the dock. Each provider shows as
+ * rings around its logo: the outer ring is the longest window, the inner ring the shortest, and each
+ * arc shows how much is left. The hover card lists the windows with their reset times, and a click
+ * opens the usage page. The open sidebar shows the providers in the pill instead; see
+ * `SidebarProviderStack`.
  */
 
 import { ProviderLogo } from "@openbot/brand";
@@ -17,16 +18,9 @@ import type { SidebarCustomAgentUsage } from "./sidebar-pages";
 /** Two tracks in a 34px box, with 4.5px between their centers. */
 const RING = { size: 34, stroke: 2.25, spacing: 4.5 };
 
-/**
- * Where the hover card opens: above a ring of the tab, so it leaves the other rings of the row free,
- * and beside a ring of the dock.
- */
-type UsagePlacement = "top" | "right-end";
-
 /** One usage button. The hover card shows instead of a name tooltip. */
 function UsageButton(props: {
   label: string;
-  placement: UsagePlacement;
   card: () => JSX.Element;
   onOpen: (button: HTMLElement) => void;
   children: JSX.Element;
@@ -35,7 +29,7 @@ function UsageButton(props: {
     <MotionTooltip
       content={props.card()}
       class="ui-popover-menu-surface account-usage-popover sidebar-usage-card"
-      placement={props.placement}
+      placement="right-end"
       openDelay={250}
       closeDelay={75}
     >
@@ -52,6 +46,58 @@ function UsageButton(props: {
   );
 }
 
+/** The rings of one reading around its provider logo: the outer ring is the longest window. */
+export function UsageRingGlyph(props: { row: AccountUsageProviderRow }) {
+  const windows = () => [...props.row.ringWindows].reverse().slice(0, 2);
+  const outerRadius = (RING.size - RING.stroke) / 2;
+  return (
+    <span class="sidebar-usage-ring-box">
+      <svg class="sidebar-usage-ring" viewBox={`0 0 ${RING.size} ${RING.size}`} fill="none" aria-hidden="true">
+        <For each={windows()} keyed={false}>
+          {(window, index) => (
+            <g>
+              <circle
+                class="sidebar-usage-track"
+                cx={RING.size / 2}
+                cy={RING.size / 2}
+                r={outerRadius - index * RING.spacing}
+                stroke-width={RING.stroke}
+              />
+              <Show when={window().remainingPercent > 0}>
+                <circle
+                  class="sidebar-usage-arc"
+                  data-usage-tone={window().tone}
+                  cx={RING.size / 2}
+                  cy={RING.size / 2}
+                  r={outerRadius - index * RING.spacing}
+                  stroke-width={RING.stroke}
+                  stroke-linecap="round"
+                  pathLength={100}
+                  stroke-dasharray={`${window().remainingPercent} 100`}
+                />
+              </Show>
+            </g>
+          )}
+        </For>
+      </svg>
+      <ProviderLogo provider={props.row.provider} class="sidebar-usage-logo" />
+    </span>
+  );
+}
+
+/**
+ * One ring per reading, except a reading that counts the quota of another provider's own sign-in,
+ * such as Cursor on a merged Grok plan: that ring's card lists it instead.
+ */
+export function sidebarUsageRings(usageRows: readonly AccountUsageProviderRow[]) {
+  const rows = usageRows.filter((row) => row.reportsUsage && row.windows.length > 0);
+  const owner = (row: AccountUsageProviderRow) =>
+    rows.find((other) => other.accountId === null && other.provider === row.sharedQuotaWith);
+  return rows
+    .filter((row) => !owner(row))
+    .map((row) => ({ row, shared: rows.filter((other) => owner(other) === row) }));
+}
+
 /**
  * The rings of one provider. `shared` are the readings that count the same quota, such as Cursor on
  * a merged Grok plan: the card lists them, with no ring of their own. The ring draws the reading with
@@ -60,7 +106,6 @@ function UsageButton(props: {
 function UsageRings(props: {
   row: AccountUsageProviderRow;
   shared: readonly AccountUsageProviderRow[];
-  placement: UsagePlacement;
   onOpen: (button: HTMLElement) => void;
 }) {
   const { t, format } = useText();
@@ -75,12 +120,9 @@ function UsageRings(props: {
         .map((window) => t("account.usage.row.window", { window: window.label, percent: window.remainingPercent }))
         .join(", "),
     });
-  const windows = () => [...ringRow().ringWindows].reverse().slice(0, 2);
-  const outerRadius = (RING.size - RING.stroke) / 2;
   return (
     <UsageButton
       label={label()}
-      placement={props.placement}
       card={() => (
         <AccountUsageDetails
           rows={rows()}
@@ -94,52 +136,17 @@ function UsageRings(props: {
       )}
       onOpen={props.onOpen}
     >
-      <span class="sidebar-usage-ring-box">
-        <svg class="sidebar-usage-ring" viewBox={`0 0 ${RING.size} ${RING.size}`} fill="none" aria-hidden="true">
-          <For each={windows()} keyed={false}>
-            {(window, index) => (
-              <g>
-                <circle
-                  class="sidebar-usage-track"
-                  cx={RING.size / 2}
-                  cy={RING.size / 2}
-                  r={outerRadius - index * RING.spacing}
-                  stroke-width={RING.stroke}
-                />
-                <Show when={window().remainingPercent > 0}>
-                  <circle
-                    class="sidebar-usage-arc"
-                    data-usage-tone={window().tone}
-                    cx={RING.size / 2}
-                    cy={RING.size / 2}
-                    r={outerRadius - index * RING.spacing}
-                    stroke-width={RING.stroke}
-                    stroke-linecap="round"
-                    pathLength={100}
-                    stroke-dasharray={`${window().remainingPercent} 100`}
-                  />
-                </Show>
-              </g>
-            )}
-          </For>
-        </svg>
-        <ProviderLogo provider={props.row.provider} class="sidebar-usage-logo" />
-      </span>
+      <UsageRingGlyph row={ringRow()} />
     </UsageButton>
   );
 }
 
 /** The plan usage of one custom agent: its logo, with no ring. The card shows the answer as the agent wrote it. */
-function CustomAgentUsage(props: {
-  row: SidebarCustomAgentUsage;
-  placement: UsagePlacement;
-  onOpen: (button: HTMLElement) => void;
-}) {
+function CustomAgentUsage(props: { row: SidebarCustomAgentUsage; onOpen: (button: HTMLElement) => void }) {
   const { t } = useText();
   return (
     <UsageButton
       label={t("app.rail.customAgentUsage", { name: props.row.name })}
-      placement={props.placement}
       card={() => (
         <div class="sidebar-agent-usage">
           <h2 class="account-usage-popover-title">{props.row.name}</h2>
@@ -156,45 +163,26 @@ function CustomAgentUsage(props: {
 }
 
 /**
- * The usage of each provider: a row of rings in a tab on top of the pill in the open sidebar, a
- * vertical stack of overlapping rings in the dock that fans out on hover or focus. Empty, it shows
- * nothing.
+ * The usage of each provider in the dock: a vertical stack of overlapping rings that fans out on hover
+ * or focus. Empty, it shows nothing.
  */
 export function SidebarUsage(props: {
   usageRows: readonly AccountUsageProviderRow[];
   customAgentUsage?: readonly SidebarCustomAgentUsage[] | undefined;
-  layout: "tab" | "column";
   onOpen: (button: HTMLElement) => void;
 }) {
   const { t } = useText();
-  const placement = (): UsagePlacement => (props.layout === "tab" ? "top" : "right-end");
-  /**
-   * One ring per reading, except a reading that counts the quota of another provider's own sign-in,
-   * such as Cursor on a merged Grok plan: that ring's card lists it instead.
-   */
-  const rings = createMemo(() => {
-    const rows = props.usageRows.filter((row) => row.reportsUsage && row.windows.length > 0);
-    const owner = (row: AccountUsageProviderRow) =>
-      rows.find((other) => other.accountId === null && other.provider === row.sharedQuotaWith);
-    return rows
-      .filter((row) => !owner(row))
-      .map((row) => ({ row, shared: rows.filter((other) => owner(other) === row) }));
-  });
+  const rings = createMemo(() => sidebarUsageRings(props.usageRows));
   return (
     <Show when={rings().length > 0 || (props.customAgentUsage?.length ?? 0) > 0}>
       {/* A group, not a list: each button names its provider. */}
-      <fieldset
-        class={["sidebar-usage", props.layout === "tab" ? "sidebar-usage-tab" : "sidebar-usage-column"]}
-        aria-label={t("sidebar.usage.label")}
-      >
+      <fieldset class="sidebar-usage sidebar-usage-column" aria-label={t("sidebar.usage.label")}>
         {/* A status update builds new rows. The key keeps each ring, and its open hover card, mounted. */}
         <For each={rings()} keyed={(ring) => accountUsageRowKey(ring.row)}>
-          {(ring) => (
-            <UsageRings row={ring().row} shared={ring().shared} placement={placement()} onOpen={props.onOpen} />
-          )}
+          {(ring) => <UsageRings row={ring().row} shared={ring().shared} onOpen={props.onOpen} />}
         </For>
         <For each={props.customAgentUsage ?? []} keyed={(row) => row.id}>
-          {(row) => <CustomAgentUsage row={row()} placement={placement()} onOpen={props.onOpen} />}
+          {(row) => <CustomAgentUsage row={row()} onOpen={props.onOpen} />}
         </For>
       </fieldset>
     </Show>

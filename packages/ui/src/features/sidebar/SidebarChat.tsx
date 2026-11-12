@@ -491,7 +491,6 @@ export function SidebarChat(chatProps: { pages: SidebarPages }) {
             <SidebarUsage
               usageRows={chatProps.pages.usageRows}
               customAgentUsage={chatProps.pages.customAgentUsage}
-              layout="column"
               onOpen={chatProps.pages.onUsage}
             />
             <SidebarPill pages={chatProps.pages} vertical />
@@ -507,12 +506,7 @@ export function SidebarChat(chatProps: { pages: SidebarPages }) {
       <SidebarChatList onTitleHiddenChange={setTitleHidden} />
       <div class="sidebar-chat-footer">{props.footer}</div>
       <div class="sidebar-chat-bottom">
-        <SidebarUsage
-          usageRows={chatProps.pages.usageRows}
-          customAgentUsage={chatProps.pages.customAgentUsage}
-          layout="tab"
-          onOpen={chatProps.pages.onUsage}
-        />
+        {/* The open sidebar shows the providers as a small stack inside the pill. */}
         <SidebarPill pages={chatProps.pages} vertical={false} />
       </div>
     </Show>

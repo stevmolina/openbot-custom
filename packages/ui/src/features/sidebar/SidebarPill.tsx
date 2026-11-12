@@ -1,28 +1,23 @@
 /**
- * The pill at the bottom of the chat sidebar: the account switch, Chats, the pinned pages and More.
- * The open sidebar lays it out in a row, the dock in a column.
+ * The pill at the bottom of the chat sidebar: the account switch, Chats, the pinned pages, the
+ * provider stack and More. The open sidebar lays it out in a row, the dock in a column; the dock keeps
+ * its own column of usage rings above the pill, so the stack shows only in the row.
  *
  * The account switch is the server menu with the logo of the active server in front. More lists every
- * page that the user can pin, then Marketplace, Help and Settings. A row opens its page; the pin at
- * the end of the row adds the page to the pill or takes it off, and the menu stays open.
+ * page, then Marketplace, Help, Settings and Customize pill, where the user pins pages to the pill.
  */
 
 import {
   Button,
   CalendarClock,
   ChartArea,
-  ChevronRight,
-  CircleQuestionMark,
   DropdownMenu,
   Ellipsis,
   GalleryVerticalEnd,
   ListChecks,
   MessageCircle,
   MotionTooltip,
-  Pin,
   Server,
-  Settings,
-  Store,
   Waypoints,
   Workflow,
 } from "@openbot/ui";
@@ -31,18 +26,10 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import { useText } from "../../text";
 import { ServerMenu } from "../servers/ServerMenu";
 import { ServerMark } from "../servers/ServerRail";
-import { shortcutText } from "../shortcuts/shortcut-registry";
-import { HelpMenuItems } from "../updates/HelpMenu";
+import { type PillPage, SidebarMoreMenuItems } from "./SidebarMoreMenu";
+import { SidebarProviderStack } from "./SidebarProviderStack";
 import type { SidebarPage, SidebarPages, SidebarPinnablePage } from "./sidebar-pages";
 import { useSidebarScope } from "./sidebar-scope";
-
-/** A page that the user can pin to the pill. */
-interface PillPage {
-  id: SidebarPinnablePage;
-  label: string;
-  icon: typeof Waypoints;
-  open: (button: HTMLElement) => void;
-}
 
 /** One round pill button, with its name as a tooltip. */
 function PillButton(props: {
@@ -76,6 +63,8 @@ function PillMore(props: {
   list: readonly PillPage[];
   vertical: boolean;
   placement?: PillMorePlacement | undefined;
+  /** False where there is no pill to pin a page to. */
+  customize: boolean;
 }) {
   const { t } = useText();
   const [open, setOpen] = createSignal(false);
@@ -125,67 +114,12 @@ function PillMore(props: {
       </MotionTooltip>
       <DropdownMenu.Portal>
         <DropdownMenu.Content class="agent-context-menu sidebar-more-menu" aria-label={t("app.rail.more")}>
-          <For each={props.list} keyed={(page) => page.id}>
-            {(page) => (
-              // The pin is its own menu item beside the page, so the keyboard reaches it.
-              <div role="none" class="sidebar-more-row" data-pinned={pinned(page().id) ? "" : undefined}>
-                <DropdownMenu.Item onSelectAfterClose={openFromTrigger(page().open)}>
-                  <Dynamic component={page().icon} class="agent-context-icon size-4" aria-hidden="true" />
-                  <span>{page().label}</span>
-                </DropdownMenu.Item>
-                <DropdownMenu.CheckboxItem
-                  class="sidebar-more-pin"
-                  closeOnSelect={false}
-                  checked={pinned(page().id)}
-                  onChange={(checked: boolean) => props.pages.onPinChange(page().id, checked)}
-                  aria-label={t("sidebar.pill.pinPage", { name: page().label })}
-                >
-                  <Pin class="agent-context-icon size-4" aria-hidden="true" />
-                </DropdownMenu.CheckboxItem>
-              </div>
-            )}
-          </For>
-          <Show when={props.pages.onMarketplace}>
-            {(onMarketplace) => (
-              <DropdownMenu.Item onSelectAfterClose={() => onMarketplace()()}>
-                <Store class="agent-context-icon size-4" aria-hidden="true" />
-                <span>{t("app.rail.marketplace")}</span>
-              </DropdownMenu.Item>
-            )}
-          </Show>
-          <DropdownMenu.Sub
-            onOpenChange={(next: boolean) => {
-              if (next) props.pages.help.onOpen?.();
-            }}
-          >
-            <DropdownMenu.SubTrigger>
-              <CircleQuestionMark class="agent-context-icon size-4" aria-hidden="true" />
-              <span>{t("app.help.label")}</span>
-              <ChevronRight class="agent-context-submenu-chevron size-4" aria-hidden="true" />
-            </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.SubContent
-                class="ui-action-menu agent-context-menu help-menu"
-                aria-label={t("app.help.label")}
-              >
-                <HelpMenuItems {...props.pages.help} />
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Sub>
-          <DropdownMenu.Item onSelectAfterClose={openFromTrigger(props.pages.onSettings)}>
-            <Settings class="agent-context-icon size-4" aria-hidden="true" />
-            <span>{t("app.rail.settings")}</span>
-            <Show
-              when={props.pages.settingsNotice}
-              fallback={
-                <Show when={props.pages.settingsShortcut ? props.pages.shortcutPlatform : undefined}>
-                  {(platform) => <span class="ui-menu-trailing">{shortcutText("settings", platform())}</span>}
-                </Show>
-              }
-            >
-              {(notice) => <span class="ui-menu-trailing sidebar-more-notice">{notice()}</span>}
-            </Show>
-          </DropdownMenu.Item>
+          <SidebarMoreMenuItems
+            pages={props.pages}
+            list={props.list}
+            open={openFromTrigger}
+            customize={props.customize}
+          />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
@@ -261,7 +195,7 @@ function usePillPages(pages: () => SidebarPages) {
  */
 export function SidebarPillMore(props: { pages: SidebarPages }) {
   const list = usePillPages(() => props.pages);
-  return <PillMore pages={props.pages} list={list()} vertical={false} placement="bottom-end" />;
+  return <PillMore pages={props.pages} list={list()} vertical={false} placement="bottom-end" customize={false} />;
 }
 
 export function SidebarPill(props: { pages: SidebarPages; vertical: boolean }) {
@@ -289,7 +223,15 @@ export function SidebarPill(props: { pages: SidebarPages; vertical: boolean }) {
             />
           )}
         </For>
-        <PillMore pages={props.pages} list={list()} vertical={props.vertical} />
+        <Show when={!props.vertical}>
+          <span class="sidebar-pill-spacer" />
+          <SidebarProviderStack
+            usageRows={props.pages.usageRows}
+            customAgentUsage={props.pages.customAgentUsage}
+            onOpenUsage={props.pages.onUsage}
+          />
+        </Show>
+        <PillMore pages={props.pages} list={list()} vertical={props.vertical} customize />
       </nav>
     </div>
   );
