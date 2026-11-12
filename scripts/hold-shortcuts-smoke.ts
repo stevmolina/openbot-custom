@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { resolveLocale, translateFor } from "@openbot/i18n";
 import { createOpenBotLogger } from "@openbot/logging";
 import { connectToDevApp } from "./dev-automation/cdp-client";
 import { readDevInstanceRecords, selectDevInstance } from "./dev-automation/instance-registry";
@@ -18,17 +19,11 @@ const session = await connectToDevApp(selection.record.remoteDebuggingPort, logg
 });
 const { page } = session;
 const mod = await page.evaluate(() => (/Mac/u.test(navigator.platform) ? "Meta" : "Control"));
-const overlay = page.getByRole("status", { name: "Keyboard shortcuts", exact: true });
+const lang = await page.evaluate(() => document.documentElement.lang || navigator.language);
+const t = translateFor(resolveLocale("system", lang));
+const overlay = page.getByRole("status", { name: t("app.shortcuts.title"), exact: true });
+const sendMessageLabel = t("composer.send.message");
 const results: { name: string; passed: boolean; detail?: string }[] = [];
-const check = async (name: string, run: () => Promise<void>) => {
-  try {
-    await run();
-    results.push({ name, passed: true });
-  } catch (error) {
-    results.push({ name, passed: false, detail: error instanceof Error ? error.message : String(error) });
-  }
-  logger.info(name, results.at(-1));
-};
 const hidden = async () => {
   await overlay.waitFor({ state: "hidden", timeout: 2_000 });
 };
@@ -39,6 +34,17 @@ const hold = async () => {
 const release = async () => {
   await page.keyboard.up(mod);
   await hidden();
+};
+const check = async (name: string, run: () => Promise<void>) => {
+  try {
+    await run();
+    results.push({ name, passed: true });
+  } catch (error) {
+    await page.mouse.up().catch(() => undefined);
+    await release().catch(() => undefined);
+    results.push({ name, passed: false, detail: error instanceof Error ? error.message : String(error) });
+  }
+  logger.info(name, results.at(-1));
 };
 const screenshot = (name: string) =>
   execFileSync(process.execPath, ["run", "dev:automation", "screenshot", `--out=hold-shortcuts-${name}.png`], {
@@ -188,7 +194,7 @@ try {
       }, mode);
       await page.keyboard.down(mod);
       await page.clock.runFor(650);
-      const row = overlay.getByRole("listitem").filter({ hasText: "Send message" });
+      const row = overlay.getByRole("listitem").filter({ hasText: sendMessageLabel });
       const text = await row.textContent();
       assert.ok(text?.includes(mode === "enter" ? "↩" : mod === "Meta" ? "⌘" : "Ctrl"));
       if (mode === "enter") assert.equal(text?.includes("⌘"), false);
@@ -197,6 +203,7 @@ try {
   });
 } finally {
   await page.clock.resume();
+  await page.mouse.up().catch(() => undefined);
   await page.keyboard.up(mod);
   await page.evaluate((value) => {
     if (value === null) localStorage.removeItem("openbot:send-shortcut-mode");
