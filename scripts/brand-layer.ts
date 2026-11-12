@@ -183,6 +183,11 @@ export const LITERAL_RULES: readonly LiteralRule[] = [
     replace: (name) => `{ title: ${JSON.stringify(`${name} web`)} }`,
   },
   {
+    file: "apps/auth-api/src/routes/app.tsx",
+    find: '{ name: "apple-mobile-web-app-title", content: "OpenBot" }',
+    replace: (name) => `{ name: "apple-mobile-web-app-title", content: ${JSON.stringify(name)} }`,
+  },
+  {
     file: "apps/auth-api/src/routes/__root.tsx",
     find: '"Page not found · OpenBot"',
     replace: (name) => JSON.stringify(`Page not found · ${name}`),

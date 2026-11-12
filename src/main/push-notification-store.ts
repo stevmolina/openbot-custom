@@ -10,17 +10,24 @@ import {
   PUSH_NOTIFICATIONS_ROUTES,
   type PushNotificationRegistration,
 } from "@openbot/contracts/team-protocol/push-notifications-v1";
+import {
+  WEB_PUSH_NOTIFICATIONS_CODECS,
+  WEB_PUSH_NOTIFICATIONS_ROUTES,
+  type WebPushNotificationRegistration,
+} from "@openbot/contracts/team-protocol/push-notifications-web-v1";
 import { Effect, Result, Semaphore } from "effect";
 import { isMissingFileError } from "../backend/file-errors";
 import { type PreferenceFileFailure, readPreferenceFile, writePreferenceFile } from "./preference-file";
 
 /**
- * What a phone registered: an iPhone through `push-notifications-v1`, or an Android phone through
- * `push-notifications-android-v1`. An iPhone entry has no `platform`, as in the files of earlier hosts.
+ * What a device registered: an iPhone through `push-notifications-v1`, an Android phone through
+ * `push-notifications-android-v1`, or a web client through `push-notifications-web-v1`. An iPhone
+ * entry has no `platform`, as in the files of earlier hosts.
  */
 export type PushTarget =
   | { platform?: undefined; value: PushNotificationRegistration }
-  | { platform: "android"; value: AndroidPushNotificationRegistration };
+  | { platform: "android"; value: AndroidPushNotificationRegistration }
+  | { platform: "web"; value: WebPushNotificationRegistration };
 
 /** One phone that gets notifications, with what the host needs to know what its member can see. */
 export type StoredPushRegistration = {
@@ -43,12 +50,13 @@ const decodeRegistration = PUSH_NOTIFICATIONS_CODECS.get(PUSH_NOTIFICATIONS_ROUT
 const decodeAndroidRegistration = ANDROID_PUSH_NOTIFICATIONS_CODECS.get(
   ANDROID_PUSH_NOTIFICATIONS_ROUTES.register,
 )?.request;
+const decodeWebRegistration = WEB_PUSH_NOTIFICATIONS_CODECS.get(WEB_PUSH_NOTIFICATIONS_ROUTES.register)?.request;
 
 /**
  * The phones of this host that get notifications. A phone registers when it connects, but a phone in
  * a pocket does not connect after this computer restarts, so the host keeps the list in a file that
  * only the user can read. Each entry has the push token and the sealing secret of one phone, an
- * iPhone or an Android phone.
+ * iPhone or an Android phone, or the push subscription and its keys of one web client.
  *
  * Writes are chained, as `NotificationPreferenceStore` chains its own.
  */
@@ -98,12 +106,13 @@ export class PushNotificationStore {
 /** Each platform has its own registration type, so each branch keeps its own. */
 function startAway(registration: StoredPushRegistration): StoredPushRegistration {
   if (registration.platform === "android") return { ...registration, value: { ...registration.value, away: true } };
+  if (registration.platform === "web") return { ...registration, value: { ...registration.value, away: true } };
   return { ...registration, value: { ...registration.value, away: true } };
 }
 
 /**
  * An entry that the current contract does not accept is dropped; the phone registers it again. An
- * earlier host drops the Android entries, because the iPhone contract does not accept them.
+ * earlier host drops the Android and web entries, because the iPhone contract does not accept them.
  */
 function decodeFile(parsed: unknown): StoredPushRegistration[] {
   if (!isDynamicRecord(parsed) || parsed.version !== 1 || !Array.isArray(parsed.registrations)) return [];
@@ -124,6 +133,10 @@ function decodeFile(parsed: unknown): StoredPushRegistration[] {
       if (entry.platform === "android") {
         const value = readAndroidPushRegistration(decodeAndroidRegistration?.(entry.value));
         return value ? [{ ...base, platform: "android", value }] : [];
+      }
+      if (entry.platform === "web") {
+        const value = readWebPushRegistration(decodeWebRegistration?.(entry.value));
+        return value ? [{ ...base, platform: "web", value }] : [];
       }
       if (entry.platform !== undefined) return [];
       const value = readPushRegistration(decodeRegistration?.(entry.value));
@@ -185,4 +198,16 @@ export function readAndroidPushRegistration(value: unknown): AndroidPushNotifica
   if (typeof away !== "boolean" || typeof preview !== "boolean") return null;
   if (mutedUntil !== null && typeof mutedUntil !== "number") return null;
   return { serverId, token, secret, locale, away, level, mutedUntil, preview, sound: choice };
+}
+
+/** Reads a registration that the frozen `push-notifications-web-v1` codec has accepted. */
+export function readWebPushRegistration(value: unknown): WebPushNotificationRegistration | null {
+  if (!isDynamicRecord(value)) return null;
+  const { serverId, endpoint, p256dh, auth, locale, away, level, mutedUntil, preview } = value;
+  if (!isString(serverId) || !isString(endpoint) || !isString(p256dh) || !isString(auth) || !isString(locale))
+    return null;
+  if (level !== "all" && level !== "needs-me") return null;
+  if (typeof away !== "boolean" || typeof preview !== "boolean") return null;
+  if (mutedUntil !== null && typeof mutedUntil !== "number") return null;
+  return { serverId, endpoint, p256dh, auth, locale, away, level, mutedUntil, preview };
 }

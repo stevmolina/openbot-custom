@@ -181,6 +181,26 @@ have to reach the computer over the WebRTC connection of the app, which Android 
 closed or frozen app build: React Native stops its timers and its view updates in the background,
 and the web view that holds the connection does not connect again after Android froze the app.
 
+## Web client notifications
+
+The web client (`/app`) gets the same notifications in the same conditions through standard Web Push,
+also after its window closed, once the user turns it on in Settings > Preferences > This browser. The
+browser subscribes with the VAPID public key of the account service (`GET /v2/web-push/config`) and
+registers with every connected server that supports `push-notifications-web-v1`
+(`POST /v1/push-notifications/web-registration`): the endpoint and the `p256dh` and `auth` keys of the
+subscription, the language, the level and the mute of that server, and `away`, which is true while no
+window shows. It has no sound and no secret: the keys of the subscription take the place of the seal.
+`PushNotificationService` keeps it in the same file, as an entry with `platform: "web"`, and forgets an
+older session with the same endpoint, as a web client gets a new session when it opens another server.
+
+The host encrypts the payload (`{ v: 1, title, body, tag?, path }`, `packages/contracts/src/web-push.ts`)
+for the subscription in `src/main/web-push-encryption.ts` (RFC 8291) and sends it to
+`POST /v2/remote/hosts/:hostId/web-notification`. The Worker checks the credential, the limit and the
+session, signs a VAPID token and posts to the endpoint, but only to a known push service. The service
+worker of the web client shows the notification; a click opens `path`, an `/app?pushServer=…` link of
+the agent or the channel. While its window is hidden, the web client shows no notification of its own
+for a server that pushes to it, so the user does not get two.
+
 ## Shared channel chats
 
 Channels are separate from sidebar sections. A channel has one host, a purpose, participating agents,

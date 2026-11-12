@@ -354,6 +354,7 @@ try {
         status: "completed",
       });
       const request = await waitFor("phone notification", () => sent[from] ?? null);
+      assert.ok(request.platform !== "web", "A phone send went to a web client.");
       const content = open(request.push.sealed, pushNotificationKeys(androidSecret));
       const body = content.body ?? "";
       assertReadable(body);
@@ -379,6 +380,7 @@ try {
       },
     });
     const request = await waitFor("phone notification", () => sent[from] ?? null);
+    assert.ok(request.platform !== "web", "A phone send went to a web client.");
     const content = open(request.push.sealed, pushNotificationKeys(androidSecret));
     assert.equal(content.body, ROUTINE_ANSWER);
     assert.equal(content.threadId, ROUTINE_THREAD);

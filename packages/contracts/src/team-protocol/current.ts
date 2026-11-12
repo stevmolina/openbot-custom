@@ -132,6 +132,7 @@ import { PROVIDERS_V8_CAPABILITY } from "./providers-v8";
 import { PUSH_NOTIFICATION_THREADS_CAPABILITY } from "./push-notification-threads-v1";
 import { ANDROID_PUSH_NOTIFICATIONS_CAPABILITY } from "./push-notifications-android-v1";
 import { PUSH_NOTIFICATIONS_CAPABILITY } from "./push-notifications-v1";
+import { WEB_PUSH_NOTIFICATIONS_CAPABILITY } from "./push-notifications-web-v1";
 import { TEAM_QUEUE_EDIT_CAPABILITY } from "./queue-edit-v1";
 import { QUIET_TURN_CAPABILITY } from "./quiet-turn-v1";
 import { TEAM_REASONING_EFFORTS_CAPABILITY } from "./reasoning-efforts-v1";
@@ -383,6 +384,7 @@ export {
   VAULT_IMPORT_CAPABILITY,
   VAULT_V2_CAPABILITY,
   VAULT_V3_CAPABILITY,
+  WEB_PUSH_NOTIFICATIONS_CAPABILITY,
   WEBHOOK_SENDER_SECRET_CAPABILITY,
   WEBHOOK_TESTS_CAPABILITY,
   WHATSAPP_CONNECTOR_CAPABILITY,
@@ -589,6 +591,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
+  WEB_PUSH_NOTIFICATIONS_CAPABILITY,
 ] as const;
 
 export type TeamCurrentCapability = (typeof TEAM_CURRENT_CAPABILITIES)[number];
@@ -801,7 +804,8 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== LIBRARY_FOLDERS_CAPABILITY &&
     capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
     capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
-    capability !== AGENT_COMPUTER_CAPABILITY,
+    capability !== AGENT_COMPUTER_CAPABILITY &&
+    capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY,
 );
 /**
  * The capabilities that only a protocol 9 peer sends and gets. Protocols 7 and 8 read at most 128
@@ -890,6 +894,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
+  WEB_PUSH_NOTIFICATIONS_CAPABILITY,
 ]);
 // A v8 host reads at most 128 capabilities, so a client sends the protocol 9 ones only after it
 // negotiates protocol 9.
@@ -1061,6 +1066,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== LIBRARY_FOLDERS_CAPABILITY &&
       capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
       capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
-      capability !== AGENT_COMPUTER_CAPABILITY,
+      capability !== AGENT_COMPUTER_CAPABILITY &&
+      capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY,
   );
 }

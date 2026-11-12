@@ -179,6 +179,14 @@ export const messages = {
   "settings.notifications.allDevices": "Tous mes appareils",
   "settings.notifications.thisComputer": "Cet ordinateur",
   "settings.notifications.thisBrowser": "Ce navigateur",
+  "settings.webPush.title": "Notifier si fermé",
+  "settings.webPush.description":
+    "Vos serveurs envoient des notifications à ce navigateur quand aucune fenêtre d’OpenBot n’est à l’écran, même après sa fermeture.",
+  "settings.webPush.blocked":
+    "Ce navigateur bloque les notifications d’OpenBot. Autorisez-les dans les paramètres du site du navigateur, puis réactivez cette option.",
+  "settings.webPush.failed": "Impossible d’activer les notifications. Réessayez.",
+  "settings.webPush.installHint":
+    "Sur iPhone et iPad, ajoutez OpenBot à l’écran d’accueil : touchez Partager, puis Sur l’écran d’accueil. Ouvrez-le depuis là pour recevoir les notifications.",
   "settings.notificationMatrix.muteOptions": "Options de sourdine pour {name}",
   "settings.notificationMatrix.levelsOf": "Notifications de {name}",
   "settings.notificationMatrix.levelAll": "Tout",

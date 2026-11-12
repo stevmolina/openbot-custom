@@ -175,6 +175,14 @@ export const messages = defineMessages("settings", {
   "settings.notifications.allDevices": "All my devices",
   "settings.notifications.thisComputer": "This computer",
   "settings.notifications.thisBrowser": "This browser",
+  "settings.webPush.title": "Notify when closed",
+  "settings.webPush.description":
+    "Your servers notify this browser while no OpenBot window is on screen, also after you close it.",
+  "settings.webPush.blocked":
+    "This browser blocks notifications from OpenBot. Allow them in the site settings of the browser, then turn this on again.",
+  "settings.webPush.failed": "Notifications could not be turned on. Try again.",
+  "settings.webPush.installHint":
+    "On iPhone and iPad, add OpenBot to the Home Screen: tap Share, then Add to Home Screen. Open it from there to get notifications.",
   "settings.notificationMatrix.muteOptions": "Mute options for {name}",
   "settings.notificationMatrix.levelsOf": "Notifications from {name}",
   "settings.notificationMatrix.levelAll": "All",

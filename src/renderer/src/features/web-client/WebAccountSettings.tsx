@@ -30,7 +30,7 @@ import { SidebarChatOrderSelect } from "@openbot/ui/features/settings/SidebarCha
 import { SoundChoiceSelect } from "@openbot/ui/features/settings/SoundChoiceSelect";
 import { createSettingsProfileStore } from "@openbot/ui/features/settings/stores/profile-store";
 import { useText } from "@openbot/ui/text";
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { readActionSoundChoice, setActionSoundChoice } from "../../action-sounds";
 import { setShowAgentSteps, useShowAgentSteps } from "../../agent-steps-preference";
 import { setCompactMessageActions, useCompactMessageActions } from "../../compact-message-actions-preference";
@@ -42,6 +42,7 @@ import type { WebAccountCalls } from "./web-account";
 import { sendWebAnalyticsChoice, setWebAnalyticsEnabled } from "./web-analytics";
 import { setWebLiveVoice, useWebLiveVoice } from "./web-live-voice";
 import type { WebNotificationSettings } from "./web-notification-settings";
+import type { WebPush } from "./web-push";
 
 const TABS = ["profile", "preferences"] as const;
 type WebAccountSettingsTab = (typeof TABS)[number];
@@ -78,6 +79,8 @@ export interface WebAccountSettingsProps {
   onSignOut: () => Promise<void>;
   /** The levels of each host and its agents, which apply on all devices of the user. */
   notifications: WebNotificationSettings;
+  /** Web Push of this browser: notifications while no window of the app shows. */
+  webPush?: WebPush | undefined;
   /** Opens Preferences at the notification row of one host. Each nonce opens once. */
   notificationFocusRequest?: { serverId: string; nonce: number } | null | undefined;
 }
@@ -329,6 +332,31 @@ export default function WebAccountSettings(props: WebAccountSettingsProps) {
           </SettingsSection>
           <SettingsSection title={t("settings.notifications.thisBrowser")}>
             <ItemGroup class="settings-modal-card">
+              <Show when={props.webPush?.support() === "ready" ? props.webPush : undefined}>
+                {(webPush) => (
+                  <SwitchField
+                    checked={webPush().enabled()}
+                    disabled={webPush().busy()}
+                    onChange={(checked) => void webPush().setEnabled(checked)}
+                    label={t("settings.webPush.title")}
+                    description={
+                      webPush().failed()
+                        ? t("settings.webPush.failed")
+                        : webPush().permission() === "denied"
+                          ? t("settings.webPush.blocked")
+                          : t("settings.webPush.description")
+                    }
+                  />
+                )}
+              </Show>
+              <Show when={props.webPush?.support() === "install"}>
+                <Item class="settings-modal-row">
+                  <ItemContent>
+                    <ItemTitle>{t("settings.webPush.title")}</ItemTitle>
+                    <ItemDescription>{t("settings.webPush.installHint")}</ItemDescription>
+                  </ItemContent>
+                </Item>
+              </Show>
               <Item class="settings-modal-row">
                 <ItemContent>
                   <ItemTitle>{t("settings.taskSound.title")}</ItemTitle>

@@ -170,6 +170,14 @@ export const messages = {
   "settings.notifications.allDevices": "Tüm cihazlarım",
   "settings.notifications.thisComputer": "Bu bilgisayar",
   "settings.notifications.thisBrowser": "Bu tarayıcı",
+  "settings.webPush.title": "Kapalıyken bildir",
+  "settings.webPush.description":
+    "Ekranda OpenBot penceresi yokken, kapattıktan sonra da sunucuların bu tarayıcıya bildirim gönderir.",
+  "settings.webPush.blocked":
+    "Bu tarayıcı OpenBot bildirimlerini engelliyor. Tarayıcının site ayarlarından izin ver, sonra bunu yeniden aç.",
+  "settings.webPush.failed": "Bildirimler açılamadı. Yeniden dene.",
+  "settings.webPush.installHint":
+    "iPhone ve iPad'de OpenBot'u Ana Ekran'a ekle: Paylaş'a, sonra Ana Ekrana Ekle'ye dokun. Bildirim almak için oradan aç.",
   "settings.notificationMatrix.muteOptions": "{name} için sessize alma seçenekleri",
   "settings.notificationMatrix.levelsOf": "{name} bildirimleri",
   "settings.notificationMatrix.levelAll": "Tümü",

@@ -26,7 +26,7 @@ import {
   Search,
 } from "@openbot/ui";
 import type { JSX } from "@solidjs/web";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import { useText } from "../../text";
 import { ServerMark } from "../servers/ServerRail";
 import { ShortcutLabel } from "../shortcuts/ShortcutHint";
@@ -182,7 +182,12 @@ function UpdateButton() {
 }
 
 /** The top row: collapse or expand, then Search and New. It also moves the window. */
-function SidebarChatTopbar(topProps: { pages: SidebarPages }) {
+function SidebarChatTopbar(topProps: {
+  pages: SidebarPages;
+  /** The large title of the list, shown small in the top row once the large one scrolled away. */
+  title?: string | undefined;
+  titleShown?: boolean | undefined;
+}) {
   const { props } = useSidebarScope();
   const { t } = useText();
   const label = () => (props.compact ? t("sidebar.topbar.expand") : t("sidebar.chat.collapse"));
@@ -202,7 +207,18 @@ function SidebarChatTopbar(topProps: { pages: SidebarPages }) {
           <PanelLeft aria-hidden="true" />
         </Button>
       </MotionTooltip>
-      <span class="sidebar-chat-spacer" />
+      <Show when={topProps.title} fallback={<span class="sidebar-chat-spacer" />}>
+        {(title) => (
+          <span
+            class="sidebar-chat-spacer sidebar-chat-bar-title"
+            data-shown={topProps.titleShown ? "" : undefined}
+            aria-hidden="true"
+            dir="auto"
+          >
+            {title()}
+          </span>
+        )}
+      </Show>
       <UpdateButton />
       <RoundButton
         label={t("sidebar.chat.search")}
@@ -292,7 +308,42 @@ function useRecentChats() {
 }
 
 /** The open list: the top zone, which scrolls, and the dock. The drag measures both. */
-function SidebarChatList() {
+/**
+ * The large title of the list. It reports when it has scrolled out of the list, so the top row shows
+ * the name small, as an iOS large title does.
+ */
+function SidebarLargeTitle(titleProps: { name: string; onHiddenChange: (hidden: boolean) => void }) {
+  let element: HTMLHeadingElement | undefined;
+  onSettled(() => {
+    const title = element;
+    if (!title || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries.at(-1);
+        if (entry) titleProps.onHiddenChange(!entry.isIntersecting);
+      },
+      { root: title.closest(".sidebar-chat-scroll") },
+    );
+    observer.observe(title);
+    return () => {
+      observer.disconnect();
+      titleProps.onHiddenChange(false);
+    };
+  });
+  return (
+    <h1
+      ref={(heading) => {
+        element = heading;
+      }}
+      class="sidebar-chat-large-title"
+      dir="auto"
+    >
+      {titleProps.name}
+    </h1>
+  );
+}
+
+function SidebarChatList(listProps: { onTitleHiddenChange: (hidden: boolean) => void }) {
   const {
     dropSidebarNativeDrag,
     draggingKind,
@@ -329,6 +380,9 @@ function SidebarChatList() {
         onScroll={scrollFades.measure}
       >
         <div class="agent-list-content">
+          <Show when={props.largeTitle}>
+            <SidebarLargeTitle name={props.serverName} onHiddenChange={listProps.onTitleHiddenChange} />
+          </Show>
           <Show
             when={props.allMachines}
             fallback={
@@ -386,6 +440,7 @@ function SidebarChatDockList() {
 
 export function SidebarChat(chatProps: { pages: SidebarPages }) {
   const { props } = useSidebarScope();
+  const [titleHidden, setTitleHidden] = createSignal(false);
   return (
     <Show
       when={!props.compact}
@@ -405,8 +460,12 @@ export function SidebarChat(chatProps: { pages: SidebarPages }) {
         </>
       }
     >
-      <SidebarChatTopbar pages={chatProps.pages} />
-      <SidebarChatList />
+      <SidebarChatTopbar
+        pages={chatProps.pages}
+        title={props.largeTitle ? props.serverName : undefined}
+        titleShown={titleHidden()}
+      />
+      <SidebarChatList onTitleHiddenChange={setTitleHidden} />
       <div class="sidebar-chat-footer">{props.footer}</div>
       <div class="sidebar-chat-bottom">
         <SidebarUsage

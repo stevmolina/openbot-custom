@@ -176,6 +176,14 @@ export const messages = {
   "settings.notifications.allDevices": "Все мои устройства",
   "settings.notifications.thisComputer": "Этот компьютер",
   "settings.notifications.thisBrowser": "Этот браузер",
+  "settings.webPush.title": "Уведомлять, когда закрыто",
+  "settings.webPush.description":
+    "Ваши серверы отправляют уведомления в этот браузер, когда на экране нет окна OpenBot, в том числе после его закрытия.",
+  "settings.webPush.blocked":
+    "Этот браузер блокирует уведомления OpenBot. Разрешите их в настройках сайта в браузере, затем снова включите этот параметр.",
+  "settings.webPush.failed": "Не удалось включить уведомления. Попробуйте ещё раз.",
+  "settings.webPush.installHint":
+    "На iPhone и iPad добавьте OpenBot на экран «Домой»: нажмите «Поделиться», затем «На экран „Домой“». Открывайте его оттуда, чтобы получать уведомления.",
   "settings.notificationMatrix.muteOptions": "Отключение уведомлений для {name}",
   "settings.notificationMatrix.levelsOf": "Уведомления от {name}",
   "settings.notificationMatrix.levelAll": "Все",

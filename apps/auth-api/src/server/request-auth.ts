@@ -47,6 +47,7 @@ import {
 import { SkillMarketplace, SkillMarketplaceError } from "./skill-marketplace";
 import { SlackAppError, SlackAppService } from "./slack-app";
 import { requireWorkerBindings, type TeamInviteEmailDelivery, type WorkerBindings } from "./types";
+import { sharedWebPushSender, type WebPushRelaySender } from "./web-push-relay";
 import { WorkosSignInError, WorkosSignInService, workosSignInEnabled } from "./workos-sign-in";
 
 function accountAnalytics(bindings: WorkerBindings): AccountAnalytics {
@@ -350,6 +351,43 @@ export function requestFcmRelay(): {
   if (!sender) return null;
   const limit = relayLimit(LIVE_ACTIVITY_RATE_LIMITER);
   return { sender, allowNotification: (hostId) => limit(`notification:host:${hostId}`) };
+}
+
+/**
+ * The Web Push relay for web client notifications: the VAPID sender, whether a local push service may
+ * stand in (only `vite dev` sets it), and the notification limit of each host, which it shares with
+ * phone notifications. `null` when this Worker has no valid VAPID key pair or no limiter, so the relay
+ * is off.
+ */
+export function requestWebPushRelay(): {
+  sender: WebPushRelaySender;
+  allowLoopback: boolean;
+  allowNotification(hostId: string): Effect.Effect<boolean, AuthOperationError>;
+} | null {
+  const bindings = requireWorkerBindings(env);
+  const { LIVE_ACTIVITY_RATE_LIMITER } = bindings;
+  if (!LIVE_ACTIVITY_RATE_LIMITER) return null;
+  const sender = requestWebPushSender(bindings);
+  if (!sender) return null;
+  const limit = relayLimit(LIVE_ACTIVITY_RATE_LIMITER);
+  return {
+    sender,
+    allowLoopback: bindings.WEB_PUSH_ALLOW_LOOPBACK === "true",
+    allowNotification: (hostId) => limit(`notification:host:${hostId}`),
+  };
+}
+
+/** The VAPID public key that browsers subscribe with, or `null` when the relay has no key pair. */
+export function requestWebPushPublicKey(): string | null {
+  return requestWebPushSender(requireWorkerBindings(env))?.publicKey ?? null;
+}
+
+function requestWebPushSender(bindings: WorkerBindings): WebPushRelaySender | null {
+  return sharedWebPushSender({
+    privateKey: bindings.WEB_PUSH_VAPID_PRIVATE_KEY,
+    publicKey: bindings.WEB_PUSH_VAPID_PUBLIC_KEY,
+    subject: bindings.WEB_PUSH_VAPID_SUBJECT,
+  });
 }
 
 function relayLimit(limiter: RateLimit) {

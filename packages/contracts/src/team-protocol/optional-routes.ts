@@ -108,6 +108,7 @@ import { PROVIDERS_V8_CODECS } from "./providers-v8";
 import { PUSH_NOTIFICATION_THREADS_CODECS } from "./push-notification-threads-v1";
 import { ANDROID_PUSH_NOTIFICATIONS_CODECS } from "./push-notifications-android-v1";
 import { PUSH_NOTIFICATIONS_CODECS } from "./push-notifications-v1";
+import { WEB_PUSH_NOTIFICATIONS_CODECS } from "./push-notifications-web-v1";
 import { REMOTE_COMPUTER_USE_CODECS } from "./remote-computer-use-v1";
 import { ROUTINE_FLOWS_CODECS } from "./routine-flows-v1";
 import { ROUTINE_RECOVERY_CODECS } from "./routine-recovery-v1";
@@ -184,6 +185,7 @@ const CODECS: ReadonlyMap<string, OptionalRouteCodec> = new Map([
   ...LIVE_ACTIVITY_PUSH_CODECS,
   ...PUSH_NOTIFICATIONS_CODECS,
   ...ANDROID_PUSH_NOTIFICATIONS_CODECS,
+  ...WEB_PUSH_NOTIFICATIONS_CODECS,
   ...PUSH_NOTIFICATION_THREADS_CODECS,
   ...HOSTED_SITES_CODECS,
   ...WORKSPACE_DIRECTORY_CODECS,

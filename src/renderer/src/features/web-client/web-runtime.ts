@@ -437,6 +437,16 @@ export interface WebWorkspaceRuntime {
    * a host with a status connection. `levels` is null on a host without `agent-notification-levels-v1`.
    */
   notificationSettings?: (hostId: string) => Promise<WebHostNotificationSettings>;
+  /**
+   * The capabilities of a host: the open host, or a host with a status connection. Null until the host
+   * answered on its connection.
+   */
+  hostCapabilities?: (hostId: string) => readonly string[] | null;
+  /**
+   * Posts one Web Push registration request (`push-notifications-web-v1`) to a host: the open host, or a
+   * host with a status connection. Rejects while the host has no connection.
+   */
+  postHostWebPush?: (hostId: string, path: string, body: TeamProtocolV2Json) => Promise<void>;
   /** Sets the user's own level for one agent of a host. Needs `agent-notification-levels-v1`. */
   setHostAgentNotificationLevel?: (
     hostId: string,
@@ -1643,6 +1653,17 @@ export function createWebWorkspaceRuntime(
       if (!capabilities.includes(AGENT_NOTIFICATION_LEVELS_CAPABILITY))
         throw new Error(currentText().t("error.team.agentNotificationLevelsUnsupported"));
       return runTeamEffect(setAgentNotificationLevel(teamApi, input).pipe(Effect.mapError((error) => error.cause)));
+    },
+    hostCapabilities(hostId) {
+      if (hostId !== lockedHostId) return hosts?.capabilities(hostId) ?? null;
+      return connectedHost?.hostId === hostId && capabilities.length > 0 ? capabilities : null;
+    },
+    async postHostWebPush(hostId, path, body) {
+      if (hostId !== lockedHostId) {
+        if (!hosts) throw new Error(currentText().t("webClient.error.hostChanged"));
+        return hosts.postWebPush(hostId, path, body);
+      }
+      await request("POST", path, body);
     },
     async notificationSettings(hostId) {
       if (hostId !== lockedHostId) {
