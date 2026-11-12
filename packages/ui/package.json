@@ -500,6 +500,7 @@
     "./features/sidebar/sidebar-chat-step": "./src/features/sidebar/sidebar-chat-step.ts",
     "./features/conversation/composer-focus": "./src/features/conversation/composer-focus.ts",
     "./features/shortcuts/ShortcutSheet": "./src/features/shortcuts/ShortcutSheet.tsx",
+    "./features/shortcuts/ShortcutPeek": "./src/features/shortcuts/ShortcutPeek.tsx",
     "./features/shortcuts/ShortcutHint": "./src/features/shortcuts/ShortcutHint.tsx",
     "./features/shortcuts/shortcuts.css": "./src/features/shortcuts/shortcuts.css",
     "./features/browser/BrowserDock": "./src/features/browser/BrowserDock.tsx",
