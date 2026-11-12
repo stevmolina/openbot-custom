@@ -1,0 +1,10 @@
+{
+  "name": "pokebots-app-host",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "app.pokebots.xyz/", "zone_name": "pokebots.xyz" },
+    { "pattern": "app.pokebots.xyz/sw.js", "zone_name": "pokebots.xyz" }
+  ]
+}
