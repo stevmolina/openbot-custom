@@ -101,6 +101,21 @@ export type SidebarMachineAttention = "waiting" | "unread";
  * machines into `agents`, `agentStates`, `agentMoods` and `layout`. Channels, pins and people belong
  * to one server, so the view has none of them.
  */
+/**
+ * The machine chips over the chat list: "All", then one chip per machine. They show in every view
+ * while the user has more than one machine: "All" opens the "All machines" view, and a machine opens
+ * that machine's own chat list.
+ */
+export interface SidebarMachineChipsProps {
+  /** The machines in the order of the server menu. */
+  machines: readonly Machine[];
+  /** The chosen chip: a machine id, or null for "All". */
+  chosen: string | null;
+  /** What each machine holds for the user, for the chip's dot. A machine with nothing has no entry. */
+  attention: Readonly<Record<string, SidebarMachineAttention>>;
+  onChoose: (serverId: string | null) => void;
+}
+
 export interface SidebarAllMachines {
   /** The servers in the order of the server menu, for the chips and the notices. */
   machines: readonly Machine[];
@@ -150,6 +165,8 @@ export interface SidebarProps {
    */
   chatServer?: (ServerMarkServer & { name: string }) | undefined;
   /** The "All machines" view. With it, the chat list shows the agents of every server, with machine chips. */
+  /** The machine chips over the chat list. Set while the user has more than one machine. */
+  machineChips?: SidebarMachineChipsProps | undefined;
   allMachines?: SidebarAllMachines | undefined;
   onOpenServerSettings?: ((trigger: HTMLElement) => void) | undefined;
   /** The desktop server menu. Without it, the server name opens the server settings. */

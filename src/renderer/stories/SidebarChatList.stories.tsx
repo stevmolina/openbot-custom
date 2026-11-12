@@ -337,6 +337,12 @@ function AllMachinesSidebar(props: { filter?: string | null; compact?: boolean }
       agentMoods={merged().agentMoods}
       layout={merged().layout}
       layoutMutable={false}
+      machineChips={{
+        machines: storyMachines,
+        chosen: filter(),
+        attention: merged().attention,
+        onChoose: setFilter,
+      }}
       allMachines={{
         machines: storyMachines,
         activeServerId: "local",
@@ -361,6 +367,18 @@ export const AllMachines: Story = {
 /** One machine chosen: its chip shows its name, and the rows lose their machine mark. */
 export const AllMachinesOneMachine: Story = {
   render: () => <SettledArgs>{() => <AllMachinesSidebar filter="personal-vps" />}</SettledArgs>,
+};
+
+/** One machine's own chat list, with the chips over it: the chip of the open machine is chosen. */
+export const MachineChipsOnOneMachine: Story = {
+  args: {
+    machineChips: {
+      machines: storyMachines,
+      chosen: "local",
+      attention: { "personal-vps": "waiting" },
+      onChoose: fn(),
+    },
+  },
 };
 
 /** A machine that does not answer shows one muted line with a retry. */
