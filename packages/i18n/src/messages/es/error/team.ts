@@ -126,6 +126,7 @@ export const messages = {
   "error.team.browsingMemoryUnsupported": "Esta conexión no admite aprender de la navegación.",
   "error.team.promptCacheTtlUnsupported": "Esta conexión no admite la duración de la caché de prompts.",
   "error.team.claudeUserSetupUnsupported": "Esta conexión no admite el interruptor de configuración de Claude Code.",
+  "error.team.claudeAiToolsUnsupported": "Esta conexión no admite el interruptor de las herramientas de claude.ai.",
   "error.team.claudeCompactWindowUnsupported": "Esta conexión no admite el tamaño de compactación de Claude.",
   "error.team.modelVisibilityUnsupported": "Esta conexión no admite la lista de modelos.",
   "error.team.providerDefaultUnsupported": "Esta conexión no admite el proveedor predeterminado.",

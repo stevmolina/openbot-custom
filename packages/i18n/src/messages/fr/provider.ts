@@ -269,6 +269,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "Les agents chargent CLAUDE.md, les skills, agents, hooks et plugins depuis ~/.claude sur le serveur. Désactivé, chaque tour envoie un prompt plus court. Les fichiers de l’espace de travail restent chargés.",
   "provider.settings.claudeUserSetupLoadFailed": "Impossible de charger le réglage Claude Code.",
+  "provider.settings.claudeAiTools": "Utiliser les outils claude.ai",
+  "provider.settings.claudeAiToolsDescription":
+    "Les agents Claude peuvent publier des Artifacts et utiliser vos connecteurs claude.ai, comme Gmail, Notion et Slack. Nécessite une connexion claude.ai. Ajoute environ 13k tokens à chaque requête.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Les agents Claude peuvent publier des Artifacts et utiliser les connecteurs claude.ai du compte Claude du serveur. Nécessite une connexion claude.ai. Ajoute environ 13k tokens à chaque requête.",
+  "provider.settings.claudeAiToolsLoadFailed": "Impossible de charger le réglage des outils claude.ai.",
   "provider.settings.context": "Contexte",
   "provider.settings.compactWindow": "Compacter les chats à",
   "provider.settings.compactWindowDescription":

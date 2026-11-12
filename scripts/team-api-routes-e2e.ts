@@ -188,6 +188,11 @@ import { CHANNEL_ROUTES } from "@openbot/contracts/team-protocol/channels-v1";
 import { CHAT_COLORS_CAPABILITY, CHAT_COLORS_ROUTES } from "@openbot/contracts/team-protocol/chat-colors-v1";
 import { CHAT_HISTORY_CAPABILITY, CHAT_HISTORY_ROUTES } from "@openbot/contracts/team-protocol/chat-history-v1";
 import {
+  CLAUDE_AI_TOOLS_CAPABILITY,
+  CLAUDE_AI_TOOLS_CODECS,
+  CLAUDE_AI_TOOLS_ROUTES,
+} from "@openbot/contracts/team-protocol/claude-ai-tools-v1";
+import {
   CLAUDE_COMPACT_WINDOW_CAPABILITY,
   CLAUDE_COMPACT_WINDOW_CODECS,
   CLAUDE_COMPACT_WINDOW_ROUTES,
@@ -371,6 +376,7 @@ import { type BitwardenCliRunner, BitwardenConnectorService } from "../src/main/
 import { BitwardenConnectorStore } from "../src/main/bitwarden-connector-store";
 import { createBrowserProfileService } from "../src/main/browser-profile-service";
 import { BrowsingMemoryPreferenceStore } from "../src/main/browsing-memory-preference-store";
+import { claudeAiToolsControl, createClaudeAiToolsPreferenceStore } from "../src/main/claude-ai-tools-preference-store";
 import {
   claudeCompactWindowControl,
   createClaudeCompactWindowPreferenceStore,
@@ -2231,6 +2237,10 @@ try {
       claudeUserSetup: claudeUserSetupControl(
         createClaudeUserSetupPreferenceStore(join(root, "claude-user-setup.json")),
         () => record("claudeUserSetupChanged"),
+      ),
+      // The real switch over a file of the test folder; a change records the provider status event.
+      claudeAiTools: claudeAiToolsControl(createClaudeAiToolsPreferenceStore(join(root, "claude-ai-tools.json")), () =>
+        record("claudeAiToolsChanged"),
       ),
       // The real size over a file of the test folder; a change records the provider status event.
       claudeCompactWindow: claudeCompactWindowControl(
@@ -6778,6 +6788,52 @@ try {
         errorIs(noCapability, 400, sourceText("error.team.claudeUserSetupUnsupported")) &&
         isDeepStrictEqual(off.body, { enabled: false }) &&
         callsOf("claudeUserSetupChanged").length === 2,
+      [summary(member), summary(memberRead), summary(noCapability), summary(off)],
+    );
+  }
+
+  // ---- "Use claude.ai tools" of the host from a joined server (claude-ai-tools-v1) ----
+  {
+    const tools = { token: adaToken, protocol: TEAM_PROTOCOL_V9, capabilities: [CLAUDE_AI_TOOLS_CAPABILITY] };
+    const compatibility = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: TEAM_PROTOCOL_V9 });
+    const older = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: 8 });
+    const before = await call("POST", CLAUDE_AI_TOOLS_ROUTES.settings, { ...tools, json: {} });
+    const on = await call("POST", CLAUDE_AI_TOOLS_ROUTES.update, { ...tools, json: { enabled: true } });
+    const again = await call("POST", CLAUDE_AI_TOOLS_ROUTES.update, { ...tools, json: { enabled: true } });
+    const after = await call("POST", CLAUDE_AI_TOOLS_ROUTES.settings, { ...tools, json: {} });
+    const saved = parseJson(readFileSync(join(root, "claude-ai-tools.json"), "utf8"));
+    check(
+      "the host advertises claude-ai-tools-v1 to protocol 9 only, and an admin reads and turns on the switch, which the host saves and announces once",
+      list(field(compatibility.body, "capabilities")).includes(CLAUDE_AI_TOOLS_CAPABILITY) &&
+        !list(field(older.body, "capabilities")).includes(CLAUDE_AI_TOOLS_CAPABILITY) &&
+        isDeepStrictEqual(before.body, { enabled: false }) &&
+        isDeepStrictEqual(on.body, { enabled: true }) &&
+        isDeepStrictEqual(again.body, { enabled: true }) &&
+        isDeepStrictEqual(after.body, { enabled: true }) &&
+        CLAUDE_AI_TOOLS_CODECS.get(CLAUDE_AI_TOOLS_ROUTES.update)?.response(200, on.body) !== undefined &&
+        isDeepStrictEqual(saved, { version: 1, enabled: true }) &&
+        callsOf("claudeAiToolsChanged").length === 1,
+      [summary(before), summary(on), summary(after)],
+    );
+    const member = await call("POST", CLAUDE_AI_TOOLS_ROUTES.update, {
+      ...tools,
+      token: bobToken,
+      json: { enabled: false },
+    });
+    const memberRead = await call("POST", CLAUDE_AI_TOOLS_ROUTES.settings, { ...tools, token: bobToken, json: {} });
+    const noCapability = await call("POST", CLAUDE_AI_TOOLS_ROUTES.update, {
+      token: adaToken,
+      protocol: TEAM_PROTOCOL_V9,
+      json: { enabled: false },
+    });
+    const off = await call("POST", CLAUDE_AI_TOOLS_ROUTES.update, { ...tools, json: { enabled: false } });
+    check(
+      "a member cannot read or set the claude.ai tools switch (403), a client without claude-ai-tools-v1 gets 400, and neither changes it",
+      member.status === 403 &&
+        memberRead.status === 403 &&
+        errorIs(noCapability, 400, sourceText("error.team.claudeAiToolsUnsupported")) &&
+        isDeepStrictEqual(off.body, { enabled: false }) &&
+        callsOf("claudeAiToolsChanged").length === 2,
       [summary(member), summary(memberRead), summary(noCapability), summary(off)],
     );
   }

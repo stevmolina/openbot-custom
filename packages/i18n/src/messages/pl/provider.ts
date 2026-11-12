@@ -283,6 +283,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "Agenci wczytują CLAUDE.md, umiejętności, agentów, hooki i wtyczki z ~/.claude na serwerze. Po wyłączeniu każda tura wysyła krótszy prompt. Pliki obszaru roboczego nadal się wczytują.",
   "provider.settings.claudeUserSetupLoadFailed": "Nie udało się wczytać ustawienia Claude Code.",
+  "provider.settings.claudeAiTools": "Używaj narzędzi claude.ai",
+  "provider.settings.claudeAiToolsDescription":
+    "Agenci Claude mogą publikować Artifacts i używać Twoich konektorów claude.ai, takich jak Gmail, Notion i Slack. Wymaga logowania przez claude.ai. Dodaje około 13k tokenów do każdego żądania.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Agenci Claude mogą publikować Artifacts i używać konektorów claude.ai konta Claude na serwerze. Wymaga logowania przez claude.ai. Dodaje około 13k tokenów do każdego żądania.",
+  "provider.settings.claudeAiToolsLoadFailed": "Nie udało się wczytać ustawienia narzędzi claude.ai.",
   "provider.settings.context": "Kontekst",
   "provider.settings.compactWindow": "Kompaktuj czaty przy",
   "provider.settings.compactWindowDescription":

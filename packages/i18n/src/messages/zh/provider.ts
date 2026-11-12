@@ -303,6 +303,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "代理会从服务器上的 ~/.claude 加载 CLAUDE.md、技能、代理、钩子和插件。关闭后，每轮发送的提示更短。工作区文件仍会加载。",
   "provider.settings.claudeUserSetupLoadFailed": "无法加载 Claude Code 设置。",
+  "provider.settings.claudeAiTools": "使用 claude.ai 工具",
+  "provider.settings.claudeAiToolsDescription":
+    "Claude 智能体可以发布 Artifacts，并使用你的 claude.ai 连接器，例如 Gmail、Notion 和 Slack。需要用 claude.ai 登录。每次请求约增加 13k 个令牌。",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Claude 智能体可以发布 Artifacts，并使用服务器上 Claude 账户的 claude.ai 连接器。需要用 claude.ai 登录。每次请求约增加 13k 个令牌。",
+  "provider.settings.claudeAiToolsLoadFailed": "无法加载 claude.ai 工具设置。",
   "provider.settings.context": "上下文",
   "provider.settings.compactWindow": "压缩聊天的大小",
   "provider.settings.compactWindowDescription":

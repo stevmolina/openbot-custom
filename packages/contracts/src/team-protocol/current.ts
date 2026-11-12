@@ -66,6 +66,7 @@ import { CHANNEL_ISOLATION_CAPABILITY } from "./channel-isolation-v1";
 import { CHANNEL_PICTURE_CAPABILITY } from "./channel-picture-v1";
 import { CHAT_COLORS_CAPABILITY } from "./chat-colors-v1";
 import { CHAT_HISTORY_CAPABILITY } from "./chat-history-v1";
+import { CLAUDE_AI_TOOLS_CAPABILITY } from "./claude-ai-tools-v1";
 import { CLAUDE_API_KEY_CAPABILITY } from "./claude-api-key-v1";
 import { CLAUDE_COMPACT_WINDOW_CAPABILITY } from "./claude-compact-window-v1";
 import { CLAUDE_USER_SETUP_CAPABILITY } from "./claude-user-setup-v1";
@@ -577,6 +578,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   ROUTINES_ONCE_CAPABILITY,
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
+  CLAUDE_AI_TOOLS_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -791,6 +793,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== ROUTINES_ONCE_CAPABILITY &&
     capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
     capability !== CLAUDE_USER_SETUP_CAPABILITY &&
+    capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
     capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
     capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
     capability !== HERMES_IMPORT_CAPABILITY &&
@@ -880,6 +883,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   ROUTINES_ONCE_CAPABILITY,
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
+  CLAUDE_AI_TOOLS_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -1053,6 +1057,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== ROUTINES_ONCE_CAPABILITY &&
       capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
       capability !== CLAUDE_USER_SETUP_CAPABILITY &&
+      capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
       capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
       capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
       capability !== HERMES_IMPORT_CAPABILITY &&

@@ -351,6 +351,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "يحمّل الوكلاء ملف CLAUDE.md والمهارات والوكلاء والخطافات والإضافات من ~/.claude على الخادم. عند الإيقاف، يرسل كل دور موجّهًا أقصر. تظل ملفات مساحة العمل تُحمَّل.",
   "provider.settings.claudeUserSetupLoadFailed": "تعذّر تحميل إعداد Claude Code.",
+  "provider.settings.claudeAiTools": "استخدام أدوات claude.ai",
+  "provider.settings.claudeAiToolsDescription":
+    "يمكن لوكلاء Claude نشر Artifacts واستخدام موصلات claude.ai الخاصة بك، مثل Gmail وNotion وSlack. يتطلب تسجيل الدخول عبر claude.ai. يضيف نحو 13k رمزًا إلى كل طلب.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "يمكن لوكلاء Claude نشر Artifacts واستخدام موصلات claude.ai لحساب Claude على الخادم. يتطلب تسجيل الدخول عبر claude.ai. يضيف نحو 13k رمزًا إلى كل طلب.",
+  "provider.settings.claudeAiToolsLoadFailed": "تعذّر تحميل إعداد أدوات claude.ai.",
   "provider.settings.context": "السياق",
   "provider.settings.compactWindow": "ضغط المحادثات عند",
   "provider.settings.compactWindowDescription":

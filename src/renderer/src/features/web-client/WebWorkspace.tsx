@@ -51,6 +51,10 @@ import { CHANNEL_ISOLATION_CAPABILITY } from "@openbot/contracts/team-protocol/c
 import { CHANNEL_PICTURE_CAPABILITY } from "@openbot/contracts/team-protocol/channel-picture-v1";
 import { CHAT_HISTORY_CAPABILITY } from "@openbot/contracts/team-protocol/chat-history-v1";
 import {
+  CLAUDE_AI_TOOLS_ROUTES,
+  decodeClaudeAiToolsResponse,
+} from "@openbot/contracts/team-protocol/claude-ai-tools-v1";
+import {
   CLAUDE_USER_SETUP_ROUTES,
   decodeClaudeUserSetupResponse,
 } from "@openbot/contracts/team-protocol/claude-user-setup-v1";
@@ -289,6 +293,7 @@ import {
   showServerUpdate,
 } from "../servers/server-update-flow";
 import { licenseContactUs, trackLicenseEvent } from "../settings/license-analytics";
+import type { HostClaudeAiToolsCalls } from "../settings/provider-claude-ai-tools";
 import type { HostClaudeCompactWindowCalls } from "../settings/provider-claude-compact-window";
 import type { HostClaudeUserSetupCalls } from "../settings/provider-claude-user-setup";
 import type { HostModelVisibilityCalls } from "../settings/provider-model-visibility";
@@ -1685,6 +1690,12 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
       hostRequest(serverId)("POST", CLAUDE_USER_SETUP_ROUTES.settings, decodeClaudeUserSetupResponse, {}),
     setClaudeUserSetup: (enabled, serverId) =>
       hostRequest(serverId)("POST", CLAUDE_USER_SETUP_ROUTES.update, decodeClaudeUserSetupResponse, { enabled }),
+  };
+  const hostClaudeAiToolsCalls: HostClaudeAiToolsCalls = {
+    getClaudeAiTools: (serverId) =>
+      hostRequest(serverId)("POST", CLAUDE_AI_TOOLS_ROUTES.settings, decodeClaudeAiToolsResponse, {}),
+    setClaudeAiTools: (enabled, serverId) =>
+      hostRequest(serverId)("POST", CLAUDE_AI_TOOLS_ROUTES.update, decodeClaudeAiToolsResponse, { enabled }),
   };
   const hostClaudeCompactWindowCalls: HostClaudeCompactWindowCalls = {
     getClaudeCompactWindow: async (serverId) =>
@@ -3450,6 +3461,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                         browsingMemory={{ calls: hostBrowsingMemoryCalls }}
                         hostPromptCacheTtl={{ calls: hostPromptCacheTtlCalls }}
                         claudeUserSetup={{ calls: hostClaudeUserSetupCalls }}
+                        claudeAiTools={{ calls: hostClaudeAiToolsCalls }}
                         claudeCompactWindow={{ calls: hostClaudeCompactWindowCalls }}
                         hostModelVisibility={{ calls: hostModelVisibilityCalls }}
                         hostDefaultProvider={{ calls: providerAdmin.hostDefaultProviderCalls }}

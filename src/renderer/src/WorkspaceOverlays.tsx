@@ -1054,6 +1054,7 @@ function ServerSettings() {
           browsingMemory={{}}
           hostPromptCacheTtl={{}}
           claudeUserSetup={{}}
+          claudeAiTools={{}}
           claudeCompactWindow={{}}
           hostModelVisibility={{}}
           hostDefaultProvider={{}}

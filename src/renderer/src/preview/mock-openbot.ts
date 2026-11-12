@@ -62,6 +62,7 @@ import {
   type BusyMessageModePreference,
   browserProxyAddressText,
   type CentralAuthState,
+  type ClaudeAiToolsSetting,
   type ClaudeCompactWindowSetting,
   type ClaudeUserSetupSetting,
   type ClientAgentModelOption,
@@ -86,6 +87,7 @@ import {
   DEFAULT_APPROVAL_AUTOMATION_PREFERENCE,
   DEFAULT_BROWSING_MEMORY_PREFERENCE,
   DEFAULT_BUSY_MESSAGE_MODE,
+  DEFAULT_CLAUDE_AI_TOOLS,
   DEFAULT_CLAUDE_COMPACT_WINDOW,
   DEFAULT_CLAUDE_USER_SETUP,
   DEFAULT_CUSTOM_PROVIDER_HARNESS,
@@ -528,6 +530,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
   let machineAlerts: MachineAlertSettings = { ...DEFAULT_MACHINE_ALERT_SETTINGS, diskPercent: 80 };
   let promptCacheTtl: PromptCacheTtlSetting = { ...DEFAULT_PROMPT_CACHE_TTL };
   let claudeUserSetup: ClaudeUserSetupSetting = { ...DEFAULT_CLAUDE_USER_SETUP };
+  let claudeAiTools: ClaudeAiToolsSetting = { ...DEFAULT_CLAUDE_AI_TOOLS };
   let claudeCompactWindow: ClaudeCompactWindowSetting = { ...DEFAULT_CLAUDE_COMPACT_WINDOW };
   /** The models each provider's picker shows, after the user changed the list. Unchanged providers show all. */
   const shownModels = new Map<string, readonly string[]>();
@@ -3700,6 +3703,12 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
         if (typeof enabled !== "boolean") throw new Error("Invalid Claude setup setting.");
         claudeUserSetup = { enabled };
         return clone(claudeUserSetup);
+      },
+      getClaudeAiTools: async () => clone(claudeAiTools),
+      setClaudeAiTools: async (enabled) => {
+        if (typeof enabled !== "boolean") throw new Error("Invalid claude.ai tools setting.");
+        claudeAiTools = { enabled };
+        return clone(claudeAiTools);
       },
       getClaudeCompactWindow: async () => clone(claudeCompactWindow),
       setClaudeCompactWindow: async (tokens) => {

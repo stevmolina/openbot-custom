@@ -63,6 +63,7 @@ import { BROWSER_PROFILES_CAPABILITY } from "@openbot/contracts/team-protocol/br
 import { BROWSER_PROXIES_CAPABILITY } from "@openbot/contracts/team-protocol/browser-proxies-v1";
 import { BROWSER_USER_CONTROL_CAPABILITY } from "@openbot/contracts/team-protocol/browser-user-control-v1";
 import { CHAT_COLORS_CAPABILITY } from "@openbot/contracts/team-protocol/chat-colors-v1";
+import { CLAUDE_AI_TOOLS_CAPABILITY } from "@openbot/contracts/team-protocol/claude-ai-tools-v1";
 import { CLAUDE_API_KEY_CAPABILITY } from "@openbot/contracts/team-protocol/claude-api-key-v1";
 import { CLAUDE_COMPACT_WINDOW_CAPABILITY } from "@openbot/contracts/team-protocol/claude-compact-window-v1";
 import { CLAUDE_USER_SETUP_CAPABILITY } from "@openbot/contracts/team-protocol/claude-user-setup-v1";
@@ -322,6 +323,7 @@ import { routeBrowsingMemory } from "./team-api/route-browsing-memory";
 import { routeChannels } from "./team-api/route-channels";
 import { chatColorsOf, routeChatColors, visibleChatColors } from "./team-api/route-chat-colors";
 import { routeChatHistory } from "./team-api/route-chat-history";
+import { routeClaudeAiTools } from "./team-api/route-claude-ai-tools";
 import { routeClaudeCompactWindow } from "./team-api/route-claude-compact-window";
 import { routeClaudeUserSetup } from "./team-api/route-claude-user-setup";
 import { routeComputerActivity } from "./team-api/route-computer-activity";
@@ -1304,6 +1306,7 @@ export class TeamApiServer {
       if ((await routeBrowsingMemory(context, this.#options.admin)) === "handled") return;
       if ((await routePromptCacheTtl(context, this.#options.admin)) === "handled") return;
       if ((await routeClaudeUserSetup(context, this.#options.admin)) === "handled") return;
+      if ((await routeClaudeAiTools(context, this.#options.admin)) === "handled") return;
       if ((await routeClaudeCompactWindow(context, this.#options.admin)) === "handled") return;
       if ((await routeProviderDetection(context, this.#options.admin)) === "handled") return;
       if ((await routeModelVisibility(context, this.#options.admin)) === "handled") return;
@@ -2677,6 +2680,7 @@ export class TeamApiServer {
           if (capability === BROWSING_MEMORY_CAPABILITY) return this.#options.admin?.browsingMemory !== undefined;
           if (capability === PROMPT_CACHE_TTL_CAPABILITY) return this.#options.admin?.promptCacheTtl !== undefined;
           if (capability === CLAUDE_USER_SETUP_CAPABILITY) return this.#options.admin?.claudeUserSetup !== undefined;
+          if (capability === CLAUDE_AI_TOOLS_CAPABILITY) return this.#options.admin?.claudeAiTools !== undefined;
           if (capability === CLAUDE_COMPACT_WINDOW_CAPABILITY)
             return this.#options.admin?.claudeCompactWindow !== undefined;
           if (capability === PROVIDER_DETECTION_CAPABILITY) return this.#options.admin?.providerDetection !== undefined;

@@ -298,6 +298,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "에이전트가 서버의 ~/.claude에서 CLAUDE.md, 스킬, 에이전트, 훅, 플러그인을 불러와요. 끄면 각 턴에서 더 짧은 프롬프트를 보내요. 워크스페이스 파일은 계속 불러와요.",
   "provider.settings.claudeUserSetupLoadFailed": "Claude Code 설정을 불러오지 못했습니다.",
+  "provider.settings.claudeAiTools": "claude.ai 도구 사용",
+  "provider.settings.claudeAiToolsDescription":
+    "Claude 에이전트가 Artifacts를 게시하고 Gmail, Notion, Slack 같은 claude.ai 커넥터를 사용할 수 있습니다. claude.ai 로그인이 필요합니다. 요청마다 약 13k 토큰이 추가됩니다.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Claude 에이전트가 Artifacts를 게시하고 서버에 있는 Claude 계정의 claude.ai 커넥터를 사용할 수 있습니다. claude.ai 로그인이 필요합니다. 요청마다 약 13k 토큰이 추가됩니다.",
+  "provider.settings.claudeAiToolsLoadFailed": "claude.ai 도구 설정을 불러오지 못했습니다.",
   "provider.settings.context": "컨텍스트",
   "provider.settings.compactWindow": "채팅 압축 크기",
   "provider.settings.compactWindowDescription":
