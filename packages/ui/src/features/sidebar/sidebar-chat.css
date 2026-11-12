@@ -159,7 +159,7 @@
   justify-content: flex-start;
   gap: var(--openbot-space-2);
   border-radius: var(--openbot-radius-md);
-  padding: var(--openbot-space-3);
+  padding: var(--openbot-space-4) var(--openbot-space-3);
   color: var(--openbot-text-secondary);
   font-size: var(--openbot-text-sm);
   font-weight: var(--openbot-weight-medium);
