@@ -7,6 +7,8 @@ import {
   decodeAgentAdminSettings,
   decodeAgentBackupModelSettings,
   decodeAgentBrowserProfile,
+  decodeAgentComputerMachineList,
+  decodeAgentComputerStatus,
   decodeAgentExclusionChangeFromMain,
   decodeAgentFastModeSettings,
   decodeAgentFolderBrowse,
@@ -1049,6 +1051,13 @@ const openbotApi: OpenBotDesktopApi = {
     hostCancel: decodePasswordManagerResponse,
     hostDisconnect: decodePasswordManagerResponse,
     hostOpenSignIn: decodeVoid,
+  }),
+  agentComputer: bridgeGroup(IPC_ENDPOINTS.agentComputer, {
+    status: decodeAgentComputerStatus,
+    connect: decodeAgentComputerStatus,
+    test: decodeAgentComputerStatus,
+    disconnect: decodeAgentComputerStatus,
+    machines: decodeAgentComputerMachineList,
   }),
   bitwardenConnector: bridgeGroup(IPC_ENDPOINTS.bitwardenConnector, {
     status: decodeBitwardenConnectorStatus,

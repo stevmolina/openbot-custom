@@ -13,6 +13,7 @@ import { useText } from "../../text";
 import { AgentAvatar } from "../agents/AgentAvatar";
 import { FileSearch } from "../files/FileList";
 import { sidebarMessageTime } from "../sidebar/sidebar-filtering";
+import { type CloudComputer, CloudComputerList } from "./CloudComputerList";
 import { ServerMark } from "./ServerRail";
 
 /** One agent of a machine, as the page shows it. */
@@ -55,6 +56,10 @@ export interface MachinesPageProps {
   onRetry: (serverId: string) => void;
   /** Opens the settings of a machine, where its name and logo change. Absent where there are none. */
   onOpenSettings?: ((serverId: string, trigger: HTMLElement) => void) | undefined;
+  /** The cloud computers of each server's Agent Computer account, by server id. Absent where none are read. */
+  cloudComputers?: Readonly<Record<string, readonly CloudComputer[]>> | undefined;
+  /** Opens a cloud computer's live view in the user's browser. */
+  onOpenLiveView?: ((url: string) => void) | undefined;
 }
 
 export const MACHINE_STATE_LABEL = {
@@ -132,6 +137,8 @@ export function MachinesPage(props: MachinesPageProps) {
                 onOpenAgent={props.onOpenAgent}
                 onRetry={props.onRetry}
                 onOpenSettings={props.onOpenSettings}
+                cloudComputers={props.cloudComputers?.[machine().id]}
+                onOpenLiveView={props.onOpenLiveView}
               />
             )}
           </For>
@@ -147,6 +154,8 @@ function MachineSection(props: {
   onOpenAgent: MachinesPageProps["onOpenAgent"];
   onRetry: MachinesPageProps["onRetry"];
   onOpenSettings: MachinesPageProps["onOpenSettings"];
+  cloudComputers: readonly CloudComputer[] | undefined;
+  onOpenLiveView: MachinesPageProps["onOpenLiveView"];
 }) {
   const { t } = useText();
   const agents = createMemo(() => {
@@ -226,6 +235,14 @@ function MachineSection(props: {
           </ul>
         </Match>
       </Switch>
+      <Show when={props.cloudComputers?.length ? props.onOpenLiveView : undefined}>
+        {(openLiveView) => (
+          <div class="machines-cloud">
+            <h4 class="machines-cloud-title">{t("server.cloudComputers.title")}</h4>
+            <CloudComputerList machines={props.cloudComputers ?? []} onOpenLiveView={openLiveView()} />
+          </div>
+        )}
+      </Show>
     </section>
   );
 }

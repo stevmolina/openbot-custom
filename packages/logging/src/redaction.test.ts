@@ -24,6 +24,7 @@ describe("redactText", () => {
 
   it("redacts provider secret prefixes", () => {
     expect(redactText("key sk-ant-abcdefgh1234 leaked")).toBe("key [redacted] leaked");
+    expect(redactText("key cmk_Ab3dEf6hIj9lMn0pQr leaked")).toBe("key [redacted] leaked");
     expect(redactText("key xai-abcdefgh1234 leaked")).toBe("key [redacted] leaked");
     expect(redactText("key sk_0123456789abcdef0123 leaked")).toBe("key [redacted] leaked");
     expect(redactText("token xoxb-1234-5678-abcdefgh leaked")).toBe("token [redacted] leaked");

@@ -66,6 +66,7 @@ import { takeHostingDeveloperKey } from "./hosted-server-service";
 import { accountIpcHandlers } from "./ipc/account-handlers";
 import { acpRegistryIpcHandlers } from "./ipc/acp-registry-handlers";
 import { agentAdminIpcHandlers } from "./ipc/agent-admin-handlers";
+import { agentComputerIpcHandlers } from "./ipc/agent-computer-handlers";
 import { agentDockIpcHandlers } from "./ipc/agent-dock-handlers";
 import { agentFolderIpcHandlers } from "./ipc/agent-folder-handlers";
 import { agentIpcHandlers } from "./ipc/agent-handlers";
@@ -803,6 +804,7 @@ function registerIpcHandlers({
   linkAccount,
   onePasswordConnector,
   bitwardenConnector,
+  agentComputer,
   passwordManagers,
   vault,
   billing,
@@ -942,6 +944,7 @@ function registerIpcHandlers({
     ...linkAccountIpcHandlers({ linkAccount }),
     ...onePasswordConnectorIpcHandlers({ onePasswordConnector, remoteServers }),
     ...bitwardenConnectorIpcHandlers({ bitwardenConnector, remoteServers }),
+    ...agentComputerIpcHandlers({ agentComputer, remoteServers }),
     ...passwordManagersIpcHandlers({ passwordManagers, remoteServers, openExternal: openLink }),
     ...vaultIpcHandlers({ vault, getMainWindow: getDialogParent, translate: language.translate, remoteServers }),
     ...billingIpcHandlers({ billing }),

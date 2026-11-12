@@ -78,6 +78,7 @@ import type { SidebarLayoutStore } from "../../backend/sidebar-layout-store";
 import type { StorageUsageService } from "../../backend/storage-usage";
 import type { TeamChatStore } from "../../backend/team-chat-store";
 import type { WorkflowsHandle } from "../../backend/workflows/workflows";
+import type { AgentComputerService } from "../agent-computer-service";
 import type { AgentImportService } from "../agent-import-service";
 import type { BitwardenConnectorService } from "../bitwarden-connector-service";
 import type { BrowserViewGateway } from "../browser-view-gateway";
@@ -666,6 +667,12 @@ export type TeamApiOnePasswordConnector = Pick<
   "status" | "refreshLogins" | "connectWithToken" | "disconnect"
 >;
 
+/** `agent-computer-v1`: the Agent Computer account of this host, by an API key. */
+export type TeamApiAgentComputer = Pick<
+  AgentComputerService,
+  "status" | "connect" | "test" | "disconnect" | "machines"
+>;
+
 /** `bitwarden-connector-v1`: the Bitwarden connection of this host, by an API key and the master password. */
 export type TeamApiBitwardenConnector = Pick<BitwardenConnectorService, "status" | "connectWithApiKey" | "disconnect">;
 
@@ -705,6 +712,7 @@ export interface TeamApiOptions {
   connectors?: TeamApiConnectors | undefined;
   onePasswordConnector?: TeamApiOnePasswordConnector | undefined;
   bitwardenConnector?: TeamApiBitwardenConnector | undefined;
+  agentComputer?: TeamApiAgentComputer | undefined;
   passwordManagers?: TeamApiPasswordManagers | undefined;
   vault?: TeamApiVault | undefined;
   providerHostSignIns?: TeamApiProviderHostSignIns | undefined;

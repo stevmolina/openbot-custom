@@ -244,3 +244,87 @@
     width: auto;
   }
 }
+
+/* The cloud computers of a server's Agent Computer account, on the Machines page and in Server settings. */
+.machines-cloud {
+  display: flex;
+  flex-direction: column;
+  gap: var(--openbot-space-2);
+}
+
+.machines-cloud-title {
+  margin: 0;
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+}
+
+.cloud-computers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--openbot-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cloud-computer {
+  display: flex;
+  align-items: center;
+  gap: var(--openbot-space-3);
+  padding: var(--openbot-space-2) var(--openbot-space-3);
+  border: 1px solid var(--openbot-border);
+  border-radius: var(--openbot-radius-md);
+}
+
+.cloud-computer-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-text-muted);
+}
+
+.cloud-computer[data-state="running"] .cloud-computer-dot {
+  background: var(--openbot-success);
+}
+
+.cloud-computer-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.cloud-computer-name {
+  overflow: hidden;
+  font-size: var(--openbot-text-md);
+  font-weight: var(--openbot-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-computer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--openbot-space-2);
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+}
+
+.cloud-computer-meta-item + .cloud-computer-meta-item::before {
+  margin-inline-end: var(--openbot-space-2);
+  content: "·";
+}
+
+.agent-computer-form {
+  display: grid;
+  gap: var(--openbot-space-3);
+  padding: var(--openbot-space-3);
+}
+
+.agent-computer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--openbot-space-2);
+}

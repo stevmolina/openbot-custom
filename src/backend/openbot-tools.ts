@@ -42,6 +42,7 @@ import {
 import { LOCAL_SKILL_TOOL_DEFINITIONS } from "./agent/skill-tools";
 import { readVideoToolShape } from "./agent/video-reader";
 import { CREATE_WEBHOOK_ROUTINE_TOOL, UPDATE_WEBHOOK_ROUTINE_TOOL } from "./agent/webhook-routine-tool";
+import { AGENT_COMPUTER_TOOL_DEFINITIONS } from "./agent-computer/agent-computer-tools";
 import { START_TASK_TOOL, startTaskToolSchema } from "./agent-tasks/agent-tasks";
 import { RUN_CODING_TASK_TOOL, runCodingTaskToolSchema } from "./agent-tasks/remote-coding-task";
 import {
@@ -644,10 +645,11 @@ export const OPENBOT_TOOL_DEFINITIONS: readonly OpenBotToolDefinition[] = [
       "List your open waits, or another local agent's when you give agentId: waitId, note, openedAt, routineId (null: any of its routines wakes it), and wokenAt. Use it to find and close waits whose request is done. Read-only.",
     shape: listWaitsToolSchema.shape,
   },
+  ...AGENT_COMPUTER_TOOL_DEFINITIONS,
   {
     name: RUN_CODING_TASK_TOOL,
     description:
-      "Run an approved GitHub coding job on Agent Computer in a separate persisted task. Give repository as owner/repo, a title and the full task. Starts an agent orchestration task that uses the connected computer tools and Codex. Progress and results stay in that task. Sign-in may be required. Task Stop interrupts orchestration; remote background commands require explicit stop and verification in the task. Does not grant permission to publish or merge.",
+      "Run an approved GitHub coding job on Agent Computer in a separate persisted task. Give repository as owner/repo, a title and the full task. Starts an agent orchestration task that uses the built-in computer_* tools and Codex. Progress and results stay in that task. Sign-in may be required. Task Stop interrupts orchestration; remote background commands require explicit stop and verification in the task. Does not grant permission to publish or merge.",
     shape: runCodingTaskToolSchema.shape,
   },
   {

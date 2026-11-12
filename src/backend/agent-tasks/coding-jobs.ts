@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Effect, Semaphore } from "effect";
 import { z } from "zod";
 import { runCauseEffect } from "../effect-boundary";
-import { CodingComputerFailed, type CodingComputerPort, computerValues } from "./coding-computer";
+import { type CodingCommandResult, CodingComputerFailed, type CodingComputerPort } from "./coding-computer";
 import { CODING_JOB_RUNNER } from "./coding-job-runner";
 
 const stateSchema = z.object({
@@ -106,10 +106,8 @@ export class CodingJobs {
           }
           clearTimeout(this.#timers.get(taskId));
           this.#timers.delete(taskId);
-          const started = yield* this.computer.call(agentId, "CUSTOM_COMPUTER_COMPUTER_START", {
-            context: job.context,
-          });
-          const machine = findMachine(started);
+          const started = yield* this.computer.start(job.context);
+          const machine = machineSchema.safeParse(started).data;
           if (!machine)
             return yield* Effect.fail(
               new CodingComputerFailed({ cause: "Agent Computer returned no validated machine deadline" }),
@@ -140,18 +138,13 @@ export class CodingJobs {
             action === "resume"
               ? `mkdir -p ${shellQuote(directory)} && cd ${shellQuote(directory)} && printf %s ${shellQuote(payload)} | base64 -d > job.json && printf %s ${shellQuote(runner)} | base64 -d > runner.cjs && printf %s ${shellQuote(JSON.stringify({ action, deadline: job.deadline }))} > control.next && mv control.next control.json && (nohup node runner.cjs >> runner.log 2>&1 < /dev/null &) && node -e ${shellQuote(probe)}`
               : `cd ${shellQuote(directory)} && printf %s ${shellQuote(JSON.stringify({ action }))} > control.next && mv control.next control.json && node -e ${shellQuote(probe)}`;
-          const response = yield* this.computer.call(agentId, "CUSTOM_COMPUTER_COMPUTER_BASH", {
-            id: machine.id,
-            cmd: command,
-            timeout_s: 20,
-          });
+          const response = yield* this.computer.bash(machine.id, command, 20);
           const checkpoint = readCheckpoint(response);
           if (!checkpoint || !expected.includes(checkpoint.phase))
             return yield* Effect.fail(new CodingComputerFailed({ cause: "Remote checkpoint was not confirmed" }));
           job.phase = action === "resume" ? "running" : action === "stop" ? "stopped" : "paused";
           if (checkpoint.phase === "completed" || checkpoint.phase === "blocked") job.phase = checkpoint.phase;
-          if (action !== "resume" || job.phase !== "running")
-            yield* this.computer.call(agentId, "CUSTOM_COMPUTER_COMPUTER_STOP", { id: machine.id });
+          if (action !== "resume" || job.phase !== "running") yield* this.computer.stop(machine.id);
           yield* Effect.try({
             try: () => this.#save(workspace, job),
             catch: (cause) => new CodingComputerFailed({ cause }),
@@ -194,11 +187,7 @@ export class CodingJobs {
       return;
     }
     const command = `cd ${shellQuote(this.#remote(job))} && node -e ${shellQuote("process.stdout.write('OPENBOT_CODING_CHECKPOINT='+require('fs').readFileSync('checkpoint.json','utf8')+'\\n')")}`;
-    const response = yield* this.computer.call(agentId, "CUSTOM_COMPUTER_COMPUTER_BASH", {
-      id: job.machine,
-      cmd: command,
-      timeout_s: 10,
-    });
+    const response = yield* this.computer.bash(job.machine, command, 10);
     const checkpoint = readCheckpoint(response);
     if (!checkpoint) return yield* Effect.fail(new CodingComputerFailed({ cause: "Remote checkpoint unavailable" }));
     if (["completed", "blocked", "paused", "stopped"].includes(checkpoint.phase)) {
@@ -263,25 +252,14 @@ export class CodingJobs {
   }
 }
 
-function findMachine(value: z.infer<ReturnType<typeof z.json>>): z.infer<typeof machineSchema> | null {
-  for (const item of computerValues(value)) {
-    const parsed = machineSchema.safeParse(item);
-    if (parsed.success) return parsed.data;
-  }
-  return null;
-}
-
-function readCheckpoint(value: z.infer<ReturnType<typeof z.json>>) {
-  for (const item of computerValues(value))
-    if (typeof item === "string") {
-      for (const line of item.split("\n"))
-        if (line.startsWith("OPENBOT_CODING_CHECKPOINT=")) {
-          try {
-            return z.object({ phase: z.string() }).parse(JSON.parse(line.slice("OPENBOT_CODING_CHECKPOINT=".length)));
-          } catch {
-            return null;
-          }
-        }
+function readCheckpoint(response: CodingCommandResult) {
+  for (const line of response.stdout.split("\n"))
+    if (line.startsWith("OPENBOT_CODING_CHECKPOINT=")) {
+      try {
+        return z.object({ phase: z.string() }).parse(JSON.parse(line.slice("OPENBOT_CODING_CHECKPOINT=".length)));
+      } catch {
+        return null;
+      }
     }
   return null;
 }

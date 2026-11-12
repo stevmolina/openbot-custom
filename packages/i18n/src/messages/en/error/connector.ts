@@ -12,6 +12,14 @@ export const messages = defineMessages("error.connector", {
   "error.connector.githubExpired": "The GitHub connection expired. Connect GitHub again.",
   "error.connector.githubFileUnreadable": "The GitHub connection file is unreadable.",
   "error.connector.githubFileTooLarge": "The GitHub connection file is too large.",
+  // Agent Computer, the cloud computers of a server (computer.mcpbox.dev).
+  "error.connector.agentComputerNotConnected":
+    "Agent Computer is not connected. Add an API key in Server settings > Cloud computers.",
+  "error.connector.agentComputerHttp": "Agent Computer answered HTTP {status}.",
+  "error.connector.agentComputerUnexpected": "Agent Computer sent an answer that OpenBot cannot read.",
+  "error.connector.agentComputerUnreachable": "OpenBot cannot reach Agent Computer. Check the network and try again.",
+  "error.connector.agentComputerFileUnreadable": "The Agent Computer key file is unreadable.",
+  "error.connector.agentComputerKeyInvalid": "Paste an Agent Computer API key. It starts with cmk_.",
   "error.connector.linkDenied": "The Link sign-in was refused.",
   "error.connector.linkCodeExpired": "The Link sign-in expired. Connect Link again.",
   "error.connector.linkUnexpected": "Link sent an unexpected answer: {detail}",

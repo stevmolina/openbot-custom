@@ -215,6 +215,7 @@ import {
   withStoryForeignProvider,
 } from "./fixtures";
 import { mockAgentAnalytics, mockHostAnalytics } from "./mock-agent-analytics";
+import { createMockAgentComputer } from "./mock-agent-computer";
 import { createMockAuth, type MockAuthOptions } from "./mock-auth";
 import { createMockBilling, previewBillingServers } from "./mock-billing";
 import { createMockBitwardenConnector } from "./mock-bitwarden-connector";
@@ -1668,6 +1669,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
     githubConnector: createMockGitHubConnector(),
     linkAccount: createMockLinkAccount(),
     onePasswordConnector: createMockOnePasswordConnector(),
+    agentComputer: createMockAgentComputer(),
     bitwardenConnector: createMockBitwardenConnector(),
     passwordManagers: createMockPasswordManagers(),
     vault: createMockVault(),

@@ -61,6 +61,8 @@ import { Effect, Result } from "effect";
 import { z } from "zod";
 import type { AgentApiKeys, SavedApiKey } from "../agent-api-keys";
 import type { AgentClient, AgentProvider } from "../agent-client";
+import type { AgentComputerApi } from "../agent-computer/agent-computer-api";
+import { handleAgentComputerTool, isAgentComputerTool } from "../agent-computer/agent-computer-tools";
 import type { AgentTables } from "../agent-data/agent-tables";
 import type { AgentStore } from "../agent-store";
 import type { AgentTasks } from "../agent-tasks/agent-tasks";
@@ -398,6 +400,8 @@ export interface OpenBotToolRouterOptions {
   marketplaceAppServer?: ((appId: string) => MarketplaceAppServer | null) | undefined;
   /** Whether the built-in GitHub connection gives agents GitHub now. */
   githubConnected?: (() => boolean) | undefined;
+  /** The Agent Computer REST API, for the `computer_*` tools; null where nothing holds a key. */
+  agentComputer?: AgentComputerApi | null | undefined;
   /** This build's version and system for `send_feedback`; null where this process does not know them. */
   feedbackFacts?: FeedbackFacts | null | undefined;
   /** Sends approved `send_feedback` text; null where this process has no account service. */
@@ -448,6 +452,7 @@ export class OpenBotToolRouter {
   readonly #mcpServers: AgentMcpServers | null;
   readonly #marketplaceAppServer: (appId: string) => MarketplaceAppServer | null;
   readonly #githubConnected: () => boolean;
+  readonly #agentComputer: AgentComputerApi | null;
   readonly #feedbackFacts: FeedbackFacts | null;
   readonly #feedback: AgentFeedback | null;
   /** The last OpenBot tool failures of each provider thread, for the errors of a report. */
@@ -497,6 +502,7 @@ export class OpenBotToolRouter {
     this.#mcpServers = options.mcpServers ?? null;
     this.#marketplaceAppServer = options.marketplaceAppServer ?? (() => null);
     this.#githubConnected = options.githubConnected ?? (() => false);
+    this.#agentComputer = options.agentComputer ?? null;
     this.#feedbackFacts = options.feedbackFacts ?? null;
     this.#feedback = options.feedback ?? null;
     this.#serverClaims = options.serverClaims ?? null;
@@ -804,6 +810,11 @@ export class OpenBotToolRouter {
             if (API_KEY_TOOLS.has(toolRequest.params.tool)) {
               const result = yield* this.#apiKeyTool(client, toolRequest, toolRequest.params);
               if (result && !toolRequest.signal?.aborted && client.running) client.respond(toolRequest.id, result);
+              return;
+            }
+            if (isAgentComputerTool(toolRequest.params.tool)) {
+              const result = yield* this.#agentComputerTool(client, toolRequest, toolRequest.params);
+              if (!toolRequest.signal?.aborted && client.running) client.respond(toolRequest.id, result);
               return;
             }
             if (isMcpServerTool(toolRequest.params.tool)) {
@@ -2209,6 +2220,49 @@ export class OpenBotToolRouter {
     const image = yield* Effect.result(host.capture(capture));
     if (Result.isFailure(image)) return captureFailure(image.failure);
     return yield* this.#showCapture(agent.id, threadId, params, messageId, image.success);
+  });
+
+  /**
+   * The `computer_*` tools, on the Agent Computer key of this server. Deleting a machine waits for the
+   * user's approval, given at once for an agent with Full access. Stop ends a long command.
+   */
+  readonly #agentComputerTool = Effect.fn("OpenBotToolRouter.agentComputerTool")(function* (
+    this: OpenBotToolRouter,
+    client: AgentClient,
+    request: AppServerRequest,
+    params: DynamicToolCallParams,
+  ) {
+    const agentId = this.#conversation.agentForThread(params.threadId);
+    const agent = agentId ? this.#hooks.listAgents().find((candidate) => candidate.id === agentId) : undefined;
+    const api = this.#agentComputer;
+    if (!agent || !api || !isAgentComputerTool(params.tool))
+      return openBotToolFailure(sourceText("error.agent.toolRequestInvalid"));
+    const threadId = this.#conversation.publicThreadId(agent.id, params.threadId);
+    const result = yield* handleAgentComputerTool(api, {
+      tool: params.tool,
+      arguments: params.arguments,
+      workspacePath: agent.workspacePath,
+      approve: (reason) =>
+        this.#attention
+          .awaitToolApproval(client, request, {
+            requestId: request.id,
+            agentId: agent.id,
+            threadId,
+            turnId: params.turnId,
+            kind: "permissions",
+            command: null,
+            cwd: null,
+            reason,
+            grantRoot: null,
+            permissions: null,
+          })
+          .pipe(
+            Effect.map((decision) => decision === "accept"),
+            Effect.catch(() => Effect.succeed(false)),
+          ),
+    }).pipe(Effect.raceFirst(requestAborted(request.signal)));
+    if (!result.success) this.#rememberToolFailure(params.threadId, params.tool, result);
+    return result;
   });
 
   /**
