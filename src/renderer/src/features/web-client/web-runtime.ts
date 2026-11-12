@@ -106,6 +106,10 @@ import {
   decodeAgentWaitsResponse,
 } from "@openbot/contracts/team-protocol/agent-waits-v1";
 import {
+  ARTIFACT_REQUEST_CAPABILITY,
+  ARTIFACT_REQUEST_ROUTE,
+} from "@openbot/contracts/team-protocol/artifact-request-v1";
+import {
   BROWSER_COLOR_SCHEME_CAPABILITY,
   BROWSER_COLOR_SCHEME_ROUTES,
 } from "@openbot/contracts/team-protocol/browser-color-scheme-v1";
@@ -1540,19 +1544,28 @@ export function createWebWorkspaceRuntime(
         throw new Error(currentText().t("error.remote.invalidData"));
       return `data:${value.mimeType};base64,${value.base64}`;
     },
-    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId, createArtifact = false) {
-      const result = await request("POST", TEAM_API_ROUTES.agent.messages(id), {
-        text:
-          createArtifact && capabilities.includes(CLAUDE_ARTIFACT_REQUEST_CAPABILITY)
-            ? artifactRequestText(text)
-            : text,
-        attachmentDraftIds,
-        replyToMessageId,
-        // The host uses this browser's zone for a routine the agent creates from the message.
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        // A host with `message-client-id-v1` answers a retry with the first receipt.
-        ...(clientMessageId ? { clientMessageId } : {}),
-      });
+    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId, createArtifact) {
+      if (
+        createArtifact &&
+        !capabilities.includes(ARTIFACT_REQUEST_CAPABILITY) &&
+        !capabilities.includes(CLAUDE_ARTIFACT_REQUEST_CAPABILITY)
+      )
+        throw new Error(currentText().t("error.team.claudeAiToolsUnsupported"));
+      const nativeArtifact = createArtifact && capabilities.includes(ARTIFACT_REQUEST_CAPABILITY);
+      const result = await request(
+        "POST",
+        nativeArtifact ? ARTIFACT_REQUEST_ROUTE : TEAM_API_ROUTES.agent.messages(id),
+        {
+          ...(nativeArtifact ? { agentId: id } : {}),
+          text: createArtifact && !nativeArtifact ? artifactRequestText(text) : text,
+          attachmentDraftIds,
+          replyToMessageId,
+          // The host uses this browser's zone for a routine the agent creates from the message.
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          // A host with `message-client-id-v1` answers a retry with the first receipt.
+          ...(clientMessageId ? { clientMessageId } : {}),
+        },
+      );
       if (!isQueuedMessageReceipt(result)) throw new Error(currentText().t("webClient.error.sendUnconfirmed"));
       removeCompletedDrafts(attachmentDraftIds);
       return result.deliveries[0]?.id ?? result.messageId;

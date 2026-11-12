@@ -31,6 +31,7 @@ OpenBot is ready for production use. A new release ships almost every day.
 - A persistent embedded browser that agents can open, inspect, and control.
 - Optional Computer Use on macOS, Windows and Linux through the `cua-driver` binary in the release, which OpenBot starts as its own child process and gives to every provider.
 - Per-agent model, reasoning, profile, notification, browser, and panel state.
+- A one-message Artifact mode in the Claude composer. Select Create an Artifact from +, or remove its chip before Send. It uses the host's Claude sign-in and does not enable connectors.
 - Local data and privacy-safe diagnostics exports from the account menu.
 - Optional OpenBot accounts through one-time email codes. The account API runs on Cloudflare Workers and D1.
 

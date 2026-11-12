@@ -1,17 +1,20 @@
 import {
   AudioLines,
-  Blocks,
+  Button,
   CircleDot,
   DropdownMenu,
   File,
   MessageCircleQuestionMark,
   Plus,
   Puzzle,
+  Sparkles,
+  X,
 } from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
 import { Show } from "solid-js";
 
 export interface ComposerAddMenuProps {
+  onCreateArtifact?: (() => void) | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   disabled: boolean;
@@ -26,8 +29,6 @@ export interface ComposerAddMenuProps {
   onSideQuestion?: (() => void) | undefined;
   /** Without it, no voice conversation item. */
   onVoice?: (() => void) | undefined;
-  /** Adds a claude.ai artifact to this one request. Without it, no artifact item. */
-  onCreateArtifact?: (() => void) | undefined;
 }
 
 /** The "+" menu of a message box: files, skills, and the side panes of the agent. */
@@ -75,9 +76,9 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
             </DropdownMenu.Item>
           </Show>
           <Show when={props.onCreateArtifact}>
-            {(createArtifact) => (
-              <DropdownMenu.Item onSelectAfterClose={() => createArtifact()()}>
-                <Blocks aria-hidden="true" />
+            {(create) => (
+              <DropdownMenu.Item onSelectAfterClose={() => create()()}>
+                <Sparkles aria-hidden="true" />
                 <span>{t("composer.add.artifact")}</span>
               </DropdownMenu.Item>
             )}
@@ -137,5 +138,29 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+  );
+}
+
+/** The selected tool mode belongs to the next message. */
+export function ComposerArtifactChip(props: { onRemove?: (() => void) | undefined }) {
+  const { t } = useText();
+  return (
+    <div class="composer-artifact-chip">
+      <Sparkles aria-hidden="true" />
+      <span>{t("composer.artifact.selected")}</span>
+      <Show when={props.onRemove}>
+        {(remove) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("composer.artifact.remove")}
+            onClick={() => remove()()}
+          >
+            <X aria-hidden="true" />
+          </Button>
+        )}
+      </Show>
+    </div>
   );
 }

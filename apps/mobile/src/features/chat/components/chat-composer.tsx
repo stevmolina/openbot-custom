@@ -170,6 +170,8 @@ interface ChatComposerProps {
   raised: ViewStyle["backgroundColor"];
   onChangeDraft: (value: string) => void;
   onSend: (text: string) => void;
+  createArtifact?: boolean;
+  onRemoveArtifact?: () => void;
   /** Present only while a turn is running and the surface can stop it. */
   onStop?: () => void;
   /** 0 with the keyboard down, 1 with it up, and every value a swipe passes through. */
@@ -296,6 +298,8 @@ export const ChatComposer = memo(function ChatComposer({
   raised,
   onChangeDraft,
   onSend,
+  createArtifact,
+  onRemoveArtifact,
   onStop,
   keyboardProgress,
   menuOpen = false,
@@ -942,6 +946,23 @@ export const ChatComposer = memo(function ChatComposer({
 
   return (
     <View>
+      {createArtifact ? (
+        <View className="flex-row items-center gap-2 pt-2 pl-4 pr-2">
+          <Sparkles color={String(muted)} size={16} />
+          <Typography.Paragraph type="body-sm" className="flex-1 text-text-secondary">
+            {t("mobile.chat.artifact.selected")}
+          </Typography.Paragraph>
+          <Button
+            variant="ghost"
+            size="sm"
+            isIconOnly
+            accessibilityLabel={t("mobile.chat.artifact.remove")}
+            onPress={onRemoveArtifact}
+          >
+            <X color={String(muted)} size={16} />
+          </Button>
+        </View>
+      ) : null}
       {suggestionsVisible && query ? (
         <GlassView
           glassEffectStyle={liquidGlassAvailable ? "regular" : "none"}

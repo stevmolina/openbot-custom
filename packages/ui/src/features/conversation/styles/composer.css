@@ -1291,3 +1291,20 @@
 .composer[data-rows-resizing] > .composer-input-label {
   align-self: start;
 }
+
+.composer-artifact-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  width: fit-content;
+  margin: var(--openbot-space-2);
+  padding-inline: var(--openbot-space-2);
+  border-radius: var(--openbot-radius-md);
+  background: var(--openbot-hover);
+  color: var(--openbot-text-secondary);
+  font-size: var(--openbot-text-sm);
+}
+.composer-artifact-chip > svg {
+  width: var(--openbot-icon-sm);
+  height: var(--openbot-icon-sm);
+}

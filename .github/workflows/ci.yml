@@ -558,6 +558,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run test:claude-late-steer
 
+      - name: Run the Claude session identity and request tools E2E test
+        if: ${{ !cancelled() }}
+        run: bun run test:claude-foreign-session
+
       - name: Run the provider session reuse E2E test
         if: ${{ !cancelled() }}
         run: bun run test:provider-session-reuse
@@ -766,6 +770,7 @@ jobs:
             .openbot-build/claude-background-hold-e2e/
             .openbot-build/claude-turn-context-e2e/
             .openbot-build/claude-late-steer-e2e/
+            .openbot-build/claude-foreign-session-e2e/
             .openbot-build/provider-session-reuse-e2e/
             .openbot-build/backup-model-failover-e2e/
             .openbot-build/codex-empty-lead-turn-e2e/
@@ -1235,6 +1240,20 @@ jobs:
         env:
           # This output is not published. Skip Solid's per-component docgen analysis.
           OPENBOT_STORYBOOK_CHECK: "true"
+
+      - name: Install the composer test browser
+        run: bunx playwright-core install --with-deps chromium
+
+      - name: Check the Artifact composer
+        run: bun scripts/artifact-composer-e2e.ts --static-root=storybook-static
+
+      - name: Upload Artifact composer proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: artifact-composer-e2e
+          path: .openbot-build/artifact-composer-e2e/
+          if-no-files-found: ignore
 
   all-checks-pass:
     # A summary of every job. Branch protection requires `Check`, not this job. A lane that

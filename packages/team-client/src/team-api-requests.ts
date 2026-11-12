@@ -1,3 +1,4 @@
+import { ARTIFACT_REQUEST_ROUTE } from "@openbot/contracts/team-protocol/artifact-request-v1";
 import { Effect, Schema } from "effect";
 // Team API requests that the web client and the mobile app send in the same way.
 //
@@ -340,37 +341,48 @@ export const sendAgentTaskMessage = Effect.fn("TeamClient.sendAgentTaskMessage")
     attachmentDraftIds,
     replyToMessageId,
     clientMessageId,
+    createArtifact,
   }: AgentTaskInput & {
     text: string;
     attachmentDraftIds?: string[];
     replyToMessageId?: string;
     clientMessageId?: string;
+    createArtifact?: boolean;
   },
 ): Effect.fn.Return<QueuedMessageReceipt, TeamRequestError> {
   return yield* teamCall(() =>
-    replyToMessageId
-      ? request("POST", AGENT_THREAD_REPLIES_ROUTES.send, decodeTaskReceipt, {
+    createArtifact
+      ? request("POST", ARTIFACT_REQUEST_ROUTE, decodeTaskReceipt, {
           agentId,
           taskId,
           text,
           attachmentDraftIds: attachmentDraftIds ?? [],
-          replyToMessageId,
-          ...(clientMessageId === undefined ? {} : { clientMessageId }),
+          ...(replyToMessageId ? { replyToMessageId } : {}),
+          ...(clientMessageId ? { clientMessageId } : {}),
         })
-      : attachmentDraftIds?.length
-        ? request("POST", AGENT_THREAD_FILES_ROUTES.send, decodeTaskReceipt, {
+      : replyToMessageId
+        ? request("POST", AGENT_THREAD_REPLIES_ROUTES.send, decodeTaskReceipt, {
             agentId,
             taskId,
             text,
-            attachmentDraftIds,
+            attachmentDraftIds: attachmentDraftIds ?? [],
+            replyToMessageId,
             ...(clientMessageId === undefined ? {} : { clientMessageId }),
           })
-        : request("POST", AGENT_TASKS_ROUTES.send, decodeTaskReceipt, {
-            agentId,
-            taskId,
-            text,
-            ...(clientMessageId === undefined ? {} : { clientMessageId }),
-          }),
+        : attachmentDraftIds?.length
+          ? request("POST", AGENT_THREAD_FILES_ROUTES.send, decodeTaskReceipt, {
+              agentId,
+              taskId,
+              text,
+              attachmentDraftIds,
+              ...(clientMessageId === undefined ? {} : { clientMessageId }),
+            })
+          : request("POST", AGENT_TASKS_ROUTES.send, decodeTaskReceipt, {
+              agentId,
+              taskId,
+              text,
+              ...(clientMessageId === undefined ? {} : { clientMessageId }),
+            }),
   );
 });
 

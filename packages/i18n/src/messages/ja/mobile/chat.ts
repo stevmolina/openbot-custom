@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../../message";
 import type { messages as source } from "../../en/mobile/chat";
 
 export const messages = {
+  "mobile.chat.artifact.create": "Artifact を作成",
+  "mobile.chat.artifact.selected": "Artifact · このメッセージ",
+  "mobile.chat.artifact.remove": "Artifact モードを解除",
   "mobile.chat.dictation.microphoneOffTitle": "マイクへのアクセスがオフです",
   "mobile.chat.dictation.microphoneOffMessage":
     "メッセージを音声入力するには、設定で OpenBot にマイクと音声認識の使用を許可してください。",

@@ -3127,6 +3127,7 @@ export function createMockOpenBot(options: MockOpenBotOptions = {}): MockOpenBot
           replyToMessageId: input.replyToMessageId ?? null,
         };
         const delivery: QueueDelivery = {
+          ...(input.createArtifact ? { createArtifact: true } : {}),
           id: deliveryId,
           messageId,
           recipientAgentId: input.agentId,

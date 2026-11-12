@@ -111,6 +111,7 @@ interface StoredMessage {
    * and in its own transfer folder, so the agent's prompt and the transfer manifest never name it.
    */
   voiceRecording?: StoredAttachment;
+  createArtifact?: true;
   replyToMessageId: string | null;
   /**
    * Written only when the sender asked for no answer. Absent means an answer is expected, which is
@@ -123,7 +124,6 @@ interface StoredMessage {
    */
   welcome?: true;
   /** This request asks Claude for one claude.ai artifact. Absent on older messages. */
-  createArtifact?: true;
   createdAt: string;
 }
 
@@ -199,6 +199,7 @@ interface StoredReaction {
 }
 
 interface EnqueueInput {
+  createArtifact?: boolean;
   channelId?: string;
   messaging?: MessagingOrigin;
   messagingReturn?: MessagingOrigin;
@@ -214,7 +215,6 @@ interface EnqueueInput {
   /** The setup message of a new agent, which the user does not see. */
   welcome?: boolean;
   /** This request asks Claude for one claude.ai artifact. */
-  createArtifact?: true;
   draftIds?: string[];
   /** An audio draft of what the user said. Kept with the message, not sent to the recipient. */
   voiceRecordingDraftId?: string;
@@ -653,10 +653,10 @@ export class MailboxStore {
         }),
         attachments,
         ...(voiceRecording ? { voiceRecording } : {}),
+        ...(input.createArtifact ? { createArtifact: true as const } : {}),
         replyToMessageId: input.replyToMessageId ?? null,
         ...(input.expectsReply === false ? { expectsReply: false as const } : {}),
         ...(input.welcome ? { welcome: true as const } : {}),
-        ...(input.createArtifact ? { createArtifact: true as const } : {}),
         createdAt,
       };
       const deliveries = recipients.map<StoredDelivery>((recipientAgentId) => ({
@@ -1722,6 +1722,15 @@ export class MailboxStore {
     );
   }
 
+  /** Whether the running request selected Artifact tools. */
+  createArtifactForTurn(turnId: string): boolean {
+    return this.#state.deliveries.some(
+      (delivery) =>
+        delivery.turnId === turnId &&
+        this.#state.messages.some((message) => message.id === delivery.messageId && message.createArtifact),
+    );
+  }
+
   /**
    * The person's messages queued right after this one in its lane, which start in the same turn.
    * Each turn makes the provider read the whole session again, so messages that waited together are
@@ -1747,6 +1756,8 @@ export class MailboxStore {
         !this.#mayStart(candidate) ||
         // The messages of a turn that a usage limit stopped continue together, as they started.
         candidate.resumeAfterUsageLimit?.turnId !== next.resumeAfterUsageLimit?.turnId ||
+        first.createArtifact ||
+        message.createArtifact ||
         !isChatMessageFromPerson(message) ||
         message.senderMember?.id !== first.senderMember?.id
       )
@@ -3348,6 +3359,7 @@ export class MailboxStore {
       attachments: message.attachments.map(toAttachmentSummary),
       replyToMessageId: message.replyToMessageId,
       ...(message.expectsReply === false ? { expectsReply: false } : {}),
+      ...(message.createArtifact ? { createArtifact: true } : {}),
       position:
         publicDelivery.status === "queued"
           ? positions

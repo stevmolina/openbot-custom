@@ -64,6 +64,7 @@ export interface OutboxSnapshot {
 
 /** What Edit gives back to the composer. */
 export interface OutboxDraft {
+  createArtifact?: boolean;
   text: string;
   replyToMessageId: string | null;
   files: ChatAttachment[];
@@ -221,7 +222,12 @@ export class OutboxStore {
    */
   add(
     target: OutboxTarget,
-    input: { text: string; replyToMessageId: string | null; files: readonly ChatAttachment[] },
+    input: {
+      text: string;
+      replyToMessageId: string | null;
+      files: readonly ChatAttachment[];
+      createArtifact?: boolean;
+    },
     replaces: readonly string[] = [],
   ): OutboxMessage {
     const clientMessageId = this.options.randomId();
@@ -233,6 +239,7 @@ export class OutboxStore {
     const message: OutboxMessage = {
       clientMessageId,
       target,
+      ...(input.createArtifact ? { createArtifact: true } : {}),
       text: input.text,
       replyToMessageId: input.replyToMessageId,
       files: files.map((file) => ({
@@ -332,7 +339,12 @@ export class OutboxStore {
     this.update(clientMessageId, { state: "failed", error: null, returned: false, stopped: true });
     await this.persist();
     this.pump();
-    return { text: message.text, replyToMessageId: message.replyToMessageId, files };
+    return {
+      text: message.text,
+      replyToMessageId: message.replyToMessageId,
+      files,
+      ...(message.createArtifact ? { createArtifact: true } : {}),
+    };
   }
 
   /** Shows again the messages of an edit that was not sent. They wait, stopped, for the person. */

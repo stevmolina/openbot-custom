@@ -36,6 +36,7 @@ import { AGENT_THREADS_CODECS } from "./agent-threads-v1";
 import { AGENT_UPDATE_CODECS } from "./agent-update-v1";
 import { AGENT_USAGE_LIMIT_CODECS } from "./agent-usage-limit-v1";
 import { AGENT_WAITS_CODECS } from "./agent-waits-v1";
+import { ARTIFACT_REQUEST_CODECS } from "./artifact-request-v1";
 import { BACKGROUND_PROCESSES_CODECS } from "./background-processes-v1";
 import { BITWARDEN_CONNECTOR_CODECS } from "./bitwarden-connector-v1";
 import { BROWSER_COLOR_SCHEME_CODECS } from "./browser-color-scheme-v1";
@@ -214,6 +215,7 @@ const CODECS: ReadonlyMap<string, OptionalRouteCodec> = new Map([
   ...ROUTINE_RUN_COMMAND_CODECS,
   ...CLAUDE_USER_SETUP_CODECS,
   ...CLAUDE_AI_TOOLS_CODECS,
+  ...ARTIFACT_REQUEST_CODECS,
   ...CLAUDE_COMPACT_WINDOW_CODECS,
   ...PROVIDER_ACCOUNT_MODELS_CODECS,
   ...PROVIDER_ACCOUNT_POOL_CODECS,

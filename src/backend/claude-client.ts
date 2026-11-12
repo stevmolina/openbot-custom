@@ -276,7 +276,7 @@ const LABELLED_TOOLS: ReadonlySet<string> = new Set(["Bash", "Task", "Agent"]);
  * With a label other than `sdk-*`, the CLI turns on the claude.ai Artifact tools for accounts that
  * have Artifacts. They publish pages to the user's claude.ai account, outside OpenBot, and their
  * schemas cost about 13k tokens in each request. `CLAUDE_CODE_ARTIFACT=0` keeps them off unless
- * "Use claude.ai tools" is on (`withClaudeClientLabels`).
+ * "Use claude.ai tools" is on or this request selects Artifact mode (`withClaudeClientLabels`).
  */
 const OPENBOT_CLAUDE_CLIENT = {
   CLAUDE_AGENT_SDK_CLIENT_APP: "openbot/0.1.0",
@@ -337,7 +337,7 @@ function withClaudeClientLabels(environment: NodeJS.ProcessEnv, claudeAiTools = 
   return {
     ...environment,
     ...OPENBOT_CLAUDE_CLIENT,
-    ...(claudeAiTools ? {} : { CLAUDE_CODE_ARTIFACT: "0" }),
+    CLAUDE_CODE_ARTIFACT: claudeAiTools ? "1" : "0",
     ...(environment.ANTHROPIC_API_KEY ? { CLAUDE_CODE_ENTRYPOINT: "sdk-ts" } : {}),
   };
 }
@@ -363,6 +363,7 @@ interface ClientEvents {
 }
 
 interface ThreadConfig {
+  createArtifact: boolean;
   cwd: string;
   model?: string | undefined;
   effort?: string | undefined;
@@ -456,8 +457,6 @@ interface ThreadRuntime {
   appliedEffort: string | undefined;
   /** The `fastMode` flag setting of the `claude` process; undefined until a turn sets it. */
   appliedFastMode: boolean | undefined;
-  /** Whether this process loaded the claude.ai Artifact tools. */
-  artifactTools: boolean;
   /** The last reason the CLI gave for no fast mode while the setting is on, so the log says it once. */
   fastModeDisabledReason: string | null;
   input: AsyncMessageQueue;
@@ -691,8 +690,6 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
   readonly #userSetup: () => boolean;
   /** On: the agents get the Artifact tools and the claude.ai connectors of the sign-in ("Use claude.ai tools"). */
   readonly #claudeAiTools: () => boolean;
-  /** The Artifact tools of the next query for a thread, set by the turn that opens it. */
-  readonly #artifactForOpen = new Map<string, boolean>();
   /** Whether the last account read found no claude.ai account and signed in with the key. */
   #onApiKey = false;
   /** Whether this client read the account. A client for one generation without tools does not. */
@@ -1328,8 +1325,8 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     const stateDirectory = this.#stateDirectory;
     // Read once, so that the settings and the home skills of one query agree.
     const userSetup = !config.profileGeneration && this.#userSetup();
-    const openedFor = config.profileGeneration ? undefined : this.#artifactForOpen.get(threadId);
-    const claudeAiTools = !config.profileGeneration && (openedFor ?? this.#claudeAiTools());
+    const claudeAiTools = !config.profileGeneration && this.#claudeAiTools();
+    const artifacts = !config.profileGeneration && (claudeAiTools || config.createArtifact);
     const skillPlugin =
       config.workspaceOnly && stateDirectory ? yield* claudeWorkspaceSkillPlugin(stateDirectory, config.cwd) : null;
     const configDirectory =
@@ -1385,7 +1382,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     // A profile generation has no tools and no skills, so it needs none of the OpenBot settings.
     const openBotSettings: Settings = config.profileGeneration
       ? {}
-      : yield* claudeFlagSettings(configDirectory, config.cwd, settingSources, claudeAiTools);
+      : yield* claudeFlagSettings(configDirectory, config.cwd, settingSources, artifacts);
     const flagSettings: Settings = { ...openBotSettings, ...nodeOptionsSettings };
     const sandbox = config.workspaceOnly
       ? claudeWorkspaceSandbox(config.additionalDirectories, config.excludedFolders)
@@ -1431,6 +1428,9 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
       // The CLI loads this file and the SDK's own `--mcp-config` value together.
       ...(mcpConfigFile ? { "mcp-config": mcpConfigFile } : {}),
     };
+    const developerInstructions = config.createArtifact
+      ? `${config.developerInstructions}\n\nThe user selected Create an Artifact for this request. Use the claude.ai Artifact tools to create the requested output.`
+      : config.developerInstructions;
     const stderr = new ClaudeStderrTail();
     const claudeQuery = yield* providerSync(() =>
       this.#createQuery({
@@ -1447,8 +1447,8 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
           // A call without tools gets only OpenBot's instructions: the `claude_code` preset adds the
           // coding rules of an agent with tools, which such a call never uses.
           systemPrompt: config.profileGeneration
-            ? config.developerInstructions
-            : { type: "preset", preset: "claude_code", append: config.developerInstructions },
+            ? developerInstructions
+            : { type: "preset", preset: "claude_code", append: developerInstructions },
           ...(Object.keys(extraArgs).length ? { extraArgs } : {}),
           ...(config.profileGeneration
             ? { tools: [] }
@@ -1462,7 +1462,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
           // `claude-workspace-sandbox.ts`. "Use claude.ai tools" adds the claude.ai connectors and
           // the Artifact tools, which the flag also takes away: `CLAUDE_AI_TOOLS_MANAGED_SETTINGS`
           // keeps the other sources closed.
-          strictMcpConfig: !claudeAiTools,
+          strictMcpConfig: !artifacts,
           permissionMode: "default",
           includePartialMessages: true,
           persistSession: config.persistSession,
@@ -1478,11 +1478,12 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
           ...(config.workspaceOnly
             ? { hooks: claudeWorkspaceHooks(config.cwd, config.additionalDirectories, config.excludedFolders) }
             : {}),
-          ...(config.workspaceOnly || claudeAiTools
+          ...(config.workspaceOnly || artifacts
             ? {
                 managedSettings: {
                   ...(config.workspaceOnly ? CLAUDE_WORKSPACE_MANAGED_SETTINGS : {}),
-                  ...(claudeAiTools ? CLAUDE_AI_TOOLS_MANAGED_SETTINGS : {}),
+                  ...(artifacts ? CLAUDE_AI_TOOLS_MANAGED_SETTINGS : {}),
+                  ...(artifacts && !claudeAiTools ? { disableClaudeAiConnectors: true } : {}),
                 },
               }
             : {}),
@@ -1498,9 +1499,9 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
                 ...this.#environment(this.#onApiKey),
                 ...(display ? { DISPLAY: display } : {}),
               },
-              claudeAiTools,
+              artifacts,
             ),
-            ...(claudeAiTools ? CLAUDE_AI_TOOLS_ENVIRONMENT : {}),
+            ...(artifacts ? CLAUDE_AI_TOOLS_ENVIRONMENT : {}),
             // Without a terminal, the CLI gives the newer models no TodoWrite or task tools, so the
             // agent has no plan for OpenBot to show as a task list.
             CLAUDE_CODE_ENABLE_TODO_TOOLS: "1",
@@ -1526,7 +1527,6 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
       config,
       appliedEffort,
       appliedFastMode: undefined,
-      artifactTools: claudeAiTools,
       fastModeDisabledReason: null,
       input,
       query: claudeQuery,
@@ -1545,7 +1545,6 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
       settingsFile,
       stderr,
     };
-    if (!config.profileGeneration) this.#artifactForOpen.delete(threadId);
     runtime.consume = yield* Effect.forkIn(this.#consume(runtime), this.#scope, { startImmediately: true });
     // The CLI reads the file once at its start and keeps the servers in memory, also to reconnect one.
     const initialization = mcpConfigFile ? claudeQuery.initializationResult?.() : undefined;
@@ -1562,6 +1561,15 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     params: unknown,
   ): Effect.fn.Return<TurnResponse, ProviderClientOperationError> {
     const threadId = yield* providerSync(() => requiredString(params, "threadId"));
+    yield* this.#threads.wake(threadId).pipe(toProviderClientOperationError);
+    const current = yield* providerSync(() => this.#requireThread(threadId));
+    const createArtifact = isRecord(params) && params.createArtifact === true;
+    if (current.activeTurn) return yield* providerFailure(this.#turnActiveError(current.activeTurn));
+    if (current.config.createArtifact !== createArtifact && current.backgroundTasks > 0)
+      return yield* providerFailure(new ProviderTurnActiveError("Claude"));
+    // Tool schemas belong to a query. Resume the same session when this request changes them.
+    if (current.config.createArtifact !== createArtifact)
+      yield* this.#resumeThread(threadId, { ...current.config, createArtifact });
     return yield* this.#threads
       .startTurn(threadId, () => this.#openTurn(threadId, params))
       .pipe(toProviderClientOperationError);
@@ -1591,15 +1599,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     threadId: string,
     params: unknown,
   ): Effect.fn.Return<TurnResponse, ProviderClientOperationError> {
-    const oneShot = isDynamicRecord(params) && params.createArtifact === true;
-    const wantTools = this.#claudeAiTools() || oneShot;
-    this.#artifactForOpen.set(threadId, wantTools);
-    const running = this.#threads.get(threadId);
-    if (running && running.artifactTools !== wantTools && running.backgroundTasks === 0 && !running.activeTurn)
-      yield* this.#threads.releaseNow(running).pipe(toProviderClientOperationError);
     yield* this.#threads.wake(threadId).pipe(toProviderClientOperationError);
-    // A process that stayed open has already taken this value. A later resume must not.
-    this.#artifactForOpen.delete(threadId);
     const runtime = yield* providerSync(() => this.#requireThread(threadId));
     if (runtime.activeTurn) return yield* providerFailure(this.#turnActiveError(runtime.activeTurn));
     runtime.contextRequest += 1;
@@ -1630,10 +1630,6 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     // turn: the CLI does not run a uuid that it took (#6676).
     const turnId = promptUuid(runtime, requestedTurnId);
     const text = readInputText(params);
-    const promptText =
-      isDynamicRecord(params) && params.createArtifact === true
-        ? `${text}\n\nCreate a claude.ai artifact for this request.`
-        : text;
     // The CLI can start a turn of its own while the model or effort changes above.
     if (runtime.activeTurn) return yield* providerFailure(this.#turnActiveError(runtime.activeTurn));
     // Only now: a model or effort change that fails above leaves the idle timer armed, so the
@@ -1650,8 +1646,8 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
         role: "user",
         content:
           context.length > 0
-            ? [...context.map((block) => ({ type: "text" as const, text: block })), { type: "text", text: promptText }]
-            : promptText,
+            ? [...context.map((block) => ({ type: "text" as const, text: block })), { type: "text", text: text }]
+            : text,
       },
       parent_tool_use_id: null,
       uuid: turnId,
@@ -3206,6 +3202,7 @@ function readThreadConfig(params: unknown): ThreadConfig {
     additionalDirectories: [...new Set([cwd, ...roots])],
     persistSession: !isRecord(params) || params.persistSession !== false,
     profileGeneration: isRecord(params) && params.profileGeneration === true,
+    createArtifact: isRecord(params) && params.createArtifact === true,
     computerUse: computerUseParam(params),
     channelTools: isRecord(params) && params.channelTools === true,
     workspaceOnly: isRecord(params) && params.workspaceOnly === true,

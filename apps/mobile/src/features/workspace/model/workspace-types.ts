@@ -341,6 +341,7 @@ export interface MobileWorkspaceContextValue {
   canEditQueue: (serverId: string) => boolean;
   /** True when the host advertises `message-client-id-v1`: a repeat of a message is stored once. */
   canRetryMessage: (serverId: string) => boolean;
+  canCreateArtifact: (serverId: string) => boolean;
   /** True when the host advertises `message-delete-v1`. */
   canDeleteMessages: (serverId: string) => boolean;
   /** True when the host advertises `conversation-unread-from-v1`: a message of an agent chat can be marked unread. */
@@ -1065,6 +1066,7 @@ export interface MobileWorkspaceContextValue {
     serverId?: string,
     /** Names the message for the host, which stores a repeat of it once. Send it only when `canRetryMessage`. */
     clientMessageId?: string,
+    createArtifact?: boolean,
   ) => Promise<string>;
   uploadAttachment: (
     agentId: string,
@@ -1126,6 +1128,7 @@ export type MobileWorkspaceCapabilityCheck =
   | "browserViewSupport"
   | "canEditQueue"
   | "canRetryMessage"
+  | "canCreateArtifact"
   | "canDeleteMessages"
   | "canMarkUnreadFrom"
   | "canUseLiveVoice"

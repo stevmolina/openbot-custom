@@ -7,6 +7,7 @@ import {
   DEFAULT_PROVIDER_ACCOUNT_ID,
   type QueueSnapshot,
 } from "@openbot/contracts/ipc";
+import { ARTIFACT_REQUEST_CAPABILITY } from "@openbot/contracts/team-protocol/artifact-request-v1";
 import {
   CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   TEAM_ANY_FILE_ATTACHMENTS_CAPABILITY,
@@ -21,7 +22,7 @@ import { spentUsageWindow } from "@openbot/team-client/plan-limits";
 import { Button, Input } from "@openbot/ui";
 import { AwaitingReplies } from "@openbot/ui/features/conversation/AwaitingReplies";
 import { BackgroundWorkers } from "@openbot/ui/features/conversation/BackgroundWorkers";
-import { ComposerAddMenu } from "@openbot/ui/features/conversation/ComposerAddMenu";
+import { ComposerAddMenu, ComposerArtifactChip } from "@openbot/ui/features/conversation/ComposerAddMenu";
 import { ComposerAttachmentRow } from "@openbot/ui/features/conversation/ComposerAttachmentRow";
 import { ComposerEditor } from "@openbot/ui/features/conversation/ComposerEditor";
 import { ComposerErrorBanner } from "@openbot/ui/features/conversation/ComposerErrorBanner";
@@ -46,7 +47,6 @@ import { useText } from "@openbot/ui/text";
 import { createEffect, createMemo, createSignal, createStore, Loading, lazy, Show } from "solid-js";
 import { reportErrorBanner, reportNotification } from "../../error-reports";
 import { deviceSendShortcut, sendShortcutAriaKey, sendShortcutHintKey } from "../../send-shortcut-preference";
-import { serverSupportsCapability } from "../servers/server-capabilities";
 import { speechReading } from "../speech/speech-playback";
 import { stopSpokenReply } from "../speech/speech-replies";
 import { backgroundWorkerItems } from "./background-worker-items";
@@ -192,6 +192,14 @@ export function ConversationComposer() {
     else openSidePanelPane("voice");
   };
   // A pending Save keeps its exact request for retry. Block changes until retry or cancel.
+  const artifactAvailable = () =>
+    !channel &&
+    props.agent?.provider === "claude" &&
+    (props.server?.kind !== "remote" ||
+      Boolean(
+        props.server.compatibility?.capabilities.includes(ARTIFACT_REQUEST_CAPABILITY) ||
+          props.server.compatibility?.capabilities.includes(CLAUDE_ARTIFACT_REQUEST_CAPABILITY),
+      ));
   const savePending = () => Boolean(editingDeliveryId() && editingPendingSave());
   // One chip for each file of each import. Only a single-file import knows the bytes of its file.
   const uploadFiles = createMemo(() =>
@@ -621,24 +629,6 @@ export function ConversationComposer() {
               />
             )}
           </ComposerStackCard>
-          <ComposerStackCard when={currentDraft().createArtifact === true}>
-            {() => (
-              <div class="composer-reply-preview">
-                <div>
-                  <span>{t("composer.add.artifact")}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  aria-label={t("composer.artifact.remove")}
-                  disabled={voicePhase() === "transcribing"}
-                  onClick={() => updateCurrentDraft({ createArtifact: false })}
-                >
-                  {t("composer.artifact.remove")}
-                </Button>
-              </div>
-            )}
-          </ComposerStackCard>
           <ComposerStackCard when={replyTarget()}>
             {(message) => (
               <ComposerReplyPreview
@@ -727,6 +717,11 @@ export function ConversationComposer() {
               />
             )}
           </ComposerStackCard>
+          <Show when={artifactAvailable() && currentDraft().createArtifact}>
+            <ComposerArtifactChip
+              onRemove={editingDeliveryId() ? undefined : () => updateCurrentDraft({ createArtifact: false })}
+            />
+          </Show>
         </div>
         <div
           ref={composerResize.ref}
@@ -835,18 +830,16 @@ export function ConversationComposer() {
                 attachmentBusy() || submitting() || voicePhase() === "transcribing" || !agentReady() || savePending()
               }
               attachDisabled={attachmentBusy()}
+              onCreateArtifact={
+                artifactAvailable() && !editingDeliveryId()
+                  ? () => updateCurrentDraft({ createArtifact: true })
+                  : undefined
+              }
               onAttach={openAttachmentPicker}
               onPickSkill={pickSkill()}
               onTeach={teachTask()}
               onSideQuestion={askSideQuestion()}
               onVoice={openVoiceConversation()}
-              onCreateArtifact={
-                props.agent?.provider === "claude" &&
-                !channel &&
-                serverSupportsCapability(props.server, CLAUDE_ARTIFACT_REQUEST_CAPABILITY)
-                  ? () => updateCurrentDraft({ createArtifact: true })
-                  : undefined
-              }
             />
             <div class="composer-primary-actions">
               <Show when={contextUsageView(context())}>

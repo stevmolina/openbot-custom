@@ -4028,7 +4028,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     // A send for a host the user has left would reach the one they opened instead.
                     if (!id || (target && target.serverId !== server()?.id))
                       return { error: t("webClient.error.checkConversation") };
-                    return workspace.send(id, text, attachments, replyTo, clientMessageId, createArtifact === true);
+                    return workspace.send(id, text, attachments, replyTo, clientMessageId, createArtifact);
                   }}
                   onMarkRead={workspace.markRead}
                   onMarkUnread={markUnreadFrom()}

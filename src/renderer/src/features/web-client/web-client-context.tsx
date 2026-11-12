@@ -1867,7 +1867,7 @@ export function createWebWorkspace(
     attachmentDraftIds: string[],
     replyToMessageId: string | null = null,
     clientMessageId?: string,
-    createArtifact = false,
+    createArtifact?: boolean,
   ): Promise<{ messageId: string } | { error: string }> {
     const { t, errorMessage } = currentText();
     if (state.status !== "online") return { error: t("chat.errorStatus.send") };

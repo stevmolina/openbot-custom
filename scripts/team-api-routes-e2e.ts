@@ -16,6 +16,7 @@
 // a Grok Bot export sent in parts (`agent-import-v2`) to the real import service, and the error
 // codes. Writes .openbot-build/team-api-routes-e2e/report.json.
 // Run: `bun run test:team-api-routes` (the preload gives the server's import graph an `electron`).
+
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
 import {
@@ -154,6 +155,10 @@ import {
   AGENT_WAITS_REQUEST_TEXT_LIMIT,
   AGENT_WAITS_ROUTES,
 } from "@openbot/contracts/team-protocol/agent-waits-v1";
+import {
+  ARTIFACT_REQUEST_CAPABILITY,
+  ARTIFACT_REQUEST_ROUTE,
+} from "@openbot/contracts/team-protocol/artifact-request-v1";
 import {
   BACKGROUND_PROCESS_COMMAND_LIMIT,
   BACKGROUND_PROCESSES_CAPABILITY,
@@ -6789,6 +6794,71 @@ try {
         isDeepStrictEqual(off.body, { enabled: false }) &&
         callsOf("claudeUserSetupChanged").length === 2,
       [summary(member), summary(memberRead), summary(noCapability), summary(off)],
+    );
+  }
+
+  // ---- Per-request Artifact tools through the real Team API ----
+  {
+    const options = { token: bobToken, protocol: TEAM_PROTOCOL_V9, capabilities: [ARTIFACT_REQUEST_CAPABILITY] };
+    const body = {
+      agentId: "agent-ada",
+      text: "Create a page",
+      attachmentDraftIds: [],
+      clientMessageId: "artifact-client-1",
+    };
+    const before = callsOf("sendTaskMessage").length;
+    const sent = await call("POST", ARTIFACT_REQUEST_ROUTE, { ...options, json: body });
+    const sentTask = await call("POST", ARTIFACT_REQUEST_ROUTE, {
+      ...options,
+      json: { ...body, taskId: "task-1", replyToMessageId: "message-7" },
+    });
+    const artifactSender = callsOf("sendTaskMessage").at(-1)?.[1];
+    check(
+      "Artifact requests reach the host with request mode, sender, idempotency id and optional task",
+      sent.status === 202 &&
+        sentTask.status === 202 &&
+        callsOf("sendTaskMessage").length === before + 2 &&
+        isDeepStrictEqual(callsOf("sendTaskMessage").at(-2)?.[0], {
+          ...body,
+          replyToMessageId: null,
+          createArtifact: true,
+        }) &&
+        isDeepStrictEqual(callsOf("sendTaskMessage").at(-1)?.[0], {
+          ...body,
+          taskId: "task-1",
+          replyToMessageId: "message-7",
+          createArtifact: true,
+        }) &&
+        isDynamicRecord(artifactSender) &&
+        artifactSender.id === bobId,
+      [summary(sent), summary(sentTask)],
+    );
+    const unsupported = await call("POST", ARTIFACT_REQUEST_ROUTE, {
+      token: bobToken,
+      protocol: TEAM_PROTOCOL_V9,
+      capabilities: [],
+      json: body,
+    });
+    accessLevels = { revision: 22, everyone: { "agent-ada": "view" }, roles: [] };
+    const viewer = await call("POST", ARTIFACT_REQUEST_ROUTE, { ...options, json: body });
+    accessLevels = { revision: 23, everyone: {}, roles: [] };
+    accessLevels = { revision: 24, everyone: { "agent-pi": "none" }, roles: [] };
+    const artifactHidden = await call("POST", ARTIFACT_REQUEST_ROUTE, {
+      ...options,
+      json: { ...body, agentId: "agent-pi" },
+    });
+    accessLevels = { revision: 25, everyone: {}, roles: [] };
+    const current = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: TEAM_PROTOCOL_V9 });
+    const older = await call("GET", TEAM_API_ROUTES.compatibility, { protocol: 8 });
+    check(
+      "Artifact routes reject missing capability, viewers and hidden agents; only protocol 9 advertises them",
+      unsupported.status >= 400 &&
+        viewer.status === 403 &&
+        artifactHidden.status === 404 &&
+        callsOf("sendTaskMessage").length === before + 2 &&
+        list(field(current.body, "capabilities")).includes(ARTIFACT_REQUEST_CAPABILITY) &&
+        !list(field(older.body, "capabilities")).includes(ARTIFACT_REQUEST_CAPABILITY),
+      [summary(unsupported), summary(viewer), summary(artifactHidden)],
     );
   }
 

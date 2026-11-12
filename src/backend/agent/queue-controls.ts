@@ -273,6 +273,12 @@ export class QueueControls {
         throw new Error(REMOVED_ENDPOINT_MESSAGE);
       return { client, session, snapshot, context, turnId, routineSession, publicThreadId };
     });
+    // A request with different tools must wait for its own query.
+    if (context.delivery.createArtifact || this.#mailbox.createArtifactForTurn(turnId)) {
+      yield* this.#mailbox.markSteerFallback(input.deliveryId, "steer-failed").pipe(toQueueOperationFailed);
+      this.#mailboxSync.emitQueue(agent.id);
+      return yield* new QueueOperationFailed({ cause: new SteerUnsupportedError() });
+    }
     // A routine run has its own session, which ends with the run. A message steered into it would not
     // stay in the session of its thread, so it waits for the next turn.
     if (routineSession) {

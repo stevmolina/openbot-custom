@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../message";
 import type { messages as source } from "../en/composer";
 
 export const messages = {
+  "composer.add.artifact": "יצירת Artifact",
+  "composer.artifact.selected": "Artifact · ההודעה הזו",
+  "composer.artifact.remove": "הסרת מצב Artifact",
   "composer.queueEdit.body": "הודעה בתור נמצאת בעריכה. יש לשמור את העריכה או לבטל אותה כדי שההודעה תרוץ.",
   "composer.queueEdit.cancel": "ביטול העריכה",
   "composer.providerWait.offlineTitle": "אין חיבור לאינטרנט",

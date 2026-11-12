@@ -2,6 +2,10 @@ import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
 import type { TeamMemberSummary } from "@openbot/contracts/ipc";
 import { type DynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { AGENT_TASKS_CAPABILITY, AGENT_TASKS_ROUTES } from "@openbot/contracts/team-protocol/agent-tasks-v1";
+import {
+  ARTIFACT_REQUEST_CAPABILITY,
+  ARTIFACT_REQUEST_ROUTE,
+} from "@openbot/contracts/team-protocol/artifact-request-v1";
 import { sourceText } from "@openbot/i18n/source";
 import { runCauseEffect } from "../../backend/effect-boundary";
 import type { TeamApiAgentTasks } from "./dependencies";
@@ -10,9 +14,11 @@ import type { RouteOutcome, TeamApiRequestContext } from "./request-context";
 import {
   conversationSnapshotForCapabilities,
   memberSender,
+  nullableString,
   readJson,
   requireAgentLevel,
   requireListedAgent,
+  stringArray,
   stringField,
 } from "./request-helpers";
 
@@ -27,6 +33,32 @@ export async function routeAgentTasks(
   hiddenAgentIds: ReadonlySet<string>,
 ): Promise<RouteOutcome> {
   const { method, url, capabilities, request, json, member } = context;
+  if (method === "POST" && url.pathname === ARTIFACT_REQUEST_ROUTE) {
+    if (!tasks || !capabilities.has(ARTIFACT_REQUEST_CAPABILITY)) return "unmatched";
+    const body = await readJson(request);
+    const agentId = stringField(body, "agentId");
+    if (hiddenAgentIds.has(agentId)) throw new HttpError(404, sourceText("error.team.agentNotFound"));
+    requireListedAgent(tasks, agentId);
+    requireAgentLevel(context, agentId, "chat");
+    return json(
+      202,
+      await runCauseEffect(
+        tasks.sendMessage(
+          {
+            agentId,
+            text: stringField(body, "text", true, INPUT_LIMITS.messageText),
+            attachmentDraftIds: stringArray(body, "attachmentDraftIds"),
+            replyToMessageId: nullableString(body, "replyToMessageId"),
+            ...(isString(body.taskId) ? { taskId: body.taskId } : {}),
+            ...clientMessageId(body),
+            createArtifact: true,
+          },
+          memberSender(member),
+          isString(body.timezone) ? body.timezone : undefined,
+        ),
+      ),
+    );
+  }
   if (method !== "POST" || !Object.values(AGENT_TASKS_ROUTES).some((path) => path === url.pathname)) return "unmatched";
   if (!tasks || !capabilities.has(AGENT_TASKS_CAPABILITY))
     throw new HttpError(400, sourceText("error.backend.threadRemoteUnsupported"));

@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../message";
 import type { messages as source } from "../en/composer";
 
 export const messages = {
+  "composer.add.artifact": "创建 Artifact",
+  "composer.artifact.selected": "Artifact · 此消息",
+  "composer.artifact.remove": "移除 Artifact 模式",
   "composer.queueEdit.body": "你正在编辑一条排队中的消息。保存或取消编辑后它才会继续执行。",
   "composer.queueEdit.cancel": "取消编辑",
   "composer.providerWait.offlineTitle": "没有网络连接",

@@ -25,6 +25,10 @@ import { AGENT_PLAN_CARD_CAPABILITY } from "@openbot/contracts/team-protocol/age
 import { AGENT_PUBLISH_CAPABILITY } from "@openbot/contracts/team-protocol/agent-publish-v1";
 import { AGENT_TASK_LIMIT_CAPABILITY } from "@openbot/contracts/team-protocol/agent-task-limit-v1";
 import { AGENT_UPDATE_CAPABILITY } from "@openbot/contracts/team-protocol/agent-update-v1";
+import {
+  ARTIFACT_REQUEST_CAPABILITY,
+  ARTIFACT_REQUEST_ROUTE,
+} from "@openbot/contracts/team-protocol/artifact-request-v1";
 import { BITWARDEN_CONNECTOR_CAPABILITY } from "@openbot/contracts/team-protocol/bitwarden-connector-v1";
 import { BROWSER_PROFILES_CAPABILITY } from "@openbot/contracts/team-protocol/browser-profiles-v1";
 import { BROWSER_PROXIES_CAPABILITY } from "@openbot/contracts/team-protocol/browser-proxies-v1";
@@ -2165,12 +2169,15 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
         replyToMessageId = null,
         targetServerId,
         clientMessageId,
+        createArtifact,
       ) => {
         const serverId = targetServerId ?? agentsRef.current.find((candidate) => candidate.id === agentId)?.serverId;
         if (!serverId) throw new Error(currentText().t("mobile.workspace.error.agentUnavailable"));
+        if (createArtifact && !hasCapability(serverCapabilities.current, serverId, ARTIFACT_REQUEST_CAPABILITY))
+          throw new Error(currentText().t("error.team.claudeAiToolsUnsupported"));
         const receipt = await request(
           "POST",
-          TEAM_API_ROUTES.agent.messages(agentId),
+          createArtifact ? ARTIFACT_REQUEST_ROUTE : TEAM_API_ROUTES.agent.messages(agentId),
           (value) => {
             if (!isQueuedMessageReceipt(value)) throw new Error("The host returned an invalid message receipt.");
             return value;
@@ -2179,6 +2186,7 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
             text,
             attachmentDraftIds,
             replyToMessageId,
+            ...(createArtifact ? { agentId } : {}),
             // The host uses this phone's zone for a routine the agent creates from the message.
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             ...(clientMessageId ? { clientMessageId } : {}),

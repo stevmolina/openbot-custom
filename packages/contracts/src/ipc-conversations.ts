@@ -187,7 +187,7 @@ export interface SendMessageInput {
   /**
    * This message asks Claude to create a claude.ai artifact. The host drops it after that request.
    * A joined server receives it inside `text` until the host reads it, because the message body
-   * cannot grow a field.
+   * cannot grow a field. New hosts also offer the separate artifact-request-v1 send route.
    */
   createArtifact?: boolean;
 }

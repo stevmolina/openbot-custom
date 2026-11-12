@@ -1,6 +1,9 @@
 import { defineMessages } from "../../message";
 
 export const messages = defineMessages("composer", {
+  "composer.add.artifact": "Create an Artifact",
+  "composer.artifact.selected": "Artifact · This message",
+  "composer.artifact.remove": "Remove Artifact mode",
   "composer.queueEdit.body": "You are editing a queued message. Save or cancel the edit to let it run.",
   "composer.queueEdit.cancel": "Cancel edit",
   "composer.providerWait.offlineTitle": "No internet connection",
@@ -76,8 +79,6 @@ export const messages = defineMessages("composer", {
   "composer.add.files": "Attach files",
   "composer.add.teach": "Teach a task",
   "composer.add.skill": "Use a skill",
-  "composer.add.artifact": "Create an artifact",
-  "composer.artifact.remove": "Remove artifact",
   "composer.upload.cancel": "Cancel upload",
   "composer.upload.uploading": "Uploading {name}",
   "composer.upload.progress": "{sent} of {total}",

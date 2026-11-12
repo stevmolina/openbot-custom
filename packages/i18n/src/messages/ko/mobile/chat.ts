@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../../message";
 import type { messages as source } from "../../en/mobile/chat";
 
 export const messages = {
+  "mobile.chat.artifact.create": "Artifact 만들기",
+  "mobile.chat.artifact.selected": "Artifact · 이 메시지",
+  "mobile.chat.artifact.remove": "Artifact 모드 해제",
   "mobile.chat.dictation.microphoneOffTitle": "마이크 접근이 꺼져 있어요",
   "mobile.chat.dictation.microphoneOffMessage":
     "메시지를 음성으로 입력하려면 설정에서 OpenBot이 마이크와 음성 인식을 사용하도록 허용해 주세요.",

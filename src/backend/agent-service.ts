@@ -6082,6 +6082,12 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
   ): Effect.fn.Return<AgentMessageSteer> {
     const steerTurnId = this.#turnToSteer(agent.id, task?.taskId ?? null, snapshot);
     if (!steerTurnId) return null;
+    // Different request tools need a new query. Never steer them into a running request.
+    if (
+      this.#mailbox.getDelivery(deliveryId)?.delivery.createArtifact ||
+      this.#mailbox.createArtifactForTurn(steerTurnId)
+    )
+      return "recipient-queues";
     // These reasons come first, so the sender is not told to select Steer when Steer would not help.
     // Only a message sent to steer gets a reason on its row.
     const steers = (agent.busyMessageMode ?? this.#busyMessageMode()) === "steer";

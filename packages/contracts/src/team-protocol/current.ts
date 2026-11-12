@@ -38,6 +38,7 @@ import { AGENT_UPDATE_CAPABILITY } from "./agent-update-v1";
 import { AGENT_USAGE_LIMIT_CAPABILITY } from "./agent-usage-limit-v1";
 import { AGENT_WAITS_CAPABILITY } from "./agent-waits-v1";
 import { AGENT_WELCOME_CAPABILITY } from "./agent-welcome-v1";
+import { ARTIFACT_REQUEST_CAPABILITY } from "./artifact-request-v1";
 import { BACKGROUND_PROCESSES_CAPABILITY } from "./background-processes-v1";
 import { BITWARDEN_CONNECTOR_CAPABILITY } from "./bitwarden-connector-v1";
 import { BROWSER_COLOR_SCHEME_CAPABILITY } from "./browser-color-scheme-v1";
@@ -584,6 +585,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
   CLAUDE_AI_TOOLS_CAPABILITY,
+  ARTIFACT_REQUEST_CAPABILITY,
   CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
@@ -801,6 +803,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
     capability !== CLAUDE_USER_SETUP_CAPABILITY &&
     capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
+    capability !== ARTIFACT_REQUEST_CAPABILITY &&
     capability !== CLAUDE_ARTIFACT_REQUEST_CAPABILITY &&
     capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
     capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
@@ -893,6 +896,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
   CLAUDE_AI_TOOLS_CAPABILITY,
+  ARTIFACT_REQUEST_CAPABILITY,
   CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
@@ -1069,6 +1073,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
       capability !== CLAUDE_USER_SETUP_CAPABILITY &&
       capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
+      capability !== ARTIFACT_REQUEST_CAPABILITY &&
       capability !== CLAUDE_ARTIFACT_REQUEST_CAPABILITY &&
       capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
       capability !== AGENT_USAGE_LIMIT_CAPABILITY &&

@@ -1002,6 +1002,7 @@ export class DrainScheduler {
                   this.#store.list().find((current) => current.id === agent.id) ?? agent,
                 ),
                 clientUserMessageId: delivery.id,
+                createArtifact: batch.some((item) => item.delivery.createArtifact === true),
                 // The delivery stays the same; a continuation must not overwrite the first turn's items.
                 ...((context.resumeAfterUsageLimit || planNote !== undefined) && client.provider !== "codex"
                   ? { clientTurnId: randomUUID() }
@@ -1018,9 +1019,6 @@ export class DrainScheduler {
                 sandboxPolicy: codexSandboxPolicy(agent, this.#store.sharedRoot),
                 ...(client.provider === "codex" || client.provider === "claude"
                   ? this.#serviceTier(agent, client.provider)
-                  : {}),
-                ...(client.provider === "claude" && batch.some((item) => item.createArtifact)
-                  ? { createArtifact: true }
                   : {}),
               },
               decodeTurnResponse,
