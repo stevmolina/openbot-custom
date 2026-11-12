@@ -19,8 +19,6 @@ export const messages = {
   "webClient.login.responseInvalid": "Die Anmeldeantwort ist ungültig.",
   "webClient.pane.navigation": "Arbeitsbereich-Navigation",
   "webClient.tab.chats": "Chats",
-  "webClient.tab.servers": "Server",
-  "webClient.tab.search": "Suchen",
   "webClient.tab.settings": "Einstellungen",
   "webClient.notice.connecting": "Verbindung mit deinem Server wird hergestellt",
   "webClient.notice.findingHosts": "Deine Server werden gesucht",

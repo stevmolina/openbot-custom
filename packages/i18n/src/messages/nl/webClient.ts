@@ -19,8 +19,6 @@ export const messages = {
   "webClient.login.responseInvalid": "Het antwoord op het inloggen is ongeldig.",
   "webClient.pane.navigation": "Navigatie in werkruimte",
   "webClient.tab.chats": "Chats",
-  "webClient.tab.servers": "Servers",
-  "webClient.tab.search": "Zoeken",
   "webClient.tab.settings": "Instellingen",
   "webClient.notice.connecting": "Verbinden met je server",
   "webClient.notice.findingHosts": "Je servers zoeken",

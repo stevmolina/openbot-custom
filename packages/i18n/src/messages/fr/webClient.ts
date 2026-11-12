@@ -19,8 +19,6 @@ export const messages = {
   "webClient.login.responseInvalid": "La réponse de connexion n’est pas valide.",
   "webClient.pane.navigation": "Navigation de l’espace de travail",
   "webClient.tab.chats": "Discussions",
-  "webClient.tab.servers": "Serveurs",
-  "webClient.tab.search": "Rechercher",
   "webClient.tab.settings": "Réglages",
   "webClient.notice.connecting": "Connexion à votre serveur",
   "webClient.notice.findingHosts": "Recherche de vos serveurs",

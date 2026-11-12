@@ -15,6 +15,7 @@ import {
   Bot,
   Button,
   CheckCheck,
+  ChevronDown,
   CircleFadingArrowUp,
   ContextMenu,
   DropdownMenu,
@@ -35,7 +36,7 @@ import { SidebarChatDock, SidebarChatNeedsYou, useSidebarChatDockGroups } from "
 import { SidebarChatRow } from "./SidebarChatRow";
 import { SidebarEmptyState } from "./SidebarEmptyState";
 import { SidebarMachineChips, SidebarMachineNotices } from "./SidebarMachineFilter";
-import { SidebarPill } from "./SidebarPill";
+import { SidebarPill, SidebarPillMore } from "./SidebarPill";
 import { SidebarPinnedGroup } from "./SidebarPinnedGroup";
 import { SidebarUsage } from "./SidebarUsage";
 import type { SidebarPages } from "./sidebar-pages";
@@ -220,6 +221,10 @@ function SidebarChatTopbar(topProps: {
         )}
       </Show>
       <UpdateButton />
+      {/* A phone has no pill, so its More menu moves here. */}
+      <Show when={topProps.title}>
+        <SidebarPillMore pages={topProps.pages} />
+      </Show>
       <RoundButton
         label={t("sidebar.chat.search")}
         onClick={props.onOpenSearch}
@@ -312,7 +317,11 @@ function useRecentChats() {
  * The large title of the list. It reports when it has scrolled out of the list, so the top row shows
  * the name small, as an iOS large title does.
  */
-function SidebarLargeTitle(titleProps: { name: string; onHiddenChange: (hidden: boolean) => void }) {
+function SidebarLargeTitle(titleProps: {
+  name: string;
+  onHiddenChange: (hidden: boolean) => void;
+  onOpenServers?: (() => void) | undefined;
+}) {
   let element: HTMLHeadingElement | undefined;
   onSettled(() => {
     const title = element;
@@ -322,7 +331,8 @@ function SidebarLargeTitle(titleProps: { name: string; onHiddenChange: (hidden: 
         const entry = entries.at(-1);
         if (entry) titleProps.onHiddenChange(!entry.isIntersecting);
       },
-      { root: title.closest(".sidebar-chat-scroll") },
+      // The whole list scrolls on a phone, not only its top zone.
+      { root: title.closest(".sidebar-chat-list") },
     );
     observer.observe(title);
     return () => {
@@ -338,8 +348,32 @@ function SidebarLargeTitle(titleProps: { name: string; onHiddenChange: (hidden: 
       class="sidebar-chat-large-title"
       dir="auto"
     >
-      {titleProps.name}
+      <Show when={titleProps.onOpenServers} fallback={titleProps.name}>
+        {(open) => (
+          <Button
+            variant="ghost"
+            type="button"
+            class="sidebar-chat-large-title-button"
+            aria-haspopup="dialog"
+            onClick={() => open()()}
+          >
+            <span class="sidebar-chat-large-title-name">{titleProps.name}</span>
+            <ChevronDown class="sidebar-chat-large-title-chevron" aria-hidden="true" />
+          </Button>
+        )}
+      </Show>
     </h1>
+  );
+}
+
+/** The search field under the large title. It opens the search, as the Search button of the top row does. */
+function SidebarSearchField(fieldProps: { onOpen: () => void }) {
+  const { t } = useText();
+  return (
+    <Button variant="ghost" type="button" class="sidebar-chat-search-field" onClick={() => fieldProps.onOpen()}>
+      <Search aria-hidden="true" />
+      <span>{t("sidebar.chat.search")}</span>
+    </Button>
   );
 }
 
@@ -381,7 +415,12 @@ function SidebarChatList(listProps: { onTitleHiddenChange: (hidden: boolean) => 
       >
         <div class="agent-list-content">
           <Show when={props.largeTitle}>
-            <SidebarLargeTitle name={props.serverName} onHiddenChange={listProps.onTitleHiddenChange} />
+            <SidebarLargeTitle
+              name={props.serverName}
+              onHiddenChange={listProps.onTitleHiddenChange}
+              onOpenServers={props.onOpenServers}
+            />
+            <SidebarSearchField onOpen={props.onOpenSearch} />
           </Show>
           <Show
             when={props.allMachines}

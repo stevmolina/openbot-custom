@@ -19,8 +19,6 @@ export const messages = {
   "webClient.login.responseInvalid": "A resposta de login é inválida.",
   "webClient.pane.navigation": "Navegação do espaço de trabalho",
   "webClient.tab.chats": "Chats",
-  "webClient.tab.servers": "Servidores",
-  "webClient.tab.search": "Buscar",
   "webClient.tab.settings": "Ajustes",
   "webClient.notice.connecting": "Conectando ao seu servidor",
   "webClient.notice.findingHosts": "Buscando seus servidores",

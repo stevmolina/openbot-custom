@@ -641,7 +641,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   const [mobilePane, setMobilePane] = createSignal<WebMobilePane>(
     window.matchMedia?.(PHONE_QUERY).matches ? "workspace" : "conversation",
   );
-  /** On a phone: the server drawer of the Servers tab, over the chat list. */
+  /** On a phone: the server drawer, over the chat list. The title of the list opens it. */
   const [serversOpen, setServersOpen] = createSignal(false);
   const [settingsRequest, setSettingsRequest] = createSignal<AgentSettingsRequest | null>(null);
   const account = createMemo(() => ({
@@ -2757,31 +2757,38 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     showAgents();
     setCreating(true);
   }
-  /** The tab of the phone tab bar that shows. */
-  const phoneTab = (): WebPhoneTab => {
-    if (searchOpen()) return "search";
-    if (serversOpen()) return "servers";
-    return page() === "settings" ? "settings" : "chats";
+  /** The tab of the phone tab bar that shows. A page that no tab holds, such as Usage, shows none. */
+  const phoneTab = (): WebPhoneTab | null => {
+    const current = page();
+    if (current === "settings" || current === "tasks" || current === "workflows") return current;
+    return current === "agents" ? "chats" : null;
   };
+  /** Tasks and Workflows show only when the server has them, as in the pill of a larger screen. */
+  const phoneTabAvailable = (tab: WebPhoneTab) =>
+    tab === "tasks" ? tasksSupported() : tab === "workflows" ? workflowsSupported() : true;
   /**
    * A tab of the phone tab bar. Chats shows the list, also from a pushed chat or a page, as a second
-   * tap on an iOS tab goes back to its root. Servers opens and closes the server drawer over the list.
+   * tap on an iOS tab goes back to its root.
    */
   function selectPhoneTab(tab: WebPhoneTab) {
-    if (tab === "search") {
-      setServersOpen(false);
-      setSearchOpen(true);
-      return;
-    }
+    setServersOpen(false);
     if (tab === "settings") {
-      setServersOpen(false);
       openAccountSettings();
       return;
     }
-    const drawer = tab === "servers" && !serversOpen();
+    if (tab === "tasks" || tab === "workflows") {
+      const id = server()?.id;
+      if (id) void openHostPage(id, tab, null);
+      return;
+    }
     showAgents();
     setMobilePane("workspace");
-    setServersOpen(drawer);
+  }
+  /** The server drawer, from the title of the chat list. */
+  function openPhoneServers() {
+    showAgents();
+    setMobilePane("workspace");
+    setServersOpen(true);
   }
   /** The drawer closes when a server is chosen in it, as the iOS drawer does. */
   function selectDrawerServer(id: string) {
@@ -2952,6 +2959,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
               data-web-mobile-pane={mobilePane()}
               data-web-phone-servers={phone() && serversOpen() ? "" : undefined}
               data-web-phone-connect={phone() && noHost() ? "" : undefined}
+              data-web-phone-tab-page={phone() && phoneTab() !== null && phoneTab() !== "chats" ? "" : undefined}
               compact={compact()}
               blockedServer={blockedServer()}
               initialLoading={hostOffline()}
@@ -3169,7 +3177,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
               }
               left={
                 <>
-                  {/* A phone always has the rail: it is the drawer of the Servers tab. */}
+                  {/* A phone always has the rail: it is the server drawer that the list title opens. */}
                   <Show when={layout.serverRailVisible() || phone()}>
                     <ServerRail
                       servers={servers()}
@@ -3216,6 +3224,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     view={layout.sidebarView()}
                     serverName={workspace.state.host?.name ?? "OpenBot"}
                     largeTitle={phone()}
+                    onOpenServers={phone() ? openPhoneServers : undefined}
                     serverUpdate={(() => {
                       const id = server()?.id;
                       const badge = id ? serverUpdateBadge(id) : null;
@@ -3306,7 +3315,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                           members={workspace.state.presence?.members ?? []}
                           onOpenStorage={(serverId) => void openServerSettings(serverId, null, "storage")}
                         />
-                        <Show when={!alertCards.shown() && !communityCard.dismissed()}>
+                        <Show when={!phone() && !alertCards.shown() && !communityCard.dismissed()}>
                           <SidebarCommunityCard
                             onJoinDiscord={() => void openWebDestination("discord")}
                             onFollowX={() => void openWebDestination("x")}
@@ -3337,7 +3346,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                         onClick={() => setServersOpen(false)}
                       />
                     </Show>
-                    <WebMobileNavigation active={phoneTab()} onSelect={selectPhoneTab} />
+                    <WebMobileNavigation active={phoneTab()} available={phoneTabAvailable} onSelect={selectPhoneTab} />
                   </Show>
                 </>
               }

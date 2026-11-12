@@ -1,17 +1,17 @@
 import type { AppTextKey } from "@openbot/i18n";
-import { Button, ChevronLeft, MessageCircle, Search, Server, Settings } from "@openbot/ui";
+import { Button, ChevronLeft, ListChecks, MessageCircle, Settings, Waypoints } from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
 import { Dynamic } from "@solidjs/web";
-import { For } from "solid-js";
+import { createMemo, For } from "solid-js";
 
 /** The pane that a phone shows: the chat list at the root, or the conversation pushed over it. */
 export type WebMobilePane = "conversation" | "workspace";
 
 /**
- * The places of the phone tab bar. They are the places that the iOS app opens from its home screen:
- * the chat list, the server drawer, the search field and the settings.
+ * The places of the phone tab bar: the chat list, the tasks and the workflows of the server, and the
+ * settings. The server list opens from the title of the chat list, and search from its search field.
  */
-export type WebPhoneTab = "chats" | "servers" | "search" | "settings";
+export type WebPhoneTab = "chats" | "tasks" | "workflows" | "settings";
 
 interface PhoneTab {
   id: WebPhoneTab;
@@ -21,36 +21,41 @@ interface PhoneTab {
 
 const TABS: ReadonlyArray<PhoneTab> = [
   { id: "chats", label: "webClient.tab.chats", Icon: MessageCircle },
-  { id: "servers", label: "webClient.tab.servers", Icon: Server },
-  { id: "search", label: "webClient.tab.search", Icon: Search },
+  { id: "tasks", label: "app.rail.tasks", Icon: ListChecks },
+  { id: "workflows", label: "app.rail.workflows", Icon: Waypoints },
   { id: "settings", label: "webClient.tab.settings", Icon: Settings },
 ];
 
 interface WebMobileNavigationProps {
-  active: WebPhoneTab;
+  /** The tab that shows, or none while another page is open. */
+  active: WebPhoneTab | null;
+  /** The tabs that this server has. Chats and Settings are always there. */
+  available: (tab: WebPhoneTab) => boolean;
   onSelect: (tab: WebPhoneTab) => void;
 }
 
 /**
- * The tab bar of a phone, as on iOS: an icon over a label, the active tab in the accent colour. It sits
- * under the conversation pane, so a chat that opens covers it, and a swipe back shows it again.
+ * The tab bar of a phone: a floating bar over the bottom of the list, an icon over a label, the active
+ * tab in the accent colour. It sits under the conversation pane, so a chat that opens covers it, and a
+ * swipe back shows it again.
  */
 export function WebMobileNavigation(props: WebMobileNavigationProps) {
   const { t } = useText();
+  const tabs = createMemo(() => TABS.filter((tab) => props.available(tab.id)));
   return (
     <nav class="web-phone-tab-bar" aria-label={t("webClient.pane.navigation")}>
-      <For each={TABS}>
+      <For each={tabs()} keyed={(tab) => tab.id}>
         {(tab) => (
           <Button
             variant="ghost"
             type="button"
             class="web-phone-tab"
-            data-active={props.active === tab.id ? "true" : undefined}
-            aria-current={props.active === tab.id ? "page" : undefined}
-            onClick={() => props.onSelect(tab.id)}
+            data-active={props.active === tab().id ? "true" : undefined}
+            aria-current={props.active === tab().id ? "page" : undefined}
+            onClick={() => props.onSelect(tab().id)}
           >
-            <Dynamic component={tab.Icon} aria-hidden="true" />
-            <span class="web-phone-tab-label">{t(tab.label)}</span>
+            <Dynamic component={tab().Icon} aria-hidden="true" />
+            <span class="web-phone-tab-label">{t(tab().label)}</span>
           </Button>
         )}
       </For>
