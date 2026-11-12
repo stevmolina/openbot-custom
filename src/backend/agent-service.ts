@@ -5961,6 +5961,7 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
         recipientAgentIds: [agent.id],
         text: input.text,
         draftIds: input.attachmentDraftIds ?? [],
+        ...(input.artifactMode ? { artifactMode: true } : {}),
         ...(input.voiceRecordingDraftId ? { voiceRecordingDraftId: input.voiceRecordingDraftId } : {}),
         // A reply names a message of the thread that takes it: the agent's own chat, or the task's thread.
         replyToMessageId: input.replyToMessageId ?? null,
@@ -6078,6 +6079,9 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
   ): Effect.fn.Return<AgentMessageSteer> {
     const steerTurnId = this.#turnToSteer(agent.id, task?.taskId ?? null, snapshot);
     if (!steerTurnId) return null;
+    // Different request tools need a new query. Never steer them into a running request.
+    if (this.#mailbox.getDelivery(deliveryId)?.delivery.artifactMode || this.#mailbox.artifactModeForTurn(steerTurnId))
+      return "recipient-queues";
     // These reasons come first, so the sender is not told to select Steer when Steer would not help.
     // Only a message sent to steer gets a reason on its row.
     const steers = (agent.busyMessageMode ?? this.#busyMessageMode()) === "steer";

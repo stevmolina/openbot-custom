@@ -105,6 +105,10 @@ import {
   decodeAgentWaitsResponse,
 } from "@openbot/contracts/team-protocol/agent-waits-v1";
 import {
+  ARTIFACT_REQUEST_CAPABILITY,
+  ARTIFACT_REQUEST_ROUTE,
+} from "@openbot/contracts/team-protocol/artifact-request-v1";
+import {
   BROWSER_COLOR_SCHEME_CAPABILITY,
   BROWSER_COLOR_SCHEME_ROUTES,
 } from "@openbot/contracts/team-protocol/browser-color-scheme-v1";
@@ -390,6 +394,7 @@ export interface WebWorkspaceRuntime {
     attachmentDraftIds: string[],
     replyToMessageId?: string | null,
     clientMessageId?: string,
+    artifactMode?: boolean,
   ): Promise<string>;
   stop(agentId: string, turnId: string): Promise<void>;
   /** Sends which agent this member is writing to, or `null`. It does nothing while the host is offline. */
@@ -1525,8 +1530,11 @@ export function createWebWorkspaceRuntime(
         throw new Error(currentText().t("error.remote.invalidData"));
       return `data:${value.mimeType};base64,${value.base64}`;
     },
-    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId) {
-      const result = await request("POST", TEAM_API_ROUTES.agent.messages(id), {
+    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId, artifactMode) {
+      if (artifactMode && !capabilities.includes(ARTIFACT_REQUEST_CAPABILITY))
+        throw new Error(currentText().t("error.team.claudeAiToolsUnsupported"));
+      const result = await request("POST", artifactMode ? ARTIFACT_REQUEST_ROUTE : TEAM_API_ROUTES.agent.messages(id), {
+        ...(artifactMode ? { agentId: id } : {}),
         text,
         attachmentDraftIds,
         replyToMessageId,

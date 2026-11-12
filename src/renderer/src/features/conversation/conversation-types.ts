@@ -327,6 +327,7 @@ export interface ConversationProps {
     target?: ConversationTarget,
     clientMessageId?: string,
     voiceRecordingDraftId?: string,
+    artifactMode?: boolean,
   ) => Promise<SendMessageResult>;
   onMarkRead: () => Promise<void>;
   /** Marks an agent message and the messages after it unread. Without it, the message menu has no such item. */
@@ -426,6 +427,7 @@ export interface ConversationProps {
 export type SendMessageResult = { messageId: string } | { error: string; reference?: string | null };
 
 export interface ComposerDraft {
+  artifactMode?: boolean;
   text: string;
   attachments: DraftAttachment[];
   replyToMessageId: string | null;
@@ -521,7 +523,12 @@ export interface ConversationThreads {
    * `attachmentDraftIds` are the files that the text names. `replyToMessageId` is the message of the open
    * thread that the message replies to; a new thread has no message to reply to.
    */
-  onSend: (text: string, attachmentDraftIds: string[], replyToMessageId?: string | null) => Promise<boolean>;
+  onSend: (
+    text: string,
+    attachmentDraftIds: string[],
+    replyToMessageId?: string | null,
+    artifactMode?: boolean,
+  ) => Promise<boolean>;
   onStop: () => void;
   /** Stops any side thread of the agent by its task id. Missing where the host cannot stop a thread. */
   onStopTask?: ((taskId: string) => void) | undefined;
@@ -623,7 +630,12 @@ export interface SideThread {
   /** The message that the thread scrolls to once, after a pin opened it. */
   focusMessage: { messageId: string; nonce: number } | undefined;
   approval: AgentApproval | undefined;
-  onSend: (text: string, attachmentDraftIds: string[], replyToMessageId?: string | null) => Promise<boolean>;
+  onSend: (
+    text: string,
+    attachmentDraftIds: string[],
+    replyToMessageId?: string | null,
+    artifactMode?: boolean,
+  ) => Promise<boolean>;
   onStop: () => void;
   onRead: (messageId: string) => void;
   onRespondApproval: (decision: "accept" | "decline", options?: PromptAnswerOptions) => Promise<boolean>;

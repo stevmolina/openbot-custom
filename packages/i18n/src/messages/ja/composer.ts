@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../message";
 import type { messages as source } from "../en/composer";
 
 export const messages = {
+  "composer.artifact.create": "Artifact を作成",
+  "composer.artifact.selected": "Artifact · このメッセージ",
+  "composer.artifact.remove": "Artifact モードを解除",
   "composer.queueEdit.body": "キュー内のメッセージを編集中です。実行するには編集を保存するかキャンセルしてください。",
   "composer.queueEdit.cancel": "編集をキャンセル",
   "composer.providerWait.offlineTitle": "インターネットに接続されていません",

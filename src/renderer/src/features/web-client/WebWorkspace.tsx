@@ -3925,14 +3925,14 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     await workspace.runtime.setAvatar(agentId, image);
                     await workspace.refresh();
                   }}
-                  onSendMessage={async (text, attachments, replyTo, target, clientMessageId) => {
+                  onSendMessage={async (text, attachments, replyTo, target, clientMessageId, _voice, artifactMode) => {
                     // A sent prompt is what a notification later reports, so the browser asks here, from the user's action.
                     requestWebNotificationPermission();
                     const id = target?.agentId ?? workspace.state.selectedId;
                     // A send for a host the user has left would reach the one they opened instead.
                     if (!id || (target && target.serverId !== server()?.id))
                       return { error: t("webClient.error.checkConversation") };
-                    return workspace.send(id, text, attachments, replyTo, clientMessageId);
+                    return workspace.send(id, text, attachments, replyTo, clientMessageId, artifactMode);
                   }}
                   onMarkRead={workspace.markRead}
                   onMarkUnread={markUnreadFrom()}

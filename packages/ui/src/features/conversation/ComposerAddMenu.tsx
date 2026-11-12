@@ -1,8 +1,20 @@
-import { AudioLines, CircleDot, DropdownMenu, File, MessageCircleQuestionMark, Plus, Puzzle } from "@openbot/ui";
+import {
+  AudioLines,
+  Button,
+  CircleDot,
+  DropdownMenu,
+  File,
+  MessageCircleQuestionMark,
+  Plus,
+  Puzzle,
+  Sparkles,
+  X,
+} from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
 import { Show } from "solid-js";
 
 export interface ComposerAddMenuProps {
+  onArtifact?: (() => void) | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   disabled: boolean;
@@ -76,6 +88,14 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
               <span>{t("composer.add.skill")}</span>
             </DropdownMenu.Item>
           </Show>
+          <Show when={props.onArtifact}>
+            {(create) => (
+              <DropdownMenu.Item onSelectAfterClose={() => create()()}>
+                <Sparkles aria-hidden="true" />
+                <span>{t("composer.artifact.create")}</span>
+              </DropdownMenu.Item>
+            )}
+          </Show>
           <Show when={props.onTeach}>
             {(teach) => (
               <DropdownMenu.Item onSelectAfterClose={() => teach()()}>
@@ -118,5 +138,29 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+  );
+}
+
+/** The selected tool mode belongs to the next message. */
+export function ComposerArtifactChip(props: { onRemove?: (() => void) | undefined }) {
+  const { t } = useText();
+  return (
+    <div class="composer-artifact-chip">
+      <Sparkles aria-hidden="true" />
+      <span>{t("composer.artifact.selected")}</span>
+      <Show when={props.onRemove}>
+        {(remove) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("composer.artifact.remove")}
+            onClick={() => remove()()}
+          >
+            <X aria-hidden="true" />
+          </Button>
+        )}
+      </Show>
+    </div>
   );
 }

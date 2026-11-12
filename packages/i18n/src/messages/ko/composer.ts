@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../message";
 import type { messages as source } from "../en/composer";
 
 export const messages = {
+  "composer.artifact.create": "Artifact 만들기",
+  "composer.artifact.selected": "Artifact · 이 메시지",
+  "composer.artifact.remove": "Artifact 모드 해제",
   "composer.queueEdit.body": "대기열의 메시지를 수정하는 중이에요. 수정을 저장하거나 취소해야 실행돼요.",
   "composer.queueEdit.cancel": "수정 취소",
   "composer.providerWait.offlineTitle": "인터넷에 연결되어 있지 않아요",

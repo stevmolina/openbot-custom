@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../../message";
 import type { messages as source } from "../../en/mobile/chat";
 
 export const messages = {
+  "mobile.chat.artifact.create": "Artifact maken",
+  "mobile.chat.artifact.selected": "Artifact · Dit bericht",
+  "mobile.chat.artifact.remove": "Artifact-modus verwijderen",
   "mobile.chat.dictation.microphoneOffTitle": "Microfoontoegang staat uit",
   "mobile.chat.dictation.microphoneOffMessage":
     "Sta OpenBot in Instellingen toe de microfoon en spraakherkenning te gebruiken om een bericht te dicteren.",

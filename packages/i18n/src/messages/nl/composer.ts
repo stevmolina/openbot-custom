@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../message";
 import type { messages as source } from "../en/composer";
 
 export const messages = {
+  "composer.artifact.create": "Artifact maken",
+  "composer.artifact.selected": "Artifact · Dit bericht",
+  "composer.artifact.remove": "Artifact-modus verwijderen",
   "composer.queueEdit.body":
     "Je bewerkt een bericht in de wachtrij. Sla de wijziging op of annuleer hem om het bericht te laten uitvoeren.",
   "composer.queueEdit.cancel": "Bewerking annuleren",

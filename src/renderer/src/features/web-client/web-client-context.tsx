@@ -1867,6 +1867,7 @@ export function createWebWorkspace(
     attachmentDraftIds: string[],
     replyToMessageId: string | null = null,
     clientMessageId?: string,
+    artifactMode?: boolean,
   ): Promise<{ messageId: string } | { error: string }> {
     const { t, errorMessage } = currentText();
     if (state.status !== "online") return { error: t("chat.errorStatus.send") };
@@ -1874,7 +1875,7 @@ export function createWebWorkspace(
     const current = generation;
     let messageId: string;
     try {
-      messageId = await runtime.send(id, text, attachmentDraftIds, replyToMessageId, clientMessageId);
+      messageId = await runtime.send(id, text, attachmentDraftIds, replyToMessageId, clientMessageId, artifactMode);
     } catch (error) {
       return { error: errorMessage(error, t("webClient.error.deliveryUnconfirmed")) };
     }

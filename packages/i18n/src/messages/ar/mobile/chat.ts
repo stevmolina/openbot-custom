@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../../message";
 import type { messages as source } from "../../en/mobile/chat";
 
 export const messages = {
+  "mobile.chat.artifact.create": "إنشاء Artifact",
+  "mobile.chat.artifact.selected": "Artifact · هذه الرسالة",
+  "mobile.chat.artifact.remove": "إزالة وضع Artifact",
   "mobile.chat.dictation.microphoneOffTitle": "الوصول إلى الميكروفون متوقف",
   "mobile.chat.dictation.microphoneOffMessage":
     "لإملاء رسالة، اسمح لـ OpenBot باستخدام الميكروفون والتعرّف على الكلام في الإعدادات.",

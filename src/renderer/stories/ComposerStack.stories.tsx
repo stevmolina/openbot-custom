@@ -14,6 +14,7 @@ import { useText } from "@openbot/ui/text";
 import { type JSX, Portal } from "@solidjs/web";
 import { createSignal, createStore, For, onSettled, Show } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
+import { STORY_AGENT_SUMMARIES } from "../src/preview/fixtures";
 import type { MockOpenBotControls } from "../src/preview/mock-openbot";
 import { openChat, PrototypeApp } from "./prototype-support";
 
@@ -161,7 +162,7 @@ function CaseCard(props: { name: Case; onClose: () => void }): JSX.Element {
  * button puts one product card into the app's card stack, so each card can open and close with the
  * others. The `@` list opens over the cards, and a reply to a message opens the reply card.
  */
-function ComposerStackPlayground() {
+function ComposerStackPlayground(props: { artifacts?: boolean } = {}) {
   let root: HTMLDivElement | undefined;
   let mock: MockOpenBotControls | undefined;
   const [queueShown, setQueueShown] = createSignal(false);
@@ -189,6 +190,15 @@ function ComposerStackPlayground() {
   return (
     <div style={{ display: "contents" }} ref={root}>
       <PrototypeApp
+        options={
+          props.artifacts
+            ? {
+                agents: STORY_AGENT_SUMMARIES.map((agent) =>
+                  agent.id === "chief" ? { ...agent, provider: "claude", model: "claude-sonnet-5" } : agent,
+                ),
+              }
+            : undefined
+        }
         setup={(controls) => {
           mock = controls;
         }}
@@ -206,65 +216,69 @@ function ComposerStackPlayground() {
           </Portal>
         )}
       </Show>
-      <div
-        role="toolbar"
-        aria-label="Story controls"
-        aria-orientation="vertical"
-        style={{
-          position: "fixed",
-          top: "48px",
-          right: "16px",
-          "z-index": 100,
-          display: "flex",
-          "flex-direction": "column",
-          "align-items": "flex-end",
-          gap: "4px",
-        }}
-      >
-        <Button
-          variant="secondary"
-          size="sm"
-          type="button"
-          aria-pressed={queueShown() ? "true" : "false"}
-          onClick={() => {
-            const next = !queueShown();
-            setQueueShown(next);
-            mock?.setQueueSnapshot("chief", next ? QUEUE : []);
+      <Show when={!props.artifacts}>
+        <div
+          role="toolbar"
+          aria-label="Story controls"
+          aria-orientation="vertical"
+          style={{
+            position: "fixed",
+            top: "48px",
+            right: "16px",
+            "z-index": 100,
+            display: "flex",
+            "flex-direction": "column",
+            "align-items": "flex-end",
+            gap: "4px",
           }}
         >
-          Queue
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          type="button"
-          onClick={() =>
-            mock?.emitAgentEvent({
-              type: "error",
-              agentId: "chief",
-              code: "provider_error",
-              message: "stream disconnected before completion: Connection refused (os error 61)",
-            })
-          }
-        >
-          Error
-        </Button>
-        <For each={CASES}>
-          {(name) => (
-            <Button
-              variant="secondary"
-              size="sm"
-              type="button"
-              aria-pressed={shown[name] ? "true" : "false"}
-              onClick={() => toggle(name, !shown[name])}
-            >
-              {name}
-            </Button>
-          )}
-        </For>
-      </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            aria-pressed={queueShown() ? "true" : "false"}
+            onClick={() => {
+              const next = !queueShown();
+              setQueueShown(next);
+              mock?.setQueueSnapshot("chief", next ? QUEUE : []);
+            }}
+          >
+            Queue
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            onClick={() =>
+              mock?.emitAgentEvent({
+                type: "error",
+                agentId: "chief",
+                code: "provider_error",
+                message: "stream disconnected before completion: Connection refused (os error 61)",
+              })
+            }
+          >
+            Error
+          </Button>
+          <For each={CASES}>
+            {(name) => (
+              <Button
+                variant="secondary"
+                size="sm"
+                type="button"
+                aria-pressed={shown[name] ? "true" : "false"}
+                onClick={() => toggle(name, !shown[name])}
+              >
+                {name}
+              </Button>
+            )}
+          </For>
+        </div>
+      </Show>
     </div>
   );
 }
 
 export const Playground: Story = { render: () => <ComposerStackPlayground /> };
+
+export const ArtifactRequest: Story = { render: () => <ComposerStackPlayground artifacts /> };

@@ -134,6 +134,10 @@ of its last answer. Card numbers and known secrets are removed first.
 the Artifact tools and the claude.ai connectors of the Claude account that the server's Claude Code is signed in to.
 When it is on, an agent can send content that it chooses to that claude.ai account, as a published page, or to a
 connected service, such as Gmail, Notion or Slack. OpenBot sends nothing to claude.ai itself.
+"Create an Artifact" in the message menu enables only the Artifact tools for that request, including
+its queued run and continuations. These tools can publish content to the host's claude.ai account.
+The next ordinary request has no Artifact tools unless the global setting is on. The request option
+does not enable claude.ai connectors.
 When a user selects "Teach a task" and saves the recording, OpenBot sends the agent's provider a
 message with the steps in an attached text file: the host, path and title of each page, and the role and name of each control
 that the user clicked. The steps have no query, no typed text and no field value. A discarded

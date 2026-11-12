@@ -9,6 +9,10 @@ import {
   AGENT_SESSION_SETTINGS_ROUTES,
 } from "@openbot/contracts/team-protocol/agent-session-settings-v1";
 import {
+  ARTIFACT_REQUEST_CAPABILITY,
+  ARTIFACT_REQUEST_ROUTE,
+} from "@openbot/contracts/team-protocol/artifact-request-v1";
+import {
   BROWSER_SECRET_VAULT_CAPABILITY,
   BROWSER_SECRET_VAULT_ROUTES,
 } from "@openbot/contracts/team-protocol/browser-secret-vault-v1";
@@ -1085,6 +1089,20 @@ export function agentIpcHandlers({
       sendMessage: scopedHandler(parseSendMessage, {
         local: (input) => runCauseEffect(service.sendMessage(input, host.conversationSender())),
         remote: (input, serverId) => {
+          if (input.artifactMode) {
+            if (!remoteServers.supportsCapability(serverId, ARTIFACT_REQUEST_CAPABILITY))
+              throw new Error(sourceText("error.team.claudeAiToolsUnsupported"));
+            return runCauseEffect(
+              remoteServers.request(serverId, ARTIFACT_REQUEST_ROUTE, decodeQueuedMessageReceipt, {
+                method: "POST",
+                body: {
+                  ...input,
+                  attachmentDraftIds: input.attachmentDraftIds ?? [],
+                  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                },
+              }),
+            );
+          }
           if (input.taskId) {
             const replyToMessageId = input.replyToMessageId;
             if (replyToMessageId)

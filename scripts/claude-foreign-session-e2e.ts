@@ -8,12 +8,14 @@
 // 2. Claude -> OpenCode -> Claude with a message after each switch: each session row has the
 //    provider that made its ID.
 // `bun run test:claude-foreign-session`. Writes .openbot-build/claude-foreign-session-e2e/report.json.
+
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { query } from "@anthropic-ai/claude-agent-sdk";
 import { AGENT_PROVIDERS, type AgentSummary, defaultProviderModel } from "@openbot/contracts/ipc";
 import { Effect } from "effect";
 import type { AgentBrowserHost } from "../src/backend/agent/turn-lifecycle";
@@ -112,6 +114,13 @@ interface ClientEvents {
  * The real Claude client. Only the account, usage and model reads are answered here: the real ones
  * run `claude auth status` or a probe query. Sessions, turns and events go to the real client.
  */
+let globalClaudeAiTools = false;
+const toolQueries: {
+  artifact: string | undefined;
+  strict: boolean | undefined;
+  connectorsOff: boolean | undefined;
+  resume: string | undefined;
+}[] = [];
 class ClaudeStandIn extends EventEmitter<ClientEvents> implements AgentClient {
   readonly provider = "claude";
   readonly contextCompaction = "native";
@@ -120,7 +129,30 @@ class ClaudeStandIn extends EventEmitter<ClientEvents> implements AgentClient {
 
   constructor(cli: ClaudeCliInfo) {
     super();
-    this.#real = new ClaudeAgentClient(cli);
+    this.#real = new ClaudeAgentClient(
+      cli,
+      (params) => {
+        toolQueries.push({
+          artifact: params.options?.env?.CLAUDE_CODE_ARTIFACT,
+          strict: params.options?.strictMcpConfig,
+          connectorsOff: params.options?.managedSettings?.disableClaudeAiConnectors,
+          resume: params.options?.resume,
+        });
+        return query(params);
+      },
+      undefined,
+      30_000,
+      () => [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      () => globalClaudeAiTools,
+    );
     this.readHistory = this.#real.readHistory;
     this.#real.on("notification", (notification) => this.emit("notification", notification));
     this.#real.on("request", (request) => this.emit("request", request));
@@ -380,15 +412,17 @@ async function createClaudeAgent(name: string) {
 }
 
 /** Sends one message and waits for its final state. */
-async function send(agentId: string, text: string) {
-  const receipt = await runCauseEffect(agents.sendMessage({ agentId, text }));
+async function send(agentId: string, text: string, artifactMode = false, clientMessageId?: string) {
+  const receipt = await runCauseEffect(
+    agents.sendMessage({ agentId, text, artifactMode, ...(clientMessageId ? { clientMessageId } : {}) }),
+  );
   const deliveryId = receipt.deliveries[0]?.id;
   if (!deliveryId) throw new Error("The message has no delivery.");
   const status = await settle("the message to end", () => {
     const current = mailbox.getDelivery(deliveryId)?.delivery.status;
     return current === "completed" || current === "failed" || current === "interrupted" ? current : null;
   });
-  return { status, error: mailbox.getDelivery(deliveryId)?.delivery.error ?? null };
+  return { status, deliveryId, error: mailbox.getDelivery(deliveryId)?.delivery.error ?? null };
 }
 
 function switchTo(agentId: string, provider: "claude" | "opencode") {
@@ -461,6 +495,81 @@ try {
     { spawns: backSpawns },
   );
 
+  // 3. Request-owned tools cross a real mailbox, agent scheduler, SDK and CLI process.
+  const artifactAgent = await createClaudeAgent("Artifact request");
+  const identity = agentNow(artifactAgent.id).threadId;
+  const external = sessions(artifactAgent.id).find((row) => row.state === "active")?.externalSessionId;
+  const queriesBefore = toolQueries.length;
+  const artifactResult = await send(artifactAgent.id, "Create a page.", true, "artifact-retry");
+  const artifactQuery = toolQueries.at(-1);
+  const retry = await send(artifactAgent.id, "Create a page.", false, "artifact-retry");
+  check(
+    "3. a repeated client id returns the original request and its mode",
+    retry.deliveryId === artifactResult.deliveryId &&
+      mailbox.getDelivery(retry.deliveryId)?.delivery.artifactMode === true,
+    retry,
+  );
+  const ordinaryResult = await send(artifactAgent.id, "Ordinary request.");
+  const ordinaryQuery = toolQueries.at(-1);
+  check(
+    "3. Artifact tools run only for the selected request, with connectors disabled",
+    artifactResult.status === "completed" &&
+      artifactQuery?.artifact === "1" &&
+      artifactQuery.strict === false &&
+      artifactQuery.connectorsOff === true,
+    { artifactResult, artifactQuery },
+  );
+  check(
+    "3. the next ordinary request disables Artifact tools and keeps both thread identities",
+    ordinaryResult.status === "completed" &&
+      ordinaryQuery?.artifact === "0" &&
+      ordinaryQuery.strict === true &&
+      agentNow(artifactAgent.id).threadId === identity &&
+      sessions(artifactAgent.id).find((row) => row.state === "active")?.externalSessionId === external &&
+      toolQueries.slice(queriesBefore).every((entry) => entry.resume === external),
+    { ordinaryResult, ordinaryQuery, identity, external },
+  );
+  // Store queued requests without scheduling them, then edit and load a second mailbox from SQLite.
+  const queued = await runCauseEffect(
+    mailbox.enqueue({
+      sender: { kind: "user" },
+      recipientAgentIds: [artifactAgent.id],
+      text: "Queued artifact",
+      artifactMode: true,
+    }),
+  );
+  const queuedId = queued.deliveries[0]?.id;
+  if (!queuedId) throw new Error("No Artifact delivery.");
+  await runCauseEffect(mailbox.updateQueuedMessage(artifactAgent.id, queuedId, "Edited artifact", [], []));
+  const ordinaryQueued = await runCauseEffect(
+    mailbox.enqueue({ sender: { kind: "user" }, recipientAgentIds: [artifactAgent.id], text: "Ordinary queued" }),
+  );
+  check(
+    "3. Artifact requests do not batch with the next request",
+    mailbox.userMessagesToStartWith(queuedId).length === 0,
+  );
+  const restored = new MailboxStore(userData, store.sharedRoot, store.database);
+  await runCauseEffect(restored.initialize());
+  check(
+    "3. queue edit and SQLite reload preserve request mode",
+    restored.getDelivery(queuedId)?.delivery.artifactMode === true &&
+      restored.getDelivery(queuedId)?.delivery.text === "Edited artifact",
+    restored.getDelivery(queuedId)?.delivery,
+  );
+  await runCauseEffect(mailbox.cancel(artifactAgent.id, queuedId));
+  for (const delivery of ordinaryQueued.deliveries) await runCauseEffect(mailbox.cancel(artifactAgent.id, delivery.id));
+  globalClaudeAiTools = true;
+  // Force a new query through a request mode change; the global preference must keep connectors on.
+  const globallyEnabled = await send(artifactAgent.id, "Global compatibility", true);
+  const globalQuery = toolQueries.at(-1);
+  check(
+    "3. the global setting keeps Artifact tools and connectors enabled",
+    globallyEnabled.status === "completed" &&
+      globalQuery?.artifact === "1" &&
+      globalQuery.strict === false &&
+      globalQuery.connectorsOff !== true,
+    { globallyEnabled, globalQuery },
+  );
   report.passed = checks.every((entry) => entry.passed);
 } catch (error) {
   report.error = error instanceof Error ? (error.stack ?? error.message) : String(error);

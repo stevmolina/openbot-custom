@@ -1,4 +1,5 @@
 import { canPreviewAttachment } from "@openbot/contracts/ipc";
+import { ARTIFACT_REQUEST_CAPABILITY } from "@openbot/contracts/team-protocol/artifact-request-v1";
 import type { AppTextKey } from "@openbot/i18n";
 import { classifyFailure } from "@openbot/telemetry";
 import { Input } from "@openbot/ui";
@@ -280,6 +281,16 @@ export function ConversationThread() {
             browserTabs={taggableBrowserTabs()}
             threads={taggableThreads()}
             onOpenTag={openTaggedReference}
+            artifactMode={draft()?.artifactMode}
+            onArtifactModeChange={
+              current().threads.open &&
+              !threadQueue.editOf(current().threads.open?.id) &&
+              current().agent.provider === "claude" &&
+              (props.server?.kind !== "remote" ||
+                props.server?.compatibility?.capabilities.includes(ARTIFACT_REQUEST_CAPABILITY))
+                ? (enabled) => threadComposer.setArtifactMode(threadComposer.openDraftKey(), enabled)
+                : undefined
+            }
             draft={draft()?.text ?? ""}
             draftAttachments={draft()?.attachments}
             rowAttachments={rowImages()}

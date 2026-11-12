@@ -709,6 +709,7 @@ export function createAgentTasks(options: AgentTasksOptions) {
     text: string,
     attachmentDraftIds: string[] = [],
     replyToMessageId: string | null = null,
+    artifactMode?: boolean,
   ): Promise<boolean> {
     // The sent message and the answer come after the part around an old message, so the thread shows
     // its latest messages again.
@@ -721,6 +722,7 @@ export function createAgentTasks(options: AgentTasksOptions) {
           text,
           ...(attachmentDraftIds.length ? { attachmentDraftIds } : {}),
           ...(replyToMessageId ? { replyToMessageId } : {}),
+          ...(artifactMode ? { artifactMode: true } : {}),
           clientMessageId: crypto.randomUUID(),
         }),
       "conversation.threads.error.send",

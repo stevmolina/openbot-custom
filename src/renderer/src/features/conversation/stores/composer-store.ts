@@ -132,6 +132,7 @@ export function createComposerStore(deps: ComposerStoreDeps) {
     deps.setDrafts((current) => {
       const draft = current[key] ?? EMPTY_DRAFT;
       const next: ComposerDraft = {
+        ...(draft.artifactMode && !submitted.artifactMode ? { artifactMode: true } : {}),
         text: draft.text === submitted.text ? "" : draft.text,
         attachments: draft.attachments.filter((attachment) => !submittedAttachmentIds.has(attachment.id)),
         replyToMessageId: draft.replyToMessageId === submitted.replyToMessageId ? null : draft.replyToMessageId,

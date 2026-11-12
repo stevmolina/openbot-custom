@@ -154,6 +154,13 @@ current reset; supplied ordering values are not trusted. File reads are followed
 of reset, message existence, and message content. Channel history continues through `channel_history`
 and its assignment checks. Messaging history stays within the current link's execution thread.
 
+A composer Artifact selection is saved as `artifactMode` on the mailbox message JSON. It needs no
+SQLite schema change. The scheduler sends it on each turn and continuation of that request. Artifact
+requests do not batch or steer into another request. The Claude adapter resumes the same session
+with a new query when this option changes. With the global claude.ai tools setting off, this query
+uses `disableClaudeAiConnectors` in managed settings and keeps external MCP sources blocked.
+The optional `artifact-request-v1` route carries this choice for joined clients.
+
 Claude model and effort changes use its live setters at the next turn, without replacing the
 native session or restarting its query. Standing instruction or access changes retain the existing
 refresh path. No-op profile saves do not unload sessions. Logs count provider-session starts by

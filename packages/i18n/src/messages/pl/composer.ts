@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../message";
 import type { messages as source } from "../en/composer";
 
 export const messages = {
+  "composer.artifact.create": "Utwórz Artifact",
+  "composer.artifact.selected": "Artifact · Ta wiadomość",
+  "composer.artifact.remove": "Usuń tryb Artifact",
   "composer.queueEdit.body": "Edytujesz wiadomość z kolejki. Zapisz lub anuluj edycję, aby mogła zostać wysłana.",
   "composer.queueEdit.cancel": "Anuluj edycję",
   "composer.providerWait.offlineTitle": "Brak połączenia z internetem",

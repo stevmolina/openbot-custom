@@ -125,8 +125,8 @@ export function conversationThreads(input: ConversationThreadsInput): Conversati
       newerMessages: newerMessages(task.id),
       focusMessage: focus?.taskId === task.id ? focus : undefined,
       approval: sideApproval,
-      onSend: (text, attachmentDraftIds, replyToMessageId) =>
-        tabs.send(agentId, task.id, text, attachmentDraftIds, replyToMessageId),
+      onSend: (text, attachmentDraftIds, replyToMessageId, artifactMode) =>
+        tabs.send(agentId, task.id, text, attachmentDraftIds, replyToMessageId, artifactMode),
       onStop: () => tasks.stopTask(agentId, task.id),
       onRead: (messageId) => tasks.markTaskRead(agentId, task.id, messageId),
       onRespondApproval: (decision, options) =>
@@ -201,9 +201,9 @@ export function conversationThreads(input: ConversationThreadsInput): Conversati
     approval,
     acceptsFiles: tasks.filesAccepted(),
     acceptsReplies: tasks.repliable(),
-    onSend: (text, attachmentDraftIds, replyToMessageId) =>
+    onSend: (text, attachmentDraftIds, replyToMessageId, artifactMode) =>
       open
-        ? tabs.send(agentId, open.id, text, attachmentDraftIds, replyToMessageId)
+        ? tabs.send(agentId, open.id, text, attachmentDraftIds, replyToMessageId, artifactMode)
         : tabs.sendDraft(agentId, text, attachmentDraftIds),
     onStop: () => {
       if (open) tasks.stopTask(agentId, open.id);

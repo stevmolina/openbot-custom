@@ -1002,6 +1002,7 @@ export class DrainScheduler {
                   this.#store.list().find((current) => current.id === agent.id) ?? agent,
                 ),
                 clientUserMessageId: delivery.id,
+                artifactMode: delivery.artifactMode === true,
                 // The delivery stays the same; a continuation must not overwrite the first turn's items.
                 ...((context.resumeAfterUsageLimit || planNote !== undefined) && client.provider !== "codex"
                   ? { clientTurnId: randomUUID() }

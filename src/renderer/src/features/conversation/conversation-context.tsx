@@ -915,6 +915,7 @@ const Conversation = createSimpleContext({
       target?: { agentId: string; serverId: string },
       clientMessageId?: string,
       voiceRecordingDraftId?: string,
+      artifactMode?: boolean,
     ): Promise<SendMessageResult> {
       const agentId = target?.agentId ?? activeAgent()?.id;
       const serverId = target?.serverId ?? activeServerId();
@@ -928,6 +929,7 @@ const Conversation = createSimpleContext({
         serverId,
         clientMessageId,
         voiceRecordingDraftId,
+        artifactMode,
       );
     }
 
@@ -940,6 +942,7 @@ const Conversation = createSimpleContext({
       serverId = activeServerId(),
       clientMessageId?: string,
       voiceRecordingDraftId?: string,
+      artifactMode?: boolean,
     ): Promise<SendMessageResult> {
       const analytics = desktopAnalytics.scope();
       const properties = analyticsAgentProperties(agentId);
@@ -952,6 +955,7 @@ const Conversation = createSimpleContext({
           ...(replyToMessageId ? { replyToMessageId } : {}),
           ...(clientMessageId ? { clientMessageId } : {}),
           ...(voiceRecordingDraftId ? { voiceRecordingDraftId } : {}),
+          ...(artifactMode ? { artifactMode: true } : {}),
         };
         const receipt = await conversationPort().agent.sendMessage(input, serverId);
         const errorKey = agentConversationKey(serverId, agentId);

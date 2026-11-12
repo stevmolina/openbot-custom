@@ -168,6 +168,8 @@ export interface MarkConversationUnreadInput {
 }
 
 export interface SendMessageInput {
+  /** Enable claude.ai Artifact tools for this request and its continuations only. */
+  artifactMode?: boolean;
   agentId: string;
   text: string;
   attachmentDraftIds?: string[];

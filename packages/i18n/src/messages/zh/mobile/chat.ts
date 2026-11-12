@@ -2,6 +2,9 @@ import type { PartialTranslation } from "../../../message";
 import type { messages as source } from "../../en/mobile/chat";
 
 export const messages = {
+  "mobile.chat.artifact.create": "创建 Artifact",
+  "mobile.chat.artifact.selected": "Artifact · 此消息",
+  "mobile.chat.artifact.remove": "移除 Artifact 模式",
   "mobile.chat.dictation.microphoneOffTitle": "麦克风权限已关闭",
   "mobile.chat.dictation.microphoneOffMessage": "如需口述消息，请在系统设置中允许 OpenBot 使用麦克风和语音识别。",
   "mobile.chat.dictation.stopped": "听写已停止",

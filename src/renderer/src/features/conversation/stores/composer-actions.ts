@@ -468,6 +468,7 @@ export function createComposerActions(deps: ComposerActionsDeps) {
       deps.setDrafts((current) => ({
         ...current,
         [composerDraftKey({ agentId, serverId })]: {
+          ...(original.artifactMode ? { artifactMode: true } : {}),
           text: original.text,
           attachments: [...original.attachments],
           replyToMessageId: original.replyToMessageId,
@@ -786,7 +787,7 @@ export function createComposerActions(deps: ComposerActionsDeps) {
     const active = deps.currentTarget();
     if (deps.props.channel || !answer?.available() || !target || !active) return undefined;
     if (target.agentId !== active.agentId || target.serverId !== active.serverId) return undefined;
-    if (draft.attachments.length > 0 || draft.replyToMessageId) return undefined;
+    if (draft.artifactMode || draft.attachments.length > 0 || draft.replyToMessageId) return undefined;
     return answer;
   }
 
@@ -891,6 +892,7 @@ export function createComposerActions(deps: ComposerActionsDeps) {
         target,
         pending.clientMessageId,
         pending.voiceRecordingDraftId ?? undefined,
+        pending.draft.artifactMode,
       );
       if ("error" in result) {
         playActionSound("error");
