@@ -228,6 +228,9 @@ export const messages = {
   "settings.notch.xwayland.unsupported":
     "En Wayland sin XWayland, la Dynamic Island no puede aparecer sobre otras apps.",
   "settings.notch.xwayland.restart": "Reiniciar",
+  "settings.notch.needsYouOnly.title": "Solo cuando un agente te necesita",
+  "settings.notch.needsYouOnly.description":
+    "Mostrar la isla solo para aprobaciones, preguntas y pasos del navegador. Se oculta mientras los agentes trabajan o responden.",
   "settings.notch.idle.title": "Mostrar la isla inactiva",
   "settings.notch.idle.description": "Mostrar el logotipo de OpenBot y el saludo cuando no hay un estado activo.",
   "settings.notch.displays.title": "Mostrar en pantallas adicionales",

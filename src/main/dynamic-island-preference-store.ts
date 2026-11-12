@@ -36,6 +36,9 @@ export const readDynamicIslandPreference = Effect.fn("readDynamicIslandPreferenc
         enabled: parsed.enabled,
         hapticsEnabled: parsed.hapticsEnabled,
         idleVisible: parsed.idleVisible,
+        // Optional for the same reason: a file from before this setting has no value, and an older app
+        // that writes the file drops it. Either way the island takes the notch only when needed.
+        needsYouOnly: isBoolean(parsed.needsYouOnly) ? parsed.needsYouOnly : defaults.needsYouOnly,
         additionalDisplaysEnabled: parsed.additionalDisplaysEnabled,
         // The size is optional so that 0.18.0 and earlier, which refuse any version but 3, still read
         // this file. A missing or out-of-range size resets only the size, so a bad value cannot make

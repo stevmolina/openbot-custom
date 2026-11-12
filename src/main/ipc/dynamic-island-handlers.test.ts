@@ -31,6 +31,7 @@ const PREFERENCE: DynamicIslandPreference = {
   enabled: true,
   hapticsEnabled: true,
   idleVisible: true,
+  needsYouOnly: true,
   additionalDisplaysEnabled: false,
   widthPercent: 100,
   heightPercent: 100,

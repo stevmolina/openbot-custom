@@ -9,6 +9,7 @@ import type {
 import {
   DEFAULT_DYNAMIC_ISLAND_PREFERENCE,
   dynamicIslandCompactHeight,
+  dynamicIslandShowsMode,
   IDLE_DYNAMIC_ISLAND_PRESENTATION,
   IPC_ENDPOINTS,
 } from "@openbot/contracts/ipc";
@@ -93,6 +94,8 @@ export class DynamicIslandWindowController {
   readonly #inputRegions = new Map<number, AgentDockInputRect[]>();
   readonly #preferenceMutation = Semaphore.makeUnsafe(1);
   readonly #windowReconciliation = Semaphore.makeUnsafe(1);
+  /** Windows that fired `ready-to-show`. A window that is not ready stays hidden: it would show blank. */
+  readonly #readyWindows = new WeakSet<BrowserWindow>();
   #destroyed = false;
 
   constructor(options: DynamicIslandWindowControllerOptions) {
@@ -171,6 +174,8 @@ export class DynamicIslandWindowController {
 
   performHaptic(): void {
     if (!this.#preference.enabled || !this.#preference.hapticsEnabled) return;
+    // A mode that the island does not draw gives no feedback either, such as a collapse after an answer.
+    if (!dynamicIslandShowsMode(this.#preference, this.#presentation.mode)) return;
     this.#options.performHaptic();
   }
 
@@ -180,6 +185,7 @@ export class DynamicIslandWindowController {
     for (const window of this.#windows.values()) {
       sendToRenderer(window, IPC_ENDPOINTS.dynamicIsland.presentation, presentation);
     }
+    this.#syncVisibility();
   }
 
   setInteractive(rendererId: number, interactive: boolean, keyboard = false): void {
@@ -215,6 +221,8 @@ export class DynamicIslandWindowController {
         if (!current) return;
         window.setBounds(this.#windowBounds(current, this.#islandBounds(current), false), false);
         if (this.#options.windowKind === "x11") this.#applyShape(displayId, window);
+        // The collapse is over, so a window that the island no longer needs can go.
+        this.#syncVisibility(displayId);
       }, DYNAMIC_ISLAND_COLLAPSE_SETTLE_MS),
     );
   }
@@ -384,7 +392,7 @@ export class DynamicIslandWindowController {
             this.#rememberNotchSize(display.id, notchSize);
           }
         }
-        this.#show(current);
+        this.#syncVisibility(display.id, true);
         continue;
       }
       yield* this.#createDisplayWindow(display, bounds).pipe(
@@ -399,6 +407,26 @@ export class DynamicIslandWindowController {
       );
     }
   }).bind(this);
+
+  /**
+   * Whether the windows are on screen. With `needsYouOnly` on, the island takes the notch only for an
+   * approval, a question or a browser step, and every other mode hides the window, so the notch is
+   * free for other apps. A window that the user is using, or that is still collapsing, stays until
+   * the collapse ends. `reassert` shows a window that is already visible again, as a reconciliation does.
+   */
+  #syncVisibility(onlyDisplayId?: number, reassert = false): void {
+    const wanted = !this.#preference.needsYouOnly || dynamicIslandShowsMode(this.#preference, this.#presentation.mode);
+    for (const [displayId, window] of this.#windows) {
+      if (onlyDisplayId !== undefined && displayId !== onlyDisplayId) continue;
+      if (window.isDestroyed() || !this.#readyWindows.has(window)) continue;
+      if (wanted) {
+        if (reassert || !window.isVisible()) this.#show(window);
+        continue;
+      }
+      if (this.#interactiveDisplays.has(displayId) || this.#collapseTimers.has(displayId)) continue;
+      if (window.isVisible()) window.hide();
+    }
+  }
 
   #show(window: BrowserWindow): void {
     window.showInactive();
@@ -450,7 +478,8 @@ export class DynamicIslandWindowController {
     });
     window.once("ready-to-show", () => {
       if (this.#windows.get(display.id) !== window || window.isDestroyed()) return;
-      this.#show(window);
+      this.#readyWindows.add(window);
+      this.#syncVisibility(display.id, true);
     });
     window.on("blur", () => this.setInteractive(window.webContents.id, false));
     window.webContents.on("context-menu", (_event, params) => {

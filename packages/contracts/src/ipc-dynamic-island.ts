@@ -7,6 +7,12 @@ export interface DynamicIslandPreference {
   enabled: boolean;
   hapticsEnabled: boolean;
   idleVisible: boolean;
+  /**
+   * The island takes the notch only while an agent needs the user: an approval, a question or a
+   * browser step. In every other mode its window is hidden, so other apps can use the notch. When
+   * this is off, `idleVisible` and the other modes work as they did before this setting existed.
+   */
+  needsYouOnly: boolean;
   additionalDisplaysEnabled: boolean;
   /** The compact island width, as a percent of its default width. The physical notch never shrinks. */
   widthPercent: number;
@@ -55,12 +61,30 @@ export const DEFAULT_DYNAMIC_ISLAND_PREFERENCE = {
   enabled: true,
   hapticsEnabled: true,
   idleVisible: true,
+  needsYouOnly: true,
   additionalDisplaysEnabled: true,
   widthPercent: 100,
   heightPercent: 100,
   serverVisibility: {},
   newServersVisible: true,
 } as const satisfies DynamicIslandPreference;
+
+/** The modes in which an agent waits for the user. Each one takes the notch when `needsYouOnly` is on. */
+export function isDynamicIslandNeedsYouMode(mode: DynamicIslandPresentation["mode"]): boolean {
+  return mode === "approval" || mode === "question" || mode === "takeover";
+}
+
+/**
+ * Returns whether the island draws a presentation mode. The main process hides the window and the
+ * renderer draws nothing by this one rule, so no stale drawing shows when the window comes back.
+ */
+export function dynamicIslandShowsMode(
+  preference: Pick<DynamicIslandPreference, "needsYouOnly" | "idleVisible">,
+  mode: DynamicIslandPresentation["mode"],
+): boolean {
+  if (preference.needsYouOnly) return isDynamicIslandNeedsYouMode(mode);
+  return mode !== "idle" || preference.idleVisible;
+}
 
 /** Returns whether the island shows the items of a server. A muted server is hidden separately. */
 export function isDynamicIslandServerVisible(
@@ -210,6 +234,7 @@ export function isDynamicIslandPreference(value: unknown): value is DynamicIslan
     isBoolean(value.enabled) &&
     isBoolean(value.hapticsEnabled) &&
     isBoolean(value.idleVisible) &&
+    isBoolean(value.needsYouOnly) &&
     isBoolean(value.additionalDisplaysEnabled) &&
     isDynamicIslandSizePercent(value.widthPercent, DYNAMIC_ISLAND_SIZE_LIMITS.widthPercent) &&
     isDynamicIslandSizePercent(value.heightPercent, DYNAMIC_ISLAND_SIZE_LIMITS.heightPercent) &&

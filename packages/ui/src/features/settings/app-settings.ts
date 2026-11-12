@@ -43,6 +43,8 @@ export interface GeneralSettingsValue {
   macBookNotch: boolean;
   macBookNotchHaptics: boolean;
   macBookNotchIdle: boolean;
+  /** The island takes the notch only while an agent needs the user. Then `macBookNotchIdle` has no effect. */
+  macBookNotchNeedsYouOnly: boolean;
   macBookNotchAdditionalDisplays: boolean;
   /** The compact Dynamic Island size, as percents of the default. */
   macBookNotchWidthPercent: number;
@@ -90,6 +92,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsValue = {
   macBookNotch: true,
   macBookNotchHaptics: true,
   macBookNotchIdle: true,
+  macBookNotchNeedsYouOnly: true,
   macBookNotchAdditionalDisplays: true,
   macBookNotchWidthPercent: 100,
   macBookNotchHeightPercent: 100,

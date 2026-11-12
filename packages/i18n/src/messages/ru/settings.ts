@@ -231,6 +231,9 @@ export const messages = {
   "settings.notch.xwayland.unsupported":
     "В Wayland без XWayland Dynamic Island не может быть поверх других приложений.",
   "settings.notch.xwayland.restart": "Перезапустить",
+  "settings.notch.needsYouOnly.title": "Только когда вы нужны агенту",
+  "settings.notch.needsYouOnly.description":
+    "Показывать панель только для подтверждений, вопросов и шагов в браузере. Пока агенты работают или отвечают, она скрыта.",
   "settings.notch.idle.title": "Показывать панель в режиме ожидания",
   "settings.notch.idle.description": "Показывать логотип OpenBot и приветствие, когда нет активного статуса.",
   "settings.notch.displays.title": "Показывать на дополнительных дисплеях",

@@ -217,6 +217,9 @@ export const messages = {
     "在 Wayland 上，OpenBot 必须使用 XWayland 才能在其他应用上方显示灵动岛。在此之前，灵动岛不会显示。",
   "settings.notch.xwayland.unsupported": "在没有 XWayland 的 Wayland 上，灵动岛无法显示在其他应用上方。",
   "settings.notch.xwayland.restart": "重新启动",
+  "settings.notch.needsYouOnly.title": "仅在代理需要你时",
+  "settings.notch.needsYouOnly.description":
+    "仅在需要批准、回答问题或处理浏览器步骤时显示灵动岛。代理工作或回复期间会隐藏。",
   "settings.notch.idle.title": "空闲时显示灵动岛",
   "settings.notch.idle.description": "没有活跃状态时显示 OpenBot 标志和问候语。",
   "settings.notch.displays.title": "在其他显示器上显示",

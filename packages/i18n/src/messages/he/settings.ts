@@ -219,6 +219,9 @@ export const messages = {
     "ב-Wayland, ‏OpenBot צריך להשתמש ב-XWayland כדי להציג את ה-Dynamic Island מעל אפליקציות אחרות. עד אז, האי לא מוצג.",
   "settings.notch.xwayland.unsupported": "ב-Wayland בלי XWayland, ה-Dynamic Island לא יכול להופיע מעל אפליקציות אחרות.",
   "settings.notch.xwayland.restart": "הפעלה מחדש",
+  "settings.notch.needsYouOnly.title": "רק כשסוכן זקוק לך",
+  "settings.notch.needsYouOnly.description":
+    "הצגת האי רק לאישורים, לשאלות ולשלבי דפדפן. האי מוסתר בזמן שסוכנים עובדים או משיבים.",
   "settings.notch.idle.title": "הצגת האי במצב סרק",
   "settings.notch.idle.description": "הצגת הלוגו של OpenBot וברכה כשאין סטטוס פעיל.",
   "settings.notch.displays.title": "הצגה בתצוגות נוספות",
