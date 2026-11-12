@@ -1,3 +1,4 @@
+import { attachmentFileExtension } from "./attachment-files";
 import { INPUT_LIMITS } from "./input-limits";
 import { isBoundedString } from "./ipc-bounded-values";
 import { isBoolean, isDynamicRecord, isNumber, isOneOf } from "./runtime-values";
@@ -72,6 +73,18 @@ export function chatVisualItemType(height?: number): string {
 /** Only an HTML file can be a visual page. */
 export function isChatVisualMimeType(mimeType: string): boolean {
   return (mimeType.split(";", 1)[0] ?? "").trim().toLowerCase() === "text/html";
+}
+
+/**
+ * Whether a file preview shows this attachment as a page. A visual reply is `text/html`. An HTML file
+ * that an agent or a member attaches keeps the `text/plain` type of a text file, so its name decides.
+ * The page runs in the same sandbox as a visual reply.
+ */
+export function isHtmlPageFile(file: { name: string; mimeType: string }): boolean {
+  if (isChatVisualMimeType(file.mimeType)) return true;
+  const extension = attachmentFileExtension(file.name);
+  const mimeType = (file.mimeType.split(";", 1)[0] ?? "").trim().toLowerCase();
+  return (extension === "html" || extension === "htm") && mimeType === "text/plain";
 }
 
 export function chatVisualReply<Attachment extends { mimeType: string }>(message: {

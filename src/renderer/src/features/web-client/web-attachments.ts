@@ -1,5 +1,5 @@
 import { attachmentMimeTypeForName } from "@openbot/contracts/attachment-files";
-import { CHAT_VISUAL_PAGE_LIMIT, isChatVisualMimeType } from "@openbot/contracts/chat-visual";
+import { CHAT_VISUAL_PAGE_LIMIT, isHtmlPageFile } from "@openbot/contracts/chat-visual";
 import { type AttachmentSummary, type FilePreview, filePreviewKindForFile } from "@openbot/contracts/ipc";
 import { base64ToBytes } from "@openbot/team-client/base64";
 import { currentText } from "@openbot/ui/text";
@@ -67,10 +67,9 @@ async function readVisualPage(
   attachment: AttachmentSummary,
 ): Promise<string> {
   const unavailable = () => new Error(currentText().t("webClient.error.fileTransfer"));
-  if (!isChatVisualMimeType(attachment.mimeType) || attachment.size > CHAT_VISUAL_PAGE_LIMIT) throw unavailable();
+  if (!isHtmlPageFile(attachment) || attachment.size > CHAT_VISUAL_PAGE_LIMIT) throw unavailable();
   const file = filePreview(await remote.download(attachment.id));
-  if (!isChatVisualMimeType(file.mimeType) || !file.bytes || file.bytes.byteLength > CHAT_VISUAL_PAGE_LIMIT)
-    throw unavailable();
+  if (!isHtmlPageFile(file) || !file.bytes || file.bytes.byteLength > CHAT_VISUAL_PAGE_LIMIT) throw unavailable();
   return new TextDecoder().decode(file.bytes);
 }
 

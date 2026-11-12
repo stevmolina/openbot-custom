@@ -1,5 +1,5 @@
 import { attachmentFileExtension, attachmentMimeTypeForName } from "@openbot/contracts/attachment-files";
-import { isChatVisualMimeType } from "@openbot/contracts/chat-visual";
+import { isHtmlPageFile } from "@openbot/contracts/chat-visual";
 import { type AttachmentSummary, filePreviewKindForFile } from "@openbot/contracts/ipc";
 import type { CodePreviewEntry } from "./code-preview-store";
 
@@ -23,7 +23,7 @@ export const PREVIEW_TEXT_LIMIT = 200_000;
 export function attachmentPreviewKind(
   attachment: Pick<AttachmentSummary, "name" | "mimeType">,
 ): AttachmentPreviewKind | null {
-  if (isChatVisualMimeType(attachment.mimeType)) return "html";
+  if (isHtmlPageFile(attachment)) return "html";
   const mimeType = attachment.mimeType || attachmentMimeTypeForName(attachment.name);
   const kind = filePreviewKindForFile(attachment.name, mimeType);
   return kind === "markdown" || kind === "text" || kind === "pdf" || kind === "spreadsheet" ? kind : null;

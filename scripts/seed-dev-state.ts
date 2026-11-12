@@ -758,6 +758,7 @@ async function seedAttachments(
     | "pdf"
     | "audio"
     | "spreadsheet"
+    | "page"
     | "spreadsheetDates1900"
     | "spreadsheetDates1904"
     | "spreadsheetNumberFormats",
@@ -841,6 +842,14 @@ async function seedAttachments(
       mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       bytes: previewXlsx(),
     }),
+    // An HTML file that an agent attaches keeps the text/plain type. The preview shows it as a page.
+    page: await store(chief, {
+      name: "weekly-summary.html",
+      mimeType: "text/plain",
+      bytes: bytes(
+        '<!doctype html><html><head><title>Weekly summary</title><style>body{font:16px system-ui;margin:32px;background:#f6f1e7;color:#1d1b16}h1{font-size:28px;margin:0 0 16px}li{margin:6px 0}.tag{display:inline-block;padding:2px 8px;border-radius:99px;background:#2f6df6;color:#fff;font-size:12px}</style></head><body><h1>Weekly summary</h1><p><span class="tag">Live page</span></p><ul><li>Activation: 42% to 55%</li><li>Retention: 61% to 68%</li><li>Next: publish the release note</li></ul><p id="script">Script did not run.</p><script>document.getElementById("script").textContent = "Script ran: this is a rendered page.";</script></body></html>',
+      ),
+    }),
     spreadsheetDates1900: await store(chief, {
       name: "spreadsheet-dates-1900.xlsx",
       mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -873,6 +882,7 @@ async function seedConversations(
     | "pdf"
     | "audio"
     | "spreadsheet"
+    | "page"
     | "spreadsheetDates1900"
     | "spreadsheetDates1904"
     | "spreadsheetNumberFormats",
@@ -983,6 +993,7 @@ async function seedConversations(
             `- ${file(attachments.audio)}`,
             `- ${file(attachments.image)}`,
             `- ${file(attachments.spreadsheet)}`,
+            `- ${file(attachments.page)}`,
           ].join("\n"),
           43 * MINUTE,
         ),
@@ -996,6 +1007,7 @@ async function seedConversations(
           attachments.audio,
           attachments.image,
           attachments.spreadsheet,
+          attachments.page,
         ],
       },
       {
