@@ -5,7 +5,7 @@
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { sourceText } from "@openbot/i18n/source";
-import { registerSecretValue } from "@openbot/logging";
+import { redactSecrets, registerSecretValue } from "@openbot/logging";
 import { Effect, Schema } from "effect";
 
 export const AGENT_COMPUTER_API_URL = "https://computer.mcpbox.dev/api/v1";
@@ -48,8 +48,15 @@ const startSchema = Schema.Struct({
   other_contexts: Schema.optional(Schema.Array(Schema.String)),
   live_view_url: Schema.String,
   deadline_at: Schema.String,
-  billing: Schema.optional(Schema.Unknown),
-  briefing: Schema.optional(Schema.Unknown),
+  billing: Schema.optional(
+    Schema.Struct({
+      plan: Schema.String,
+      minutes_remaining: Schema.NullOr(Schema.Number),
+      upgrade_url: Schema.optional(Schema.String),
+      manage_url: Schema.optional(Schema.String),
+    }),
+  ),
+  briefing: Schema.optional(Schema.Array(Schema.String)),
 });
 export type AgentComputerStart = typeof startSchema.Type;
 
@@ -116,6 +123,8 @@ export class AgentComputerApi {
     const answer = yield* this.#json("POST", "/machines/start", { context }, 300_000);
     const started = yield* decode(startSchema, answer);
     registerSecretValue(started.live_view_url);
+    if (started.billing?.upgrade_url) registerSecretValue(started.billing.upgrade_url);
+    if (started.billing?.manage_url) registerSecretValue(started.billing.manage_url);
     return started;
   });
 
@@ -253,7 +262,7 @@ function apiError(answer: RawResponse): AgentComputerFailed {
     const parsed = Schema.decodeUnknownSync(errorSchema)(JSON.parse(answer.body.toString("utf8")));
     return new AgentComputerFailed({
       code: parsed.error.code.slice(0, 64),
-      message: parsed.error.message.slice(0, 1_000),
+      message: redactSecrets(parsed.error.message).slice(0, 1_000),
       status: answer.status,
     });
   } catch {

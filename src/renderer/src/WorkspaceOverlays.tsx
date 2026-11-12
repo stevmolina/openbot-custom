@@ -1060,7 +1060,11 @@ function ServerSettings() {
               : undefined
           }
           vault={vault()}
-          cloudComputers={serverCanAdminister(server(), AGENT_COMPUTER_CAPABILITY)}
+          cloudComputers={
+            serverCanAdminister(server(), AGENT_COMPUTER_CAPABILITY)
+              ? { api: appPort().agentComputer, openUrl: (url) => void appPort().openUrl(url) }
+              : undefined
+          }
         />
       )}
     </Show>

@@ -71,7 +71,7 @@ import { type ServerVaultOptions, ServerVaultPanel } from "../vault/ServerVaultP
 import type { McpServerConfig, McpTestResult } from "./mcp-servers";
 import { createServerAuditSection, type ServerAuditOptions } from "./ServerAuditSection";
 import type { ServerBrowsingMemoryOptions } from "./ServerBrowsingMemorySetting";
-import { ServerCloudComputersPanel } from "./ServerCloudComputersPanel";
+import { type ServerCloudComputersOptions, ServerCloudComputersPanel } from "./ServerCloudComputersPanel";
 import { type CompanySignInCalls, createServerCompanySignInSection } from "./ServerCompanySignInSection";
 import { ServerDesktopPanel } from "./ServerDesktopPanel";
 import { createServerGeneralSection } from "./ServerGeneralSection";
@@ -300,7 +300,7 @@ export interface ServerSettingsModalProps {
    * The Cloud computers section: this computer, or a joined server that serves `agent-computer-v1` to
    * an owner or admin.
    */
-  cloudComputers?: boolean | undefined;
+  cloudComputers?: ServerCloudComputersOptions | undefined;
   /** The section to show when the dialog opens. Updates shows General when the server has no Updates section. */
   initialSection?: ServerSettingsSection | null;
   /** Where the settings page shows, or nothing while the page is not on screen. */
@@ -924,13 +924,17 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
           )}
         </Show>
         <Show when={props.cloudComputers}>
-          <Tabs.Content
-            value="cloud-computers"
-            class="settings-modal-tab-panel server-settings-panel"
-            data-tab="cloud-computers"
-          >
-            <ServerCloudComputersPanel serverId={props.server.id} />
-          </Tabs.Content>
+          {(api) => (
+            <>
+              <Tabs.Content
+                value="cloud-computers"
+                class="settings-modal-tab-panel server-settings-panel"
+                data-tab="cloud-computers"
+              >
+                <ServerCloudComputersPanel serverId={props.server.id} api={api().api} openUrl={api().openUrl} />
+              </Tabs.Content>
+            </>
+          )}
         </Show>
         <Tabs.Content value="members" class="settings-modal-tab-panel server-settings-panel" data-tab="members">
           <members.Panel />

@@ -88,6 +88,7 @@ import {
   AGENT_BACKUP_MODELS_ROUTES,
 } from "@openbot/contracts/team-protocol/agent-backup-models-v1";
 import { AGENT_COLORS_CAPABILITY, AGENT_COLORS_ROUTES } from "@openbot/contracts/team-protocol/agent-colors-v1";
+import { AGENT_COMPUTER_CAPABILITY, AGENT_COMPUTER_ROUTES } from "@openbot/contracts/team-protocol/agent-computer-v1";
 import {
   AGENT_FAST_MODE_CAPABILITY,
   AGENT_FAST_MODE_ROUTES,
@@ -307,6 +308,7 @@ import {
 import { parseTwoStepKey, twoStepCode } from "@openbot/contracts/two-step-code";
 import { sourceText } from "@openbot/i18n/source";
 import { createOpenBotLogger } from "@openbot/logging";
+import { createAgentComputerPort } from "@openbot/team-client/agent-computer";
 import { RoutineInputError } from "@openbot/team-client/routine-schedule";
 import { Effect } from "effect";
 import { strToU8, unzipSync, zipSync } from "fflate";
@@ -326,6 +328,7 @@ import { RoutineResultError } from "../src/backend/routine-results/routine-resul
 import type { OwnedRoutineRecord } from "../src/backend/routine-store";
 import { TeamChatStore } from "../src/backend/team-chat-store";
 import type { AgentAccessState } from "../src/main/agent-access-store";
+import { AgentComputerService } from "../src/main/agent-computer-service";
 import { createAgentFolders } from "../src/main/agent-folders";
 import { createAgentHostSettings } from "../src/main/agent-host-settings";
 import { AgentImportService } from "../src/main/agent-import-service";
@@ -376,6 +379,7 @@ import { TeamApiServer } from "../src/main/team-api-server";
 import { TeamStore } from "../src/main/team-store";
 import { VaultService } from "../src/main/vault-service";
 import { VaultStore } from "../src/main/vault-store";
+import { FIXTURE_KEY, startAgentComputerFixture } from "./agent-computer-fixture";
 import { emptyInstanceTransferService } from "./instance-transfer-e2e-fixture";
 
 const OUT = resolve(import.meta.dirname, "../.openbot-build/team-api-routes-e2e");
@@ -420,6 +424,7 @@ interface RecordedCall {
 }
 
 mkdirSync(OUT, { recursive: true });
+let closeComputerFixture: (() => Promise<void>) | undefined;
 const root = mkdtempSync(join(tmpdir(), "openbot-team-api-routes-"));
 const transferUploads = join(root, "user-data", "instance-transfer-uploads");
 const checks: Check[] = [];
@@ -1881,7 +1886,16 @@ try {
     () => Effect.sync(() => importFreeBytes),
   );
 
+  const computerFixture = await startAgentComputerFixture();
+  closeComputerFixture = computerFixture.close;
+  const agentComputer = new AgentComputerService({
+    path: join(root, "agent-computer.json"),
+    baseUrl: computerFixture.baseUrl,
+    // REST account encryption is tested in agent-computer-e2e. Here only route wiring is tested.
+    cipher: { encrypt: (value) => Buffer.from(value), decrypt: (value) => value.toString() },
+  });
   server = new TeamApiServer({
+    agentComputer,
     appVersion: APP_VERSION,
     agentImport,
     store,
@@ -2481,6 +2495,76 @@ try {
     { redeemedServerIds, serverId },
   );
   assert.ok(typeof bobToken === "string" && typeof bobId === "string", "bob did not join.");
+
+  // Native Agent Computer, through the real Team API dispatcher and frozen optional codecs.
+  {
+    const options = { token: adaToken, protocol: 9, capabilities: [AGENT_COMPUTER_CAPABILITY], json: {} };
+    for (const path of Object.values(AGENT_COMPUTER_ROUTES)) {
+      const member = await call("POST", path, {
+        ...options,
+        token: bobToken,
+        json: path === AGENT_COMPUTER_ROUTES.connect ? { apiKey: FIXTURE_KEY } : {},
+      });
+      const anonymous = await call("POST", path, { ...options, token: undefined });
+      const unsupported = await call("POST", path, { ...options, capabilities: [] });
+      check(
+        `Agent Computer ${path.split("/").at(-1)} requires authentication, admin and capability`,
+        member.status === 403 && anonymous.status === 401 && unsupported.status === 400,
+        { member: member.status, anonymous: anonymous.status, unsupported: unsupported.status },
+      );
+    }
+    check("refused Agent Computer routes send no REST request", computerFixture.requests.length === 0, {});
+    const invalid = await call("POST", AGENT_COMPUTER_ROUTES.connect, { ...options, json: { apiKey: 3 } });
+    const extra = await call("POST", AGENT_COMPUTER_ROUTES.status, { ...options, json: { unexpected: true } });
+    check(
+      "Agent Computer codecs reject malformed keys and normalize unused fields",
+      invalid.status === 400 && extra.status === 200 && computerFixture.requests.length === 0,
+      { invalid: invalid.status, extra: extra.status },
+    );
+    const connected = await call("POST", AGENT_COMPUTER_ROUTES.connect, { ...options, json: { apiKey: FIXTURE_KEY } });
+    const status = await call("POST", AGENT_COMPUTER_ROUTES.status, options);
+    const tested = await call("POST", AGENT_COMPUTER_ROUTES.test, options);
+    const machines = await call("POST", AGENT_COMPUTER_ROUTES.machines, options);
+    check(
+      "an admin connects, reads, tests and lists Agent Computer through HTTP",
+      connected.status === 200 &&
+        field(connected.body, "connected") === true &&
+        field(status.body, "connected") === true &&
+        tested.status === 200 &&
+        machines.status === 200 &&
+        list(field(machines.body, "machines")).length === 1,
+      { connected: connected.status, status: status.status, tested: tested.status, machines: machines.status },
+    );
+    check(
+      "Agent Computer responses never contain the API key",
+      [connected, status, tested, machines].every((reply) => !JSON.stringify(reply.body).includes(FIXTURE_KEY)),
+      {},
+    );
+    const client = createAgentComputerPort(() => async (method, path, decode, body) => {
+      const reply = await call(method, path, { ...options, json: body });
+      assert.equal(reply.status, 200);
+      return decode(reply.body);
+    });
+    check(
+      "shared web/mobile Agent Computer port reads and changes the real host",
+      (await client.status(serverId)).connected &&
+        (await client.test(serverId)).connected &&
+        (await client.machines(serverId)).machines.length === 1 &&
+        !(await client.disconnect(serverId)).connected &&
+        (await client.connect(FIXTURE_KEY, serverId)).connected,
+      {},
+    );
+    const disconnected = await call("POST", AGENT_COMPUTER_ROUTES.disconnect, options);
+    check(
+      "an admin disconnects Agent Computer and the host forgets the key",
+      disconnected.status === 200 && field(disconnected.body, "connected") === false && agentComputer.key() === null,
+      {},
+    );
+    const wrongMethod = await call("GET", AGENT_COMPUTER_ROUTES.status, { ...options, json: undefined });
+    check("Agent Computer wrong method keeps the dispatcher 404", wrongMethod.status === 404, {
+      status: wrongMethod.status,
+    });
+  }
 
   const seatInvite = await runCauseEffect(store.createInvite("member"));
   const fourth = await call("POST", TEAM_API_ROUTES.join.server, {
@@ -10099,6 +10183,7 @@ try {
     { lines: logged.length },
   );
 } finally {
+  await closeComputerFixture?.();
   if (channelHost) await Effect.runPromise(channelHost.stop());
   if (channelService) await Effect.runPromise(channelService.stop());
   if (server) await Effect.runPromise(server.stop());

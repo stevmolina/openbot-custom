@@ -1,7 +1,7 @@
 import { AGENT_COMPUTER_CAPABILITY } from "@openbot/contracts/team-protocol/agent-computer-v1";
 import type { CloudComputer } from "@openbot/ui/features/servers/CloudComputerList";
 import { MachinesPage } from "@openbot/ui/features/servers/MachinesPage";
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 import { appPort } from "../../app-port";
 import { useOpenMachineAgent } from "./machine-agent-open";
 import { createMachinesStore } from "./machines-store";
@@ -24,15 +24,28 @@ export function MachinesPanel() {
   const store = createMachinesStore({ servers: orderedServers });
   const [cloudComputers, setCloudComputers] = createSignal<Readonly<Record<string, readonly CloudComputer[]>>>({});
 
+  let generation = 0;
+  onCleanup(() => {
+    generation++;
+  });
+  const accessible = (id: string) =>
+    orderedServers().some(
+      (server) =>
+        server.id === id && server.state === "online" && serverCanAdminister(server, AGENT_COMPUTER_CAPABILITY),
+    );
+
   /** Reads the cloud computers of one online server. A server with no connected account shows none. */
   async function readCloud(serverId: string): Promise<void> {
-    const api = window.openbot.agentComputer;
+    if (!accessible(serverId)) return;
+    const current = generation;
+    const api = appPort().agentComputer;
     try {
       const status = await api.status(serverId);
       const machines = status.connected ? (await api.machines(serverId)).machines : [];
-      setCloudComputers((current) => ({ ...current, [serverId]: machines }));
+      if (current === generation && accessible(serverId))
+        setCloudComputers((rows) => ({ ...rows, [serverId]: machines }));
     } catch {
-      setCloudComputers((current) => ({ ...current, [serverId]: [] }));
+      if (current === generation) setCloudComputers((rows) => ({ ...rows, [serverId]: [] }));
     }
   }
 
@@ -43,6 +56,8 @@ export function MachinesPanel() {
         .map((server) => server.id)
         .join("\n"),
     (ids) => {
+      generation++;
+      setCloudComputers({});
       for (const serverId of ids ? ids.split("\n") : []) void readCloud(serverId);
     },
   );

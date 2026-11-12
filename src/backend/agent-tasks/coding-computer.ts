@@ -8,7 +8,6 @@ export class CodingComputerFailed extends Schema.TaggedError<CodingComputerFaile
 export interface CodingMachine {
   id: string;
   deadline_at: string;
-  live_view_url: string;
 }
 
 export interface CodingCommandResult {
@@ -29,12 +28,18 @@ export function codingComputer(api: AgentComputerApi): CodingComputerPort {
   return {
     start: (context) =>
       api.start(context).pipe(
-        Effect.map(({ id, deadline_at, live_view_url }) => ({ id, deadline_at, live_view_url })),
+        Effect.map(({ id, deadline_at }) => ({ id, deadline_at })),
         failed,
       ),
     bash: (id, cmd, timeoutSeconds) =>
       api.bash(id, { cmd, timeout_s: timeoutSeconds }).pipe(
-        Effect.map(({ stdout, stderr }) => ({ stdout, stderr })),
+        Effect.flatMap(({ stdout, stderr, exit_code, timed_out }) =>
+          timed_out || exit_code !== 0
+            ? Effect.fail(
+                new CodingComputerFailed({ cause: timed_out ? "Remote command timed out" : "Remote command failed" }),
+              )
+            : Effect.succeed({ stdout, stderr }),
+        ),
         failed,
       ),
     stop: (id) => api.stop(id).pipe(Effect.asVoid, failed),

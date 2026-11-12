@@ -7,8 +7,6 @@ import {
   decodeAgentAdminSettings,
   decodeAgentBackupModelSettings,
   decodeAgentBrowserProfile,
-  decodeAgentComputerMachineList,
-  decodeAgentComputerStatus,
   decodeAgentExclusionChangeFromMain,
   decodeAgentFastModeSettings,
   decodeAgentFolderBrowse,
@@ -103,6 +101,7 @@ import {
   decodeWebhookTestResult,
 } from "@openbot/contracts/ipc-events";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
+import { decodeAgentComputerMachineListFromMain, decodeAgentComputerStatusFromMain } from "./agent-computer-decoding";
 import {
   decodeAccountUsageFromMain,
   decodeAgent,
@@ -1053,11 +1052,11 @@ const openbotApi: OpenBotDesktopApi = {
     hostOpenSignIn: decodeVoid,
   }),
   agentComputer: bridgeGroup(IPC_ENDPOINTS.agentComputer, {
-    status: decodeAgentComputerStatus,
-    connect: decodeAgentComputerStatus,
-    test: decodeAgentComputerStatus,
-    disconnect: decodeAgentComputerStatus,
-    machines: decodeAgentComputerMachineList,
+    status: decodeAgentComputerStatusFromMain,
+    connect: decodeAgentComputerStatusFromMain,
+    test: decodeAgentComputerStatusFromMain,
+    disconnect: decodeAgentComputerStatusFromMain,
+    machines: decodeAgentComputerMachineListFromMain,
   }),
   bitwardenConnector: bridgeGroup(IPC_ENDPOINTS.bitwardenConnector, {
     status: decodeBitwardenConnectorStatus,

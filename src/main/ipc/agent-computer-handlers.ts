@@ -1,12 +1,12 @@
+import {
+  decodeAgentComputerMachineListFromHost,
+  decodeAgentComputerStatusFromHost,
+} from "../remote-agent-computer-decoding";
 // The Agent Computer account of a server: read its status, connect an API key, test it, disconnect,
 // and list its machines. Each endpoint goes to this computer's service or to a joined server's
 // `agent-computer-v1` routes.
 
-import {
-  AGENT_COMPUTER_KEY_INPUT_LIMIT,
-  decodeAgentComputerMachineList,
-  decodeAgentComputerStatus,
-} from "@openbot/contracts/ipc";
+import { AGENT_COMPUTER_KEY_INPUT_LIMIT } from "@openbot/contracts/ipc";
 import { AGENT_COMPUTER_CAPABILITY, AGENT_COMPUTER_ROUTES } from "@openbot/contracts/team-protocol/agent-computer-v1";
 import type { TeamCurrentCapability } from "@openbot/contracts/team-protocol/current";
 import { sourceText } from "@openbot/i18n/source";
@@ -50,7 +50,7 @@ export function agentComputerIpcHandlers({
     agentComputer: {
       status: scopedQueryHandler({
         local: () => agentComputer.status(),
-        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.status, decodeAgentComputerStatus),
+        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.status, decodeAgentComputerStatusFromHost),
       }),
       connect: scopedHandler(
         (value) => {
@@ -61,20 +61,20 @@ export function agentComputerIpcHandlers({
         {
           local: (apiKey) => runCauseEffect(agentComputer.connect(apiKey)),
           remote: (apiKey, serverId) =>
-            post(serverId, AGENT_COMPUTER_ROUTES.connect, decodeAgentComputerStatus, { apiKey }),
+            post(serverId, AGENT_COMPUTER_ROUTES.connect, decodeAgentComputerStatusFromHost, { apiKey }),
         },
       ),
       test: scopedQueryHandler({
         local: () => runCauseEffect(agentComputer.test()),
-        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.test, decodeAgentComputerStatus),
+        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.test, decodeAgentComputerStatusFromHost),
       }),
       disconnect: scopedQueryHandler({
         local: () => runCauseEffect(agentComputer.disconnect()),
-        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.disconnect, decodeAgentComputerStatus),
+        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.disconnect, decodeAgentComputerStatusFromHost),
       }),
       machines: scopedQueryHandler({
         local: () => runCauseEffect(agentComputer.machines()),
-        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.machines, decodeAgentComputerMachineList),
+        remote: (serverId) => post(serverId, AGENT_COMPUTER_ROUTES.machines, decodeAgentComputerMachineListFromHost),
       }),
     },
   };

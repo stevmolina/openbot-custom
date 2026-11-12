@@ -71,7 +71,7 @@ export class AgentComputerService {
       }
       this.#record = result.success;
       if (this.#record) registerSecretValue(this.#record.apiKey);
-    }).pipe(Effect.withSpan("AgentComputerService.load"));
+    }).pipe(this.#serialize.bind(this), Effect.withSpan("AgentComputerService.load"));
   }
 
   /**
@@ -92,21 +92,17 @@ export class AgentComputerService {
         return this.status();
       }
       const record = { apiKey, connectedAt: Date.now() };
-      yield* this.#serialize(
-        Effect.gen({ self: this }, function* () {
-          const encrypted = yield* Effect.try({
-            try: () => this.#cipher.encrypt(JSON.stringify(record)).toString("base64"),
-            catch: (cause) => new AgentComputerServiceFailed({ cause }),
-          });
-          yield* writeJsonFileAtomically(this.#path, { version: 1, record: encrypted }, { createDirectory: true }).pipe(
-            Effect.mapError(({ cause }) => new AgentComputerServiceFailed({ cause })),
-          );
-          this.#record = record;
-          this.#error = null;
-        }),
+      const encrypted = yield* Effect.try({
+        try: () => this.#cipher.encrypt(JSON.stringify(record)).toString("base64"),
+        catch: (cause) => new AgentComputerServiceFailed({ cause }),
+      });
+      yield* writeJsonFileAtomically(this.#path, { version: 1, record: encrypted }, { createDirectory: true }).pipe(
+        Effect.mapError(({ cause }) => new AgentComputerServiceFailed({ cause })),
       );
+      this.#record = record;
+      this.#error = null;
       return this.status();
-    }).pipe(Effect.withSpan("AgentComputerService.connect"));
+    }).pipe(this.#serialize.bind(this), Effect.withSpan("AgentComputerService.connect"));
   }
 
   /** Lists the machines with the saved key, and keeps the outcome in the status. */
@@ -116,22 +112,20 @@ export class AgentComputerService {
       const tested = yield* Effect.result(this.api.list());
       this.#error = Result.isFailure(tested) ? failureText(tested.failure) : null;
       return this.status();
-    }).pipe(Effect.withSpan("AgentComputerService.test"));
+    }).pipe(this.#serialize.bind(this), Effect.withSpan("AgentComputerService.test"));
   }
 
-  /** Forgets the key at once, so no new call uses it, then removes the file. Running machines keep running. */
+  /** Removes the saved key after earlier credential changes finish. Running machines keep running. */
   disconnect() {
     return Effect.gen({ self: this }, function* () {
+      yield* Effect.tryPromise({
+        try: () => rm(this.#path, { force: true }),
+        catch: (cause) => new AgentComputerServiceFailed({ cause }),
+      });
       this.#record = null;
       this.#error = null;
-      yield* this.#serialize(
-        Effect.tryPromise({
-          try: () => rm(this.#path, { force: true }),
-          catch: (cause) => new AgentComputerServiceFailed({ cause }),
-        }),
-      );
       return this.status();
-    }).pipe(Effect.withSpan("AgentComputerService.disconnect"));
+    }).pipe(this.#serialize.bind(this), Effect.withSpan("AgentComputerService.disconnect"));
   }
 
   /** The registry of the account. It wakes no machine. */

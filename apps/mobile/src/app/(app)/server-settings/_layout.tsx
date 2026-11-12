@@ -29,6 +29,7 @@ export default function ServerSettingsLayout() {
         contentStyle: { backgroundColor: background },
       })}
     >
+      <Stack.Screen name="cloud-computers" options={{ title: t("mobile.server.cloudComputers.title") }} />
       <Stack.Screen name="index" options={{ title: t("mobile.server.route.settings") }} />
       <Stack.Screen name="members" options={{ title: t("mobile.app.route.members") }} />
       <Stack.Screen name="invite" options={{ title: t("mobile.server.route.invite") }} />

@@ -13,6 +13,7 @@ import { AGENT_ACCESS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-
 import { AGENT_ADMIN_CAPABILITY } from "@openbot/contracts/team-protocol/agent-admin-v1";
 import { AGENT_BACKUP_MODELS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-backup-models-v1";
 import { agentColorsEvent } from "@openbot/contracts/team-protocol/agent-colors-v1";
+import { AGENT_COMPUTER_CAPABILITY } from "@openbot/contracts/team-protocol/agent-computer-v1";
 import { AGENT_FOLDERS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-folders-v1";
 import { AGENT_HOST_SETTINGS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-host-settings-v1";
 import { AGENT_IMPORT_CAPABILITY } from "@openbot/contracts/team-protocol/agent-import-v1";
@@ -2472,6 +2473,7 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
       canManageBitwardenConnector: (serverId) => administers(serverId, BITWARDEN_CONNECTOR_CAPABILITY),
       canManageWhatsAppConnector: (serverId) => administers(serverId, WHATSAPP_CONNECTOR_CAPABILITY),
       canManagePasswordManagers: (serverId) => administers(serverId, PASSWORD_MANAGERS_CAPABILITY),
+      canManageAgentComputer: (serverId) => administers(serverId, AGENT_COMPUTER_CAPABILITY),
       canManageVault: (serverId) => administers(serverId, VAULT_CAPABILITY),
       canImportVault: (serverId) => administers(serverId, VAULT_IMPORT_CAPABILITY),
       // Any member imports agents; only an owner or admin moves the whole server.

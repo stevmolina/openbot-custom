@@ -180,6 +180,7 @@ import type {
 import type { LiveVoiceSessionResponse, LiveVoiceStartRequest } from "@openbot/contracts/team-protocol/live-voice-v1";
 import type { QueueEditRequest } from "@openbot/contracts/team-protocol/queue-edit-v1";
 import type { RemoteConnectionFailure, RemoteRecoveryStatus, RemoteTeamDirectoryClient } from "@openbot/team-client";
+import type { AgentComputerPort } from "@openbot/team-client/agent-computer";
 import type { PlanLimits } from "@openbot/team-client/plan-limits";
 import type { RemoteFileUpload } from "@openbot/team-client/remote-peer";
 import type {
@@ -512,6 +513,7 @@ export interface MobileWorkspaceContextValue {
   /** The same for the host's password managers, such as Proton Pass (`password-managers-v1`). */
   canManagePasswordManagers: (serverId: string) => boolean;
   /** True for an owner or admin of a host that serves its Vault to other devices (`vault-v1`). */
+  canManageAgentComputer: (serverId: string) => boolean;
   canManageVault: (serverId: string) => boolean;
   /** The same for a CSV import from this phone (`vault-import-v1`). */
   canImportVault: (serverId: string) => boolean;
@@ -562,6 +564,7 @@ export interface MobileWorkspaceContextValue {
   /** The host deletes its access key. The vault stays in the manager. */
   disconnectPasswordManager: (manager: PasswordManagerId, serverId: string) => Promise<PasswordManagerStatus>;
   /** The host's Vault. No answer carries a password, a card number or a security code. */
+  agentComputer: AgentComputerPort;
   loadVault: (serverId: string) => Promise<VaultState>;
   /** A new secret goes to the host once; a null secret keeps the saved one. */
   saveVaultItem: (input: VaultSaveInput, serverId: string) => Promise<VaultState>;
@@ -1170,6 +1173,7 @@ type MobileWorkspaceStateKey =
   | "canManageBitwardenConnector"
   | "canManageWhatsAppConnector"
   | "canManagePasswordManagers"
+  | "canManageAgentComputer"
   | "canManageVault"
   | "canImportVault"
   | "canImportAgents"

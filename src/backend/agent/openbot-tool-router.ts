@@ -2244,18 +2244,23 @@ export class OpenBotToolRouter {
       workspacePath: agent.workspacePath,
       approve: (reason) =>
         this.#attention
-          .awaitToolApproval(client, request, {
-            requestId: request.id,
-            agentId: agent.id,
-            threadId,
-            turnId: params.turnId,
-            kind: "permissions",
-            command: null,
-            cwd: null,
-            reason,
-            grantRoot: null,
-            permissions: null,
-          })
+          .awaitToolApproval(
+            client,
+            request,
+            {
+              requestId: request.id,
+              agentId: agent.id,
+              threadId,
+              turnId: params.turnId,
+              kind: "permissions",
+              command: null,
+              cwd: null,
+              reason,
+              grantRoot: null,
+              permissions: null,
+            },
+            { alwaysAsk: true },
+          )
           .pipe(
             Effect.map((decision) => decision === "accept"),
             Effect.catch(() => Effect.succeed(false)),

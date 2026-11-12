@@ -2,9 +2,11 @@
 // look at it, pull a file into its workspace, publish a file, pause it, and delete it. They call the
 // REST API with the key of this OpenBot server, so no MCP server or Composio connection is needed.
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, realpath } from "node:fs/promises";
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { sourceText } from "@openbot/i18n/source";
+import { redactSecrets } from "@openbot/logging";
 import { Effect } from "effect";
 import { z } from "zod";
 import type { DynamicToolResult } from "../protocol";
@@ -76,7 +78,7 @@ export const AGENT_COMPUTER_TOOL_DEFINITIONS = [
   },
   {
     name: "computer_start",
-    description: `Start or resume the cloud computer for a context, and get its id. ${MACHINE_RULES} The result has live_view_url, a page where the user watches and controls the desktop: send it to the user in this chat first, never in a file, a pull request or a log. Work in visible windows ($DISPLAY is set) so the live view shows the work. Read ~/PLAYBOOK.md on the machine before a big task. briefing has more rules.`,
+    description: `Start or resume the cloud computer for a context, and get its id. ${MACHINE_RULES} The human opens the live view from Machines in OpenBot. Live view and billing links are human credentials and are not available to you. Work in visible windows ($DISPLAY is set) so the live view shows the work. Read ~/PLAYBOOK.md on the machine before a big task. briefing has more rules.`,
     shape: startSchema.shape,
   },
   {
@@ -161,7 +163,20 @@ export const handleAgentComputerTool = Effect.fn("AgentComputerTools.handle")(fu
       }
       case "computer_start": {
         const input = yield* parse(startSchema, request.arguments);
-        return textResult(yield* api.start(input.context));
+        const started = yield* api.start(input.context);
+        return textResult({
+          id: started.id,
+          context: started.context,
+          existing: started.existing,
+          resumed: started.resumed,
+          other_contexts: started.other_contexts,
+          deadline_at: started.deadline_at,
+          billing: started.billing && {
+            plan: started.billing.plan,
+            minutes_remaining: started.billing.minutes_remaining,
+          },
+          briefing: started.briefing?.filter((line) => !/live_view_url|billing\.(?:upgrade|manage)_url/u.test(line)),
+        });
       }
       case "computer_bash": {
         const input = yield* parse(bashSchema, request.arguments);
@@ -188,8 +203,7 @@ export const handleAgentComputerTool = Effect.fn("AgentComputerTools.handle")(fu
         });
         yield* Effect.tryPromise({
           try: async () => {
-            await mkdir(resolve(target, ".."), { recursive: true });
-            await writeFile(target, file.bytes);
+            await saveWorkspaceFile(request.workspacePath, target, file.bytes);
           },
           catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
         });
@@ -246,13 +260,15 @@ function parse<T extends z.ZodType>(schema: T, value: unknown): Effect.Effect<z.
 }
 
 function textResult(value: unknown): DynamicToolResult {
-  return { success: true, contentItems: [{ type: "inputText", text: JSON.stringify(value) }] };
+  return { success: true, contentItems: [{ type: "inputText", text: redactSecrets(JSON.stringify(value)) }] };
 }
 
 function failure(message: string, code?: string): DynamicToolResult {
   return {
     success: false,
-    contentItems: [{ type: "inputText", text: JSON.stringify({ error: message, ...(code ? { code } : {}) }) }],
+    contentItems: [
+      { type: "inputText", text: JSON.stringify({ error: redactSecrets(message), ...(code ? { code } : {}) }) },
+    ],
   };
 }
 
@@ -270,4 +286,32 @@ function textPreview(bytes: Buffer, mimeType: string): string | null {
   if (bytes.length > TEXT_PREVIEW_LIMIT || mimeType.startsWith("image/") || bytes.includes(0)) return null;
   const text = bytes.toString("utf8");
   return text.includes("�") ? null : text;
+}
+
+/** Refuse symlink ancestors and create a fresh file, so a linked or existing file cannot be overwritten. */
+async function saveWorkspaceFile(workspace: string, target: string, bytes: Buffer): Promise<void> {
+  const root = await realpath(workspace);
+  const parts = relative(resolve(workspace), target).split(sep);
+  let parent = root;
+  for (const part of parts.slice(0, -1)) {
+    parent = join(parent, part);
+    await mkdir(parent).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "EEXIST") throw error;
+    });
+    const info = await lstat(parent);
+    if (!info.isDirectory() || info.isSymbolicLink() || (await realpath(parent)) !== parent)
+      throw new Error(sourceText("error.agent.agentComputerPathOutside"));
+  }
+  const destination = join(parent, parts.at(-1) ?? "");
+  const file = await open(
+    destination,
+    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+    0o600,
+  );
+  try {
+    if ((await realpath(parent)) !== parent) throw new Error(sourceText("error.agent.agentComputerPathOutside"));
+    await file.writeFile(bytes);
+  } finally {
+    await file.close();
+  }
 }

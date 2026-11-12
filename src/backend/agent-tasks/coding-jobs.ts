@@ -12,7 +12,6 @@ const stateSchema = z.object({
   repository: z.string(),
   task: z.string(),
   machine: z.string().optional(),
-  liveViewUrl: z.string().url().optional(),
   deadline: z.number().optional(),
   phase: z.enum(["starting", "running", "paused", "stopped", "blocked", "completed"]),
 });
@@ -20,7 +19,6 @@ type Job = z.infer<typeof stateSchema>;
 const machineSchema = z.object({
   id: z.string().min(1),
   deadline_at: z.string().datetime({ offset: true }),
-  live_view_url: z.string().url(),
 });
 const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 
@@ -113,7 +111,6 @@ export class CodingJobs {
               new CodingComputerFailed({ cause: "Agent Computer returned no validated machine deadline" }),
             );
           job.machine = machine.id;
-          job.liveViewUrl = machine.live_view_url;
           job.deadline = Date.parse(machine.deadline_at) - 60_000;
           yield* Effect.try({
             try: () => this.#save(workspace, job),
@@ -153,7 +150,7 @@ export class CodingJobs {
           if (action === "resume" && job.phase === "running") {
             this.#schedule(agentId, workspace, job);
           }
-          return { ...job, live_view_url: machine.live_view_url };
+          return { ...job };
         }),
       ),
     );

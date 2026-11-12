@@ -35,6 +35,7 @@ import { SheetSaveAction } from "@/shared/components/sheet-save-action";
 import { haptics } from "@/shared/lib/haptics";
 import { type AvatarPhoto, pickAvatarPhoto } from "@/shared/lib/pick-avatar-photo";
 import { useText } from "@/shared/lib/text";
+import { CloudComputersSection } from "./server-cloud-computers-screen";
 
 /**
  * Server settings, on one page: the server name, logo and status, then a section for each group of
@@ -63,6 +64,7 @@ function ServerSettingsHome({ server }: { server: MobileServer }) {
       <ServerGeneralSection serverId={server.id} />
       <ServerPeopleSection server={server} />
       <ServerAiSection serverId={server.id} />
+      <CloudComputersSection serverId={server.id} />
       <ServerDataSections serverId={server.id} />
       <ServerConnectionSection server={server} hostedServerIds={hostedServerIds} />
       <ServerExitSection server={server} hostedServerIds={hostedServerIds} />
