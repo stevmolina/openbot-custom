@@ -160,6 +160,12 @@ export interface SidebarProps {
   onRestoreChannel?: ((channelId: string) => void) | undefined;
   serverName: string;
   /**
+   * Shows the server name as a large title at the top of the chat list, as the iOS home screen does.
+   * It scrolls with the list, and the top row then shows the name small. The web client sets it on a
+   * phone.
+   */
+  largeTitle?: boolean | undefined;
+  /**
    * The server of the chats, as a small mark at the end of each row, with its name on hover. Set it
    * only while the user has more than one server, where the mark tells them apart.
    */

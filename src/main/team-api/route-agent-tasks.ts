@@ -51,7 +51,7 @@ export async function routeAgentTasks(
             replyToMessageId: nullableString(body, "replyToMessageId"),
             ...(isString(body.taskId) ? { taskId: body.taskId } : {}),
             ...clientMessageId(body),
-            artifactMode: true,
+            createArtifact: true,
           },
           memberSender(member),
           isString(body.timezone) ? body.timezone : undefined,

@@ -170,7 +170,7 @@ interface ChatComposerProps {
   raised: ViewStyle["backgroundColor"];
   onChangeDraft: (value: string) => void;
   onSend: (text: string) => void;
-  artifactMode?: boolean;
+  createArtifact?: boolean;
   onRemoveArtifact?: () => void;
   /** Present only while a turn is running and the surface can stop it. */
   onStop?: () => void;
@@ -298,7 +298,7 @@ export const ChatComposer = memo(function ChatComposer({
   raised,
   onChangeDraft,
   onSend,
-  artifactMode,
+  createArtifact,
   onRemoveArtifact,
   onStop,
   keyboardProgress,
@@ -946,7 +946,7 @@ export const ChatComposer = memo(function ChatComposer({
 
   return (
     <View>
-      {artifactMode ? (
+      {createArtifact ? (
         <View className="flex-row items-center gap-2 pt-2 pl-4 pr-2">
           <Sparkles color={String(muted)} size={16} />
           <Typography.Paragraph type="body-sm" className="flex-1 text-text-secondary">

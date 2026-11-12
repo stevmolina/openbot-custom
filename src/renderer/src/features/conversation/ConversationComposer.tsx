@@ -9,6 +9,7 @@ import {
 } from "@openbot/contracts/ipc";
 import { ARTIFACT_REQUEST_CAPABILITY } from "@openbot/contracts/team-protocol/artifact-request-v1";
 import {
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   TEAM_ANY_FILE_ATTACHMENTS_CAPABILITY,
   TEAM_EML_ATTACHMENTS_CAPABILITY,
   TEAM_MEDIA_ATTACHMENTS_CAPABILITY,
@@ -195,7 +196,10 @@ export function ConversationComposer() {
     !channel &&
     props.agent?.provider === "claude" &&
     (props.server?.kind !== "remote" ||
-      Boolean(props.server.compatibility?.capabilities.includes(ARTIFACT_REQUEST_CAPABILITY)));
+      Boolean(
+        props.server.compatibility?.capabilities.includes(ARTIFACT_REQUEST_CAPABILITY) ||
+          props.server.compatibility?.capabilities.includes(CLAUDE_ARTIFACT_REQUEST_CAPABILITY),
+      ));
   const savePending = () => Boolean(editingDeliveryId() && editingPendingSave());
   // One chip for each file of each import. Only a single-file import knows the bytes of its file.
   const uploadFiles = createMemo(() =>
@@ -713,9 +717,9 @@ export function ConversationComposer() {
               />
             )}
           </ComposerStackCard>
-          <Show when={artifactAvailable() && currentDraft().artifactMode}>
+          <Show when={artifactAvailable() && currentDraft().createArtifact}>
             <ComposerArtifactChip
-              onRemove={editingDeliveryId() ? undefined : () => updateCurrentDraft({ artifactMode: false })}
+              onRemove={editingDeliveryId() ? undefined : () => updateCurrentDraft({ createArtifact: false })}
             />
           </Show>
         </div>
@@ -826,9 +830,9 @@ export function ConversationComposer() {
                 attachmentBusy() || submitting() || voicePhase() === "transcribing" || !agentReady() || savePending()
               }
               attachDisabled={attachmentBusy()}
-              onArtifact={
+              onCreateArtifact={
                 artifactAvailable() && !editingDeliveryId()
-                  ? () => updateCurrentDraft({ artifactMode: true })
+                  ? () => updateCurrentDraft({ createArtifact: true })
                   : undefined
               }
               onAttach={openAttachmentPicker}

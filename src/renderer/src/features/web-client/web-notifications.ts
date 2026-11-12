@@ -6,6 +6,7 @@ import {
   notificationRequestKey,
 } from "@openbot/team-client/agent-notifications";
 import type { ChannelNotificationContent } from "@openbot/team-client/channel-notifications";
+import { webPushCovers } from "./web-push";
 
 const PERMISSION_ASKED_KEY = "openbot.web.notification-permission-asked";
 /** The tab of this browser that has focus. The tab that speaks for a host is often in the background. */
@@ -121,6 +122,8 @@ export function showWebAgentNotification(options: {
   onOpen(agentId: string, channelId: string | undefined): void;
 }): void {
   if (typeof Notification === "undefined" || Notification.permission !== "granted" || browserFocused()) return;
+  // While this window is hidden, the host sends the event through Web Push, and the service worker shows it.
+  if (document.visibilityState === "hidden" && webPushCovers(options.hostId)) return;
   const content = notificationForAgentEvent(
     options.event,
     options.agents,

@@ -1004,10 +1004,10 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
   ).bind(this);
 
   /**
-   * Sends one notification through the account service to Apple for an iPhone, or to Firebase Cloud
-   * Messaging for an Android phone. The host sealed the agent name and the text with keys that only
-   * the phone has. Returns `gone` when the session of the phone ended or Apple or Google refused the
-   * token.
+   * Sends one notification through the account service to Apple for an iPhone, to Firebase Cloud
+   * Messaging for an Android phone, or to the push service of a browser for a web client. The host
+   * sealed or encrypted the agent name and the text with keys that only the device has. Returns `gone`
+   * when the session of the device ended or Apple, Google or the push service refused it.
    */
   readonly sendPushNotification = Effect.fn("CentralAuth.sendPushNotification")(
     function* (
@@ -1016,7 +1016,12 @@ export class CentralAuthManager extends EventEmitter<CentralAuthEvents> {
       request: NotificationRelayRequest,
     ): Effect.fn.Return<"sent" | "gone", CentralAuthOperationError, CentralAuthTransport> {
       const machineToken = yield* this.#hostMachineToken(hostId);
-      const route = request.platform === "android" ? "android-notification" : "notification";
+      const route =
+        request.platform === "android"
+          ? "android-notification"
+          : request.platform === "web"
+            ? "web-notification"
+            : "notification";
       return yield* this.#requestEffect(
         `/v2/remote/hosts/${encodeURIComponent(hostId)}/${route}`,
         {

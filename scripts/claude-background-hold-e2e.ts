@@ -23,7 +23,13 @@ import type { AgentBrowserHost } from "../src/backend/agent/turn-lifecycle";
 import type { AgentClient, DiagnosticOrigin } from "../src/backend/agent-client";
 import type { ClaudeCliInfo } from "../src/backend/cli";
 import type { HostMemory, HostMemoryLevel } from "../src/backend/host-memory";
-import type { AppServerNotification, AppServerRequest, RequestId, ResponseDecoder } from "../src/backend/protocol";
+import {
+  type AppServerNotification,
+  type AppServerRequest,
+  getString,
+  type RequestId,
+  type ResponseDecoder,
+} from "../src/backend/protocol";
 import { providerSync } from "../src/backend/provider-client-effects";
 import type { ReadProviderHistory } from "../src/backend/provider-history";
 
@@ -149,6 +155,7 @@ let quietReleases = 0;
  * run `claude auth status` or a probe query. The quiet release goes to the real client, with the
  * injected quiet time.
  */
+const requestedTurns: string[] = [];
 class ClaudeStandIn extends EventEmitter<ClientEvents> implements AgentClient {
   readonly provider = "claude";
   readonly contextCompaction = "native";
@@ -194,6 +201,10 @@ class ClaudeStandIn extends EventEmitter<ClientEvents> implements AgentClient {
   }
 
   request<T>(method: string, params: unknown, decoder: ResponseDecoder<T>, timeoutMs?: number) {
+    if (method === "turn/start") {
+      const id = getString(params, "clientUserMessageId");
+      if (id) requestedTurns.push(id);
+    }
     if (!this.#real.running) return this.#real.request(method, params, decoder, timeoutMs);
     switch (method) {
       case "account/read":
@@ -439,6 +450,58 @@ try {
   );
   step("the agent's own answer shows", () => {
     assert.ok(live().includes(worker), "The thread that answered stays open.");
+  });
+  // A request that needs new tools must wait for the previous request's background work.
+  const beforeArtifact = starts().length;
+  const busyAgent = await runCauseEffect(
+    agents.createAgent({
+      name: "Artifact background hold",
+      description: "Checks request tools with background work.",
+      avatarSeed: "artifact-background",
+      avatarHue: null,
+      initialMessage: "Start a background task.",
+      provider: "claude",
+      model: CLAUDE_MODEL,
+    }),
+  );
+  await waitFor(
+    "the Artifact test agent to end its first turn",
+    () => starts().length > beforeArtifact && idle(busyAgent.id),
+  );
+  const background = starts().at(-1);
+  assert.ok(background?.pid, "No background worker.");
+  const selected = await runCauseEffect(
+    agents.sendMessage({
+      agentId: busyAgent.id,
+      text: "Create an artifact without background work.",
+      createArtifact: true,
+    }),
+  );
+  const selectedId = selected.deliveries[0]?.id;
+  assert.ok(selectedId, "No selected request delivery.");
+  await waitFor(
+    "the request to return to the queue",
+    () => requestedTurns.includes(selectedId) && mailbox.getDelivery(selectedId)?.delivery.status === "queued",
+  );
+  step("a tool change preserves background work and queues the next request", () => {
+    assert.ok(live().includes(background.pid), "The tool change killed background work.");
+    assert.equal(
+      starts().length,
+      beforeArtifact + 1,
+      "The tool change started a process before background work ended.",
+    );
+  });
+  writeFileSync(join(root, `finish-${background.pid}`), "");
+  await waitFor("the selected agent's background task to end", () =>
+    entries().some((entry) => entry.pid === background.pid && entry.event === "task-ended"),
+  );
+  writeFileSync(join(root, `answer-${background.pid}`), "");
+  await waitFor(
+    "the queued Artifact request to complete",
+    () => mailbox.getDelivery(selectedId)?.delivery.status === "completed",
+  );
+  step("the queued tool change resumes the same session after background work", () => {
+    assert.equal(starts().at(-1)?.resume, background.sessionId);
   });
   report.passed = report.steps.every((entry) => entry.passed);
 } catch (error) {

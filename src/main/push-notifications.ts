@@ -12,9 +12,14 @@ import {
   NOTIFICATION_SEALED_LIMIT,
   type NotificationRelayPush,
   type NotificationSound,
+  WEB_NOTIFICATION_TTL_LIMIT,
+  type WebNotificationRelayPush,
 } from "@openbot/contracts/notification-relay";
 import { TEAM_CHANNEL_ATTENTION_CAPABILITY } from "@openbot/contracts/team-protocol/current";
 import { PUSH_NOTIFICATION_THREADS_CAPABILITY } from "@openbot/contracts/team-protocol/push-notification-threads-v1";
+import type { PushNotificationSound } from "@openbot/contracts/team-protocol/push-notifications-v1";
+import type { WebPushNotificationRegistration } from "@openbot/contracts/team-protocol/push-notifications-web-v1";
+import { type WebPushPayload, webPushOpenPath } from "@openbot/contracts/web-push";
 import { resolveLocale, translateFor } from "@openbot/i18n";
 import { redactText, toLogValue } from "@openbot/logging";
 import {
@@ -42,6 +47,7 @@ import type { AgentService } from "../backend/agent-service";
 import type { PushNotificationStore, PushTarget, StoredPushRegistration } from "./push-notification-store";
 import type { TeamApiAgents } from "./team-api/dependencies";
 import { markerExclusionsForCapabilities } from "./team-api/request-helpers";
+import { decodeWebPushKeys, encryptWebPush } from "./web-push-encryption";
 
 /** The answer of a turn is among the last messages of the conversation. */
 const ANSWER_PAGE_SIZE = 20;
@@ -72,7 +78,8 @@ const RESEND_DELAYS_MS = [10_000, 60_000] as const;
 /** One notification for the relay route of its platform. */
 export type NotificationRelayRequest =
   | { platform: "ios"; push: NotificationRelayPush }
-  | { platform: "android"; push: AndroidNotificationRelayPush };
+  | { platform: "android"; push: AndroidNotificationRelayPush }
+  | { platform: "web"; push: WebNotificationRelayPush };
 
 type PushNotificationAgents = Pick<
   TeamApiAgents,
@@ -152,7 +159,8 @@ interface HeldEvent {
 interface Registration {
   stored: StoredPushRegistration;
   capabilities: ReadonlySet<string>;
-  keys: PushNotificationKeys;
+  /** The sealing keys of a phone. A web client has none: its notification is encrypted for the subscription. */
+  keys: PushNotificationKeys | null;
   /** `false` after the connection of the session closed, as when iOS suspends the app. */
   connected: boolean;
   /** Events that came while the phone looked on screen, oldest first. */
@@ -161,14 +169,16 @@ interface Registration {
 }
 
 /**
- * Sends a notification to a member's iPhone or Android phone when an agent that the member can see
+ * Sends a notification to a member's iPhone, Android phone or web client when an agent that the member can see
  * finishes, fails, cannot start a message, or waits for input, an approval or a browser step, while
  * the app is not on screen.
  * It decides as the desktop does (`notificationForAgentEvent`): the member's level, the agent's own
  * switch, and no notification for a quiet routine run. It sends nothing while the member uses a
  * desktop app or the computer that it runs on, and no answer to a message while an iPhone shows the Live Activity, which shows the
  * answer. The agent name and the text are sealed for the phone, so the account service, Apple and
- * Google see the token, the time, and sealed bytes only.
+ * Google see the token, the time, and sealed bytes only. For a web client they are encrypted for its
+ * push subscription (RFC 8291), so the account service and the push service see the endpoint, the
+ * time, and encrypted bytes only.
  *
  * The end of a turn in a side thread notifies too, and the notification names that thread, so a tap
  * opens it. A routine thread notifies each phone, as a routine run in the agent's chat did. Another
@@ -250,10 +260,11 @@ export class PushNotificationService {
     // The app on screen showed the kept events. A phone that goes away gets those it did not see.
     if (registration && target.value.away) this.#scheduleFlush(registration);
     else if (registration) this.#dropHeld(registration);
-    // A phone that signs in again gets a new session. The old one would notify it a second time.
-    const token = target.value.token;
+    // A phone that signs in again gets a new session. The old one would notify it a second time. A web
+    // client gets a new session after a sign-in too, and after it opens another server in the same tab.
+    const device = deviceAddress(stored);
     for (const [other, registration] of this.#registrations) {
-      if (other !== sessionId && token !== null && registration.stored.value.token === token) {
+      if (other !== sessionId && device !== null && deviceAddress(registration.stored) === device) {
         this.#registrations.delete(other);
       }
     }
@@ -314,13 +325,19 @@ export class PushNotificationService {
   }, Effect.uninterruptible);
 
   #add(stored: StoredPushRegistration, connected: boolean, previous?: Registration): boolean {
-    const secret = decodeLiveActivityBytes(stored.value.secret);
-    if (secret?.length !== LIVE_ACTIVITY_SECRET_BYTES) return false;
+    let keys: PushNotificationKeys | null = null;
+    if (stored.platform === "web") {
+      if (!decodeWebPushKeys(stored.value)) return false;
+    } else {
+      const secret = decodeLiveActivityBytes(stored.value.secret);
+      if (secret?.length !== LIVE_ACTIVITY_SECRET_BYTES) return false;
+      keys = pushNotificationKeys(secret);
+    }
     if (previous) this.#clearFlush(previous);
     this.#registrations.set(stored.sessionId, {
       stored,
       capabilities: new Set(stored.capabilities),
-      keys: pushNotificationKeys(secret),
+      keys,
       connected,
       held: previous?.held ?? [],
       flushTimer: null,
@@ -410,7 +427,7 @@ export class PushNotificationService {
       // The Live Activity of an iPhone shows the event, and a notification would repeat it. With a
       // sound, the activity also lights up the screen and plays it; without one, it updates silently.
       // A message that did not start has no turn, so the activity does not show it.
-      if (stored.platform !== "android") {
+      if (stored.platform === undefined) {
         const sound = soundOf(stored.value);
         const startedAt =
           stored.value.liveActivityStartedAt === null ? null : stored.value.liveActivityStartedAt * 1_000;
@@ -447,7 +464,9 @@ export class PushNotificationService {
       };
       // A failed send waits before it goes again, so each send has its own fiber: the other phones
       // do not wait for it.
-      yield* this.#send(registration, content, fixed.body).pipe(Effect.forkIn(this.#scope, { startImmediately: true }));
+      yield* this.#send(registration, content, fixed.body, notice.channelId ?? null).pipe(
+        Effect.forkIn(this.#scope, { startImmediately: true }),
+      );
     }
   });
 
@@ -481,15 +500,21 @@ export class PushNotificationService {
     registration: Registration,
     content: PushNotificationContent,
     shortBody: string,
+    channelId: string | null,
   ) {
     const { stored, keys } = registration;
-    let sealed = sealPushNotification(content, keys, this.#options.randomBytes(LIVE_ACTIVITY_NONCE_BYTES));
-    // A long agent name and a preview of wide characters can pass the 4 KB limit of Apple and Google.
-    if (sealed.length > NOTIFICATION_SEALED_LIMIT) {
-      const short = { ...content, title: content.title.slice(0, 64), body: shortBody };
-      sealed = sealPushNotification(short, keys, this.#options.randomBytes(LIVE_ACTIVITY_NONCE_BYTES));
+    const timestamp = Math.floor(this.#now() / 1_000);
+    let request: NotificationRelayRequest | null = null;
+    if (stored.platform === "web") request = webRelayRequest(stored, content, shortBody, channelId, timestamp);
+    else if (keys) {
+      let sealed = sealPushNotification(content, keys, this.#options.randomBytes(LIVE_ACTIVITY_NONCE_BYTES));
+      // A long agent name and a preview of wide characters can pass the 4 KB limit of Apple and Google.
+      if (sealed.length > NOTIFICATION_SEALED_LIMIT) {
+        const short = { ...content, title: content.title.slice(0, 64), body: shortBody };
+        sealed = sealPushNotification(short, keys, this.#options.randomBytes(LIVE_ACTIVITY_NONCE_BYTES));
+      }
+      request = relayRequest(stored, sealed, timestamp);
     }
-    const request = relayRequest(stored, sealed, Math.floor(this.#now() / 1_000));
     if (!request) return;
     // A Mac that wakes before its network, or a short fault at Apple or Google, refuses one send.
     for (let attempt = 0; ; attempt += 1) {
@@ -602,23 +627,68 @@ export class PushNotificationService {
   }
 }
 
-function soundOf(value: StoredPushRegistration["value"]): NotificationSound | null {
+function soundOf(value: { sound: PushNotificationSound }): NotificationSound | null {
   return value.sound === "none" ? null : value.sound;
 }
 
-/** The relay request of the platform of the phone, or `null` for an iPhone without a token. */
+/** What one device is reached by: the push token of a phone, or the endpoint of a web client. */
+function deviceAddress(stored: StoredPushRegistration): string | null {
+  return stored.platform === "web" ? stored.value.endpoint : stored.value.token;
+}
+
+/** The relay request of the platform of the phone, or `null` for an iPhone without a token or a web client. */
 function relayRequest(
   stored: StoredPushRegistration,
   sealed: string,
   timestamp: number,
 ): NotificationRelayRequest | null {
-  const { sessionId, value } = stored;
-  const sound = soundOf(value);
+  const { sessionId } = stored;
+  if (stored.platform === "web") return null;
   if (stored.platform === "android") {
+    const sound = soundOf(stored.value);
     return { platform: "android", push: { token: stored.value.token, sessionId, sealed, sound, timestamp } };
   }
   const { token, environment } = stored.value;
+  const sound = soundOf(stored.value);
   return token === null ? null : { platform: "ios", push: { token, environment, sessionId, sealed, sound, timestamp } };
+}
+
+/** An event that waits for the member reaches a browser at once, also when it saves power. */
+const URGENT_KINDS: ReadonlySet<PushNotificationKind> = new Set(["input", "approval", "browser"]);
+
+/**
+ * The relay request of a web client: the payload of `web-push.ts`, encrypted for its subscription. A
+ * click opens the agent, or the channel of a channel thread, on this server. Replies and failures of
+ * one agent share a tag, so the newest replaces the one before; each request keeps its own. `null`
+ * when the keys are not valid, which `#add` has checked.
+ */
+function webRelayRequest(
+  stored: { sessionId: string; value: WebPushNotificationRegistration },
+  content: PushNotificationContent,
+  shortBody: string,
+  channelId: string | null,
+  timestamp: number,
+): NotificationRelayRequest | null {
+  const path = webPushOpenPath({ serverId: content.serverId, agentId: content.agentId, channelId });
+  const tag = URGENT_KINDS.has(content.kind) ? {} : { tag: `${content.serverId}:${content.agentId}` };
+  const encrypt = (title: string, body: string) => {
+    const payload: WebPushPayload = { v: 1, title, body, ...tag, path };
+    return encryptWebPush(new TextEncoder().encode(JSON.stringify(payload)), stored.value);
+  };
+  // A long agent name and a preview of wide characters can pass the 4 KB limit of push services.
+  const body = encrypt(content.title, content.body) ?? encrypt(content.title.slice(0, 64), shortBody);
+  if (!body) return null;
+  return {
+    platform: "web",
+    push: {
+      endpoint: stored.value.endpoint,
+      sessionId: stored.sessionId,
+      body: Buffer.from(body).toString("base64url"),
+      ttl: WEB_NOTIFICATION_TTL_LIMIT,
+      urgency: URGENT_KINDS.has(content.kind) ? "high" : "normal",
+      timestamp,
+    },
+  };
 }
 
 /**

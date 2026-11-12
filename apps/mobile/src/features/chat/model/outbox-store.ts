@@ -64,7 +64,7 @@ export interface OutboxSnapshot {
 
 /** What Edit gives back to the composer. */
 export interface OutboxDraft {
-  artifactMode?: boolean;
+  createArtifact?: boolean;
   text: string;
   replyToMessageId: string | null;
   files: ChatAttachment[];
@@ -222,7 +222,12 @@ export class OutboxStore {
    */
   add(
     target: OutboxTarget,
-    input: { text: string; replyToMessageId: string | null; files: readonly ChatAttachment[]; artifactMode?: boolean },
+    input: {
+      text: string;
+      replyToMessageId: string | null;
+      files: readonly ChatAttachment[];
+      createArtifact?: boolean;
+    },
     replaces: readonly string[] = [],
   ): OutboxMessage {
     const clientMessageId = this.options.randomId();
@@ -234,7 +239,7 @@ export class OutboxStore {
     const message: OutboxMessage = {
       clientMessageId,
       target,
-      ...(input.artifactMode ? { artifactMode: true } : {}),
+      ...(input.createArtifact ? { createArtifact: true } : {}),
       text: input.text,
       replyToMessageId: input.replyToMessageId,
       files: files.map((file) => ({
@@ -338,7 +343,7 @@ export class OutboxStore {
       text: message.text,
       replyToMessageId: message.replyToMessageId,
       files,
-      ...(message.artifactMode ? { artifactMode: true } : {}),
+      ...(message.createArtifact ? { createArtifact: true } : {}),
     };
   }
 

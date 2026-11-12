@@ -281,14 +281,14 @@ export function ConversationThread() {
             browserTabs={taggableBrowserTabs()}
             threads={taggableThreads()}
             onOpenTag={openTaggedReference}
-            artifactMode={draft()?.artifactMode}
-            onArtifactModeChange={
+            createArtifact={draft()?.createArtifact}
+            onCreateArtifactChange={
               current().threads.open &&
               !threadQueue.editOf(current().threads.open?.id) &&
               current().agent.provider === "claude" &&
               (props.server?.kind !== "remote" ||
                 props.server?.compatibility?.capabilities.includes(ARTIFACT_REQUEST_CAPABILITY))
-                ? (enabled) => threadComposer.setArtifactMode(threadComposer.openDraftKey(), enabled)
+                ? (enabled) => threadComposer.setCreateArtifact(threadComposer.openDraftKey(), enabled)
                 : undefined
             }
             draft={draft()?.text ?? ""}

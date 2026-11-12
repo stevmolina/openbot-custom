@@ -29,7 +29,7 @@ export interface OutboxFile {
 }
 
 export interface OutboxMessage {
-  artifactMode?: boolean;
+  createArtifact?: boolean;
   /** The `clientMessageId` of an agent message, and the `operationId` of a channel message. */
   clientMessageId: string;
   target: OutboxTarget;
@@ -211,7 +211,7 @@ function decodeOutboxMessage(value: unknown): OutboxMessage | null {
     !isDynamicRecord(value) ||
     !isString(value.clientMessageId) ||
     !/^[a-zA-Z0-9_-]{1,128}$/u.test(value.clientMessageId) ||
-    (value.artifactMode !== undefined && !isBoolean(value.artifactMode)) ||
+    (value.createArtifact !== undefined && !isBoolean(value.createArtifact)) ||
     !isString(value.text) ||
     !isNullableString(value.replyToMessageId) ||
     !Array.isArray(value.files) ||
@@ -233,7 +233,7 @@ function decodeOutboxMessage(value: unknown): OutboxMessage | null {
   return {
     clientMessageId: value.clientMessageId,
     target,
-    ...(value.artifactMode ? { artifactMode: true } : {}),
+    ...(value.createArtifact ? { createArtifact: true } : {}),
     text: value.text,
     replyToMessageId: value.replyToMessageId,
     files: files.filter((file) => file !== null),

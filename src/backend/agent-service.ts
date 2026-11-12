@@ -141,6 +141,7 @@ import {
   type ModelSwitchReason,
   type QueueSteerFallback,
   type ResponseStyle,
+  readArtifactRequest,
   type SkillLearningMode,
   sameAgentBrowserProfile,
   sameAgentModelChoice,
@@ -5953,15 +5954,17 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
             (failure) => new AgentLifecycleFailed({ operation: "resume remote coding job", cause: failure.cause }),
           ),
         );
+    const marked = readArtifactRequest(input.text);
+    const createArtifact = input.createArtifact === true || marked.createArtifact;
     const receipt = yield* this.#mailbox
       .enqueue({
         sender: { kind: "user" },
         ...(sender ? { senderMember: sender } : {}),
         ...(task ? { taskId: task.taskId } : {}),
         recipientAgentIds: [agent.id],
-        text: input.text,
+        text: marked.text,
+        ...(createArtifact ? { createArtifact: true as const } : {}),
         draftIds: input.attachmentDraftIds ?? [],
-        ...(input.artifactMode ? { artifactMode: true } : {}),
         ...(input.voiceRecordingDraftId ? { voiceRecordingDraftId: input.voiceRecordingDraftId } : {}),
         // A reply names a message of the thread that takes it: the agent's own chat, or the task's thread.
         replyToMessageId: input.replyToMessageId ?? null,
@@ -6080,7 +6083,10 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
     const steerTurnId = this.#turnToSteer(agent.id, task?.taskId ?? null, snapshot);
     if (!steerTurnId) return null;
     // Different request tools need a new query. Never steer them into a running request.
-    if (this.#mailbox.getDelivery(deliveryId)?.delivery.artifactMode || this.#mailbox.artifactModeForTurn(steerTurnId))
+    if (
+      this.#mailbox.getDelivery(deliveryId)?.delivery.createArtifact ||
+      this.#mailbox.createArtifactForTurn(steerTurnId)
+    )
       return "recipient-queues";
     // These reasons come first, so the sender is not told to select Steer when Steer would not help.
     // Only a message sent to steer gets a reason on its row.

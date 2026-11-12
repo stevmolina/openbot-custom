@@ -34,6 +34,7 @@ import { SIDEBAR_PINS_CAPABILITY, SIDEBAR_PINS_ROUTES } from "@openbot/contracts
 import {
   type AgentTaskInput,
   analyticsQuery,
+  artifactRequestText,
   assertAnalyticsScope,
   assertHostAnalyticsScope,
   BROWSER_SECRET_RESPONSE_PATH,
@@ -131,6 +132,7 @@ import {
   CONVERSATION_UNREAD_FROM_CAPABILITY,
   CONVERSATION_UNREAD_FROM_ROUTE,
 } from "@openbot/contracts/team-protocol/conversation-unread-from-v1";
+import { CLAUDE_ARTIFACT_REQUEST_CAPABILITY } from "@openbot/contracts/team-protocol/current";
 import { MESSAGE_DELETE_CAPABILITY, MESSAGE_DELETE_ROUTES } from "@openbot/contracts/team-protocol/message-delete-v1";
 import {
   decodeMessagePinsResponse,
@@ -1089,9 +1091,7 @@ export function agentIpcHandlers({
       sendMessage: scopedHandler(parseSendMessage, {
         local: (input) => runCauseEffect(service.sendMessage(input, host.conversationSender())),
         remote: (input, serverId) => {
-          if (input.artifactMode) {
-            if (!remoteServers.supportsCapability(serverId, ARTIFACT_REQUEST_CAPABILITY))
-              throw new Error(sourceText("error.team.claudeAiToolsUnsupported"));
+          if (input.createArtifact && remoteServers.supportsCapability(serverId, ARTIFACT_REQUEST_CAPABILITY)) {
             return runCauseEffect(
               remoteServers.request(serverId, ARTIFACT_REQUEST_ROUTE, decodeQueuedMessageReceipt, {
                 method: "POST",
@@ -1103,13 +1103,19 @@ export function agentIpcHandlers({
               }),
             );
           }
+          if (input.createArtifact && !remoteServers.supportsCapability(serverId, CLAUDE_ARTIFACT_REQUEST_CAPABILITY))
+            throw new Error(sourceText("error.team.claudeAiToolsUnsupported"));
+          const text =
+            input.createArtifact && remoteServers.supportsCapability(serverId, CLAUDE_ARTIFACT_REQUEST_CAPABILITY)
+              ? artifactRequestText(input.text)
+              : input.text;
           if (input.taskId) {
             const replyToMessageId = input.replyToMessageId;
             if (replyToMessageId)
               return remoteTaskRequest(serverId, AGENT_THREAD_REPLIES_ROUTES.send, decodeQueuedMessageReceipt, {
                 agentId: input.agentId,
                 taskId: input.taskId,
-                text: input.text,
+                text,
                 attachmentDraftIds: input.attachmentDraftIds ?? [],
                 replyToMessageId,
                 ...(input.clientMessageId === undefined ? {} : { clientMessageId: input.clientMessageId }),
@@ -1122,7 +1128,7 @@ export function agentIpcHandlers({
               {
                 agentId: input.agentId,
                 taskId: input.taskId,
-                text: input.text,
+                text,
                 ...files,
                 ...(input.clientMessageId === undefined ? {} : { clientMessageId: input.clientMessageId }),
               },
@@ -1132,7 +1138,10 @@ export function agentIpcHandlers({
             remoteServers.request(serverId, TEAM_API_ROUTES.agent.messages(input.agentId), decodeQueuedMessageReceipt, {
               method: "POST",
               // The host uses this computer's zone for a routine the agent creates from the message.
-              body: { ...input, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+              body: (() => {
+                const { createArtifact: _createArtifact, ...message } = input;
+                return { ...message, text, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+              })(),
             }),
           );
         },

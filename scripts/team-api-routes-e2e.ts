@@ -6821,13 +6821,13 @@ try {
         isDeepStrictEqual(callsOf("sendTaskMessage").at(-2)?.[0], {
           ...body,
           replyToMessageId: null,
-          artifactMode: true,
+          createArtifact: true,
         }) &&
         isDeepStrictEqual(callsOf("sendTaskMessage").at(-1)?.[0], {
           ...body,
           taskId: "task-1",
           replyToMessageId: "message-7",
-          artifactMode: true,
+          createArtifact: true,
         }) &&
         isDynamicRecord(artifactSender) &&
         artifactSender.id === bobId,

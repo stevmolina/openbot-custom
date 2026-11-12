@@ -580,8 +580,6 @@ export function parseSendMessage(value: unknown): SendMessageInput {
   if (taskId !== undefined && (!isString(taskId) || !taskId || taskId.length > INPUT_LIMITS.identifier)) {
     throw new Error("Invalid task id.");
   }
-  if (value.artifactMode !== undefined && typeof value.artifactMode !== "boolean")
-    throw new Error("Invalid Artifact mode.");
   const voiceRecordingDraftId = value.voiceRecordingDraftId;
   if (
     voiceRecordingDraftId !== undefined &&
@@ -592,6 +590,9 @@ export function parseSendMessage(value: unknown): SendMessageInput {
   ) {
     throw new Error("Invalid voice recording draft.");
   }
+  if (value.createArtifact !== undefined && typeof value.createArtifact !== "boolean") {
+    throw new Error("Invalid artifact request.");
+  }
   return {
     agentId: requireString(value.agentId, "agentId"),
     text: value.text,
@@ -600,7 +601,7 @@ export function parseSendMessage(value: unknown): SendMessageInput {
     ...(clientMessageId === undefined ? {} : { clientMessageId }),
     ...(taskId === undefined ? {} : { taskId }),
     ...(voiceRecordingDraftId === undefined ? {} : { voiceRecordingDraftId }),
-    ...(value.artifactMode === true ? { artifactMode: true } : {}),
+    ...(value.createArtifact === true ? { createArtifact: true } : {}),
   };
 }
 

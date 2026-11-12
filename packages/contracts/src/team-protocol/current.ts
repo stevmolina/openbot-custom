@@ -69,6 +69,7 @@ import { CHAT_COLORS_CAPABILITY } from "./chat-colors-v1";
 import { CHAT_HISTORY_CAPABILITY } from "./chat-history-v1";
 import { CLAUDE_AI_TOOLS_CAPABILITY } from "./claude-ai-tools-v1";
 import { CLAUDE_API_KEY_CAPABILITY } from "./claude-api-key-v1";
+import { CLAUDE_ARTIFACT_REQUEST_CAPABILITY } from "./claude-artifact-request-v1";
 import { CLAUDE_COMPACT_WINDOW_CAPABILITY } from "./claude-compact-window-v1";
 import { CLAUDE_USER_SETUP_CAPABILITY } from "./claude-user-setup-v1";
 import { CODEX_API_KEY_CAPABILITY } from "./codex-api-key-v1";
@@ -135,6 +136,7 @@ import { PROVIDERS_V8_CAPABILITY } from "./providers-v8";
 import { PUSH_NOTIFICATION_THREADS_CAPABILITY } from "./push-notification-threads-v1";
 import { ANDROID_PUSH_NOTIFICATIONS_CAPABILITY } from "./push-notifications-android-v1";
 import { PUSH_NOTIFICATIONS_CAPABILITY } from "./push-notifications-v1";
+import { WEB_PUSH_NOTIFICATIONS_CAPABILITY } from "./push-notifications-web-v1";
 import { TEAM_QUEUE_EDIT_CAPABILITY } from "./queue-edit-v1";
 import { QUIET_TURN_CAPABILITY } from "./quiet-turn-v1";
 import { TEAM_REASONING_EFFORTS_CAPABILITY } from "./reasoning-efforts-v1";
@@ -176,6 +178,8 @@ import { WORKFLOWS_CHATS_CAPABILITY } from "./workflows-chats-v1";
 import { WORKFLOWS_GITHUB_CAPABILITY } from "./workflows-github-v1";
 import { WORKFLOWS_CAPABILITY } from "./workflows-v1";
 import { WORKSPACE_DIRECTORY_CAPABILITY } from "./workspace-directory-v1";
+
+export { CLAUDE_ARTIFACT_REQUEST_CAPABILITY };
 
 export const TEAM_SEMANTIC_TAGS_CAPABILITY = "installed-skills";
 export const TEAM_AGENT_ACTIVITY_CAPABILITY = "agent-activity";
@@ -387,6 +391,7 @@ export {
   VAULT_IMPORT_CAPABILITY,
   VAULT_V2_CAPABILITY,
   VAULT_V3_CAPABILITY,
+  WEB_PUSH_NOTIFICATIONS_CAPABILITY,
   WEBHOOK_SENDER_SECRET_CAPABILITY,
   WEBHOOK_TESTS_CAPABILITY,
   WHATSAPP_CONNECTOR_CAPABILITY,
@@ -581,6 +586,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   CLAUDE_USER_SETUP_CAPABILITY,
   CLAUDE_AI_TOOLS_CAPABILITY,
   ARTIFACT_REQUEST_CAPABILITY,
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -595,6 +601,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
+  WEB_PUSH_NOTIFICATIONS_CAPABILITY,
   BROWSER_COLOR_SCHEME_CAPABILITY,
 ] as const;
 
@@ -797,6 +804,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== CLAUDE_USER_SETUP_CAPABILITY &&
     capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
     capability !== ARTIFACT_REQUEST_CAPABILITY &&
+    capability !== CLAUDE_ARTIFACT_REQUEST_CAPABILITY &&
     capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
     capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
     capability !== HERMES_IMPORT_CAPABILITY &&
@@ -811,6 +819,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
     capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
     capability !== AGENT_COMPUTER_CAPABILITY &&
+    capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY &&
     capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
 );
 /**
@@ -888,6 +897,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   CLAUDE_USER_SETUP_CAPABILITY,
   CLAUDE_AI_TOOLS_CAPABILITY,
   ARTIFACT_REQUEST_CAPABILITY,
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -902,6 +912,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
+  WEB_PUSH_NOTIFICATIONS_CAPABILITY,
   BROWSER_COLOR_SCHEME_CAPABILITY,
 ]);
 // A v8 host reads at most 128 capabilities, so a client sends the protocol 9 ones only after it
@@ -1063,6 +1074,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== CLAUDE_USER_SETUP_CAPABILITY &&
       capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
       capability !== ARTIFACT_REQUEST_CAPABILITY &&
+      capability !== CLAUDE_ARTIFACT_REQUEST_CAPABILITY &&
       capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
       capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
       capability !== HERMES_IMPORT_CAPABILITY &&
@@ -1077,6 +1089,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
       capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
       capability !== AGENT_COMPUTER_CAPABILITY &&
+      capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY &&
       capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
   );
 }

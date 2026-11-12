@@ -143,7 +143,7 @@ export function ChatAttachmentPanel({
   liquidGlassAvailable,
   onClose,
   onUseSkill,
-  onArtifact,
+  onCreateArtifact,
   progress,
 }: {
   /**
@@ -163,7 +163,7 @@ export function ChatAttachmentPanel({
   onClose: () => void;
   /** Present when the chat's agent has skills: the row writes `@` in the field and offers them. */
   onUseSkill?: () => void;
-  onArtifact?: () => void;
+  onCreateArtifact?: () => void;
   /**
    * 0 with the card gone, 1 with it open. Shared with the composer, so the
    * plus comes back on the same frame the card stops covering it.
@@ -215,7 +215,7 @@ export function ChatAttachmentPanel({
   // out against the card's animated width on every frame. The card starts to
   // grow once the list's height is known, so it grows in one motion.
   const [listWidth, setListWidth] = useState<number | null>(null);
-  const listHeight = useSharedValue(optionsHeight(3 + Number(Boolean(onUseSkill)) + Number(Boolean(onArtifact))));
+  const listHeight = useSharedValue(optionsHeight(3 + Number(Boolean(onUseSkill)) + Number(Boolean(onCreateArtifact))));
   const openedRef = useRef(false);
 
   // Runs once the card has finished leaving, so the heavy part of holding a
@@ -322,7 +322,7 @@ export function ChatAttachmentPanel({
               setListWidth(Math.min(maxListWidth, Math.max(OPTIONS_MIN_WIDTH, width)));
             }}
           >
-            {(onArtifact ? [labels.artifact] : [])
+            {(onCreateArtifact ? [labels.artifact] : [])
               .concat(onUseSkill ? [labels.useSkill] : [], labels.files, labels.photos, labels.camera)
               .map((label) => (
                 <Typography.Paragraph key={label}>{label}</Typography.Paragraph>
@@ -387,7 +387,7 @@ export function ChatAttachmentPanel({
               optionsStyle,
             ]}
           >
-            {onArtifact ? (
+            {onCreateArtifact ? (
               <AttachmentOption
                 index={onUseSkill ? 4 : 3}
                 icon={Sparkles}
@@ -395,7 +395,7 @@ export function ChatAttachmentPanel({
                 foreground={foreground}
                 progress={progress}
                 disabled={false}
-                onPress={() => choose(onArtifact)}
+                onPress={() => choose(onCreateArtifact)}
               />
             ) : null}
             {onUseSkill ? (

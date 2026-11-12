@@ -175,6 +175,14 @@ export const messages = {
   "settings.notifications.allDevices": "كل أجهزتي",
   "settings.notifications.thisComputer": "هذا الحاسوب",
   "settings.notifications.thisBrowser": "هذا المتصفح",
+  "settings.webPush.title": "إشعار عند الإغلاق",
+  "settings.webPush.description":
+    "ترسل خوادمك إشعارات إلى هذا المتصفح عندما لا تظهر أي نافذة من OpenBot على الشاشة، حتى بعد إغلاقها.",
+  "settings.webPush.blocked":
+    "يحظر هذا المتصفح إشعارات OpenBot. اسمح بها في إعدادات الموقع في المتصفح، ثم شغّل هذا الخيار مرة أخرى.",
+  "settings.webPush.failed": "تعذّر تشغيل الإشعارات. حاول مرة أخرى.",
+  "settings.webPush.installHint":
+    "على iPhone وiPad، أضف OpenBot إلى الشاشة الرئيسية: اضغط على مشاركة، ثم إضافة إلى الشاشة الرئيسية. افتحه من هناك لتصلك الإشعارات.",
   "settings.notificationMatrix.muteOptions": "خيارات كتم {name}",
   "settings.notificationMatrix.levelsOf": "الإشعارات من {name}",
   "settings.notificationMatrix.levelAll": "الكل",

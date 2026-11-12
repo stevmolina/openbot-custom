@@ -111,7 +111,7 @@ interface StoredMessage {
    * and in its own transfer folder, so the agent's prompt and the transfer manifest never name it.
    */
   voiceRecording?: StoredAttachment;
-  artifactMode?: true;
+  createArtifact?: true;
   replyToMessageId: string | null;
   /**
    * Written only when the sender asked for no answer. Absent means an answer is expected, which is
@@ -123,6 +123,7 @@ interface StoredMessage {
    * but no chat, queue or preview shows it. Absent on every other message.
    */
   welcome?: true;
+  /** This request asks Claude for one claude.ai artifact. Absent on older messages. */
   createdAt: string;
 }
 
@@ -198,7 +199,7 @@ interface StoredReaction {
 }
 
 interface EnqueueInput {
-  artifactMode?: boolean;
+  createArtifact?: boolean;
   channelId?: string;
   messaging?: MessagingOrigin;
   messagingReturn?: MessagingOrigin;
@@ -213,6 +214,7 @@ interface EnqueueInput {
   expectsReply?: boolean | undefined;
   /** The setup message of a new agent, which the user does not see. */
   welcome?: boolean;
+  /** This request asks Claude for one claude.ai artifact. */
   draftIds?: string[];
   /** An audio draft of what the user said. Kept with the message, not sent to the recipient. */
   voiceRecordingDraftId?: string;
@@ -241,6 +243,8 @@ export interface DeliveryContext {
   channelId?: string;
   /** The side thread that an agent sent the message from. */
   senderTaskId?: string;
+  /** This request asks Claude for one claude.ai artifact. */
+  createArtifact?: true;
 }
 
 const EMPTY_STATE: StoredState = {
@@ -649,7 +653,7 @@ export class MailboxStore {
         }),
         attachments,
         ...(voiceRecording ? { voiceRecording } : {}),
-        ...(input.artifactMode ? { artifactMode: true as const } : {}),
+        ...(input.createArtifact ? { createArtifact: true as const } : {}),
         replyToMessageId: input.replyToMessageId ?? null,
         ...(input.expectsReply === false ? { expectsReply: false as const } : {}),
         ...(input.welcome ? { welcome: true as const } : {}),
@@ -1719,11 +1723,11 @@ export class MailboxStore {
   }
 
   /** Whether the running request selected Artifact tools. */
-  artifactModeForTurn(turnId: string): boolean {
+  createArtifactForTurn(turnId: string): boolean {
     return this.#state.deliveries.some(
       (delivery) =>
         delivery.turnId === turnId &&
-        this.#state.messages.some((message) => message.id === delivery.messageId && message.artifactMode),
+        this.#state.messages.some((message) => message.id === delivery.messageId && message.createArtifact),
     );
   }
 
@@ -1752,8 +1756,8 @@ export class MailboxStore {
         !this.#mayStart(candidate) ||
         // The messages of a turn that a usage limit stopped continue together, as they started.
         candidate.resumeAfterUsageLimit?.turnId !== next.resumeAfterUsageLimit?.turnId ||
-        first.artifactMode ||
-        message.artifactMode ||
+        first.createArtifact ||
+        message.createArtifact ||
         !isChatMessageFromPerson(message) ||
         message.senderMember?.id !== first.senderMember?.id
       )
@@ -3312,6 +3316,7 @@ export class MailboxStore {
       ...(delivery.planContinuation ? { planContinuation: delivery.planContinuation } : {}),
       ...(message.channelId ? { channelId: message.channelId } : {}),
       ...(message.senderTaskId ? { senderTaskId: message.senderTaskId } : {}),
+      ...(message.createArtifact ? { createArtifact: true as const } : {}),
       managedAttachments: message.attachments.map((attachment) => ({
         ...toAttachmentSummary(attachment),
         path: attachment.path,
@@ -3354,7 +3359,7 @@ export class MailboxStore {
       attachments: message.attachments.map(toAttachmentSummary),
       replyToMessageId: message.replyToMessageId,
       ...(message.expectsReply === false ? { expectsReply: false } : {}),
-      ...(message.artifactMode ? { artifactMode: true } : {}),
+      ...(message.createArtifact ? { createArtifact: true } : {}),
       position:
         publicDelivery.status === "queued"
           ? positions
@@ -3736,7 +3741,6 @@ function isStoredMessage(value: unknown): value is StoredMessage {
     value.attachments.every(isStoredAttachment) &&
     (value.voiceRecording === undefined || isStoredAttachment(value.voiceRecording)) &&
     (isString(value.replyToMessageId) || value.replyToMessageId === null) &&
-    (value.artifactMode === undefined || value.artifactMode === true) &&
     (value.expectsReply === undefined || value.expectsReply === false) &&
     (value.welcome === undefined || value.welcome === true) &&
     isString(value.createdAt)

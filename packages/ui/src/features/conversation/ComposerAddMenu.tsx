@@ -14,7 +14,7 @@ import { useText } from "@openbot/ui/text";
 import { Show } from "solid-js";
 
 export interface ComposerAddMenuProps {
-  onArtifact?: (() => void) | undefined;
+  onCreateArtifact?: (() => void) | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   disabled: boolean;
@@ -75,6 +75,14 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
               <span>{t("composer.add.files")}</span>
             </DropdownMenu.Item>
           </Show>
+          <Show when={props.onCreateArtifact}>
+            {(create) => (
+              <DropdownMenu.Item onSelectAfterClose={() => create()()}>
+                <Sparkles aria-hidden="true" />
+                <span>{t("composer.add.artifact")}</span>
+              </DropdownMenu.Item>
+            )}
+          </Show>
           <Show when={props.onPickSkill}>
             <DropdownMenu.Item
               onPointerDown={(event) => {
@@ -87,14 +95,6 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
               <Puzzle aria-hidden="true" />
               <span>{t("composer.add.skill")}</span>
             </DropdownMenu.Item>
-          </Show>
-          <Show when={props.onArtifact}>
-            {(create) => (
-              <DropdownMenu.Item onSelectAfterClose={() => create()()}>
-                <Sparkles aria-hidden="true" />
-                <span>{t("composer.artifact.create")}</span>
-              </DropdownMenu.Item>
-            )}
           </Show>
           <Show when={props.onTeach}>
             {(teach) => (

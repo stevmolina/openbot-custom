@@ -89,7 +89,7 @@ export function createThreadComposerActions(deps: ThreadComposerActionsDeps) {
     if (deps.draftLocked?.(key)) return;
     deps.setThreadDrafts((current) => {
       const next = update(current[key] ?? EMPTY_DRAFT);
-      if (next.artifactMode || next.text || next.attachments.length > 0 || next.replyToMessageId)
+      if (next.createArtifact || next.text || next.attachments.length > 0 || next.replyToMessageId)
         return { ...current, [key]: next };
       if (!(key in current)) return current;
       const { [key]: _removed, ...rest } = current;
@@ -259,8 +259,8 @@ export function createThreadComposerActions(deps: ThreadComposerActionsDeps) {
     }
   }
 
-  function setArtifactMode(key: string | undefined, artifactMode: boolean): void {
-    if (key) updateDraft(key, (current) => ({ ...current, artifactMode }));
+  function setCreateArtifact(key: string | undefined, createArtifact: boolean): void {
+    if (key) updateDraft(key, (current) => ({ ...current, createArtifact }));
   }
 
   function setText(key: string | undefined, text: string): void {
@@ -301,13 +301,13 @@ export function createThreadComposerActions(deps: ThreadComposerActionsDeps) {
       text,
       attachments.filter((attachment) => referenced.has(attachment.id)).map((attachment) => attachment.id),
       replyToMessageId,
-      key ? draft(key).artifactMode : false,
+      key ? draft(key).createArtifact : false,
     );
     if (!sent || !key) return sent;
     const known = new Set(attachments.map((attachment) => attachment.id));
     updateDraft(key, (current) => ({
       ...current,
-      artifactMode: false,
+      createArtifact: false,
       // A file that came during the send put its reference after the sent text.
       text: current.text.startsWith(before) ? current.text.slice(before.length).trimStart() : "",
       attachments: current.attachments.filter((attachment) => !known.has(attachment.id)),
@@ -335,7 +335,7 @@ export function createThreadComposerActions(deps: ThreadComposerActionsDeps) {
     releaseImport,
     importsEnded,
     setText,
-    setArtifactMode,
+    setCreateArtifact,
     setReply,
     send,
   };

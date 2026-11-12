@@ -125,7 +125,7 @@ async function deliverOutboxMessage(
           message.replyToMessageId,
           target.serverId,
           repeatSafe ? message.clientMessageId : undefined,
-          message.artifactMode,
+          message.createArtifact,
         );
       },
     });

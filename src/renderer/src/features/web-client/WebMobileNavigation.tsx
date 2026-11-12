@@ -1,53 +1,81 @@
 import type { AppTextKey } from "@openbot/i18n";
-import { Button, Globe2, MessageCircle, Workflow } from "@openbot/ui";
+import { Button, ChevronLeft, MessageCircle, Search, Server, Settings } from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
 import { Dynamic } from "@solidjs/web";
 import { For } from "solid-js";
 
+/** The pane that a phone shows: the chat list at the root, or the conversation pushed over it. */
 export type WebMobilePane = "conversation" | "workspace";
 
-interface WebMobileNavigationProps {
-  activePane: WebMobilePane;
-  /** The Routines view is on: the conversation pane shows the routine canvas. */
-  routines?: boolean;
-  onChange: (pane: WebMobilePane) => void;
-}
+/**
+ * The places of the phone tab bar. They are the places that the iOS app opens from its home screen:
+ * the chat list, the server drawer, the search field and the settings.
+ */
+export type WebPhoneTab = "chats" | "servers" | "search" | "settings";
 
-interface PaneButton {
-  id: WebMobilePane;
+interface PhoneTab {
+  id: WebPhoneTab;
   label: AppTextKey;
   Icon: typeof MessageCircle;
 }
 
-const PANES: ReadonlyArray<PaneButton> = [
-  { id: "conversation", label: "webClient.pane.chat", Icon: MessageCircle },
-  { id: "workspace", label: "webClient.pane.workspace", Icon: Globe2 },
+const TABS: ReadonlyArray<PhoneTab> = [
+  { id: "chats", label: "webClient.tab.chats", Icon: MessageCircle },
+  { id: "servers", label: "webClient.tab.servers", Icon: Server },
+  { id: "search", label: "webClient.tab.search", Icon: Search },
+  { id: "settings", label: "webClient.tab.settings", Icon: Settings },
 ];
 
-/** The small-screen switch for the existing workspace and conversation surfaces. */
+interface WebMobileNavigationProps {
+  active: WebPhoneTab;
+  onSelect: (tab: WebPhoneTab) => void;
+}
+
+/**
+ * The tab bar of a phone, as on iOS: an icon over a label, the active tab in the accent colour. It sits
+ * under the conversation pane, so a chat that opens covers it, and a swipe back shows it again.
+ */
 export function WebMobileNavigation(props: WebMobileNavigationProps) {
   const { t } = useText();
-  const shown = (pane: PaneButton): PaneButton =>
-    pane.id === "conversation" && props.routines ? { ...pane, label: "webClient.pane.routines", Icon: Workflow } : pane;
   return (
-    <nav class="web-mobile-navigation" aria-label={t("webClient.pane.navigation")}>
-      <div class="web-mobile-navigation-list">
-        <For each={PANES}>
-          {(pane) => (
-            <Button
-              variant="ghost"
-              type="button"
-              class="web-mobile-navigation-button"
-              data-active={props.activePane === pane.id ? "true" : undefined}
-              aria-pressed={props.activePane === pane.id ? "true" : "false"}
-              onClick={() => props.onChange(pane.id)}
-            >
-              <Dynamic component={shown(pane).Icon} aria-hidden="true" />
-              <span>{t(shown(pane).label)}</span>
-            </Button>
-          )}
-        </For>
-      </div>
+    <nav class="web-phone-tab-bar" aria-label={t("webClient.pane.navigation")}>
+      <For each={TABS}>
+        {(tab) => (
+          <Button
+            variant="ghost"
+            type="button"
+            class="web-phone-tab"
+            data-active={props.active === tab.id ? "true" : undefined}
+            aria-current={props.active === tab.id ? "page" : undefined}
+            onClick={() => props.onSelect(tab.id)}
+          >
+            <Dynamic component={tab.Icon} aria-hidden="true" />
+            <span class="web-phone-tab-label">{t(tab.label)}</span>
+          </Button>
+        )}
+      </For>
     </nav>
+  );
+}
+
+interface WebPhoneBackProps {
+  onBack: () => void;
+  /** Starts the swipe back from the leading edge. */
+  onEdgePointerDown: (event: PointerEvent) => void;
+}
+
+/**
+ * The Back button and the leading edge of a chat that a phone pushed over the list. A drag from the
+ * edge follows the finger back to the list, as the iOS back swipe does.
+ */
+export function WebPhoneBack(props: WebPhoneBackProps) {
+  const { t } = useText();
+  return (
+    <>
+      <div class="web-phone-swipe-edge" aria-hidden="true" onPointerDown={(event) => props.onEdgePointerDown(event)} />
+      <Button variant="ghost" type="button" class="web-phone-back" aria-label={t("common.back")} onClick={props.onBack}>
+        <ChevronLeft aria-hidden="true" />
+      </Button>
+    </>
   );
 }

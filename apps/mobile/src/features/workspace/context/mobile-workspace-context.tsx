@@ -2169,15 +2169,15 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
         replyToMessageId = null,
         targetServerId,
         clientMessageId,
-        artifactMode,
+        createArtifact,
       ) => {
         const serverId = targetServerId ?? agentsRef.current.find((candidate) => candidate.id === agentId)?.serverId;
         if (!serverId) throw new Error(currentText().t("mobile.workspace.error.agentUnavailable"));
-        if (artifactMode && !hasCapability(serverCapabilities.current, serverId, ARTIFACT_REQUEST_CAPABILITY))
+        if (createArtifact && !hasCapability(serverCapabilities.current, serverId, ARTIFACT_REQUEST_CAPABILITY))
           throw new Error(currentText().t("error.team.claudeAiToolsUnsupported"));
         const receipt = await request(
           "POST",
-          artifactMode ? ARTIFACT_REQUEST_ROUTE : TEAM_API_ROUTES.agent.messages(agentId),
+          createArtifact ? ARTIFACT_REQUEST_ROUTE : TEAM_API_ROUTES.agent.messages(agentId),
           (value) => {
             if (!isQueuedMessageReceipt(value)) throw new Error("The host returned an invalid message receipt.");
             return value;
@@ -2186,7 +2186,7 @@ export function MobileWorkspaceProvider({ children }: PropsWithChildren) {
             text,
             attachmentDraftIds,
             replyToMessageId,
-            ...(artifactMode ? { agentId } : {}),
+            ...(createArtifact ? { agentId } : {}),
             // The host uses this phone's zone for a routine the agent creates from the message.
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             ...(clientMessageId ? { clientMessageId } : {}),

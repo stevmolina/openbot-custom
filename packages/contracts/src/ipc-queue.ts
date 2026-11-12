@@ -41,7 +41,7 @@ export type QueueSteerFallback = (typeof QUEUE_STEER_FALLBACKS)[number];
 
 export interface QueueDelivery {
   /** This request uses claude.ai Artifact tools. Absent on older hosts. */
-  artifactMode?: boolean;
+  createArtifact?: boolean;
   id: string;
   messageId: string;
   recipientAgentId: string;
@@ -114,7 +114,7 @@ export function isQueueDelivery(value: unknown): value is QueueDelivery {
     (value.turnId === null || isIdentifier(value.turnId)) &&
     (value.error === null || isBoundedString(value.error, INPUT_LIMITS.messageText)) &&
     isBoundedString(value.createdAt, 160) &&
-    (value.artifactMode === undefined || isBoolean(value.artifactMode)) &&
+    (value.createArtifact === undefined || isBoolean(value.createArtifact)) &&
     (value.editing === undefined || isBoolean(value.editing)) &&
     (value.expectsReply === undefined || isBoolean(value.expectsReply)) &&
     (value.steerFallback === undefined || isOneOf(QUEUE_STEER_FALLBACKS, value.steerFallback))

@@ -363,7 +363,7 @@ interface ClientEvents {
 }
 
 interface ThreadConfig {
-  artifactMode: boolean;
+  createArtifact: boolean;
   cwd: string;
   model?: string | undefined;
   effort?: string | undefined;
@@ -1326,7 +1326,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     // Read once, so that the settings and the home skills of one query agree.
     const userSetup = !config.profileGeneration && this.#userSetup();
     const claudeAiTools = !config.profileGeneration && this.#claudeAiTools();
-    const artifacts = !config.profileGeneration && (claudeAiTools || config.artifactMode);
+    const artifacts = !config.profileGeneration && (claudeAiTools || config.createArtifact);
     const skillPlugin =
       config.workspaceOnly && stateDirectory ? yield* claudeWorkspaceSkillPlugin(stateDirectory, config.cwd) : null;
     const configDirectory =
@@ -1428,7 +1428,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
       // The CLI loads this file and the SDK's own `--mcp-config` value together.
       ...(mcpConfigFile ? { "mcp-config": mcpConfigFile } : {}),
     };
-    const developerInstructions = config.artifactMode
+    const developerInstructions = config.createArtifact
       ? `${config.developerInstructions}\n\nThe user selected Create an Artifact for this request. Use the claude.ai Artifact tools to create the requested output.`
       : config.developerInstructions;
     const stderr = new ClaudeStderrTail();
@@ -1563,10 +1563,13 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     const threadId = yield* providerSync(() => requiredString(params, "threadId"));
     yield* this.#threads.wake(threadId).pipe(toProviderClientOperationError);
     const current = yield* providerSync(() => this.#requireThread(threadId));
-    const artifactMode = isRecord(params) && params.artifactMode === true;
+    const createArtifact = isRecord(params) && params.createArtifact === true;
+    if (current.activeTurn) return yield* providerFailure(this.#turnActiveError(current.activeTurn));
+    if (current.config.createArtifact !== createArtifact && current.backgroundTasks > 0)
+      return yield* providerFailure(new ProviderTurnActiveError("Claude"));
     // Tool schemas belong to a query. Resume the same session when this request changes them.
-    if (current.config.artifactMode !== artifactMode)
-      yield* this.#resumeThread(threadId, { ...current.config, artifactMode });
+    if (current.config.createArtifact !== createArtifact)
+      yield* this.#resumeThread(threadId, { ...current.config, createArtifact });
     return yield* this.#threads
       .startTurn(threadId, () => this.#openTurn(threadId, params))
       .pipe(toProviderClientOperationError);
@@ -1643,7 +1646,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
         role: "user",
         content:
           context.length > 0
-            ? [...context.map((block) => ({ type: "text" as const, text: block })), { type: "text", text }]
+            ? [...context.map((block) => ({ type: "text" as const, text: block })), { type: "text", text: text }]
             : text,
       },
       parent_tool_use_id: null,
@@ -3199,7 +3202,7 @@ function readThreadConfig(params: unknown): ThreadConfig {
     additionalDirectories: [...new Set([cwd, ...roots])],
     persistSession: !isRecord(params) || params.persistSession !== false,
     profileGeneration: isRecord(params) && params.profileGeneration === true,
-    artifactMode: isRecord(params) && params.artifactMode === true,
+    createArtifact: isRecord(params) && params.createArtifact === true,
     computerUse: computerUseParam(params),
     channelTools: isRecord(params) && params.channelTools === true,
     workspaceOnly: isRecord(params) && params.workspaceOnly === true,

@@ -16,7 +16,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { AGENT_PROVIDERS, type AgentSummary, defaultProviderModel } from "@openbot/contracts/ipc";
+import { AGENT_PROVIDERS, type AgentSummary, artifactRequestText, defaultProviderModel } from "@openbot/contracts/ipc";
 import { Effect } from "effect";
 import type { AgentBrowserHost } from "../src/backend/agent/turn-lifecycle";
 import type { AgentClient, DiagnosticOrigin } from "../src/backend/agent-client";
@@ -412,9 +412,9 @@ async function createClaudeAgent(name: string) {
 }
 
 /** Sends one message and waits for its final state. */
-async function send(agentId: string, text: string, artifactMode = false, clientMessageId?: string) {
+async function send(agentId: string, text: string, createArtifact = false, clientMessageId?: string) {
   const receipt = await runCauseEffect(
-    agents.sendMessage({ agentId, text, artifactMode, ...(clientMessageId ? { clientMessageId } : {}) }),
+    agents.sendMessage({ agentId, text, createArtifact, ...(clientMessageId ? { clientMessageId } : {}) }),
   );
   const deliveryId = receipt.deliveries[0]?.id;
   if (!deliveryId) throw new Error("The message has no delivery.");
@@ -506,7 +506,7 @@ try {
   check(
     "3. a repeated client id returns the original request and its mode",
     retry.deliveryId === artifactResult.deliveryId &&
-      mailbox.getDelivery(retry.deliveryId)?.delivery.artifactMode === true,
+      mailbox.getDelivery(retry.deliveryId)?.delivery.createArtifact === true,
     retry,
   );
   const ordinaryResult = await send(artifactAgent.id, "Ordinary request.");
@@ -535,7 +535,7 @@ try {
       sender: { kind: "user" },
       recipientAgentIds: [artifactAgent.id],
       text: "Queued artifact",
-      artifactMode: true,
+      createArtifact: true,
     }),
   );
   const queuedId = queued.deliveries[0]?.id;
@@ -552,15 +552,22 @@ try {
   await runCauseEffect(restored.initialize());
   check(
     "3. queue edit and SQLite reload preserve request mode",
-    restored.getDelivery(queuedId)?.delivery.artifactMode === true &&
+    restored.getDelivery(queuedId)?.delivery.createArtifact === true &&
       restored.getDelivery(queuedId)?.delivery.text === "Edited artifact",
     restored.getDelivery(queuedId)?.delivery,
   );
   await runCauseEffect(mailbox.cancel(artifactAgent.id, queuedId));
   for (const delivery of ordinaryQueued.deliveries) await runCauseEffect(mailbox.cancel(artifactAgent.id, delivery.id));
+  const legacyRequest = await send(artifactAgent.id, artifactRequestText("Legacy Artifact request"));
+  check(
+    "3. the released text marker still selects tools and is removed from stored text",
+    mailbox.getDelivery(legacyRequest.deliveryId)?.delivery.createArtifact === true &&
+      mailbox.getDelivery(legacyRequest.deliveryId)?.delivery.text === "Legacy Artifact request",
+    legacyRequest,
+  );
   globalClaudeAiTools = true;
   // Force a new query through a request mode change; the global preference must keep connectors on.
-  const globallyEnabled = await send(artifactAgent.id, "Global compatibility", true);
+  const globallyEnabled = await send(artifactAgent.id, "Global compatibility");
   const globalQuery = toolQueries.at(-1);
   check(
     "3. the global setting keeps Artifact tools and connectors enabled",

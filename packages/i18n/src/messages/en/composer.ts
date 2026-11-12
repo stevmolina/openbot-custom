@@ -1,7 +1,7 @@
 import { defineMessages } from "../../message";
 
 export const messages = defineMessages("composer", {
-  "composer.artifact.create": "Create an Artifact",
+  "composer.add.artifact": "Create an Artifact",
   "composer.artifact.selected": "Artifact · This message",
   "composer.artifact.remove": "Remove Artifact mode",
   "composer.queueEdit.body": "You are editing a queued message. Save or cancel the edit to let it run.",

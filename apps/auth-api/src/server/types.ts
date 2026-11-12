@@ -141,6 +141,17 @@ export interface WorkerBindings {
    * Cloud Messaging. The Android notification relay is off without it.
    */
   FCM_SERVICE_ACCOUNT?: string;
+  /**
+   * The VAPID private key (RFC 8292) of the Web Push relay, as a JWK (JSON) of an EC P-256 key with
+   * `d`. The relay for web client notifications is off without it and the two below.
+   */
+  WEB_PUSH_VAPID_PRIVATE_KEY?: string;
+  /** The VAPID public key, 65 bytes uncompressed, as base64url. It must be the key of the private key. */
+  WEB_PUSH_VAPID_PUBLIC_KEY?: string;
+  /** The `mailto:` or `https:` contact that push services see in each request. */
+  WEB_PUSH_VAPID_SUBJECT?: string;
+  /** Local development only: `true` lets a push service on this computer stand in, over `http:`. */
+  WEB_PUSH_ALLOW_LOOPBACK?: string;
 }
 
 function isWorkerBindings(value: unknown): value is WorkerBindings {

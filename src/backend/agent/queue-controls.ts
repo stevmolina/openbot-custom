@@ -274,7 +274,7 @@ export class QueueControls {
       return { client, session, snapshot, context, turnId, routineSession, publicThreadId };
     });
     // A request with different tools must wait for its own query.
-    if (context.delivery.artifactMode || this.#mailbox.artifactModeForTurn(turnId)) {
+    if (context.delivery.createArtifact || this.#mailbox.createArtifactForTurn(turnId)) {
       yield* this.#mailbox.markSteerFallback(input.deliveryId, "steer-failed").pipe(toQueueOperationFailed);
       this.#mailboxSync.emitQueue(agent.id);
       return yield* new QueueOperationFailed({ cause: new SteerUnsupportedError() });

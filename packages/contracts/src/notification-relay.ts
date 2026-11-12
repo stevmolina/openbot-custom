@@ -50,6 +50,37 @@ export interface AndroidNotificationRelayPush {
 }
 
 /**
+ * One Web Push notification that a host asks the OpenBot account service to send to the push service
+ * of a browser (RFC 8030). The host encrypted the body for the subscription (RFC 8291, `aes128gcm`),
+ * so the service and the push service cannot read it. The service signs the request with its VAPID key
+ * (RFC 8292) and sends it only to a known push service.
+ */
+export interface WebNotificationRelayPush {
+  /** The push service URL of the subscription (`push-notifications-web-v1`). */
+  endpoint: string;
+  /** The account session of the web client on this host, as for `NotificationRelayPush`. */
+  sessionId: string;
+  /** The encrypted `aes128gcm` body, base64url. At most `WEB_NOTIFICATION_BODY_LIMIT` bytes before encoding. */
+  body: string;
+  /** How long the push service keeps the notification for a browser that is offline, in seconds. */
+  ttl: number;
+  urgency: WebNotificationUrgency;
+  /** A later notification with the same topic replaces one that the push service still keeps. */
+  topic?: string;
+  /** When the host made the notification, in seconds. */
+  timestamp: number;
+}
+
+export const WEB_NOTIFICATION_URGENCIES = ["very-low", "low", "normal", "high"] as const;
+export type WebNotificationUrgency = (typeof WEB_NOTIFICATION_URGENCIES)[number];
+/** Push services accept at least 4096 bytes of encrypted body (RFC 8030 section 7.2). */
+export const WEB_NOTIFICATION_BODY_LIMIT = 4_096;
+/** A day, as Apple and Firebase keep a phone notification. */
+export const WEB_NOTIFICATION_TTL_LIMIT = 86_400;
+/** RFC 8030 section 5.4: at most 32 characters of the base64url alphabet. */
+export const WEB_NOTIFICATION_TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/u;
+
+/**
  * A sealed notification above this size would not fit the 4 KB Apple payload with its envelope.
  * Firebase Cloud Messaging data messages have the same 4 KB limit.
  */

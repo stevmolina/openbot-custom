@@ -94,9 +94,9 @@ try {
     () => document.querySelector('[role="textbox"][aria-label="Message Chief"]')?.textContent === "",
   );
   assert.equal(requests.length, 2);
-  assert.equal(requests[0]?.artifactMode, true);
+  assert.equal(requests[0]?.createArtifact, true);
   assert.equal(requests[0]?.text, "Create a project report.");
-  assert.equal(requests[1]?.artifactMode, undefined);
+  assert.equal(requests[1]?.createArtifact, undefined);
   checks.push("Send clears the chip; only the selected complete request carries Artifact mode.");
 } catch (cause) {
   error = cause instanceof Error ? (cause.stack ?? cause.message) : String(cause);

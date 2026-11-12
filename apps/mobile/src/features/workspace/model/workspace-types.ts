@@ -1066,7 +1066,7 @@ export interface MobileWorkspaceContextValue {
     serverId?: string,
     /** Names the message for the host, which stores a repeat of it once. Send it only when `canRetryMessage`. */
     clientMessageId?: string,
-    artifactMode?: boolean,
+    createArtifact?: boolean,
   ) => Promise<string>;
   uploadAttachment: (
     agentId: string,

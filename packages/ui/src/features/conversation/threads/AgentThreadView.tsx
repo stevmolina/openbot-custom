@@ -205,8 +205,8 @@ export interface AgentThreadViewProps {
   /** Shows the browser tab, or opens the thread by its task id, that a tag names. */
   onOpenTag?: ((kind: "tab" | "thread", id: string) => void) | undefined;
   /** The unsent text of this thread's message box. The host keeps it for each thread. */
-  artifactMode?: boolean | undefined;
-  onArtifactModeChange?: ((enabled: boolean) => void) | undefined;
+  createArtifact?: boolean | undefined;
+  onCreateArtifactChange?: ((enabled: boolean) => void) | undefined;
   draft: string;
   /** The files that the draft names. */
   draftAttachments?: DraftAttachment[] | undefined;
@@ -1166,9 +1166,9 @@ export function AgentThreadView(props: AgentThreadViewProps) {
               />
             )}
           </ComposerStackCard>
-          <Show when={props.artifactMode}>
+          <Show when={props.createArtifact}>
             <ComposerArtifactChip
-              onRemove={props.onArtifactModeChange ? () => props.onArtifactModeChange?.(false) : undefined}
+              onRemove={props.onCreateArtifactChange ? () => props.onCreateArtifactChange?.(false) : undefined}
             />
           </Show>
         </div>
@@ -1225,7 +1225,7 @@ export function AgentThreadView(props: AgentThreadViewProps) {
               open={addMenuOpen()}
               onOpenChange={setAddMenuOpen}
               disabled={sending() || voicePhase() === "transcribing"}
-              onArtifact={props.onArtifactModeChange ? () => props.onArtifactModeChange?.(true) : undefined}
+              onCreateArtifact={props.onCreateArtifactChange ? () => props.onCreateArtifactChange?.(true) : undefined}
               onAttach={props.onAttachFiles}
               onPickSkill={() => setSkillPickerRequest((current) => current + 1)}
               onSideQuestion={props.onSideQuestion}

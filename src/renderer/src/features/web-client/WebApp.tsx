@@ -37,6 +37,7 @@ import { StaticI18nProvider } from "../../i18n-context";
 import { AnalyticsConsentRow, ConsentNotice } from "../onboarding/AnalyticsConsent";
 import { createOnboardingTeam, onboardingSessionSeed } from "../onboarding/onboarding-avatars";
 import { deleteRemoteWorkspaceFrames } from "../servers/remote-workspace-frame";
+import { WebServiceWorkerUpdates } from "./WebServiceWorkerUpdates";
 import type { WebWorkspace } from "./WebWorkspace";
 import { createWebAccountCalls } from "./web-account";
 import { deleteSavedAgentPictures } from "./web-agent-pictures";
@@ -584,6 +585,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
       <NotificationObserver onShown={reportNotification}>
         <div class="web-app">
           <Toaster onToastShown={reportNotification} />
+          <WebServiceWorkerUpdates />
           <Show when={state.loaded}>
             <Show
               keyed

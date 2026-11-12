@@ -66,6 +66,7 @@ import type {
   WorkspaceDirectory,
 } from "@openbot/contracts/ipc";
 import {
+  artifactRequestText,
   canAdministerServer,
   DEFAULT_PROVIDER_ACCOUNT_ID,
   decodeAgentFastModels,
@@ -152,7 +153,10 @@ import {
   CONVERSATION_UNREAD_FROM_CAPABILITY,
   CONVERSATION_UNREAD_FROM_ROUTE,
 } from "@openbot/contracts/team-protocol/conversation-unread-from-v1";
-import { TEAM_BROWSER_NAVIGATION_CAPABILITY } from "@openbot/contracts/team-protocol/current";
+import {
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
+  TEAM_BROWSER_NAVIGATION_CAPABILITY,
+} from "@openbot/contracts/team-protocol/current";
 import { FOCUS_USE_ROUTES } from "@openbot/contracts/team-protocol/focus-use-v1";
 import { MESSAGE_DELETE_CAPABILITY, MESSAGE_DELETE_ROUTES } from "@openbot/contracts/team-protocol/message-delete-v1";
 import {
@@ -394,7 +398,7 @@ export interface WebWorkspaceRuntime {
     attachmentDraftIds: string[],
     replyToMessageId?: string | null,
     clientMessageId?: string,
-    artifactMode?: boolean,
+    createArtifact?: boolean,
   ): Promise<string>;
   stop(agentId: string, turnId: string): Promise<void>;
   /** Sends which agent this member is writing to, or `null`. It does nothing while the host is offline. */
@@ -450,6 +454,16 @@ export interface WebWorkspaceRuntime {
    * a host with a status connection. `levels` is null on a host without `agent-notification-levels-v1`.
    */
   notificationSettings?: (hostId: string) => Promise<WebHostNotificationSettings>;
+  /**
+   * The capabilities of a host: the open host, or a host with a status connection. Null until the host
+   * answered on its connection.
+   */
+  hostCapabilities?: (hostId: string) => readonly string[] | null;
+  /**
+   * Posts one Web Push registration request (`push-notifications-web-v1`) to a host: the open host, or a
+   * host with a status connection. Rejects while the host has no connection.
+   */
+  postHostWebPush?: (hostId: string, path: string, body: TeamProtocolV2Json) => Promise<void>;
   /** Sets the user's own level for one agent of a host. Needs `agent-notification-levels-v1`. */
   setHostAgentNotificationLevel?: (
     hostId: string,
@@ -1530,19 +1544,28 @@ export function createWebWorkspaceRuntime(
         throw new Error(currentText().t("error.remote.invalidData"));
       return `data:${value.mimeType};base64,${value.base64}`;
     },
-    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId, artifactMode) {
-      if (artifactMode && !capabilities.includes(ARTIFACT_REQUEST_CAPABILITY))
+    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId, createArtifact) {
+      if (
+        createArtifact &&
+        !capabilities.includes(ARTIFACT_REQUEST_CAPABILITY) &&
+        !capabilities.includes(CLAUDE_ARTIFACT_REQUEST_CAPABILITY)
+      )
         throw new Error(currentText().t("error.team.claudeAiToolsUnsupported"));
-      const result = await request("POST", artifactMode ? ARTIFACT_REQUEST_ROUTE : TEAM_API_ROUTES.agent.messages(id), {
-        ...(artifactMode ? { agentId: id } : {}),
-        text,
-        attachmentDraftIds,
-        replyToMessageId,
-        // The host uses this browser's zone for a routine the agent creates from the message.
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        // A host with `message-client-id-v1` answers a retry with the first receipt.
-        ...(clientMessageId ? { clientMessageId } : {}),
-      });
+      const nativeArtifact = createArtifact && capabilities.includes(ARTIFACT_REQUEST_CAPABILITY);
+      const result = await request(
+        "POST",
+        nativeArtifact ? ARTIFACT_REQUEST_ROUTE : TEAM_API_ROUTES.agent.messages(id),
+        {
+          ...(nativeArtifact ? { agentId: id } : {}),
+          text: createArtifact && !nativeArtifact ? artifactRequestText(text) : text,
+          attachmentDraftIds,
+          replyToMessageId,
+          // The host uses this browser's zone for a routine the agent creates from the message.
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          // A host with `message-client-id-v1` answers a retry with the first receipt.
+          ...(clientMessageId ? { clientMessageId } : {}),
+        },
+      );
       if (!isQueuedMessageReceipt(result)) throw new Error(currentText().t("webClient.error.sendUnconfirmed"));
       removeCompletedDrafts(attachmentDraftIds);
       return result.deliveries[0]?.id ?? result.messageId;
@@ -1664,6 +1687,17 @@ export function createWebWorkspaceRuntime(
       if (!capabilities.includes(AGENT_NOTIFICATION_LEVELS_CAPABILITY))
         throw new Error(currentText().t("error.team.agentNotificationLevelsUnsupported"));
       return runTeamEffect(setAgentNotificationLevel(teamApi, input).pipe(Effect.mapError((error) => error.cause)));
+    },
+    hostCapabilities(hostId) {
+      if (hostId !== lockedHostId) return hosts?.capabilities(hostId) ?? null;
+      return connectedHost?.hostId === hostId && capabilities.length > 0 ? capabilities : null;
+    },
+    async postHostWebPush(hostId, path, body) {
+      if (hostId !== lockedHostId) {
+        if (!hosts) throw new Error(currentText().t("webClient.error.hostChanged"));
+        return hosts.postWebPush(hostId, path, body);
+      }
+      await request("POST", path, body);
     },
     async notificationSettings(hostId) {
       if (hostId !== lockedHostId) {

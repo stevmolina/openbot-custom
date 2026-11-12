@@ -170,6 +170,14 @@ export const messages = {
   "settings.notifications.allDevices": "すべてのデバイス",
   "settings.notifications.thisComputer": "このコンピューター",
   "settings.notifications.thisBrowser": "このブラウザ",
+  "settings.webPush.title": "閉じていても通知",
+  "settings.webPush.description":
+    "OpenBot のウインドウが画面にないとき、閉じた後も、サーバーがこのブラウザに通知します。",
+  "settings.webPush.blocked":
+    "このブラウザは OpenBot の通知をブロックしています。ブラウザのサイト設定で許可してから、もう一度オンにしてください。",
+  "settings.webPush.failed": "通知をオンにできませんでした。もう一度お試しください。",
+  "settings.webPush.installHint":
+    "iPhone と iPad では、OpenBot をホーム画面に追加してください。共有をタップし、ホーム画面に追加をタップします。そこから開くと通知を受け取れます。",
   "settings.notificationMatrix.muteOptions": "{name} のミュートオプション",
   "settings.notificationMatrix.levelsOf": "{name} からの通知",
   "settings.notificationMatrix.levelAll": "すべて",

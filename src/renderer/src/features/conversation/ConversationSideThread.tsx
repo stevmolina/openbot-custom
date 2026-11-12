@@ -194,14 +194,14 @@ export function ConversationSideThread(props: { threadId: string }) {
             browserTabs={taggableBrowserTabs()}
             threads={taggableThreads()}
             onOpenTag={openTaggedReference}
-            artifactMode={draft()?.artifactMode}
-            onArtifactModeChange={
+            createArtifact={draft()?.createArtifact}
+            onCreateArtifactChange={
               current().thread.task &&
               !threadQueue.editOf(current().thread.task.id) &&
               current().agent.provider === "claude" &&
               (view.server?.kind !== "remote" ||
                 view.server?.compatibility?.capabilities.includes(ARTIFACT_REQUEST_CAPABILITY))
-                ? (enabled) => threadComposer.setArtifactMode(draftKey(), enabled)
+                ? (enabled) => threadComposer.setCreateArtifact(draftKey(), enabled)
                 : undefined
             }
             draft={draft()?.text ?? ""}

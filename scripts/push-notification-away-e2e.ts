@@ -171,6 +171,7 @@ function opened(request: NotificationRelayRequest): string {
   const secret = secrets.get(request.push.sessionId);
   assert.ok(secret, "A send went to an unknown phone.");
   const keys = pushNotificationKeys(secret);
+  assert.ok(request.platform !== "web", "A phone send went to a web client.");
   const text = openSealedLiveActivity(
     request.push.sealed,
     encodeLiveActivityBytes(keys.seal),

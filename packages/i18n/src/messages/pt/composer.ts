@@ -2,7 +2,7 @@ import type { PartialTranslation } from "../../message";
 import type { messages as source } from "../en/composer";
 
 export const messages = {
-  "composer.artifact.create": "Criar um Artifact",
+  "composer.add.artifact": "Criar um Artifact",
   "composer.artifact.selected": "Artifact · Esta mensagem",
   "composer.artifact.remove": "Remover modo Artifact",
   "composer.queueEdit.body":

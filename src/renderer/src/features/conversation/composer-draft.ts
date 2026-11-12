@@ -21,7 +21,7 @@ export const EMPTY_DRAFT: ComposerDraft = {
 
 export function copyComposerDraft(draft: ComposerDraft): ComposerDraft {
   return {
-    ...(draft.artifactMode ? { artifactMode: true } : {}),
+    ...(draft.createArtifact ? { createArtifact: true } : {}),
     text: draft.text,
     attachments: [...draft.attachments],
     replyToMessageId: draft.replyToMessageId,
@@ -78,7 +78,7 @@ function isComposerDraft(value: unknown): value is ComposerDraft {
     isString(value.text) &&
     Array.isArray(value.attachments) &&
     value.attachments.every(isAttachmentSummary) &&
-    (value.artifactMode === undefined || typeof value.artifactMode === "boolean") &&
+    (value.createArtifact === undefined || typeof value.createArtifact === "boolean") &&
     (value.replyToMessageId === null || isString(value.replyToMessageId))
   );
 }

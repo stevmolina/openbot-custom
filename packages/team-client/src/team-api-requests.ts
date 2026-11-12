@@ -341,17 +341,17 @@ export const sendAgentTaskMessage = Effect.fn("TeamClient.sendAgentTaskMessage")
     attachmentDraftIds,
     replyToMessageId,
     clientMessageId,
-    artifactMode,
+    createArtifact,
   }: AgentTaskInput & {
     text: string;
     attachmentDraftIds?: string[];
     replyToMessageId?: string;
     clientMessageId?: string;
-    artifactMode?: boolean;
+    createArtifact?: boolean;
   },
 ): Effect.fn.Return<QueuedMessageReceipt, TeamRequestError> {
   return yield* teamCall(() =>
-    artifactMode
+    createArtifact
       ? request("POST", ARTIFACT_REQUEST_ROUTE, decodeTaskReceipt, {
           agentId,
           taskId,

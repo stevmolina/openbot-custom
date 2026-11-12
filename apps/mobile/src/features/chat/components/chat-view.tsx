@@ -339,7 +339,7 @@ export function ChatView({
   ]);
   const [artifactDraft, setArtifactDraft] = useState<string | null>(null);
   const artifactKey = `${target.kind}:${target.serverId}:${target.id}`;
-  const artifactMode = artifactDraft === artifactKey;
+  const createArtifact = artifactDraft === artifactKey;
   const [replyTarget, setReplyTarget] = useState<ChatBubbleMessage | null>(null);
   // The message whose text the reader selects in its bubble, and the selected part of it.
   const [selection, setSelection] = useState<{ message: ChatBubbleMessage; selected: string } | null>(null);
@@ -849,7 +849,7 @@ export function ChatView({
       return;
     }
     // While the agent asks a question, the composer text is the answer. Files still go as a message.
-    if (!artifactMode && answersQuestion && questionForm && files.length === 0) {
+    if (!createArtifact && answersQuestion && questionForm && files.length === 0) {
       if (!body || questionForm.disabled) return;
       Keyboard.dismiss();
       void haptics.impact();
@@ -871,10 +871,10 @@ export function ChatView({
         hostMessageId(selection.message.id),
         files,
         replaces,
-        artifactMode,
+        createArtifact,
       );
     } else {
-      deliver(body, submittedReply ? hostMessageId(submittedReply.id) : null, files, replaces, artifactMode);
+      deliver(body, submittedReply ? hostMessageId(submittedReply.id) : null, files, replaces, createArtifact);
     }
     setArtifactDraft(null);
     attachments.clear();
@@ -898,7 +898,7 @@ export function ChatView({
     replyToMessageId: string | null,
     files: typeof attachments.items,
     replaces: readonly string[] = [],
-    artifactMode = false,
+    createArtifact = false,
   ): OutboxMessage {
     setSendError(null);
     setSelection(null);
@@ -923,7 +923,7 @@ export function ChatView({
               target.members.map((member) => ({ agentId: member.id })),
             ),
           },
-      { text, replyToMessageId, files, ...(artifactMode ? { artifactMode: true } : {}) },
+      { text, replyToMessageId, files, ...(createArtifact ? { createArtifact: true } : {}) },
       replaces,
     );
   }
@@ -977,7 +977,7 @@ export function ChatView({
       return;
     }
     const { text: body, replyToMessageId, files } = restored;
-    if (restored.artifactMode) setArtifactDraft(artifactKey);
+    if (restored.createArtifact) setArtifactDraft(artifactKey);
     if (!editedMessages.current.size) draftBeforeEdit.current = getComposerDraft(draftChat);
     editedMessages.current.add(clientMessageId);
     setEditDraft((current) => {
@@ -1325,7 +1325,7 @@ export function ChatView({
               ) : (
                 <ChatComposer
                   sendRetryVersion={sendRetryVersion}
-                  artifactMode={artifactMode}
+                  createArtifact={createArtifact}
                   onRemoveArtifact={() => setArtifactDraft(null)}
                   replyTarget={replyTarget}
                   replyFocusVersion={replyFocusVersion}
@@ -1401,7 +1401,7 @@ export function ChatView({
             keyboardOffset={keyboardOffset}
             liquidGlassAvailable={liquidGlassAvailable}
             onClose={attachments.closeMenu}
-            onArtifact={
+            onCreateArtifact={
               failureAgent?.provider === "claude" && workspace().canCreateArtifact(target.serverId)
                 ? () => setArtifactDraft(artifactKey)
                 : undefined

@@ -327,7 +327,7 @@ export interface ConversationProps {
     target?: ConversationTarget,
     clientMessageId?: string,
     voiceRecordingDraftId?: string,
-    artifactMode?: boolean,
+    createArtifact?: boolean,
   ) => Promise<SendMessageResult>;
   onMarkRead: () => Promise<void>;
   /** Marks an agent message and the messages after it unread. Without it, the message menu has no such item. */
@@ -427,10 +427,11 @@ export interface ConversationProps {
 export type SendMessageResult = { messageId: string } | { error: string; reference?: string | null };
 
 export interface ComposerDraft {
-  artifactMode?: boolean;
   text: string;
   attachments: DraftAttachment[];
   replyToMessageId: string | null;
+  /** This send asks Claude for one claude.ai artifact. It clears when the message leaves the box. */
+  createArtifact?: boolean;
 }
 
 /**
@@ -527,7 +528,7 @@ export interface ConversationThreads {
     text: string,
     attachmentDraftIds: string[],
     replyToMessageId?: string | null,
-    artifactMode?: boolean,
+    createArtifact?: boolean,
   ) => Promise<boolean>;
   onStop: () => void;
   /** Stops any side thread of the agent by its task id. Missing where the host cannot stop a thread. */
@@ -634,7 +635,7 @@ export interface SideThread {
     text: string,
     attachmentDraftIds: string[],
     replyToMessageId?: string | null,
-    artifactMode?: boolean,
+    createArtifact?: boolean,
   ) => Promise<boolean>;
   onStop: () => void;
   onRead: (messageId: string) => void;
