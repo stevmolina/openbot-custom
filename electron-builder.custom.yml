@@ -13,8 +13,9 @@
 # System Settings. The text inside the app says Pokebots because of the brand layer
 # (`scripts/brand-layer.ts`), which `bun run build` runs when `OPENBOT_BRAND_NAME` is set. The same
 # build also defaults to the self-hosted account service `api.pokebots.xyz` and its Signal.
-# The blue icon: `build/custom/icon-custom.icns` for Finder and the Dock, and the blue logo-color
-# files in place of the release icons that the app shows in the Dock while it runs. There is no
+# The legacy icon: `build/custom/icon-custom.icns` (the first Pokebots app's blue headphones
+# plush) for Finder and the Dock, and `build/custom/icon-pokebots.png` in place of the release
+# icons that the app shows in the Dock while it runs. There is no
 # icon catalog (`Assets.car`), because the committed one is lavender; macOS then uses the `.icns`.
 # The build is signed ad hoc (`identity: null`), so it must not ask for Apple-restricted
 # entitlements (`associated-domains`, `team-identifier`) and must not use the hardened runtime:
@@ -73,7 +74,7 @@ extraResources:
     to: cli
   - from: resources/agent-runtime
     to: agent-runtime
-  - from: build/logo-colors/icon-blue.png
+  - from: build/custom/icon-pokebots.png
     to: icons/icon-production.png
   - from: build/icon-dev.png
     to: icons/icon-dev.png
@@ -108,7 +109,7 @@ mac:
   hardenedRuntime: false
   icon: build/custom/icon-custom.icns
   extraResources:
-    - from: build/logo-colors/icon-blue-macos-safe-area.png
+    - from: build/custom/icon-pokebots-safe-area.png
       to: icons/icon-production-macos-safe-area.png
     - from: build/icon-dev-macos-safe-area.png
       to: icons/icon-dev-macos-safe-area.png
