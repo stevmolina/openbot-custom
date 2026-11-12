@@ -184,6 +184,25 @@ export interface SendMessageInput {
    * the message for replay and never gives it to the agent.
    */
   voiceRecordingDraftId?: string;
+  /**
+   * This message asks Claude to create a claude.ai artifact. The host drops it after that request.
+   * A joined server receives it inside `text` until the host reads it, because the message body
+   * cannot grow a field.
+   */
+  createArtifact?: boolean;
+}
+
+/** Marks a message so a host can give that one request the claude.ai Artifact tools. */
+const ARTIFACT_REQUEST_MARK = "\u2063openbot-artifact\u2063\n";
+
+export function artifactRequestText(text: string): string {
+  return text.startsWith(ARTIFACT_REQUEST_MARK) ? text : `${ARTIFACT_REQUEST_MARK}${text}`;
+}
+
+/** Removes the artifact mark. The stored chat text never keeps it. */
+export function readArtifactRequest(text: string): { text: string; createArtifact: boolean } {
+  if (!text.startsWith(ARTIFACT_REQUEST_MARK)) return { text, createArtifact: false };
+  return { text: text.slice(ARTIFACT_REQUEST_MARK.length), createArtifact: true };
 }
 
 /**

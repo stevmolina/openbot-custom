@@ -891,6 +891,7 @@ export function createComposerActions(deps: ComposerActionsDeps) {
         target,
         pending.clientMessageId,
         pending.voiceRecordingDraftId ?? undefined,
+        pending.draft.createArtifact === true,
       );
       if ("error" in result) {
         playActionSound("error");

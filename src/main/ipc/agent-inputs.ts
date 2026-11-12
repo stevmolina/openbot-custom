@@ -590,6 +590,9 @@ export function parseSendMessage(value: unknown): SendMessageInput {
   ) {
     throw new Error("Invalid voice recording draft.");
   }
+  if (value.createArtifact !== undefined && typeof value.createArtifact !== "boolean") {
+    throw new Error("Invalid artifact request.");
+  }
   return {
     agentId: requireString(value.agentId, "agentId"),
     text: value.text,
@@ -598,6 +601,7 @@ export function parseSendMessage(value: unknown): SendMessageInput {
     ...(clientMessageId === undefined ? {} : { clientMessageId }),
     ...(taskId === undefined ? {} : { taskId }),
     ...(voiceRecordingDraftId === undefined ? {} : { voiceRecordingDraftId }),
+    ...(value.createArtifact === true ? { createArtifact: true } : {}),
   };
 }
 

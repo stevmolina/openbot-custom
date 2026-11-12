@@ -66,6 +66,7 @@ import type {
   WorkspaceDirectory,
 } from "@openbot/contracts/ipc";
 import {
+  artifactRequestText,
   canAdministerServer,
   DEFAULT_PROVIDER_ACCOUNT_ID,
   decodeAgentFastModels,
@@ -148,7 +149,10 @@ import {
   CONVERSATION_UNREAD_FROM_CAPABILITY,
   CONVERSATION_UNREAD_FROM_ROUTE,
 } from "@openbot/contracts/team-protocol/conversation-unread-from-v1";
-import { TEAM_BROWSER_NAVIGATION_CAPABILITY } from "@openbot/contracts/team-protocol/current";
+import {
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
+  TEAM_BROWSER_NAVIGATION_CAPABILITY,
+} from "@openbot/contracts/team-protocol/current";
 import { FOCUS_USE_ROUTES } from "@openbot/contracts/team-protocol/focus-use-v1";
 import { MESSAGE_DELETE_CAPABILITY, MESSAGE_DELETE_ROUTES } from "@openbot/contracts/team-protocol/message-delete-v1";
 import {
@@ -390,6 +394,7 @@ export interface WebWorkspaceRuntime {
     attachmentDraftIds: string[],
     replyToMessageId?: string | null,
     clientMessageId?: string,
+    createArtifact?: boolean,
   ): Promise<string>;
   stop(agentId: string, turnId: string): Promise<void>;
   /** Sends which agent this member is writing to, or `null`. It does nothing while the host is offline. */
@@ -1535,9 +1540,12 @@ export function createWebWorkspaceRuntime(
         throw new Error(currentText().t("error.remote.invalidData"));
       return `data:${value.mimeType};base64,${value.base64}`;
     },
-    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId) {
+    async send(id, text, attachmentDraftIds, replyToMessageId = null, clientMessageId, createArtifact = false) {
       const result = await request("POST", TEAM_API_ROUTES.agent.messages(id), {
-        text,
+        text:
+          createArtifact && capabilities.includes(CLAUDE_ARTIFACT_REQUEST_CAPABILITY)
+            ? artifactRequestText(text)
+            : text,
         attachmentDraftIds,
         replyToMessageId,
         // The host uses this browser's zone for a routine the agent creates from the message.

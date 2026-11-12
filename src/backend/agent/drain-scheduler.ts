@@ -1019,6 +1019,9 @@ export class DrainScheduler {
                 ...(client.provider === "codex" || client.provider === "claude"
                   ? this.#serviceTier(agent, client.provider)
                   : {}),
+                ...(client.provider === "claude" && batch.some((item) => item.createArtifact)
+                  ? { createArtifact: true }
+                  : {}),
               },
               decodeTurnResponse,
             )

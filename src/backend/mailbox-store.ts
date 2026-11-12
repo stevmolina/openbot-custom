@@ -122,6 +122,8 @@ interface StoredMessage {
    * but no chat, queue or preview shows it. Absent on every other message.
    */
   welcome?: true;
+  /** This request asks Claude for one claude.ai artifact. Absent on older messages. */
+  createArtifact?: true;
   createdAt: string;
 }
 
@@ -211,6 +213,8 @@ interface EnqueueInput {
   expectsReply?: boolean | undefined;
   /** The setup message of a new agent, which the user does not see. */
   welcome?: boolean;
+  /** This request asks Claude for one claude.ai artifact. */
+  createArtifact?: true;
   draftIds?: string[];
   /** An audio draft of what the user said. Kept with the message, not sent to the recipient. */
   voiceRecordingDraftId?: string;
@@ -239,6 +243,8 @@ export interface DeliveryContext {
   channelId?: string;
   /** The side thread that an agent sent the message from. */
   senderTaskId?: string;
+  /** This request asks Claude for one claude.ai artifact. */
+  createArtifact?: true;
 }
 
 const EMPTY_STATE: StoredState = {
@@ -650,6 +656,7 @@ export class MailboxStore {
         replyToMessageId: input.replyToMessageId ?? null,
         ...(input.expectsReply === false ? { expectsReply: false as const } : {}),
         ...(input.welcome ? { welcome: true as const } : {}),
+        ...(input.createArtifact ? { createArtifact: true as const } : {}),
         createdAt,
       };
       const deliveries = recipients.map<StoredDelivery>((recipientAgentId) => ({
@@ -3298,6 +3305,7 @@ export class MailboxStore {
       ...(delivery.planContinuation ? { planContinuation: delivery.planContinuation } : {}),
       ...(message.channelId ? { channelId: message.channelId } : {}),
       ...(message.senderTaskId ? { senderTaskId: message.senderTaskId } : {}),
+      ...(message.createArtifact ? { createArtifact: true as const } : {}),
       managedAttachments: message.attachments.map((attachment) => ({
         ...toAttachmentSummary(attachment),
         path: attachment.path,

@@ -8,6 +8,7 @@ import {
   type QueueSnapshot,
 } from "@openbot/contracts/ipc";
 import {
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   TEAM_ANY_FILE_ATTACHMENTS_CAPABILITY,
   TEAM_EML_ATTACHMENTS_CAPABILITY,
   TEAM_MEDIA_ATTACHMENTS_CAPABILITY,
@@ -45,6 +46,7 @@ import { useText } from "@openbot/ui/text";
 import { createEffect, createMemo, createSignal, createStore, Loading, lazy, Show } from "solid-js";
 import { reportErrorBanner, reportNotification } from "../../error-reports";
 import { deviceSendShortcut, sendShortcutAriaKey, sendShortcutHintKey } from "../../send-shortcut-preference";
+import { serverSupportsCapability } from "../servers/server-capabilities";
 import { speechReading } from "../speech/speech-playback";
 import { stopSpokenReply } from "../speech/speech-replies";
 import { backgroundWorkerItems } from "./background-worker-items";
@@ -619,6 +621,24 @@ export function ConversationComposer() {
               />
             )}
           </ComposerStackCard>
+          <ComposerStackCard when={currentDraft().createArtifact === true}>
+            {() => (
+              <div class="composer-reply-preview">
+                <div>
+                  <span>{t("composer.add.artifact")}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  aria-label={t("composer.artifact.remove")}
+                  disabled={voicePhase() === "transcribing"}
+                  onClick={() => updateCurrentDraft({ createArtifact: false })}
+                >
+                  {t("composer.artifact.remove")}
+                </Button>
+              </div>
+            )}
+          </ComposerStackCard>
           <ComposerStackCard when={replyTarget()}>
             {(message) => (
               <ComposerReplyPreview
@@ -820,6 +840,13 @@ export function ConversationComposer() {
               onTeach={teachTask()}
               onSideQuestion={askSideQuestion()}
               onVoice={openVoiceConversation()}
+              onCreateArtifact={
+                props.agent?.provider === "claude" &&
+                !channel &&
+                serverSupportsCapability(props.server, CLAUDE_ARTIFACT_REQUEST_CAPABILITY)
+                  ? () => updateCurrentDraft({ createArtifact: true })
+                  : undefined
+              }
             />
             <div class="composer-primary-actions">
               <Show when={contextUsageView(context())}>
