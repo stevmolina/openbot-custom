@@ -629,8 +629,8 @@
   flex: 0 1 28px;
 }
 
-/* A stack of rings in the dock: the first ring in front, the others peeking out below it, and the
- * stack fans out when hovered or focused. */
+/* A stack of rings in the dock: the first ring in front, up to two outer rims peeking out below it,
+ * and the full stack fans out when hovered or focused. */
 .sidebar-usage.sidebar-usage-column {
   flex-direction: column;
   align-items: center;
@@ -640,7 +640,9 @@
 .sidebar-usage-column > .ui-motion-tooltip-trigger {
   position: relative;
   display: flex;
-  transition: margin-top var(--openbot-duration-normal) var(--openbot-ease-out);
+  transition:
+    margin-top var(--openbot-duration-normal) var(--openbot-ease-out),
+    opacity var(--openbot-duration-fast) var(--openbot-ease-out);
 }
 
 .sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(1) {
@@ -668,16 +670,26 @@
 }
 
 .sidebar-usage-column > .ui-motion-tooltip-trigger + .ui-motion-tooltip-trigger {
-  margin-top: -26px;
+  margin-top: -29px;
+}
+
+.sidebar-usage-column > .ui-motion-tooltip-trigger:nth-child(n + 4) {
+  margin-top: calc(-1 * var(--sidebar-usage-ring));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar-usage-column:is(:hover, :focus-within) > .ui-motion-tooltip-trigger + .ui-motion-tooltip-trigger {
   margin-top: 2px;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 @media (hover: none) {
   .sidebar-usage-column > .ui-motion-tooltip-trigger + .ui-motion-tooltip-trigger {
     margin-top: 2px;
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 
@@ -702,7 +714,7 @@
 
 .sidebar-chat .sidebar-usage-column .sidebar-usage-button.ui-button {
   background: var(--openbot-bg-sidebar);
-  box-shadow: 0 0 0 2px var(--openbot-bg-sidebar);
+  box-shadow: 0 0 0 1.5px var(--openbot-bg-sidebar);
 }
 
 .sidebar-chat .sidebar-usage-tab .sidebar-usage-button.ui-button {
