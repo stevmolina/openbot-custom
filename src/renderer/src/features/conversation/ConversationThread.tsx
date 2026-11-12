@@ -223,6 +223,7 @@ export function ConversationThread() {
   /** Continue on a sign-in card goes to the open thread, as the person's next message there. */
   const extras = useCustomThreadExtras({ messages, excludeTaskId: () => props.threads?.open?.id });
   const mcpSignInCard = useThreadMcpSignInCard(
+    messages,
     (body) => props.threads?.onSend(body, [], null) ?? Promise.resolve(false),
   );
   /** The cards that the thread waits for: its browser takeover, and its question as a form. */
