@@ -222,6 +222,9 @@ export const messages = {
   "settings.notch.xwayland.unsupported":
     "XWayland가 없는 Wayland에서는 Dynamic Island를 다른 앱 위에 표시할 수 없습니다.",
   "settings.notch.xwayland.restart": "다시 시작",
+  "settings.notch.needsYouOnly.title": "에이전트가 필요할 때만",
+  "settings.notch.needsYouOnly.description":
+    "승인, 질문, 브라우저 단계에서만 아일랜드를 표시해요. 에이전트가 작업하거나 답하는 동안에는 숨겨요.",
   "settings.notch.idle.title": "대기 상태 아일랜드 표시",
   "settings.notch.idle.description": "활성 상태가 없을 때 OpenBot 로고와 인사말을 표시해요.",
   "settings.notch.displays.title": "추가 디스플레이에 표시",

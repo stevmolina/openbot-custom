@@ -160,6 +160,7 @@ export const navItems: ReadonlyArray<SettingsNavItem> = [
         descriptionKey: "settings.notch.show.description",
         macOS: false,
       },
+      { titleKey: "settings.notch.needsYouOnly.title", descriptionKey: "settings.notch.needsYouOnly.description" },
       { titleKey: "settings.notch.idle.title", descriptionKey: "settings.notch.idle.description" },
       { titleKey: "settings.notch.displays.title", descriptionKey: "settings.notch.displays.description" },
       { titleKey: "settings.notch.haptics.title", descriptionKey: "settings.notch.haptics.description", macOS: true },

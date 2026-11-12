@@ -134,9 +134,17 @@ export function SettingsDynamicIslandTab(props: SettingsDynamicIslandTabProps) {
             onRestart={() => settingsPort().dynamicIsland.setXWayland({ enabled: true })}
           />
           <SwitchField
+            data-settings-row="settings.notch.needsYouOnly.title"
+            checked={props.value.macBookNotchNeedsYouOnly}
+            disabled={!props.value.macBookNotch}
+            onChange={(checked) => props.onUpdateSetting("macBookNotchNeedsYouOnly", checked)}
+            label={i18n.t("settings.notch.needsYouOnly.title")}
+            description={i18n.t("settings.notch.needsYouOnly.description")}
+          />
+          <SwitchField
             data-settings-row="settings.notch.idle.title"
             checked={props.value.macBookNotchIdle}
-            disabled={!props.value.macBookNotch}
+            disabled={!props.value.macBookNotch || props.value.macBookNotchNeedsYouOnly}
             onChange={(checked) => props.onUpdateSetting("macBookNotchIdle", checked)}
             label={i18n.t("settings.notch.idle.title")}
             description={i18n.t("settings.notch.idle.description")}

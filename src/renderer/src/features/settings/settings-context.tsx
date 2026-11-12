@@ -37,6 +37,7 @@ function islandSettings(preference: DynamicIslandPreference) {
     macBookNotch: preference.enabled,
     macBookNotchHaptics: preference.hapticsEnabled,
     macBookNotchIdle: preference.idleVisible,
+    macBookNotchNeedsYouOnly: preference.needsYouOnly,
     macBookNotchAdditionalDisplays: preference.additionalDisplaysEnabled,
     macBookNotchWidthPercent: preference.widthPercent,
     macBookNotchHeightPercent: preference.heightPercent,
@@ -433,6 +434,7 @@ const Settings = createSimpleContext({
         previous.macBookNotch !== value.macBookNotch ||
         previous.macBookNotchHaptics !== value.macBookNotchHaptics ||
         previous.macBookNotchIdle !== value.macBookNotchIdle ||
+        previous.macBookNotchNeedsYouOnly !== value.macBookNotchNeedsYouOnly ||
         previous.macBookNotchAdditionalDisplays !== value.macBookNotchAdditionalDisplays ||
         previous.macBookNotchWidthPercent !== value.macBookNotchWidthPercent ||
         previous.macBookNotchHeightPercent !== value.macBookNotchHeightPercent ||
@@ -447,6 +449,7 @@ const Settings = createSimpleContext({
             enabled: value.macBookNotch,
             hapticsEnabled: value.macBookNotchHaptics,
             idleVisible: value.macBookNotchIdle,
+            needsYouOnly: value.macBookNotchNeedsYouOnly,
             additionalDisplaysEnabled: value.macBookNotchAdditionalDisplays,
             widthPercent: value.macBookNotchWidthPercent,
             heightPercent: value.macBookNotchHeightPercent,
@@ -468,6 +471,7 @@ const Settings = createSimpleContext({
               macBookNotch: previous.macBookNotch,
               macBookNotchHaptics: previous.macBookNotchHaptics,
               macBookNotchIdle: previous.macBookNotchIdle,
+              macBookNotchNeedsYouOnly: previous.macBookNotchNeedsYouOnly,
               macBookNotchAdditionalDisplays: previous.macBookNotchAdditionalDisplays,
               macBookNotchWidthPercent: previous.macBookNotchWidthPercent,
               macBookNotchHeightPercent: previous.macBookNotchHeightPercent,

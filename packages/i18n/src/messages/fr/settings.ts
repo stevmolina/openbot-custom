@@ -236,6 +236,9 @@ export const messages = {
   "settings.notch.xwayland.unsupported":
     "Sous Wayland sans XWayland, l’îlot dynamique ne peut pas s’afficher au-dessus des autres apps.",
   "settings.notch.xwayland.restart": "Redémarrer",
+  "settings.notch.needsYouOnly.title": "Seulement quand un agent a besoin de vous",
+  "settings.notch.needsYouOnly.description":
+    "Afficher l’îlot uniquement pour les approbations, les questions et les étapes du navigateur. Il reste masqué pendant que les agents travaillent ou répondent.",
   "settings.notch.idle.title": "Afficher l’îlot au repos",
   "settings.notch.idle.description": "Afficher le logo OpenBot et un message d’accueil lorsqu’aucun état n’est actif.",
   "settings.notch.displays.title": "Afficher sur les écrans supplémentaires",

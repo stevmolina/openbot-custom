@@ -228,6 +228,9 @@ export const messages = {
   "settings.notch.xwayland.unsupported":
     "على Wayland بدون XWayland، لا يمكن أن تظهر Dynamic Island فوق التطبيقات الأخرى.",
   "settings.notch.xwayland.restart": "إعادة التشغيل",
+  "settings.notch.needsYouOnly.title": "فقط عندما يحتاج إليك وكيل",
+  "settings.notch.needsYouOnly.description":
+    "عرض الجزيرة فقط للموافقات والأسئلة وخطوات المتصفح. إخفاؤها أثناء عمل الوكلاء أو ردودهم.",
   "settings.notch.idle.title": "عرض الجزيرة في وضع الخمول",
   "settings.notch.idle.description": "عرض شعار OpenBot والتحية عند عدم وجود حالة نشطة.",
   "settings.notch.displays.title": "العرض على شاشات إضافية",

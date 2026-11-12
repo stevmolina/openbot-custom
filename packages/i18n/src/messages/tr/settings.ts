@@ -224,6 +224,9 @@ export const messages = {
   "settings.notch.xwayland.unsupported":
     "XWayland olmayan Wayland'de Dynamic Island diğer uygulamaların üstünde görünemez.",
   "settings.notch.xwayland.restart": "Yeniden başlat",
+  "settings.notch.needsYouOnly.title": "Yalnızca bir ajan size ihtiyaç duyduğunda",
+  "settings.notch.needsYouOnly.description":
+    "Adayı yalnızca onaylar, sorular ve tarayıcı adımları için gösterin. Ajanlar çalışırken veya yanıt verirken gizli kalır.",
   "settings.notch.idle.title": "Boştaki adayı göster",
   "settings.notch.idle.description": "Hiçbir durum etkin olmadığında OpenBot logosunu ve selamlamasını gösterin.",
   "settings.notch.displays.title": "Ek ekranlarda göster",

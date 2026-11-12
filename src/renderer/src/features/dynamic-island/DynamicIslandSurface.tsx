@@ -4,7 +4,11 @@ import type {
   DynamicIslandPreference,
   DynamicIslandPresentation,
 } from "@openbot/contracts/ipc";
-import { DEFAULT_DYNAMIC_ISLAND_PREFERENCE, IDLE_DYNAMIC_ISLAND_PRESENTATION } from "@openbot/contracts/ipc";
+import {
+  DEFAULT_DYNAMIC_ISLAND_PREFERENCE,
+  dynamicIslandShowsMode,
+  IDLE_DYNAMIC_ISLAND_PRESENTATION,
+} from "@openbot/contracts/ipc";
 import type { DynamicIslandNotchSize, DynamicIslandStateChangeReason, DynamicIslandViewState } from "@openbot/ui";
 import { OpenBotDynamicIsland } from "@openbot/ui/features/dynamic-island/OpenBotDynamicIsland";
 import { useText } from "@openbot/ui/text";
@@ -64,7 +68,8 @@ export function DynamicIslandSurface() {
   // new shape. A ResizeObserver is not used: the motion resizes the shell in its own observer callback,
   // and the browser then reports an observer loop error. No timer runs.
   const shapeObserver = SHAPED_WINDOW ? new MutationObserver(() => followShape()) : undefined;
-  const visible = () => presentation().mode !== "idle" || preference().idleVisible;
+  // The same rule as the main process uses to hide the window, so no stale drawing shows when it returns.
+  const visible = () => dynamicIslandShowsMode(preference(), presentation().mode);
 
   /** Linux: tells main the parts of the window that take the pointer. Only a change is sent. */
   function syncShape(): Element[] {
@@ -118,15 +123,13 @@ export function DynamicIslandSurface() {
   function commitPresentation(next: DynamicIslandPresentation): void {
     if (presentationIdentity(next) !== presentationIdentity(presentation())) clearActionError();
     setPresentation(next);
-    if (next.mode === "idle") {
-      setViewState("compact");
-      if (!preference().idleVisible) closeInteraction();
-    }
+    if (next.mode === "idle") setViewState("compact");
+    if (!dynamicIslandShowsMode(preference(), next.mode)) closeInteraction();
   }
 
   function applyPreference(next: DynamicIslandPreference): void {
     setPreference(next);
-    if (!next.idleVisible && presentation().mode === "idle") {
+    if (!dynamicIslandShowsMode(next, presentation().mode)) {
       setViewState("compact");
       closeInteraction();
     }
