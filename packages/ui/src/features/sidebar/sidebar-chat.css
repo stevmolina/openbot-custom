@@ -1018,7 +1018,11 @@
   fill: var(--openbot-provider-current);
 }
 
+/* The count is a pill whose left part hides behind the logo before it, so its text starts after it. */
 .sidebar-provider-stack-count {
+  width: auto;
+  min-width: var(--sidebar-provider-stack-avatar);
+  padding-inline: calc(var(--sidebar-provider-stack-overlap) + 3px) 6px;
   font-size: var(--openbot-text-sm);
   font-variant-numeric: tabular-nums;
   font-weight: var(--openbot-weight-semibold);
