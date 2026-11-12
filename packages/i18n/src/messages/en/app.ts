@@ -113,6 +113,8 @@ export const messages = defineMessages("app", {
   "app.shortcuts.empty": "No shortcut matches “{query}”",
   "app.shortcuts.or": "or",
   "app.shortcuts.footer": "Show this list anytime",
+  "app.shortcuts.holdRelease": "Release {key} to hide",
+  "app.shortcuts.group.general": "General",
   "app.shortcuts.group.navigation": "Navigation",
   "app.shortcuts.group.chat": "Chat",
   "app.shortcuts.group.agents": "Agents",

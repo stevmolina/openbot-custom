@@ -111,6 +111,8 @@ export const messages = {
   "app.shortcuts.empty": "Kein Kurzbefehl passt zu „{query}“",
   "app.shortcuts.or": "oder",
   "app.shortcuts.footer": "Diese Liste jederzeit anzeigen",
+  "app.shortcuts.holdRelease": "{key} zum Ausblenden loslassen",
+  "app.shortcuts.group.general": "Allgemein",
   "app.shortcuts.group.navigation": "Navigation",
   "app.shortcuts.group.chat": "Chat",
   "app.shortcuts.group.agents": "Agenten",

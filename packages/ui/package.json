@@ -499,6 +499,7 @@
     "./features/shortcuts/shortcut-registry": "./src/features/shortcuts/shortcut-registry.ts",
     "./features/sidebar/sidebar-chat-step": "./src/features/sidebar/sidebar-chat-step.ts",
     "./features/conversation/composer-focus": "./src/features/conversation/composer-focus.ts",
+    "./features/shortcuts/HoldShortcutOverlay": "./src/features/shortcuts/HoldShortcutOverlay.tsx",
     "./features/shortcuts/ShortcutSheet": "./src/features/shortcuts/ShortcutSheet.tsx",
     "./features/shortcuts/ShortcutHint": "./src/features/shortcuts/ShortcutHint.tsx",
     "./features/shortcuts/shortcuts.css": "./src/features/shortcuts/shortcuts.css",

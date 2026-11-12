@@ -112,6 +112,8 @@ export const messages = {
   "app.shortcuts.empty": "אין קיצור התואם “{query}”",
   "app.shortcuts.or": "או",
   "app.shortcuts.footer": "הצגת הרשימה הזו בכל עת",
+  "app.shortcuts.holdRelease": "שחררו את {key} כדי להסתיר",
+  "app.shortcuts.group.general": "כללי",
   "app.shortcuts.group.navigation": "ניווט",
   "app.shortcuts.group.chat": "צ'אט",
   "app.shortcuts.group.agents": "סוכנים",

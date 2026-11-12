@@ -112,6 +112,8 @@ export const messages = {
   "app.shortcuts.empty": "Nessuna scorciatoia corrisponde a «{query}»",
   "app.shortcuts.or": "o",
   "app.shortcuts.footer": "Mostra questo elenco in qualsiasi momento",
+  "app.shortcuts.holdRelease": "Rilascia {key} per nascondere",
+  "app.shortcuts.group.general": "Generali",
   "app.shortcuts.group.navigation": "Navigazione",
   "app.shortcuts.group.chat": "Chat",
   "app.shortcuts.group.agents": "Agenti",

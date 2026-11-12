@@ -221,3 +221,104 @@
   min-width: 18px;
   height: 18px;
 }
+
+/* Holding the primary modifier shows a sheet without changing focus or pointer input. */
+.hold-shortcut-overlay {
+  position: fixed;
+  z-index: var(--openbot-layer-tooltip);
+  inset: 0;
+  width: min(1120px, calc(100vw - 2 * var(--openbot-space-6)));
+  height: fit-content;
+  max-height: calc(100dvh - 2 * var(--openbot-space-6));
+  margin: auto;
+  padding: var(--openbot-space-4);
+  border-radius: var(--openbot-radius-xl);
+  background: var(--openbot-bg-control);
+  box-shadow:
+    0 0 0 1px var(--openbot-dialog-ring),
+    0 var(--openbot-space-4) var(--openbot-space-8) var(--openbot-shadow-dialog);
+  color: var(--openbot-text-primary);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--openbot-duration-fast) var(--openbot-ease-out),
+    visibility 0s var(--openbot-duration-fast);
+}
+
+.hold-shortcut-overlay[data-open="true"] {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.hold-shortcut-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--openbot-space-3);
+  margin-bottom: var(--openbot-space-4);
+}
+
+.hold-shortcut-head h2 {
+  margin: 0;
+  font-size: var(--openbot-text-md);
+  font-weight: var(--openbot-weight-medium);
+}
+
+.hold-shortcut-head > span {
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+}
+
+.hold-shortcut-groups {
+  columns: 3;
+  column-gap: var(--openbot-space-6);
+}
+
+.hold-shortcut-group {
+  break-inside: avoid;
+  margin-bottom: var(--openbot-space-4);
+}
+
+.hold-shortcut-group h3 {
+  margin: 0 0 var(--openbot-space-2);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+  font-weight: var(--openbot-weight-medium);
+}
+
+.hold-shortcut-group ul {
+  display: grid;
+  gap: var(--openbot-space-1-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hold-shortcut-group li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--openbot-space-2);
+  font-size: var(--openbot-text-sm);
+  line-height: var(--openbot-leading-sm);
+}
+
+@media (height < 720px) {
+  .hold-shortcut-group ul {
+    gap: var(--openbot-space-0-5);
+  }
+}
+
+@media (width < 900px) {
+  .hold-shortcut-groups {
+    columns: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hold-shortcut-overlay {
+    transition: none;
+  }
+}

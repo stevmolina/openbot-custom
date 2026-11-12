@@ -112,6 +112,8 @@ export const messages = {
   "app.shortcuts.empty": "Ningún atajo coincide con «{query}»",
   "app.shortcuts.or": "o",
   "app.shortcuts.footer": "Muestra esta lista cuando quieras",
+  "app.shortcuts.holdRelease": "Suelta {key} para ocultar",
+  "app.shortcuts.group.general": "General",
   "app.shortcuts.group.navigation": "Navegación",
   "app.shortcuts.group.chat": "Chat",
   "app.shortcuts.group.agents": "Agentes",

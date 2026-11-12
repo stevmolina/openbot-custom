@@ -113,6 +113,8 @@ export const messages = {
   "app.shortcuts.empty": "Żaden skrót nie pasuje do „{query}”",
   "app.shortcuts.or": "lub",
   "app.shortcuts.footer": "Pokaż tę listę w dowolnej chwili",
+  "app.shortcuts.holdRelease": "Puść {key}, aby ukryć",
+  "app.shortcuts.group.general": "Ogólne",
   "app.shortcuts.group.navigation": "Nawigacja",
   "app.shortcuts.group.chat": "Czat",
   "app.shortcuts.group.agents": "Agenci",

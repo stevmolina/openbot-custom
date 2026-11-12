@@ -112,6 +112,8 @@ export const messages = {
   "app.shortcuts.empty": "Aucun raccourci ne correspond à « {query} »",
   "app.shortcuts.or": "ou",
   "app.shortcuts.footer": "Afficher cette liste à tout moment",
+  "app.shortcuts.holdRelease": "Relâchez {key} pour masquer",
+  "app.shortcuts.group.general": "Général",
   "app.shortcuts.group.navigation": "Navigation",
   "app.shortcuts.group.chat": "Discussion",
   "app.shortcuts.group.agents": "Agents",

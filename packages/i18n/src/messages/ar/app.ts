@@ -115,6 +115,8 @@ export const messages = {
   "app.shortcuts.empty": "لا يوجد اختصار يطابق «{query}»",
   "app.shortcuts.or": "أو",
   "app.shortcuts.footer": "اعرض هذه القائمة في أي وقت",
+  "app.shortcuts.holdRelease": "اترك {key} للإخفاء",
+  "app.shortcuts.group.general": "عام",
   "app.shortcuts.group.navigation": "التنقل",
   "app.shortcuts.group.chat": "الدردشة",
   "app.shortcuts.group.agents": "الوكلاء",

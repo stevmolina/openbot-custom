@@ -106,6 +106,8 @@ export const messages = {
   "app.shortcuts.empty": "“{query}”와 일치하는 단축키 없음",
   "app.shortcuts.or": "또는",
   "app.shortcuts.footer": "이 목록은 언제든 표시할 수 있습니다",
+  "app.shortcuts.holdRelease": "{key} 키를 놓으면 숨김",
+  "app.shortcuts.group.general": "일반",
   "app.shortcuts.group.navigation": "탐색",
   "app.shortcuts.group.chat": "채팅",
   "app.shortcuts.group.agents": "에이전트",

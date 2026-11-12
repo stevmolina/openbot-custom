@@ -113,6 +113,8 @@ export const messages = {
   "app.shortcuts.empty": "Нет сочетаний для «{query}»",
   "app.shortcuts.or": "или",
   "app.shortcuts.footer": "Показать этот список в любой момент",
+  "app.shortcuts.holdRelease": "Отпустите {key}, чтобы скрыть",
+  "app.shortcuts.group.general": "Общие",
   "app.shortcuts.group.navigation": "Навигация",
   "app.shortcuts.group.chat": "Чат",
   "app.shortcuts.group.agents": "Агенты",

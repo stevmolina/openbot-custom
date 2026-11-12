@@ -111,6 +111,8 @@ export const messages = {
   "app.shortcuts.empty": "「{query}」に一致するショートカットはありません",
   "app.shortcuts.or": "または",
   "app.shortcuts.footer": "この一覧はいつでも表示できます",
+  "app.shortcuts.holdRelease": "{key} を離すと非表示",
+  "app.shortcuts.group.general": "一般",
   "app.shortcuts.group.navigation": "ナビゲーション",
   "app.shortcuts.group.chat": "チャット",
   "app.shortcuts.group.agents": "エージェント",

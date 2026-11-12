@@ -113,6 +113,8 @@ export const messages = {
   "app.shortcuts.empty": "没有与「{query}」匹配的快捷键",
   "app.shortcuts.or": "或",
   "app.shortcuts.footer": "随时显示此列表",
+  "app.shortcuts.holdRelease": "松开 {key} 即可隐藏",
+  "app.shortcuts.group.general": "常规",
   "app.shortcuts.group.navigation": "导航",
   "app.shortcuts.group.chat": "对话",
   "app.shortcuts.group.agents": "助手",

@@ -1,4 +1,5 @@
 import { focusComposerEditor } from "@openbot/ui/features/conversation/composer-focus";
+import { HoldShortcutOverlay } from "@openbot/ui/features/shortcuts/HoldShortcutOverlay";
 import { ShortcutSheet } from "@openbot/ui/features/shortcuts/ShortcutSheet";
 import type { ShortcutId, ShortcutPlatform } from "@openbot/ui/features/shortcuts/shortcut-registry";
 import { sidebarChatStep } from "@openbot/ui/features/sidebar/sidebar-chat-step";
@@ -6,6 +7,8 @@ import { createSignal, onSettled } from "solid-js";
 import { playActionSound } from "../../action-sounds";
 import { appPort } from "../../app-port";
 import { useLayout } from "../../layout";
+import { currentDevicePlatform, deviceSendShortcut } from "../../send-shortcut-preference";
+import { installHoldShortcuts } from "./hold-shortcuts";
 import { installShortcutKeys, onShortcutCommand, runMenuCommand } from "./shortcut-commands";
 
 /**
@@ -22,6 +25,7 @@ export function AppShortcuts(props: {
 }) {
   const layout = useLayout();
   const [open, setOpen] = createSignal(false);
+  const [held, setHeld] = createSignal(false);
   /** Opens the next chat of the sidebar the way a click on its row does. */
   const stepChat = (offset: 1 | -1, unread: boolean) => {
     const row = sidebarChatStep(document, offset, unread);
@@ -52,11 +56,23 @@ export function AppShortcuts(props: {
       onShortcutCommand("typeToComposer", () => focusComposerEditor(document)),
     ];
     if (props.nativeMenu) removals.push(appPort().onRunShortcut(runMenuCommand));
+    // Native desktop only: a web browser owns its own modifier and menu shortcuts.
+    if (props.nativeMenu) removals.push(installHoldShortcuts(window, () => props.platform, setHeld));
     return () => {
       for (const remove of removals) remove();
     };
   });
   return (
-    <ShortcutSheet open={open()} onOpenChange={setOpen} platform={props.platform ?? "mac"} hidden={props.hidden} />
+    <>
+      <ShortcutSheet open={open()} onOpenChange={setOpen} platform={props.platform ?? "mac"} hidden={props.hidden} />
+      {props.nativeMenu && (
+        <HoldShortcutOverlay
+          open={held() && !open()}
+          platform={props.platform ?? "mac"}
+          windows={currentDevicePlatform() === "win32"}
+          sendShortcut={deviceSendShortcut()}
+        />
+      )}
+    </>
   );
 }

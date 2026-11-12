@@ -111,6 +111,8 @@ export const messages = {
   "app.shortcuts.empty": "“{query}” ile eşleşen kısayol yok",
   "app.shortcuts.or": "veya",
   "app.shortcuts.footer": "Bu listeyi istediğiniz zaman gösterin",
+  "app.shortcuts.holdRelease": "Gizlemek için {key} tuşunu bırakın",
+  "app.shortcuts.group.general": "Genel",
   "app.shortcuts.group.navigation": "Gezinme",
   "app.shortcuts.group.chat": "Sohbet",
   "app.shortcuts.group.agents": "Ajanlar",

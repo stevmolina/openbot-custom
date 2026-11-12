@@ -111,6 +111,8 @@ export const messages = {
   "app.shortcuts.empty": "Geen sneltoets komt overeen met “{query}”",
   "app.shortcuts.or": "of",
   "app.shortcuts.footer": "Toon deze lijst altijd",
+  "app.shortcuts.holdRelease": "Laat {key} los om te verbergen",
+  "app.shortcuts.group.general": "Algemeen",
   "app.shortcuts.group.navigation": "Navigatie",
   "app.shortcuts.group.chat": "Chat",
   "app.shortcuts.group.agents": "Agents",

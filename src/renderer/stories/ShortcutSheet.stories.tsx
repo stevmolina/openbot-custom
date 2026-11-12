@@ -1,4 +1,5 @@
 import { Button, Heading } from "@openbot/ui";
+import { HoldShortcutOverlay } from "@openbot/ui/features/shortcuts/HoldShortcutOverlay";
 import { ShortcutSheet, type ShortcutSheetProps } from "@openbot/ui/features/shortcuts/ShortcutSheet";
 import { createSignal } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
@@ -65,4 +66,14 @@ export const WebClient: Story = {
       "browserSelectTab",
     ],
   },
+};
+
+/** The passive sheet uses the same keys and theme as the interactive dialog. */
+export const HoldModifier: Story = {
+  render: (props) => <HoldShortcutOverlay open platform={props.platform} windows={false} sendShortcut="enter" />,
+};
+
+export const HoldControl: Story = {
+  args: { platform: "pc" },
+  render: (props) => <HoldShortcutOverlay open platform={props.platform} windows sendShortcut="ctrl-enter" />,
 };
