@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createOpenBotLogger, toLogValue } from "@openbot/logging";
@@ -19,13 +18,13 @@ const environmentArgs = cloudflareEnvironment ? ["--env", cloudflareEnvironment]
 
 async function main(): Promise<void> {
   // Check both values before any remote change. Test Workers do not send account analytics.
-  if (!cloudflareEnvironment) {
-    requiredSecret("OPENPANEL_CLIENT_ID");
+  // This checkout deploys the pokebots.xyz account service. It has no OpenPanel project
+  // and no private home-page beam. Sign-in does not use either one.
+  if (!cloudflareEnvironment && process.env.OPENPANEL_CLIENT_ID?.trim()) {
     requiredSecret("OPENPANEL_CLIENT_SECRET");
-    assertLandingBeam();
   }
   assertFcmServiceAccount();
-  await putRequiredSecret("EMAIL_SMTP_PASSWORD");
+  await putOptionalSecret("EMAIL_SMTP_PASSWORD");
   await putRequiredSecret("SKILLS_ADMIN_TOKEN");
   await putRequiredSecret("SITE_REPORT_HASH_SECRET");
   await putRequiredSecret("REMOTE_TICKET_PRIVATE_JWK");
@@ -57,8 +56,8 @@ async function main(): Promise<void> {
     // The key is in the encrypted .env.dev file. Each developer who can decrypt it can create servers.
     await putOptionalSecret("HOSTED_SERVERS_DEVELOPER_KEY");
   }
-  // Only production sends account events, so a test Worker does not add events to the production project.
-  if (!cloudflareEnvironment) {
+  // Only production sends account events. This pokebots deploy leaves them unset.
+  if (!cloudflareEnvironment && process.env.OPENPANEL_CLIENT_ID?.trim()) {
     await putRequiredSecret("OPENPANEL_CLIENT_ID");
     await putRequiredSecret("OPENPANEL_CLIENT_SECRET");
   }
@@ -75,9 +74,13 @@ async function main(): Promise<void> {
   });
   // A deploy replaces every file under /assets/. Open tabs keep loading the files of their build.
   if (!cloudflareEnvironment) {
-    await run(bunExecutable, [join(apiRoot, "scripts", "keep-previous-assets.ts")], {
-      label: "Earlier code files",
-    });
+    await run(
+      bunExecutable,
+      [join(apiRoot, "scripts", "keep-previous-assets.ts"), "--origin=https://api.pokebots.xyz"],
+      {
+        label: "Earlier code files",
+      },
+    );
   }
   // Production sends email through the relay Worker, so the relay must exist before the account Worker.
   if (!cloudflareEnvironment) {
@@ -88,15 +91,6 @@ async function main(): Promise<void> {
   await run(wranglerExecutable, ["deploy", "--keep-vars", ...environmentArgs], {
     label: "Auth API deployment",
   });
-}
-
-// The build drops the home page beam when the private port is missing. Production always has it.
-function assertLandingBeam(): void {
-  const port = join(apiRoot, "src", "vendor", "laser-flow", "LandingLaserFlow.tsx");
-  if (existsSync(port)) return;
-  throw new Error(
-    "The home page beam is missing. Clone nightly-labs/openbot-laser-flow into apps/auth-api/src/vendor/laser-flow.",
-  );
 }
 
 function requiredSecret(name: string): string {

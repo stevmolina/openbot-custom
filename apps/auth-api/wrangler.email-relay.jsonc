@@ -15,6 +15,6 @@
   // Runs the relay near the mail host, and not near the caller. Keep it equal to EMAIL_SMTP_HOST and
   // EMAIL_SMTP_PORT in `wrangler.jsonc`.
   "placement": {
-    "host": "mail.privateemail.com:465"
+    "host": "smtp.gmail.com:465"
   }
 }
