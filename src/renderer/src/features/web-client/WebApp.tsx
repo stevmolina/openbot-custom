@@ -584,7 +584,12 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
     >
       <NotificationObserver onShown={reportNotification}>
         <div class="web-app">
-          <Toaster onToastShown={reportNotification} />
+          {/* The installed app draws under the notch, so the toasts start below the status bar. */}
+          <Toaster
+            onToastShown={reportNotification}
+            offset={{ top: "calc(env(safe-area-inset-top, 0px) + 24px)" }}
+            mobileOffset={{ top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
+          />
           <WebServiceWorkerUpdates />
           <Show when={state.loaded}>
             <Show
