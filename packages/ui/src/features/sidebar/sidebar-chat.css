@@ -511,7 +511,8 @@
 }
 
 /* A stack of rings in the dock: the first ring in front, up to two outer rims peeking out below it,
- * and the full stack fans out when hovered or focused. */
+ * and the full stack fans out when hovered or focused. A touch screen keeps the stack closed too: a tap
+ * on it opens the usage page, which lists every provider. */
 .sidebar-usage.sidebar-usage-column {
   flex-direction: column;
   align-items: center;
@@ -564,14 +565,6 @@
   margin-top: 2px;
   opacity: 1;
   pointer-events: auto;
-}
-
-@media (hover: none) {
-  .sidebar-usage-column > .ui-motion-tooltip-trigger + .ui-motion-tooltip-trigger {
-    margin-top: 2px;
-    opacity: 1;
-    pointer-events: auto;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
