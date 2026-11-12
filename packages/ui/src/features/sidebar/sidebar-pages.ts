@@ -44,7 +44,7 @@ export interface SidebarCustomAgentUsage {
 export interface SidebarPages {
   /** The page on screen, or `null` while a page that the sidebar does not open shows. */
   current: SidebarPage | null;
-  /** The pages that show as pill buttons. The More menu has all pages, with a pin for each one. */
+  /** The pages that show as pill buttons. The More menu has all pages, and pins them in Customize pill. */
   pinned: readonly SidebarPinnablePage[];
   onPinChange: (page: SidebarPinnablePage, pinned: boolean) => void;
   /** The plan limits of each provider account. Each one with a reported window shows as rings. */

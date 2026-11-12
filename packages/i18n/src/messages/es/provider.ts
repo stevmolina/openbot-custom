@@ -140,6 +140,7 @@ export const messages = {
   "provider.picker.effort": "Esfuerzo",
   "provider.picker.effortLabel": "Esfuerzo de razonamiento del agente",
   "provider.picker.effortFixed": "{effort}, fijado por {provider}",
+  "provider.picker.reasoning": "Razonamiento",
   "provider.picker.fast": "Rápido",
   "provider.picker.fastText": "Respuestas más rápidas, mayor uso",
   "provider.picker.speed": "Velocidad",

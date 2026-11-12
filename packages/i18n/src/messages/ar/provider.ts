@@ -155,6 +155,7 @@ export const messages = {
   "provider.picker.effort": "الجهد",
   "provider.picker.effortLabel": "جهد التفكير لدى الوكيل",
   "provider.picker.effortFixed": "{effort}، يحدده {provider}",
+  "provider.picker.reasoning": "التفكير",
   "provider.picker.fast": "سريع",
   "provider.picker.fastText": "ردود أسرع واستخدام أكبر",
   "provider.picker.speed": "السرعة",

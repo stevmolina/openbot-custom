@@ -4096,6 +4096,11 @@
     "zh"
   ],
   "sidebar.chat.server": ["ar", "de", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"],
+  "sidebar.more.customize": ["ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"],
+  "sidebar.pill.moreProviders": ["ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"],
+  "sidebar.pill.openUsage": ["ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"],
+  "sidebar.pill.providers": ["ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"],
+  "sidebar.pill.providersTitle": ["ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"],
   "sitePage.contact.channel.discord": ["ar", "de", "es", "fr", "it", "ja", "ko", "nl", "ru", "tr", "zh"],
   "sitePage.contact.channel.github": ["ar", "de", "es", "fr", "it", "ja", "ko", "nl", "ru", "tr", "zh"],
   "sitePage.contact.channel.x": ["ar", "de", "es", "fr", "it", "ja", "ko", "nl", "ru", "tr", "zh"],

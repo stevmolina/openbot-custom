@@ -313,3 +313,12 @@
 .web-other-tab-use.ui-button {
   min-width: 200px;
 }
+
+/* On iPhone and iPad (the only browsers with `-webkit-touch-callout`), the message box is plain text.
+   iPadOS adds Bold, Italic and Underline buttons to the keyboard bar of a rich-text field, and the
+   composer has no formatting to apply. Chips stay: they are elements that the editor adds itself. */
+@supports (-webkit-touch-callout: none) {
+  .composer-editor-surface[contenteditable="true"] {
+    -webkit-user-modify: read-write-plaintext-only;
+  }
+}

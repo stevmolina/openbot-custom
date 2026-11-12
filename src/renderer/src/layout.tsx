@@ -53,10 +53,10 @@ function shouldAutoCompactSidebar(
 }
 
 /**
- * The pages in the pill of the sidebar until the user chooses. The others start in the More menu.
- * Usage has its own row of rings above the pill.
+ * The pages in the pill of the sidebar until the user chooses: none, so the pill stays small. Every page
+ * is in the More menu, and Customize pill there pins one. A saved choice still wins.
  */
-const RAIL_PINNED_BY_DEFAULT: ReadonlySet<SidebarPinnablePage> = new Set(["tasks", "workflows", "machines"]);
+const RAIL_PINNED_BY_DEFAULT: ReadonlySet<SidebarPinnablePage> = new Set();
 
 // A record, not an object: a page that only another version knows keeps its choice when this version saves.
 const railPinChoicesSchema = z.record(z.string(), z.boolean().optional().catch(undefined));
