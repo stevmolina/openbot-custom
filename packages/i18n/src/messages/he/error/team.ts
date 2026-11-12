@@ -120,6 +120,7 @@ export const messages = {
   "error.team.browsingMemoryUnsupported": "החיבור הזה לא תומך בלמידה מגלישה.",
   "error.team.promptCacheTtlUnsupported": "זמן מטמון ההנחיות אינו נתמך בחיבור הזה.",
   "error.team.claudeUserSetupUnsupported": "החיבור הזה לא תומך במתג ההגדרות של Claude Code.",
+  "error.team.claudeAiToolsUnsupported": "החיבור הזה לא תומך במתג הכלים של claude.ai.",
   "error.team.claudeCompactWindowUnsupported": "החיבור הזה לא תומך בגודל הכיווץ של Claude.",
   "error.team.modelVisibilityUnsupported": "רשימת המודלים אינה נתמכת בחיבור הזה.",
   "error.team.providerDefaultUnsupported": "ספק ברירת המחדל אינו נתמך בחיבור הזה.",

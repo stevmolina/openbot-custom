@@ -63,6 +63,11 @@ import {
   BROWSING_MEMORY_ROUTES,
 } from "@openbot/contracts/team-protocol/browsing-memory-v1";
 import {
+  CLAUDE_AI_TOOLS_CAPABILITY,
+  CLAUDE_AI_TOOLS_ROUTES,
+  decodeClaudeAiToolsResponse,
+} from "@openbot/contracts/team-protocol/claude-ai-tools-v1";
+import {
   CLAUDE_COMPACT_WINDOW_CAPABILITY,
   CLAUDE_COMPACT_WINDOW_ROUTES,
   decodeClaudeCompactWindowResponse,
@@ -104,6 +109,7 @@ import { runCauseEffect } from "../../backend/effect-boundary";
 import { type AgentAccessStore, agentAccessSnapshot } from "../agent-access-store";
 import type { AgentMemoryLimitSetting } from "../agent-memory-limit-preference-store";
 import type { BrowsingMemoryPreferenceStore } from "../browsing-memory-preference-store";
+import type { ClaudeAiToolsControl } from "../claude-ai-tools-preference-store";
 import type { ClaudeCompactWindowControl } from "../claude-compact-window-preference-store";
 import type { ClaudeUserSetupControl } from "../claude-user-setup-preference-store";
 import type { HostService } from "../host-service";
@@ -147,6 +153,7 @@ interface HostAdminIpcDependencies {
   machineAlerts: Pick<MachineAlertMonitor, "alerts" | "setAlerts" | "canBeResponsible">;
   promptCacheTtl: Pick<PromptCacheTtlPreferenceStore, "get" | "set">;
   claudeUserSetup: ClaudeUserSetupControl;
+  claudeAiTools: ClaudeAiToolsControl;
   claudeCompactWindow: ClaudeCompactWindowControl;
   modelVisibility: Pick<ModelVisibility, "settings" | "set">;
   agentAccess: Pick<AgentAccessStore, "levels" | "set">;
@@ -176,6 +183,7 @@ export function hostAdminIpcHandlers({
   machineAlerts,
   promptCacheTtl,
   claudeUserSetup,
+  claudeAiTools,
   claudeCompactWindow,
   modelVisibility,
   agentAccess,
@@ -241,6 +249,13 @@ export function hostAdminIpcHandlers({
       throw new Error(sourceText("error.team.claudeUserSetupUnsupported"));
     return runCauseEffect(
       remoteServers.request(serverId, route, decodeClaudeUserSetupResponse, { method: "POST", body }),
+    );
+  }
+  function remoteClaudeAiTools(serverId: string, route: string, body: { enabled?: boolean }) {
+    if (!remoteServers.supportsCapability(serverId, CLAUDE_AI_TOOLS_CAPABILITY))
+      throw new Error(sourceText("error.team.claudeAiToolsUnsupported"));
+    return runCauseEffect(
+      remoteServers.request(serverId, route, decodeClaudeAiToolsResponse, { method: "POST", body }),
     );
   }
   function remoteClaudeCompactWindow(serverId: string, route: string, body: { tokens?: number | null }) {
@@ -460,6 +475,14 @@ export function hostAdminIpcHandlers({
         local: (enabled) => runCauseEffect(claudeUserSetup.set(enabled)),
         remote: (enabled, serverId) => remoteClaudeUserSetup(serverId, CLAUDE_USER_SETUP_ROUTES.update, { enabled }),
       }),
+      getClaudeAiTools: scopedQueryHandler({
+        local: () => claudeAiTools.get(),
+        remote: (serverId) => remoteClaudeAiTools(serverId, CLAUDE_AI_TOOLS_ROUTES.settings, {}),
+      }),
+      setClaudeAiTools: scopedHandler(parseClaudeAiTools, {
+        local: (enabled) => runCauseEffect(claudeAiTools.set(enabled)),
+        remote: (enabled, serverId) => remoteClaudeAiTools(serverId, CLAUDE_AI_TOOLS_ROUTES.update, { enabled }),
+      }),
       getClaudeCompactWindow: scopedQueryHandler({
         local: () => claudeCompactWindow.get(),
         remote: (serverId) => remoteClaudeCompactWindow(serverId, CLAUDE_COMPACT_WINDOW_ROUTES.settings, {}),
@@ -536,6 +559,11 @@ function wireIdentity(input: UpdateHostIdentityInput) {
 
 function parseClaudeUserSetup(value: unknown): boolean {
   if (typeof value !== "boolean") throw new Error("Invalid Claude setup setting.");
+  return value;
+}
+
+function parseClaudeAiTools(value: unknown): boolean {
+  if (typeof value !== "boolean") throw new Error("Invalid claude.ai tools setting.");
   return value;
 }
 

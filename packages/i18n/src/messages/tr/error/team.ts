@@ -123,6 +123,7 @@ export const messages = {
   "error.team.browsingMemoryUnsupported": "Bu bağlantı gezinmeden öğrenmeyi desteklemiyor.",
   "error.team.promptCacheTtlUnsupported": "Bu bağlantı istem önbelleği süresini desteklemiyor.",
   "error.team.claudeUserSetupUnsupported": "Bu bağlantı Claude Code kurulumu anahtarını desteklemiyor.",
+  "error.team.claudeAiToolsUnsupported": "Bu bağlantı claude.ai araçları anahtarını desteklemiyor.",
   "error.team.claudeCompactWindowUnsupported": "Bu bağlantı Claude sıkıştırma boyutunu desteklemiyor.",
   "error.team.modelVisibilityUnsupported": "Bu bağlantı model listesini desteklemiyor.",
   "error.team.providerDefaultUnsupported": "Bu bağlantı varsayılan sağlayıcıyı desteklemiyor.",

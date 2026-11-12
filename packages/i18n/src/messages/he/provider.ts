@@ -315,6 +315,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "הסוכנים טוענים את CLAUDE.md, המיומנויות, הסוכנים, ה-hooks והתוספים מ-~/.claude בשרת. כשהמתג כבוי, כל תור שולח הנחיה קצרה יותר. קובצי סביבת העבודה עדיין נטענים.",
   "provider.settings.claudeUserSetupLoadFailed": "לא ניתן לטעון את ההגדרה של Claude Code.",
+  "provider.settings.claudeAiTools": "שימוש בכלים של claude.ai",
+  "provider.settings.claudeAiToolsDescription":
+    "סוכני Claude יכולים לפרסם Artifacts ולהשתמש במחברים שלך ב-claude.ai, כמו Gmail, Notion ו-Slack. נדרשת התחברות עם claude.ai. מוסיף כ-13k אסימונים לכל בקשה.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "סוכני Claude יכולים לפרסם Artifacts ולהשתמש במחברים של claude.ai של חשבון Claude בשרת. נדרשת התחברות עם claude.ai. מוסיף כ-13k אסימונים לכל בקשה.",
+  "provider.settings.claudeAiToolsLoadFailed": "לא ניתן לטעון את ההגדרה של הכלים של claude.ai.",
   "provider.settings.context": "הקשר",
   "provider.settings.compactWindow": "כיווץ צ׳אטים ב־",
   "provider.settings.compactWindowDescription":

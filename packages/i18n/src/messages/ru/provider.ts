@@ -281,6 +281,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "Агенты загружают CLAUDE.md, навыки, агентов, хуки и плагины из ~/.claude на сервере. Если выключено, каждый ход отправляет более короткий промпт. Файлы рабочей области по-прежнему загружаются.",
   "provider.settings.claudeUserSetupLoadFailed": "Не удалось загрузить настройку Claude Code.",
+  "provider.settings.claudeAiTools": "Использовать инструменты claude.ai",
+  "provider.settings.claudeAiToolsDescription":
+    "Агенты Claude могут публиковать Artifacts и использовать ваши коннекторы claude.ai, например Gmail, Notion и Slack. Нужен вход через claude.ai. Добавляет около 13k токенов к каждому запросу.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Агенты Claude могут публиковать Artifacts и использовать коннекторы claude.ai аккаунта Claude на сервере. Нужен вход через claude.ai. Добавляет около 13k токенов к каждому запросу.",
+  "provider.settings.claudeAiToolsLoadFailed": "Не удалось загрузить настройку инструментов claude.ai.",
   "provider.settings.context": "Контекст",
   "provider.settings.compactWindow": "Сжимать чаты при",
   "provider.settings.compactWindowDescription":

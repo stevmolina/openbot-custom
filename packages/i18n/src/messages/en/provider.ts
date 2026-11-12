@@ -328,6 +328,12 @@ export const messages = defineMessages("provider", {
   "provider.settings.claudeUserSetupServerDescription":
     "Agents load the CLAUDE.md, skills, agents, hooks and plugins from ~/.claude on the server. Off, each turn sends a shorter prompt. Workspace files still load.",
   "provider.settings.claudeUserSetupLoadFailed": "Could not load the Claude Code setting.",
+  "provider.settings.claudeAiTools": "Use claude.ai tools",
+  "provider.settings.claudeAiToolsDescription":
+    "Claude agents can publish Artifacts and use your claude.ai connectors, such as Gmail, Notion and Slack. Needs a claude.ai sign-in. Adds about 13k tokens to each request.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Claude agents can publish Artifacts and use the claude.ai connectors of the Claude account on the server. Needs a claude.ai sign-in. Adds about 13k tokens to each request.",
+  "provider.settings.claudeAiToolsLoadFailed": "Could not load the claude.ai tools setting.",
   "provider.settings.context": "Context",
   "provider.settings.compactWindow": "Compact chats at",
   "provider.settings.compactWindowDescription":

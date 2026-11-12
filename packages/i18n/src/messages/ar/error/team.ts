@@ -121,6 +121,7 @@ export const messages = {
   "error.team.browsingMemoryUnsupported": "هذا الاتصال لا يدعم التعلّم من التصفّح.",
   "error.team.promptCacheTtlUnsupported": "مدة ذاكرة التخزين المؤقت للموجّه غير مدعومة في هذا الاتصال.",
   "error.team.claudeUserSetupUnsupported": "هذا الاتصال لا يدعم مفتاح إعداد Claude Code.",
+  "error.team.claudeAiToolsUnsupported": "هذا الاتصال لا يدعم مفتاح أدوات claude.ai.",
   "error.team.claudeCompactWindowUnsupported": "هذا الاتصال لا يدعم حجم ضغط Claude.",
   "error.team.modelVisibilityUnsupported": "قائمة النماذج غير مدعومة في هذا الاتصال.",
   "error.team.providerDefaultUnsupported": "المزوّد الافتراضي غير مدعوم في هذا الاتصال.",

@@ -131,6 +131,7 @@ export const messages = {
   "error.team.promptCacheTtlUnsupported": "Diese Verbindung unterstützt die Prompt-Cache-Dauer nicht.",
   "error.team.claudeUserSetupUnsupported":
     "Diese Verbindung unterstützt den Schalter für die Claude-Code-Einrichtung nicht.",
+  "error.team.claudeAiToolsUnsupported": "Diese Verbindung unterstützt den Schalter für die claude.ai-Werkzeuge nicht.",
   "error.team.claudeCompactWindowUnsupported": "Diese Verbindung unterstützt die Claude-Komprimierungsgröße nicht.",
   "error.team.modelVisibilityUnsupported": "Diese Verbindung unterstützt die Modellliste nicht.",
   "error.team.providerDefaultUnsupported": "Diese Verbindung unterstützt den Standardanbieter nicht.",

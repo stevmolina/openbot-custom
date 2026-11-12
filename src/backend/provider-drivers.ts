@@ -565,6 +565,11 @@ export interface ProviderClientContext {
    */
   readonly claudeUserSetup?: () => boolean;
   /**
+   * Whether Claude gets the Artifact tools and the claude.ai connectors of its sign-in, read at each
+   * spawn. Optional for the same reason as `reportMcpDrops`: without it Claude gets neither.
+   */
+  readonly claudeAiTools?: () => boolean;
+  /**
    * The size in tokens at which Claude Code compacts a chat, read at each spawn. `null` and absent
    * leave Claude Code's own size for each model.
    */
@@ -931,6 +936,7 @@ export const BUILT_IN_PROVIDER_DRIVERS: readonly BuiltInProviderDriver[] = [
         undefined,
         claudeFallbackApiKey(context),
         context.claudeUserSetup,
+        context.claudeAiTools,
       ),
     authState: (account) => ({ kind: "claude", email: account?.email ?? null }),
     validateAccount: () => undefined,

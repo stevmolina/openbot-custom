@@ -50,6 +50,7 @@ import {
   type ProviderKeyApi,
 } from "@openbot/ui/features/settings/OpenCodeKeyDialog";
 import {
+  type ProviderClaudeAiTools,
   type ProviderClaudeCompactWindow,
   type ProviderClaudeUserSetup,
   type ProviderDefaultChoice,
@@ -64,6 +65,7 @@ import { createEffect, createMemo, createSignal, createStore, Show, untrack } fr
 import { ProviderSignInDialogs } from "../../components/ProviderSignInDialogs";
 import type { ProviderConnectionApi } from "../../components/provider-connection-api";
 import { createCustomProviderHostState } from "../custom-providers/custom-provider-host-state";
+import { createProviderClaudeAiTools, type ProviderClaudeAiToolsSource } from "./provider-claude-ai-tools";
 import {
   createProviderClaudeCompactWindow,
   type ProviderClaudeCompactWindowSource,
@@ -128,6 +130,7 @@ interface ProviderSettingsSectionProps {
   onDetailChange?: ((detail: ProviderSettingsDetail | null) => void) | undefined;
   promptCache?: ProviderPromptCache | undefined;
   claudeUserSetup?: ProviderClaudeUserSetup | undefined;
+  claudeAiTools?: ProviderClaudeAiTools | undefined;
   claudeCompactWindow?: ProviderClaudeCompactWindow | undefined;
   modelVisibility?: ((provider: AgentProviderId) => ProviderModelVisibilityControl) | undefined;
 }
@@ -305,6 +308,7 @@ function ProviderSettingsSection(props: ProviderSettingsSectionProps) {
         onDetailChange={props.onDetailChange}
         promptCache={props.promptCache}
         claudeUserSetup={props.claudeUserSetup}
+        claudeAiTools={props.claudeAiTools}
         claudeCompactWindow={props.claudeCompactWindow}
         modelVisibility={props.modelVisibility}
         footer={
@@ -587,6 +591,8 @@ export function HostProviderSettingsPanel(
     promptCache?: ProviderPromptCacheSource | undefined;
     /** The Claude page's "Use my Claude Code setup" switch, for a host with `claude-user-setup-v1` that this account administers. */
     claudeUserSetup?: ProviderClaudeUserSetupSource | undefined;
+    /** The Claude page's "Use claude.ai tools" switch, for a host with `claude-ai-tools-v1` that this account administers. */
+    claudeAiTools?: ProviderClaudeAiToolsSource | undefined;
     /** The Claude page's compaction size, for a host with `claude-compact-window-v1` that this account administers. */
     claudeCompactWindow?: ProviderClaudeCompactWindowSource | undefined;
     /** The Models section of each provider page, for a host with `model-visibility-v1` that this account administers. */
@@ -606,6 +612,10 @@ export function HostProviderSettingsPanel(
   );
   const claudeUserSetup = createProviderClaudeUserSetup(
     () => props.claudeUserSetup,
+    () => props.agentStatus,
+  );
+  const claudeAiTools = createProviderClaudeAiTools(
+    () => props.claudeAiTools,
     () => props.agentStatus,
   );
   const claudeCompactWindow = createProviderClaudeCompactWindow(
@@ -681,6 +691,7 @@ export function HostProviderSettingsPanel(
         onDetailChange={props.onDetailChange}
         promptCache={promptCache()}
         claudeUserSetup={claudeUserSetup()}
+        claudeAiTools={claudeAiTools()}
         claudeCompactWindow={claudeCompactWindow()}
         modelVisibility={modelVisibility()}
         detectionSettings={
