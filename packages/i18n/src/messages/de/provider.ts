@@ -141,6 +141,7 @@ export const messages = {
   "provider.picker.effort": "Aufwand",
   "provider.picker.effortLabel": "Denkaufwand des Agenten",
   "provider.picker.effortFixed": "{effort}, festgelegt von {provider}",
+  "provider.picker.reasoning": "Denken",
   "provider.picker.fast": "Schnell",
   "provider.picker.fastText": "Schnellere Antworten, höhere Nutzung",
   "provider.picker.speed": "Geschwindigkeit",

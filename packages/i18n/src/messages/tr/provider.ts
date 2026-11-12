@@ -137,6 +137,7 @@ export const messages = {
   "provider.picker.effort": "Efor",
   "provider.picker.effortLabel": "Ajan akıl yürütme eforu",
   "provider.picker.effortFixed": "{effort}, {provider} tarafından sabit",
+  "provider.picker.reasoning": "Akıl yürütme",
   "provider.picker.fast": "Hızlı",
   "provider.picker.fastText": "Daha hızlı yanıtlar, daha fazla kullanım",
   "provider.picker.speed": "Hız",

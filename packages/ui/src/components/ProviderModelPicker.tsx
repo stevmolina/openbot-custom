@@ -32,6 +32,7 @@ import { planLimitWindowKind, spentUsageWindow } from "@openbot/team-client/plan
 import {
   Badge,
   Button,
+  ChevronUp,
   Input,
   KeyRound,
   Layers,
@@ -39,11 +40,13 @@ import {
   Plus,
   Popover,
   Progress,
+  Search,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  ShieldCheck,
   SlidersHorizontal,
   Tabs,
   Text,
@@ -77,7 +80,18 @@ interface ProviderModelPickerProps {
   value: AgentModelId;
   modelOptions: ClientAgentModelOption[];
   agentStatus: AgentStatus;
-  variant?: "pill" | "field";
+  /**
+   * `composer` is the chip in the message box: it opens upward, with the providers, the models and the
+   * reasoning efforts side by side, and a footer with the speed and the access of the agent.
+   */
+  variant?: "pill" | "field" | "composer";
+  /**
+   * The keyboard of the device. The `composer` variant then names ⌘1 to ⌘9 (Ctrl on a PC) on the
+   * first nine models of the open provider, and the keys choose them while the picker is open.
+   */
+  shortcutPlatform?: "mac" | "pc" | undefined;
+  /** The access of the agent, in the footer of the `composer` variant. A click opens its setting. */
+  access?: { label: string; onOpen: (trigger: HTMLElement) => void } | undefined;
   ariaLabel?: string;
   label?: string;
   /** A glyph before the field label. The `field` variant only. */
@@ -592,6 +606,16 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
   const triggerModelName = () =>
     displayModelName(props.foreignProvider === undefined ? selectedModel()?.name : foreignModelName(), props.value);
   const field = () => props.variant === "field";
+  const composer = () => props.variant === "composer";
+  /**
+   * The models that ⌘1 to ⌘9 choose in each open panel, and how a panel chooses one. Each panel
+   * registers itself, as only the panel knows its list after the search and the fold.
+   */
+  const panelShortcuts = new Map<RailKey, { models: () => PickerModel[]; choose: (model: PickerModel) => void }>();
+  const shortcutKey = (index: number): string | undefined => {
+    if (!composer() || !props.shortcutPlatform || index < 0 || index > 8) return undefined;
+    return props.shortcutPlatform === "mac" ? `⌘${index + 1}` : `Ctrl+${index + 1}`;
+  };
   const showsReasoningEffort = () => props.reasoningEffort !== undefined && props.onReasoningEffortChange !== undefined;
   /** An OpenCode model with variants: the chosen variant is its effort, and its name says so. */
   const selectedHasVariants = createMemo(
@@ -641,6 +665,12 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
     if (selectedFixed()?.fast === true) return "fast";
     return props.onFastModeChange ? speed() : "standard";
   };
+  /** The speeds of the composer footer: only for the agent's model, when it has a fast tier. */
+  const composerSpeeds = (): SpeedOption[] | undefined => {
+    const model = selectedModel();
+    if (props.foreignProvider !== undefined || !props.onFastModeChange || !model?.fastServiceTier) return undefined;
+    return model.ultrafastServiceTier ? ALL_SPEEDS : FAST_SPEEDS;
+  };
   const triggerSpeedName = () => {
     const value = triggerSpeed();
     return value === "standard" ? null : speedName(value, t);
@@ -653,7 +683,10 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
   const triggerShownName = () => {
     const name = triggerModelName();
     const prefix = `${railName(activeProvider(), t)} `;
-    return !field() && triggerAccount() && name.startsWith(prefix) ? name.slice(prefix.length) || name : name;
+    // The composer chip is short: the mark names the provider, so "Claude Opus 5.5" reads "Opus 5.5".
+    return !field() && (composer() || triggerAccount()) && name.startsWith(prefix)
+      ? name.slice(prefix.length) || name
+      : name;
   };
   /** True while the agent's provider pools its accounts and the agent is not on an API key. */
   const triggerPool = () =>
@@ -674,11 +707,20 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
       ref={(element) => (root = element)}
       class={["provider-model-picker", { "provider-model-picker-field": field() }]}
     >
-      <Popover.Root open={open()} onOpenChange={setPickerOpen} placement="bottom-end" gutter={8} sameWidth={field()}>
+      <Popover.Root
+        open={open()}
+        onOpenChange={setPickerOpen}
+        placement={composer() ? "top-end" : "bottom-end"}
+        gutter={8}
+        sameWidth={field()}
+      >
         <Popover.Trigger
           ref={trigger}
           type="button"
-          class={["provider-model-trigger", { "provider-model-trigger-field": field() }]}
+          class={[
+            "provider-model-trigger",
+            { "provider-model-trigger-field": field(), "provider-model-trigger-composer": composer() },
+          ]}
           aria-label={`${props.ariaLabel ?? t("provider.picker.agentModel")}: ${triggerSummary()}`}
           disabled={props.disabled || props.foreignProvider !== undefined}
           title={
@@ -689,7 +731,8 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                 : `${railName(activeProvider(), t)} · ${triggerSummary()}`
           }
           onKeyDown={(event: KeyboardEvent) => {
-            if (event.key !== "ArrowDown") return;
+            // The composer chip opens upward, so the arrow that points at the panel opens it too.
+            if (event.key !== "ArrowDown" && !(composer() && event.key === "ArrowUp")) return;
             event.preventDefault();
             setPickerOpen(true);
           }}
@@ -746,14 +789,27 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
               </span>
             </Show>
           </span>
-          <ChevronDownIcon />
+          <Show when={!composer()}>
+            <ChevronDownIcon />
+          </Show>
         </Popover.Trigger>
 
         <Popover.Content
           ref={(element) => (popover = element)}
-          class="provider-model-popover"
+          class={["provider-model-popover", { "provider-model-popover-composer": composer() }]}
           aria-hidden={open() ? undefined : "true"}
           onKeyDown={(event) => {
+            const digit = composer() && props.shortcutPlatform ? /^[1-9]$/.exec(event.key)?.[0] : undefined;
+            const modifier = props.shortcutPlatform === "mac" ? event.metaKey : event.ctrlKey;
+            if (digit && modifier && !event.altKey && !event.shiftKey) {
+              const panel = panelShortcuts.get(railProvider());
+              const model = panel?.models()[Number(digit) - 1];
+              if (panel && model) {
+                event.preventDefault();
+                panel.choose(model);
+              }
+              return;
+            }
             if (event.key !== "Escape") return;
             // Handled: a form that closes on Escape, such as the new-agent form, stays open.
             event.preventDefault();
@@ -920,6 +976,15 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                 const folds = () => !searching() && older().length > 0 && main().length > 0;
                 const groups = createMemo(() => groupPickerModels(folds() ? main() : models(), search()));
                 const olderGroups = createMemo(() => (folds() && showOlder() ? groupPickerModels(older(), "") : []));
+                /** The rows of the main list, in their order: ⌘1 is the first. */
+                const shortcutModels = createMemo(() => groups().flatMap((group) => group.models));
+                panelShortcuts.set(key, {
+                  models: shortcutModels,
+                  choose: (model) => {
+                    if (modelEnabled(model) && selectedKey() !== pickerModelKey(model))
+                      selectModel(model, accountId(), key);
+                  },
+                });
                 // OpenCode or Pi and Custom share one wire id; the tab whose list holds it owns it.
                 const ownsSelection = () =>
                   provider === CUSTOM_RAIL
@@ -960,6 +1025,7 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                             item={item}
                             type="button"
                             class={["provider-model-option", { "provider-model-option-selected": isSelected() }]}
+                            aria-keyshortcuts={shortcutKey(shortcutModels().indexOf(model))?.replace("⌘", "Meta+")}
                             aria-label={spentLabel(
                               model.id === railDefaultModel(provider)
                                 ? t("provider.picker.defaultModelLabel", { name: label() })
@@ -972,6 +1038,9 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                             }}
                           >
                             <span class="provider-model-option-name">
+                              <Show when={composer()}>
+                                <ProviderMark provider={provider} />
+                              </Show>
                               <span>{displayModelName(model.name, model.id)}</span>
                               <Show when={settings()}>
                                 {(text) => <span class="provider-model-option-settings">{text()}</span>}
@@ -986,6 +1055,9 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                                 <small>{t("provider.model.default")}</small>
                               </Show>
                             </span>
+                            <Show when={shortcutKey(shortcutModels().indexOf(model))}>
+                              {(keys) => <kbd class="provider-model-keycap">{keys()}</kbd>}
+                            </Show>
                             <Show when={isSelected()}>
                               <CheckIcon />
                             </Show>
@@ -1114,7 +1186,8 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                     class="provider-model-panel"
                     aria-label={t("provider.picker.models", { name: entryName(key) })}
                   >
-                    <div class="provider-model-heading">
+                    {/* The composer names the provider in the rail tooltip, and its status in the block below. */}
+                    <div class="provider-model-heading" hidden={composer()}>
                       <div
                         class={[
                           "provider-model-heading-text",
@@ -1150,132 +1223,215 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                         </Button>
                       </Show>
                     </div>
-                    <Show when={!available()}>
-                      <div class="provider-model-empty" role="status">
-                        <span>{runtimeMessage()}</span>
-                        <Show when={runtime()?.phase === "downloading"}>
-                          <Progress
-                            value={runtime()?.progress ?? 0}
-                            aria-label={t("provider.picker.download", { name: railName(provider, t) })}
+                    {/* A box of its own only in the composer, beside the reasoning column. */}
+                    <div class="provider-model-main">
+                      <Show when={!available()}>
+                        <div class="provider-model-empty" role="status">
+                          <span>{runtimeMessage()}</span>
+                          <Show when={runtime()?.phase === "downloading"}>
+                            <Progress
+                              value={runtime()?.progress ?? 0}
+                              aria-label={t("provider.picker.download", { name: railName(provider, t) })}
+                            />
+                          </Show>
+                          <Show when={runtimeAction()}>
+                            {(action) => (
+                              <Button
+                                type="button"
+                                size="xs"
+                                variant={action() === "Download" ? "default" : "outline"}
+                                onClick={() => {
+                                  const target = status().id;
+                                  if (action() === "Cancel") void props.onCancelProviderDownload?.(target);
+                                  else if (action() === "Connect") {
+                                    setConnectError(null);
+                                    void Promise.resolve(props.onConnectProvider?.(target)).catch((error: unknown) =>
+                                      setConnectError(
+                                        text.errorMessage(
+                                          error,
+                                          t("app.provider.connectFailedRetry", { name: railName(provider, t) }),
+                                        ),
+                                      ),
+                                    );
+                                  } else void props.onDownloadProvider?.(target);
+                                }}
+                              >
+                                {t(RUNTIME_ACTION_LABEL[action()])}
+                              </Button>
+                            )}
+                          </Show>
+                        </div>
+                      </Show>
+                      <Show
+                        when={composer()}
+                        fallback={
+                          <Input
+                            class="provider-model-search"
+                            aria-label={t("provider.picker.search")}
+                            placeholder={t("provider.picker.search")}
+                            value={search()}
+                            onValueChange={setSearch}
                           />
-                        </Show>
-                        <Show when={runtimeAction()}>
-                          {(action) => (
+                        }
+                      >
+                        <div class="provider-model-search-field">
+                          <Search aria-hidden="true" />
+                          <Input
+                            class="provider-model-search"
+                            aria-label={t("provider.picker.search")}
+                            placeholder={t("provider.picker.search")}
+                            value={search()}
+                            onValueChange={setSearch}
+                          />
+                        </div>
+                      </Show>
+                      <div class={["provider-model-scroll", fades.classes()]} ref={fades.bind} onScroll={fades.measure}>
+                        <Show
+                          when={groups().length > 0}
+                          fallback={
+                            <Show when={available()}>
+                              <div class="provider-model-empty" role="status">
+                                <Show
+                                  when={provider === CUSTOM_RAIL && !search().trim()}
+                                  fallback={
+                                    search().trim()
+                                      ? t("provider.picker.noMatches")
+                                      : // Meta sends a signed-in Muse account an empty list where Muse is not offered (#5983).
+                                        provider === "muse"
+                                        ? t("provider.picker.museNoModels")
+                                        : t("provider.picker.noModels", { name: railName(provider, t) })
+                                  }
+                                >
+                                  {/* A saved endpoint lists no model until its provider restarts and reads it. */}
+                                  <Show
+                                    when={props.customProviders?.length && endpointsRead()}
+                                    fallback={
+                                      <span>
+                                        {props.customProviders?.length
+                                          ? t("provider.picker.customPending")
+                                          : t("provider.picker.customEmpty")}
+                                      </span>
+                                    }
+                                  >
+                                    <span>
+                                      {t("provider.picker.customUnlisted", { name: railName(endpointStatus().id, t) })}
+                                    </span>
+                                    <Show when={props.onManageProviders}>
+                                      {(manageProviders) => (
+                                        <Button
+                                          type="button"
+                                          size="xs"
+                                          variant="outline"
+                                          onClick={() => {
+                                            trigger?.focus({ preventScroll: true });
+                                            setOpen(false);
+                                            if (trigger) manageProviders()(trigger);
+                                          }}
+                                        >
+                                          {t("provider.picker.editEndpoints")}
+                                        </Button>
+                                      )}
+                                    </Show>
+                                  </Show>
+                                </Show>
+                              </div>
+                            </Show>
+                          }
+                        >
+                          {modelList({
+                            label: t("provider.picker.models", { name: railName(provider, t) }),
+                            groups: groups(),
+                          })}
+                          <Show when={folds()}>
+                            {/* A row of the list, so it takes the look of a model row. */}
                             <Button
                               type="button"
-                              size="xs"
-                              variant={action() === "Download" ? "default" : "outline"}
-                              onClick={() => {
-                                const target = status().id;
-                                if (action() === "Cancel") void props.onCancelProviderDownload?.(target);
-                                else if (action() === "Connect") {
-                                  setConnectError(null);
-                                  void Promise.resolve(props.onConnectProvider?.(target)).catch((error: unknown) =>
-                                    setConnectError(
-                                      text.errorMessage(
-                                        error,
-                                        t("app.provider.connectFailedRetry", { name: railName(provider, t) }),
-                                      ),
-                                    ),
-                                  );
-                                } else void props.onDownloadProvider?.(target);
-                              }}
+                              variant="ghost"
+                              class="provider-model-option provider-model-older"
+                              aria-expanded={olderExpanded()}
+                              onClick={() => setShowOlder((shown) => !shown)}
                             >
-                              {t(RUNTIME_ACTION_LABEL[action()])}
+                              <span class="provider-model-option-name">
+                                <span>{t("provider.picker.olderModels")}</span>
+                                <small>{older().length}</small>
+                              </span>
+                              <ChevronDownIcon />
                             </Button>
-                          )}
+                          </Show>
+                          <Show when={olderGroups().length > 0}>
+                            {modelList({
+                              label: t("provider.picker.olderModelsList", { name: railName(provider, t) }),
+                              groups: olderGroups(),
+                            })}
+                          </Show>
+                        </Show>
+                      </div>
+                    </div>
+                    <Show
+                      when={composer() && (effortOptions().length > 0 || (ownsSelection() && selectedFixed()?.effort))}
+                    >
+                      <div class="provider-model-reasoning">
+                        <div class="provider-model-reasoning-heading">
+                          <span>{t("provider.picker.reasoning")}</span>
+                          <Show when={effortModel()}>
+                            {(model) => (
+                              <small>
+                                {shortModelName(displayModelName(model().name, model().id), railName(provider, t))}
+                              </small>
+                            )}
+                          </Show>
+                        </div>
+                        <Show
+                          when={effortOptions().length > 0}
+                          fallback={
+                            <Show when={selectedFixed()?.effort}>
+                              {(effort) => (
+                                <p class="provider-model-reasoning-fixed">
+                                  {t("provider.picker.effortFixed", {
+                                    effort: reasoningLabel(effort(), t),
+                                    provider: railName(provider, t),
+                                  })}
+                                </p>
+                              )}
+                            </Show>
+                          }
+                        >
+                          <fieldset
+                            class="provider-model-reasoning-list"
+                            aria-label={t("provider.picker.effortLabel")}
+                            disabled={effortLocked()}
+                          >
+                            <For each={effortOptions()}>
+                              {(option) => {
+                                const checked = () => option.id === effortValue();
+                                const isDefault = () =>
+                                  !effortModel()?.variants.length &&
+                                  option.id === effortOption()?.defaultReasoningEffort;
+                                return (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    class="provider-model-reasoning-option"
+                                    aria-pressed={checked() ? "true" : "false"}
+                                    disabled={props.disabled || effortLocked()}
+                                    onClick={() => chooseEffort(option.id)}
+                                  >
+                                    <span>{option.name}</span>
+                                    <Show when={isDefault() && !checked()}>
+                                      <small>{t("provider.model.default")}</small>
+                                    </Show>
+                                    <Show when={checked()}>
+                                      <CheckIcon />
+                                    </Show>
+                                  </Button>
+                                );
+                              }}
+                            </For>
+                          </fieldset>
                         </Show>
                       </div>
                     </Show>
-                    <Input
-                      class="provider-model-search"
-                      aria-label={t("provider.picker.search")}
-                      placeholder={t("provider.picker.search")}
-                      value={search()}
-                      onValueChange={setSearch}
-                    />
-                    <div class={["provider-model-scroll", fades.classes()]} ref={fades.bind} onScroll={fades.measure}>
-                      <Show
-                        when={groups().length > 0}
-                        fallback={
-                          <Show when={available()}>
-                            <div class="provider-model-empty" role="status">
-                              <Show
-                                when={provider === CUSTOM_RAIL && !search().trim()}
-                                fallback={
-                                  search().trim()
-                                    ? t("provider.picker.noMatches")
-                                    : // Meta sends a signed-in Muse account an empty list where Muse is not offered (#5983).
-                                      provider === "muse"
-                                      ? t("provider.picker.museNoModels")
-                                      : t("provider.picker.noModels", { name: railName(provider, t) })
-                                }
-                              >
-                                {/* A saved endpoint lists no model until its provider restarts and reads it. */}
-                                <Show
-                                  when={props.customProviders?.length && endpointsRead()}
-                                  fallback={
-                                    <span>
-                                      {props.customProviders?.length
-                                        ? t("provider.picker.customPending")
-                                        : t("provider.picker.customEmpty")}
-                                    </span>
-                                  }
-                                >
-                                  <span>
-                                    {t("provider.picker.customUnlisted", { name: railName(endpointStatus().id, t) })}
-                                  </span>
-                                  <Show when={props.onManageProviders}>
-                                    {(manageProviders) => (
-                                      <Button
-                                        type="button"
-                                        size="xs"
-                                        variant="outline"
-                                        onClick={() => {
-                                          trigger?.focus({ preventScroll: true });
-                                          setOpen(false);
-                                          if (trigger) manageProviders()(trigger);
-                                        }}
-                                      >
-                                        {t("provider.picker.editEndpoints")}
-                                      </Button>
-                                    )}
-                                  </Show>
-                                </Show>
-                              </Show>
-                            </div>
-                          </Show>
-                        }
-                      >
-                        {modelList({
-                          label: t("provider.picker.models", { name: railName(provider, t) }),
-                          groups: groups(),
-                        })}
-                        <Show when={folds()}>
-                          {/* A row of the list, so it takes the look of a model row. */}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            class="provider-model-option provider-model-older"
-                            aria-expanded={olderExpanded()}
-                            onClick={() => setShowOlder((shown) => !shown)}
-                          >
-                            <span class="provider-model-option-name">
-                              <span>{t("provider.picker.olderModels")}</span>
-                              <small>{older().length}</small>
-                            </span>
-                            <ChevronDownIcon />
-                          </Button>
-                        </Show>
-                        <Show when={olderGroups().length > 0}>
-                          {modelList({
-                            label: t("provider.picker.olderModelsList", { name: railName(provider, t) }),
-                            groups: olderGroups(),
-                          })}
-                        </Show>
-                      </Show>
-                    </div>
-                    <Show when={effortOptions().length > 0}>
+                    <Show when={!composer() && effortOptions().length > 0}>
                       <div class="provider-model-effort">
                         <span>{t("provider.picker.effort")}</span>
                         <Select<{ id: string; name: string }>
@@ -1300,7 +1456,9 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                         </Select>
                       </div>
                     </Show>
-                    <Show when={ownsSelection() && effortOptions().length === 0 && selectedFixed()?.effort}>
+                    <Show
+                      when={!composer() && ownsSelection() && effortOptions().length === 0 && selectedFixed()?.effort}
+                    >
                       {(effort) => (
                         <div class="provider-model-effort">
                           <span>{t("provider.picker.effort")}</span>
@@ -1313,7 +1471,11 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
                         </div>
                       )}
                     </Show>
-                    <Show when={ownsSelection() && selectedModel()?.fastServiceTier && props.onFastModeChange}>
+                    <Show
+                      when={
+                        !composer() && ownsSelection() && selectedModel()?.fastServiceTier && props.onFastModeChange
+                      }
+                    >
                       <div class="provider-model-effort">
                         <span>{t("provider.picker.speed")}</span>
                         <Select<SpeedOption>
@@ -1358,6 +1520,57 @@ export function ProviderModelPicker(props: ProviderModelPickerProps) {
               }}
             </For>
           </Tabs.Root>
+          <Show when={composer() && (composerSpeeds() || props.access)}>
+            <div class="provider-model-footer">
+              <Show when={composerSpeeds()}>
+                {(speeds) => (
+                  <fieldset class="provider-model-speed-switch" aria-label={t("provider.picker.speed")}>
+                    <For each={speeds()}>
+                      {(option) => (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          class="provider-model-speed-segment"
+                          aria-pressed={speed() === option.id ? "true" : "false"}
+                          title={t(SPEED_TEXT[option.id])}
+                          disabled={props.disabled}
+                          onClick={() => {
+                            if (option.id === savedSpeed() || props.disabled) return;
+                            props.onFastModeChange?.(option.id !== "standard", option.id === "ultrafast");
+                          }}
+                        >
+                          <Show when={option.id !== "standard"}>
+                            <Zap aria-hidden="true" />
+                          </Show>
+                          {speedName(option.id, t)}
+                        </Button>
+                      )}
+                    </For>
+                  </fieldset>
+                )}
+              </Show>
+              <Show when={props.access}>
+                {(access) => (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    class="provider-model-access"
+                    aria-label={`${t("agentSettings.runtime.accessLabel")}: ${access().label}`}
+                    onClick={() => {
+                      // Focus goes back to the chip before the panel closes, as for the other settings.
+                      trigger?.focus({ preventScroll: true });
+                      setOpen(false);
+                      if (trigger) access().onOpen(trigger);
+                    }}
+                  >
+                    <ShieldCheck aria-hidden="true" />
+                    <span>{access().label}</span>
+                    <ChevronUp aria-hidden="true" />
+                  </Button>
+                )}
+              </Show>
+            </div>
+          </Show>
         </Popover.Content>
       </Popover.Root>
     </div>
@@ -1416,6 +1629,12 @@ function providerStatusLabel(state: AgentProviderStatus["state"], t: AppTranslat
 
 function displayModelName(name: string | undefined, fallback: string): string {
   return name?.replace(/^[\s:–—-]+/, "") || fallback;
+}
+
+/** A model name without its provider word, as the mark beside it names the provider: "Opus 5.5". */
+function shortModelName(name: string, provider: string): string {
+  const prefix = `${provider} `;
+  return (name.startsWith(prefix) && name.slice(prefix.length)) || name;
 }
 
 interface FixedModelSettings {
