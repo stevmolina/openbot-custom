@@ -59,6 +59,7 @@ export const messages = {
   "error.backend.browserSignInOpenFailed": "OpenBot kon het inlogvenster niet openen.",
   "error.backend.browserSignInReadFailed": "OpenBot kon de inlog niet uit het venster lezen.",
   "error.backend.browserStopUnsupported": "Deze externe host kan het laden van een pagina niet stoppen.",
+  "error.backend.browserColorSchemeUnsupported": "Deze externe host kan het thema van de pagina niet wijzigen.",
   "error.backend.sharedDataLocalOnly": "Gedeelde gegevens worden beheerd op de computer waarop deze agents draaien.",
   "error.backend.browserUrlProtocol": "Alleen HTTP(S)-URL’s zijn toegestaan in de browser.",
   "error.backend.sunshineNotReady": "Sunshine is niet klaar geworden.",

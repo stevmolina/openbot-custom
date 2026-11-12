@@ -40,6 +40,7 @@ import { AGENT_WAITS_CAPABILITY } from "./agent-waits-v1";
 import { AGENT_WELCOME_CAPABILITY } from "./agent-welcome-v1";
 import { BACKGROUND_PROCESSES_CAPABILITY } from "./background-processes-v1";
 import { BITWARDEN_CONNECTOR_CAPABILITY } from "./bitwarden-connector-v1";
+import { BROWSER_COLOR_SCHEME_CAPABILITY } from "./browser-color-scheme-v1";
 import { BROWSER_EGRESS_CAPABILITY } from "./browser-egress-v1";
 import { TEAM_BROWSER_NAVIGATION_CAPABILITY } from "./browser-navigation-v1";
 import { BROWSER_PAGE_STATE_CAPABILITY } from "./browser-page-state-v1";
@@ -272,6 +273,7 @@ export {
   ANDROID_PUSH_NOTIFICATIONS_CAPABILITY,
   BACKGROUND_PROCESSES_CAPABILITY,
   BITWARDEN_CONNECTOR_CAPABILITY,
+  BROWSER_COLOR_SCHEME_CAPABILITY,
   BROWSER_EGRESS_CAPABILITY,
   BROWSER_PAGE_STATE_CAPABILITY,
   BROWSER_PROFILES_CAPABILITY,
@@ -589,6 +591,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
+  BROWSER_COLOR_SCHEME_CAPABILITY,
 ] as const;
 
 export type TeamCurrentCapability = (typeof TEAM_CURRENT_CAPABILITIES)[number];
@@ -801,7 +804,8 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== LIBRARY_FOLDERS_CAPABILITY &&
     capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
     capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
-    capability !== AGENT_COMPUTER_CAPABILITY,
+    capability !== AGENT_COMPUTER_CAPABILITY &&
+    capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
 );
 /**
  * The capabilities that only a protocol 9 peer sends and gets. Protocols 7 and 8 read at most 128
@@ -890,6 +894,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   PROVIDER_ACCOUNT_POOL_CAPABILITY,
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
+  BROWSER_COLOR_SCHEME_CAPABILITY,
 ]);
 // A v8 host reads at most 128 capabilities, so a client sends the protocol 9 ones only after it
 // negotiates protocol 9.
@@ -1061,6 +1066,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== LIBRARY_FOLDERS_CAPABILITY &&
       capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
       capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
-      capability !== AGENT_COMPUTER_CAPABILITY,
+      capability !== AGENT_COMPUTER_CAPABILITY &&
+      capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
   );
 }

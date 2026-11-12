@@ -92,7 +92,7 @@ export function createSidebarScope(props: SidebarProps) {
 
   /**
    * The dock of the chat sidebar: "Working", each folder at the top of the layout, and "Settled" (the
-   * chats in no folder). One group is open at a time. The other sections keep their own collapse.
+   * chats in no folder). Each group opens and closes by itself. The other sections keep their own collapse.
    */
   const dockActive = () => props.pages !== undefined;
   const dockHolds = (sectionId: string) =>
@@ -102,29 +102,34 @@ export function createSidebarScope(props: SidebarProps) {
       (customSectionById().has(sectionId) && sectionParent(sectionId) === null));
   const dockMarker = (sectionId: string) =>
     sectionId === SIDEBAR_DOCK_NONE_ID || sectionId.startsWith(SIDEBAR_DOCK_OPEN_PREFIX);
-  /** The open group of the dock, or null when the user closed all of them. "Working" by default. */
-  const dockOpenGroup = createMemo<string | null>(() => {
-    const marker = props.collapsedSectionIds.findLast(dockMarker);
-    if (marker === undefined) return SIDEBAR_DOCK_WORKING_ID;
-    return marker === SIDEBAR_DOCK_NONE_ID ? null : marker.slice(SIDEBAR_DOCK_OPEN_PREFIX.length);
+  /** The open groups of the dock, empty when the user closed all of them. "Working" by default. */
+  const dockOpenGroups = createMemo<readonly string[]>(() => {
+    const markers = props.collapsedSectionIds.filter(dockMarker);
+    if (markers.length === 0) return [SIDEBAR_DOCK_WORKING_ID];
+    return markers
+      .filter((marker) => marker !== SIDEBAR_DOCK_NONE_ID)
+      .map((marker) => marker.slice(SIDEBAR_DOCK_OPEN_PREFIX.length));
   });
-  /** Saves the open group as the only dock marker. Each toggle reads the saved set again, so the calls compose. */
-  function setDockOpenGroup(groupId: string | null): void {
-    const target = groupId === null ? SIDEBAR_DOCK_NONE_ID : `${SIDEBAR_DOCK_OPEN_PREFIX}${groupId}`;
-    const saved = [...props.collapsedSectionIds];
-    for (const sectionId of saved) if (dockMarker(sectionId) && sectionId !== target) props.onToggleSection(sectionId);
-    if (!saved.includes(target)) props.onToggleSection(target);
+  /** Saves the open groups as the dock markers. Each toggle reads the saved set again, so the calls compose. */
+  function setDockOpenGroups(groupIds: readonly string[]): void {
+    const wanted = new Set(
+      groupIds.length === 0 ? [SIDEBAR_DOCK_NONE_ID] : groupIds.map((id) => `${SIDEBAR_DOCK_OPEN_PREFIX}${id}`),
+    );
+    const saved = new Set(props.collapsedSectionIds.filter(dockMarker));
+    for (const marker of saved) if (!wanted.has(marker)) props.onToggleSection(marker);
+    for (const marker of wanted) if (!saved.has(marker)) props.onToggleSection(marker);
   }
-  /** Opens or closes a section. In the dock, opening a group closes the open one. */
+  /** Opens or closes a section. A dock group opens and closes without a change to the other groups. */
   const toggleSection = (sectionId: string) => {
     if (!dockHolds(sectionId)) {
       props.onToggleSection(sectionId);
       return;
     }
-    setDockOpenGroup(dockOpenGroup() === sectionId ? null : sectionId);
+    const open = dockOpenGroups();
+    setDockOpenGroups(open.includes(sectionId) ? open.filter((id) => id !== sectionId) : [...open, sectionId]);
   };
   const sectionIsCollapsed = (sectionId: string) =>
-    dockHolds(sectionId) ? dockOpenGroup() !== sectionId : layoutSectionIsCollapsed(sectionId);
+    dockHolds(sectionId) ? !dockOpenGroups().includes(sectionId) : layoutSectionIsCollapsed(sectionId);
   const foldersSupported = () => props.foldersSupported === true && layoutMutable();
   const dragFolders = () =>
     foldersSupported() ? { canNest: sectionCanNest, isInside: sectionIsInside, parent: sectionParent } : null;
@@ -275,7 +280,7 @@ export function createSidebarScope(props: SidebarProps) {
     draggedChatId: dragState.draggedChatId,
     draggedPinnedKey: dragState.draggedPinnedKey,
     draggingKind: dragState.draggingKind,
-    dockOpenGroup,
+    dockOpenGroups,
     dropSidebarNativeDrag,
     duplicateSection,
     emptyPinnedDropVisible: dragState.emptyPinnedDropVisible,
@@ -311,7 +316,7 @@ export function createSidebarScope(props: SidebarProps) {
     sectionSiblingIndex,
     sectionUnreadCount,
     setAgentListElement,
-    setDockOpenGroup,
+    setDockOpenGroups,
     setDragListElement,
     setSectionNameInput,
     sidebarClickIsSuppressed,

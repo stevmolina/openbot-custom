@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Vorwärts",
   "browser.reload": "Seite neu laden",
   "browser.stopLoading": "Laden stoppen",
+  "browser.pageTheme.toDark": "Seite dunkel anzeigen",
+  "browser.pageTheme.toLight": "Seite hell anzeigen",
   "browser.recording.label": "Browseraufnahme aktiv",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -98,6 +100,7 @@ export const messages = {
   "browser.error.closeTab": "Der Browser-Tab konnte nicht geschlossen werden.",
   "browser.error.reloadTab": "Der Browser-Tab konnte nicht neu geladen werden.",
   "browser.error.stopLoading": "Das Laden der Seite konnte nicht gestoppt werden.",
+  "browser.error.colorScheme": "Das Design der Seite konnte nicht geändert werden.",
   "browser.error.teachStart": "Die Aufzeichnung der Aufgabe konnte nicht gestartet werden.",
   "browser.error.teachStop": "Die Aufzeichnung der Aufgabe konnte nicht beendet werden.",
   "browser.error.teachEmpty": "Die Aufzeichnung enthält keine Schritte.",

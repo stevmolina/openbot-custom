@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Avancer",
   "browser.reload": "Actualiser la page",
   "browser.stopLoading": "Arrêter le chargement",
+  "browser.pageTheme.toDark": "Afficher la page en mode sombre",
+  "browser.pageTheme.toLight": "Afficher la page en mode clair",
   "browser.recording.label": "Enregistrement du navigateur en cours",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -96,6 +98,7 @@ export const messages = {
   "browser.error.closeTab": "Impossible de fermer l’onglet du navigateur.",
   "browser.error.reloadTab": "Impossible d’actualiser l’onglet du navigateur.",
   "browser.error.stopLoading": "Impossible d’arrêter le chargement de la page.",
+  "browser.error.colorScheme": "Impossible de changer le thème de la page.",
   "browser.error.teachStart": "Impossible de démarrer l’enregistrement de la tâche.",
   "browser.error.teachStop": "Impossible d’arrêter l’enregistrement de la tâche.",
   "browser.error.teachEmpty": "L’enregistrement ne contient aucune étape.",

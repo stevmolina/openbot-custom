@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Dalej",
   "browser.reload": "Odśwież stronę",
   "browser.stopLoading": "Zatrzymaj wczytywanie",
+  "browser.pageTheme.toDark": "Pokaż stronę w trybie ciemnym",
+  "browser.pageTheme.toLight": "Pokaż stronę w trybie jasnym",
   "browser.recording.label": "Nagrywanie przeglądarki aktywne",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -98,6 +100,7 @@ export const messages = {
   "browser.error.closeTab": "Nie udało się zamknąć karty przeglądarki.",
   "browser.error.reloadTab": "Nie udało się odświeżyć karty przeglądarki.",
   "browser.error.stopLoading": "Nie udało się zatrzymać wczytywania strony.",
+  "browser.error.colorScheme": "Nie udało się zmienić motywu strony.",
   "browser.error.teachStart": "Nie udało się rozpocząć nagrywania zadania.",
   "browser.error.teachStop": "Nie udało się zatrzymać nagrywania zadania.",
   "browser.error.teachEmpty": "Nagranie nie ma żadnych kroków.",

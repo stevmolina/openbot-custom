@@ -1,4 +1,4 @@
-import type { BrowserControlSession, BrowserTab, BrowserTabProfile } from "@openbot/contracts/ipc";
+import type { BrowserColorScheme, BrowserControlSession, BrowserTab, BrowserTabProfile } from "@openbot/contracts/ipc";
 import type { AppTranslate } from "@openbot/i18n";
 import type { AgentProfile } from "@openbot/ui/data";
 import type { JSX } from "@solidjs/web";
@@ -48,6 +48,8 @@ export interface BrowserFullViewProps {
   onReopenTab: () => void;
   onReload: (tabId: string) => void;
   onStop: (tabId: string) => void;
+  /** Sets the color scheme of the tab's page. Absent where the host cannot set it, which hides the toggle. */
+  onSetColorScheme?: ((tabId: string, colorScheme: BrowserColorScheme) => void) | undefined;
   onNavigate: (tabId: string, direction: "back" | "forward") => void;
   /** Opens the address in the tab, or in a new tab when there is none. */
   onOpenAddress: (url: string, tabId: string | undefined) => void;
@@ -94,6 +96,16 @@ export interface BrowserFullViewProps {
 /** Only a host that reports the history state can stop a load, so an older host keeps Reload. */
 export function browserTabStoppable(tab: BrowserTab | undefined): boolean {
   return tab?.loading === true && tab.canGoBack !== undefined;
+}
+
+/**
+ * Whether the page of the tab shows in dark now. A tab without an override follows the scheme of the
+ * computer, which this window also reads.
+ */
+export function browserPageDark(tab: BrowserTab | undefined): boolean {
+  const scheme = tab?.environment?.colorScheme ?? "system";
+  if (scheme !== "system") return scheme === "dark";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 
 /** The label of a tab's browser profile, with its proxy. The session of one agent has no name. */

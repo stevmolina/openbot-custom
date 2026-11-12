@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "הצגת מקור Markdown",
   "preview.panel.rawHtml": "הצגת מקור HTML",
   "preview.panel.wrapLines": "גלישת שורות ארוכות",
+  "preview.panel.darkPage": "הצגת הדף במצב כהה",
+  "preview.panel.lightPage": "הצגת הדף במצב בהיר",
   "preview.folder.empty": "התיקייה ריקה.",
   "preview.folder.truncated": "מוצגים רק {limit} הפריטים הראשונים.",
   "preview.truncated": "התצוגה המקדימה קוצרה אחרי {limit} תווים.",

@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "Markdown 소스 보기",
   "preview.panel.rawHtml": "HTML 소스 보기",
   "preview.panel.wrapLines": "긴 줄 줄바꿈",
+  "preview.panel.darkPage": "페이지를 다크 모드로 보기",
+  "preview.panel.lightPage": "페이지를 라이트 모드로 보기",
   "preview.folder.empty": "이 폴더는 비어 있어요.",
   "preview.folder.truncated": "처음 {limit}개 항목만 표시해요.",
   "preview.truncated": "{limit}자 이후는 미리 보기에서 잘렸어요.",

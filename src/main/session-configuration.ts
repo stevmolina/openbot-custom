@@ -12,7 +12,7 @@
 
 import { readFile, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve } from "node:path";
-import { CHAT_VISUAL_PAGE_LIMIT, isChatVisualMimeType } from "@openbot/contracts/chat-visual";
+import { CHAT_VISUAL_PAGE_LIMIT, isHtmlPageFile } from "@openbot/contracts/chat-visual";
 import { LOCAL_SERVER_ID } from "@openbot/contracts/ipc";
 import { createOpenBotLogger, toLogValue } from "@openbot/logging";
 import { app, session } from "electron";
@@ -131,7 +131,7 @@ export function configureAttachmentProtocol({ mailbox, agents, remoteServers }: 
       if (url.hostname === "preview") return filePreviewPages.response(request);
       const id = url.hostname === "file" ? url.pathname.split("/").filter(Boolean).at(-1) : undefined;
       const attachment = id ? await runCauseEffect(mailbox.resolveAttachment(id)) : null;
-      if (!attachment || !isChatVisualMimeType(attachment.mimeType)) return new Response("Not found", { status: 404 });
+      if (!attachment || !isHtmlPageFile(attachment)) return new Response("Not found", { status: 404 });
       if ((await stat(attachment.path)).size > CHAT_VISUAL_PAGE_LIMIT)
         return new Response("Not found", { status: 404 });
       return chatVisualResponse(await readFile(attachment.path));
@@ -146,7 +146,7 @@ export function configureAttachmentProtocol({ mailbox, agents, remoteServers }: 
       const attachmentId = decodeURIComponent(url.pathname.split("/").filter(Boolean)[0] ?? "");
       if (!serverId || !attachmentId) return new Response("Not found", { status: 404 });
       const attachment = await runCauseEffect(remoteServers.downloadAttachment(attachmentId, serverId));
-      if (!isChatVisualMimeType(attachment.mimeType)) return new Response("Not found", { status: 404 });
+      if (!isHtmlPageFile(attachment)) return new Response("Not found", { status: 404 });
       return chatVisualResponse(attachment.bytes);
     } catch (error) {
       logger.warn("A remote visual reply could not be shown.", { cause: toLogValue(error) });

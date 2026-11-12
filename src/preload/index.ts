@@ -1500,6 +1500,7 @@ const openbotApi: OpenBotDesktopApi = {
       navigate: decodeVoid,
       reload: decodeVoid,
       stop: decodeVoid,
+      setColorScheme: decodeVoid,
       close: decodeVoid,
       takeControl: decodeVoid,
       releaseControl: decodeVoid,

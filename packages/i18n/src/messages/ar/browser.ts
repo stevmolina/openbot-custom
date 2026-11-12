@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "تقدّم",
   "browser.reload": "إعادة تحميل الصفحة",
   "browser.stopLoading": "إيقاف التحميل",
+  "browser.pageTheme.toDark": "عرض الصفحة في الوضع الداكن",
+  "browser.pageTheme.toLight": "عرض الصفحة في الوضع الفاتح",
   "browser.recording.label": "تسجيل المتصفح نشط",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -106,6 +108,7 @@ export const messages = {
   "browser.error.closeTab": "تعذّر إغلاق علامة تبويب المتصفح.",
   "browser.error.reloadTab": "تعذّرت إعادة تحميل علامة تبويب المتصفح.",
   "browser.error.stopLoading": "تعذّر إيقاف تحميل الصفحة.",
+  "browser.error.colorScheme": "تعذّر تغيير مظهر الصفحة.",
   "browser.error.teachStart": "تعذّر بدء تسجيل المهمة.",
   "browser.error.teachStop": "تعذّر إيقاف تسجيل المهمة.",
   "browser.error.teachEmpty": "لا يحتوي التسجيل على خطوات.",

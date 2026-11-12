@@ -55,6 +55,7 @@ export const messages = defineMessages("error.backend", {
   "error.backend.browserSignInOpenFailed": "OpenBot could not open the sign-in window.",
   "error.backend.browserSignInReadFailed": "OpenBot could not read the sign-in from the window.",
   "error.backend.browserStopUnsupported": "This remote host cannot stop a page load.",
+  "error.backend.browserColorSchemeUnsupported": "This remote host cannot change the page theme.",
   "error.backend.sharedDataLocalOnly": "Shared data is managed on the computer that runs these agents.",
   "error.backend.browserUrlProtocol": "Only HTTP(S) browser URLs are allowed.",
   "error.backend.sunshineNotReady": "Sunshine did not become ready.",

@@ -7,7 +7,7 @@
  * pill in a column.
  *
  * The open chat list has two zones (see `SidebarChatDock`): the pinned chats and "Needs you" at the
- * top, and a dock over the pill that opens one group at a time: "Working", each folder, "Settled".
+ * top, and a dock over the pill whose groups open one by one: "Working", each folder, "Settled".
  * The "All machines" view keeps both zones for the chats of every server, with machine chips on top.
  */
 

@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "إظهار مصدر Markdown",
   "preview.panel.rawHtml": "إظهار مصدر HTML",
   "preview.panel.wrapLines": "التفاف الأسطر الطويلة",
+  "preview.panel.darkPage": "عرض الصفحة في الوضع الداكن",
+  "preview.panel.lightPage": "عرض الصفحة في الوضع الفاتح",
   "preview.folder.empty": "هذا المجلد فارغ.",
   "preview.folder.truncated": "تظهر أول {limit} عناصر فقط.",
   "preview.truncated": "اقتُطعت المعاينة بعد {limit} حرف.",

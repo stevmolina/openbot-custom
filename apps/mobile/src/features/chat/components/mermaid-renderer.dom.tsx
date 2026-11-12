@@ -1,6 +1,11 @@
 "use dom";
 
-import { CHAT_MERMAID_FONT_FAMILY, mermaidImageUrl, sizedMermaidSvg } from "@openbot/contracts/chat-preview";
+import {
+  CHAT_MERMAID_ELK,
+  CHAT_MERMAID_FONT_FAMILY,
+  mermaidImageUrl,
+  sizedMermaidSvg,
+} from "@openbot/contracts/chat-preview";
 import mermaid from "mermaid";
 import { useEffect, useRef } from "react";
 import type { MermaidJob, MermaidResult } from "../model/mermaid-diagrams";
@@ -56,6 +61,7 @@ async function draw(job: MermaidJob): Promise<MermaidResult> {
       theme: job.dark ? "dark" : "default",
       fontFamily: CHAT_MERMAID_FONT_FAMILY,
       htmlLabels: false,
+      elk: CHAT_MERMAID_ELK,
       suppressErrorRendering: true,
     });
     const { svg } = await mermaid.render(`openbot-mermaid-${job.id}`, job.source);

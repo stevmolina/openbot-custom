@@ -1312,6 +1312,33 @@ export class BrowserHost {
   }).bind(this);
 
   /**
+   * Sets the color scheme that the tab gives to its page, as the agent's `set_environment` does. The
+   * tab keeps the scheme after a restart. `system` removes the override.
+   */
+  readonly setColorScheme = Effect.fn("BrowserHost.setColorScheme")(function* (
+    this: BrowserHost,
+    tabId: string,
+    colorScheme: BrowserEnvironment["colorScheme"],
+  ): Effect.fn.Return<void, BrowserOperationError> {
+    yield* this.#enqueue(tabId, (tab, keepQueueBlocked) =>
+      Effect.gen({ self: this }, function* () {
+        if (tab.environment.colorScheme === colorScheme) return;
+        const environment: BrowserEnvironment = { ...tab.environment, colorScheme };
+        yield* boundEngineOperation(
+          tab,
+          tab.engine.setEnvironment(environment),
+          10_000,
+          "Browser environment change timed out.",
+          keepQueueBlocked,
+        );
+        tab.environment = environment;
+        yield* this.#persistState();
+        this.#emitChanged();
+      }),
+    );
+  }).bind(this);
+
+  /**
    * Stops the load of the tab now, not after the queued tab operations: a person stops a page that
    * does not finish. The load that it ends counts as done, not as failed.
    */

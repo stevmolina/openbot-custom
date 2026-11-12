@@ -58,10 +58,18 @@ export interface BrowserViewport {
   preset: "desktop" | "tablet" | "mobile" | null;
 }
 
+export type BrowserColorScheme = "light" | "dark" | "system";
+
 export interface BrowserEnvironment {
   viewport: BrowserViewport;
-  colorScheme: "light" | "dark" | "system";
+  colorScheme: BrowserColorScheme;
   reducedMotion: boolean;
+}
+
+/** Sets the color scheme that a tab gives to its page. `system` removes the override. */
+export interface BrowserColorSchemeInput {
+  tabId: string;
+  colorScheme: BrowserColorScheme;
 }
 
 export interface BrowserElement {

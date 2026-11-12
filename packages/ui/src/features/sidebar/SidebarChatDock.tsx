@@ -3,12 +3,12 @@
  *
  * The top zone scrolls and takes the free space: "Needs you" holds the chats that wait for the user,
  * an agent whose wait is only in a side thread too. The dock sits at the bottom of the list, over the
- * pill, and opens one group at a time: "Working", each folder at the top of the layout in the layout
+ * pill, and holds groups that each open and close by itself: "Working", each folder at the top of the layout in the layout
  * order, then "Settled", the chats in no folder. Each chat is in one group: a chat that waits is in
  * "Needs you", one that works (or a channel with a running task) is in "Working", and the others are in their folder or in "Settled".
  * People, the hidden agents and the deleted channels follow the chats of "Settled".
  *
- * The open group is saved with the collapsed sections (`dockOpenGroup` in the scope), so it stays
+ * The open groups are saved with the collapsed sections (`dockOpenGroups` in the scope), so they stay
  * open after a restart. A folder group keeps the menu, the drag and the drop of its section.
  */
 
@@ -299,12 +299,12 @@ function SidebarChatFolder(folderProps: { sectionId: string; depth: number; grou
 export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
   const {
     customSectionById,
-    dockOpenGroup,
+    dockOpenGroups,
     orderedPeople,
     pending,
     props,
     sectionParent,
-    setDockOpenGroup,
+    setDockOpenGroups,
     userHiddenAgentList,
   } = useSidebarScope();
   const { t } = useText();
@@ -329,16 +329,20 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
     ...(settledShown() ? [SIDEBAR_UNASSIGNED_SECTION_ID] : []),
   ]);
   /**
-   * The open group, or null when the user closed all of them. When the saved one is not on screen,
-   * such as "Working" while no chat works, the dock opens "Settled", or else its first group.
+   * The open groups on screen. When the user left groups open but none of them is on screen, such as
+   * "Working" while no chat works, the dock opens "Settled", or else its first group.
    */
-  const openId = createMemo(() => {
-    const saved = dockOpenGroup();
-    if (saved === null || shownIds().includes(saved)) return saved;
-    return shownIds().includes(SIDEBAR_UNASSIGNED_SECTION_ID) ? SIDEBAR_UNASSIGNED_SECTION_ID : (shownIds()[0] ?? null);
+  const openIds = createMemo<readonly string[]>(() => {
+    const saved = dockOpenGroups();
+    const shown = saved.filter((id) => shownIds().includes(id));
+    if (saved.length === 0 || shown.length > 0) return shown;
+    const fallback = shownIds().includes(SIDEBAR_UNASSIGNED_SECTION_ID) ? SIDEBAR_UNASSIGNED_SECTION_ID : shownIds()[0];
+    return fallback === undefined ? [] : [fallback];
   });
-  /** A click opens a closed group and closes the open one, so the user can close all groups. */
-  const toggle = (groupId: string) => setDockOpenGroup(openId() === groupId ? null : groupId);
+  const isOpen = (groupId: string) => openIds().includes(groupId);
+  /** A click opens or closes one group. The other groups keep their state. */
+  const toggle = (groupId: string) =>
+    setDockOpenGroups(isOpen(groupId) ? openIds().filter((id) => id !== groupId) : [...openIds(), groupId]);
   const draftShown = () => {
     const target = pending.sectionEditor?.target;
     return target?.kind === "create" && (target.parentId ?? null) === null;
@@ -351,7 +355,7 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
             id={SIDEBAR_DOCK_WORKING_ID}
             name={t("sidebar.lanes.working")}
             chats={dockProps.groups.working}
-            open={openId() === SIDEBAR_DOCK_WORKING_ID}
+            open={isOpen(SIDEBAR_DOCK_WORKING_ID)}
             onToggle={() => toggle(SIDEBAR_DOCK_WORKING_ID)}
           />
         </Show>
@@ -360,7 +364,7 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
             <SidebarDockFolder
               sectionId={sectionId}
               groups={dockProps.groups}
-              open={openId() === sectionId}
+              open={isOpen(sectionId)}
               onToggle={() => toggle(sectionId)}
             />
           )}
@@ -371,7 +375,7 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
             id={SIDEBAR_UNASSIGNED_SECTION_ID}
             name={t("sidebar.dock.settled")}
             chats={settled()}
-            open={openId() === SIDEBAR_UNASSIGNED_SECTION_ID}
+            open={isOpen(SIDEBAR_UNASSIGNED_SECTION_ID)}
             onToggle={() => toggle(SIDEBAR_UNASSIGNED_SECTION_ID)}
           >
             <SidebarPeopleSection sectionId={SIDEBAR_PEOPLE_SECTION_ID} />

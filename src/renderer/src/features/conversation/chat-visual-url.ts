@@ -1,4 +1,4 @@
-import { CHAT_VISUAL_PAGE_LIMIT, isChatVisualMimeType } from "@openbot/contracts/chat-visual";
+import { CHAT_VISUAL_PAGE_LIMIT, isHtmlPageFile } from "@openbot/contracts/chat-visual";
 
 /**
  * The address of a visual reply page. The page comes from its own scheme, which serves only HTML
@@ -15,9 +15,9 @@ export function chatVisualPageUrl(previewUrl: string | null | undefined): string
 
 /** The page address of an HTML attachment, which the file preview shows with its scripts. */
 export function htmlAttachmentPageUrl(
-  attachment: { mimeType: string; previewUrl: string | null } | null | undefined,
+  attachment: { name: string; mimeType: string; previewUrl: string | null } | null | undefined,
 ): string | undefined {
-  return attachment && isChatVisualMimeType(attachment.mimeType) ? chatVisualPageUrl(attachment.previewUrl) : undefined;
+  return attachment && isHtmlPageFile(attachment) ? chatVisualPageUrl(attachment.previewUrl) : undefined;
 }
 
 /**
@@ -25,10 +25,10 @@ export function htmlAttachmentPageUrl(
  * no page URL. The file preview shows it with its scripts in a sandboxed `srcdoc` frame.
  */
 export function htmlAttachmentPageHtml(
-  attachment: { mimeType: string } | null | undefined,
-  preview: { mimeType: string; bytes: Uint8Array | null } | null | undefined,
+  attachment: { name: string; mimeType: string } | null | undefined,
+  preview: { name: string; mimeType: string; bytes: Uint8Array | null } | null | undefined,
 ): string | undefined {
   if (!attachment || !preview?.bytes || preview.bytes.byteLength > CHAT_VISUAL_PAGE_LIMIT) return undefined;
-  if (!isChatVisualMimeType(attachment.mimeType) || !isChatVisualMimeType(preview.mimeType)) return undefined;
+  if (!isHtmlPageFile(attachment) || !isHtmlPageFile(preview)) return undefined;
   return new TextDecoder().decode(preview.bytes);
 }
