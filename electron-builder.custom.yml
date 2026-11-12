@@ -1,12 +1,18 @@
-# The OpenBot Custom build: Steven's fork, installed next to the official OpenBot.
-# Build it like `bun run package` (package.json), with this config: prepare the voice, remote
-# desktop and Computer Use runtimes, build, then package.
+# The Pokebots build: Steven's fork of OpenBot, installed as `/Applications/Pokebots.app` next to the
+# official OpenBot. `scripts/custom-build-install.sh` builds and installs it. By hand, like
+# `bun run package` (package.json), with this config and the brand settings:
 #   bun run voice:prepare-runtime && bun run prepare:remote-desktop-runtime &&
-#   bun run verify:remote-desktop-runtime && bun run prepare:cua-driver && bun run build &&
+#   bun run verify:remote-desktop-runtime && bun run prepare:cua-driver &&
+#   OPENBOT_BRAND_NAME=Pokebots OPENBOT_BRAND_AUTH_API_URL=https://api.pokebots.xyz \
+#   OPENBOT_BRAND_SIGNAL_URL=wss://signal.pokebots.xyz/v1/signal bun run build &&
 #   bunx electron-builder --dir --mac --arm64 --config electron-builder.custom.yml
 # It differs from `electron-builder.yml` in these ways: no `openbot:` link handler, no update feed,
-# no signing or notarization, output in `dist-custom`, the name "OpenBot Custom", and a blue icon
-# so it is easy to tell from the official lavender app.
+# no signing or notarization, output in `dist-custom`, the name "Pokebots", and a blue icon so it is
+# easy to tell from the official lavender app.
+# The name: `productName` names the bundle, the Dock tile, the menu bar and the privacy lists of
+# System Settings. The text inside the app says Pokebots because of the brand layer
+# (`scripts/brand-layer.ts`), which `bun run build` runs when `OPENBOT_BRAND_NAME` is set. The same
+# build also defaults to the self-hosted account service `api.pokebots.xyz` and its Signal.
 # The blue icon: `build/custom/icon-custom.icns` for Finder and the Dock, and the blue logo-color
 # files in place of the release icons that the app shows in the Dock while it runs. There is no
 # icon catalog (`Assets.car`), because the committed one is lavender; macOS then uses the `.icns`.
@@ -19,11 +25,14 @@
 # Recording and Accessibility grants per app ID, with the signer that it saw. With the release ID,
 # the grant entry kept the official signer, so this build never matched it, and removing and adding
 # the app again did not help. `scripts/custom-build-install.sh` then signs the app again with a
-# local certificate, so the signer stays the same from build to build and a grant stays valid.
-# The data folder does not change: the app sets its name to "OpenBot" (`src/main/index.ts`).
+# local certificate, so the signer stays the same from build to build and a grant stays valid. Do not
+# change the app ID or the certificate name "OpenBot Custom Local Signing": the grants would go.
+# The data folder and the keychain item "OpenBot Safe Storage" do not change with `productName`:
+# Electron names the app from `productName` in `package.json`, which stays "OpenBot", and the app
+# sets its name to "OpenBot" again (`src/main/index.ts`).
 # Keep the rest of this file in step with `electron-builder.yml`.
 appId: app.openbot.custom
-productName: OpenBot
+productName: Pokebots
 copyright: Copyright © 2026 Synthetify Labs spółka z ograniczoną odpowiedzialnością
 asar: true
 artifactName: ${productName}-${version}-${arch}.${ext}
@@ -122,15 +131,15 @@ mac:
   darkModeSupport: true
   extendInfo:
     ElectronTeamID: ZTRDTUL87R
-    NSMicrophoneUsageDescription: OpenBot uses the microphone to transcribe voice
+    NSMicrophoneUsageDescription: Pokebots uses the microphone to transcribe voice
       prompts locally on this Mac.
-    NSScreenCaptureUsageDescription: OpenBot captures the screen so an agent can see
+    NSScreenCaptureUsageDescription: Pokebots captures the screen so an agent can see
       the app windows you ask it to control.
-    NSAppleEventsUsageDescription: OpenBot sends Automation events so an agent can
+    NSAppleEventsUsageDescription: Pokebots sends Automation events so an agent can
       control the apps you ask it to control.
     NSUserActivityTypes:
       - NSUserActivityTypeBrowsingWeb
-    CFBundleDisplayName: OpenBot Custom
+    CFBundleDisplayName: Pokebots
   target:
     - dmg
     - zip

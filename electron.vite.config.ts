@@ -1,15 +1,20 @@
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import solidPlugin from "@solidjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import { lazyLanguageCatalogs } from "./packages/i18n/src/vite-plugin";
+import { brandPlugins } from "./scripts/brand-layer";
 
 const rendererPort = readRendererPort(process.env.OPENBOT_DEV_RENDERER_PORT);
+// Empty unless `OPENBOT_BRAND_NAME` is set: the product name of a custom build (`scripts/brand-layer.ts`).
+const brand = brandPlugins(fileURLToPath(new URL(".", import.meta.url)));
 
 export default defineConfig({
   main: {
     // Workspace sources ship as TypeScript and must be bundled for the packaged app.
     plugins: [
+      ...brand,
       externalizeDepsPlugin({
         exclude: [
           "@openbot/brand",
@@ -43,7 +48,7 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin({ exclude: ["@openbot/contracts"] })],
+    plugins: [...brand, externalizeDepsPlugin({ exclude: ["@openbot/contracts"] })],
     build: {
       rollupOptions: {
         input: {
@@ -61,7 +66,12 @@ export default defineConfig({
   renderer: {
     // The Solid Performance panel tracks record each effect run under `vite dev`, and make a send
     // in a chat drop frames that the built app does not drop. Set this to true for a trace.
-    plugins: [solidPlugin({ performanceTracks: false }), tailwindcss({ optimize: false }), lazyLanguageCatalogs()],
+    plugins: [
+      ...brand,
+      solidPlugin({ performanceTracks: false }),
+      tailwindcss({ optimize: false }),
+      lazyLanguageCatalogs(),
+    ],
     optimizeDeps: {
       // bloub finds its plush images with `new URL(..., import.meta.url)`. A pre-bundle moves the
       // code away from the images, so Vite serves the package as it is.

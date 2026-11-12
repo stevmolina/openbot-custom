@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-# Builds the OpenBot Custom app from the current checkout and installs it in /Applications.
-# Run it from a clean checkout of `origin/main` after each merge, so the installed app matches main.
+# Builds the Pokebots app (Steven's custom OpenBot build) from the current checkout and installs it
+# as /Applications/Pokebots.app. Run it from a clean checkout of `origin/main` after each merge, so
+# the installed app matches main.
 #
 #   scripts/custom-build-install.sh            build, back up, install, launch check
 #   scripts/custom-build-install.sh --no-install   build only
 #
-# The build follows `electron-builder.custom.yml`. It uses the Bun version in `package.json`
-# (`packageManager`) and Node 24. When the Bun on PATH is another version, the script downloads the
-# pinned one into `.openbot-build/bun-<version>` (git ignores it) and uses it for this run only.
-# Before it replaces the installed app, it copies it to `~/OpenBot/backups/`. After the install it
-# opens the app and checks that the process stays up, because macOS kills an ad hoc app with a bad
-# signature at launch.
+# The build follows `electron-builder.custom.yml`. The brand settings below make the text say
+# Pokebots and make the app use the self-hosted account service (`scripts/brand-layer.ts`).
+# It uses the Bun version in `package.json` (`packageManager`) and Node 24. When the Bun on PATH is
+# another version, the script downloads the pinned one into `.openbot-build/bun-<version>` (git
+# ignores it) and uses it for this run only.
+# Before it replaces the installed app, it copies it to `~/OpenBot/backups/`. The app was
+# `/Applications/OpenBot Custom.app` before the Pokebots name: the first run backs that copy up the
+# same way and removes it, so only one custom app is installed. After the install it opens the app
+# and checks that the process stays up, because macOS kills an ad hoc app with a bad signature at
+# launch.
 #
 # Signing: electron-builder signs ad hoc. The script then signs the app bundle again with the local
 # certificate "OpenBot Custom Local Signing" in the login keychain, and makes the certificate on the
@@ -24,8 +29,9 @@ cd "$root"
 install=1
 [[ "${1:-}" == "--no-install" ]] && install=0
 
-app_name="OpenBot Custom"
+app_name="Pokebots"
 target="/Applications/${app_name}.app"
+legacy_target="/Applications/OpenBot Custom.app"
 bun_version="$(sed -n 's/.*"packageManager": "bun@\([0-9.]*\)".*/\1/p' package.json)"
 
 # Node 24 from Homebrew, when it is there.
@@ -50,6 +56,11 @@ fi
 echo "Bun $(bun --version), Node $(node --version), commit $(git rev-parse --short HEAD)"
 
 unset ELECTRON_RUN_AS_NODE
+# The brand layer of `bun run build`: the product name, and the account service and Signal that the
+# app uses when nothing else is set at start.
+export OPENBOT_BRAND_NAME="Pokebots"
+export OPENBOT_BRAND_AUTH_API_URL="https://api.pokebots.xyz"
+export OPENBOT_BRAND_SIGNAL_URL="wss://signal.pokebots.xyz/v1/signal"
 bun install --frozen-lockfile
 bun run voice:prepare-runtime
 if ! bun run prepare:remote-desktop-runtime; then
@@ -100,18 +111,22 @@ codesign --verify --strict "$built"
 codesign -d -r - "$built" 2>&1 | grep designated
 [[ "$install" == 1 ]] || exit 0
 
-if pgrep -f "${target}/Contents/MacOS" >/dev/null; then
-  echo "${app_name} is running. Quit it, then run this script again." >&2
-  exit 1
-fi
+for installed in "$target" "$legacy_target"; do
+  if pgrep -f "${installed}/Contents/MacOS" >/dev/null; then
+    echo "$(basename "$installed" .app) is running. Quit it, then run this script again." >&2
+    exit 1
+  fi
+done
 
-if [[ -d "$target" ]]; then
+for installed in "$target" "$legacy_target"; do
+  [[ -d "$installed" ]] || continue
   mkdir -p "$HOME/OpenBot/backups"
-  backup="$HOME/OpenBot/backups/OpenBot-Custom-before-$(git rev-parse --short HEAD)-$(date -u +%Y%m%dT%H%M%SZ).app"
-  ditto "$target" "$backup"
-  echo "Backed up the installed app to $backup"
-  rm -rf "$target"
-fi
+  label="$(basename "$installed" .app)"
+  backup="$HOME/OpenBot/backups/${label// /-}-before-$(git rev-parse --short HEAD)-$(date -u +%Y%m%dT%H%M%SZ).app"
+  ditto "$installed" "$backup"
+  echo "Backed up $installed to $backup"
+  rm -rf "$installed"
+done
 ditto "$built" "$target"
 echo "Installed $target"
 
