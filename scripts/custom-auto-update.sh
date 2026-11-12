@@ -14,7 +14,7 @@
 #      and open it. When the new app does not stay up, put the copy back.
 #   5. Write `status.json` and show a macOS notification.
 #
-# State, the build worktree and the log are in ~/.local/state/openbot-custom-autoupdate/.
+# State, the build worktree and the log are in ~/.local/state/pokebots-autoupdate/.
 # A failed build is not tried again until `main` moves. `--force` builds and installs the newest
 # commit even when it is installed already.
 set -euo pipefail
@@ -23,8 +23,9 @@ main() {
   local force=0
   [[ "${1:-}" == "--force" ]] && force=1
 
-  state="$HOME/.local/state/openbot-custom-autoupdate"
-  source_repo="${OPENBOT_CUSTOM_REPO:?Set OPENBOT_CUSTOM_REPO to the openbot-custom checkout.}"
+  state="$HOME/.local/state/pokebots-autoupdate"
+  # OPENBOT_CUSTOM_REPO is the name that jobs installed before the rename to Pokebots set.
+  source_repo="${POKEBOTS_REPO:-${OPENBOT_CUSTOM_REPO:?Set POKEBOTS_REPO to the pokebots checkout.}}"
   worktree="$state/repo"
   log="$state/update.log"
   target="/Applications/Pokebots.app"
@@ -131,7 +132,7 @@ take_lock() {
 # HTTPS with the GitHub CLI token, so the job does not need an SSH agent.
 fetch_main() {
   git -C "$source_repo" -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
-    fetch -q https://github.com/stevmolina/openbot-custom.git '+refs/heads/main:refs/remotes/origin/main'
+    fetch -q https://github.com/stevmolina/pokebots.git '+refs/heads/main:refs/remotes/origin/main'
 }
 
 # True when a file in the range can change the desktop app.
