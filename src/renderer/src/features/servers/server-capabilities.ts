@@ -37,6 +37,7 @@ export function serverSupportsCapability(
       capability === "browser-view-clipboard" ||
       capability === "browser-user-control" ||
       capability === "browser-sign-in" ||
+      capability === "browser-color-scheme-v1" ||
       capability === "mcp-servers-v1" ||
       capability === "mcp-sign-in-v1" ||
       capability === "mcp-sign-in-app-v1" ||
@@ -146,6 +147,7 @@ export function serverSupportsCapability(
       capability === "routines-once-v1" ||
       capability === "routine-run-command-v1" ||
       capability === "claude-user-setup-v1" ||
+      capability === "claude-ai-tools-v1" ||
       capability === "claude-compact-window-v1" ||
       capability === "agent-usage-limit-v1" ||
       capability === "hermes-import-v1" ||

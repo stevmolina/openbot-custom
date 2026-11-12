@@ -12,6 +12,7 @@ import type { AgentTemplateService } from "../agent-template-service";
 import type { listBackgroundProcesses, stopBackgroundProcess } from "../background-processes";
 import type { BrowserProfileService } from "../browser-profile-service";
 import type { BrowsingMemoryPreferenceStore } from "../browsing-memory-preference-store";
+import type { ClaudeAiToolsControl } from "../claude-ai-tools-preference-store";
 import type { ClaudeCompactWindowControl } from "../claude-compact-window-preference-store";
 import type { ClaudeUserSetupControl } from "../claude-user-setup-preference-store";
 import type { CustomAgentChanges } from "../custom-agent-changes";
@@ -571,6 +572,8 @@ export interface TeamApiAdmin {
   promptCacheTtl?: Pick<PromptCacheTtlPreferenceStore, "get" | "set">;
   /** `claude-user-setup-v1`: whether this computer's Claude agents load the Claude Code setup of its user. */
   claudeUserSetup?: ClaudeUserSetupControl;
+  /** `claude-ai-tools-v1`: whether this computer's Claude agents get the claude.ai tools of its Claude sign-in. */
+  claudeAiTools?: ClaudeAiToolsControl;
   /** `claude-compact-window-v1`: the size at which Claude Code compacts the chats of this computer's agents. */
   claudeCompactWindow?: ClaudeCompactWindowControl;
   /** `provider-detection-v1`: the local model servers and ACP agent commands that this computer finds. */
@@ -659,6 +662,8 @@ export type TeamApiBrowser = Pick<
   | "stopTeach"
   // Behind `browser-page-state`.
   | "stop"
+  // Behind `browser-color-scheme-v1`.
+  | "setColorScheme"
   // Behind `browser-sign-in`.
   | "importSignIn"
   // The live view, behind `browser-view`. `browser-view-gateway.ts` is what reaches these; a route

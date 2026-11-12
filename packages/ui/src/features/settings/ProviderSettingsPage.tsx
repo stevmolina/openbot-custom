@@ -138,6 +138,20 @@ export interface ProviderClaudeUserSetup {
   onChange: (enabled: boolean) => void;
 }
 
+/**
+ * Whether Claude agents get the Artifact tools and the claude.ai connectors of the Claude sign-in.
+ * `value` is null until main answers.
+ */
+export interface ProviderClaudeAiTools {
+  value: boolean | null;
+  pending: boolean;
+  /** A load or a save that failed. */
+  error: string | null;
+  /** The switch of a joined server: the agents get the claude.ai tools of the host's sign-in. */
+  remote?: boolean;
+  onChange: (enabled: boolean) => void;
+}
+
 /** The models of one provider, and the ones the model picker shows. `list` is null until the host answers. */
 export interface ProviderModelVisibilityControl {
   list: ProviderModelVisibility | null;
@@ -192,6 +206,8 @@ export interface ProviderSettingsPageProps extends ProviderRowHost {
   promptCache?: ProviderPromptCache | undefined;
   /** On the Claude page. This computer only: a joined server has no route for it. */
   claudeUserSetup?: ProviderClaudeUserSetup | undefined;
+  /** On the Claude page. Only for a host with `claude-ai-tools-v1` that this account administers. */
+  claudeAiTools?: ProviderClaudeAiTools | undefined;
   /** On the Claude page. Only for a host with `claude-compact-window-v1` that this account administers. */
   claudeCompactWindow?: ProviderClaudeCompactWindow | undefined;
   /**
@@ -609,8 +625,8 @@ function ProviderPage(props: PageProps) {
             <CompactWindowSection compaction={compaction()} disabled={props.disabled} menuMount={props.menuMount} />
           )}
         </Show>
-        <Show when={props.option.id === "claude" && props.claudeUserSetup}>
-          {(setup) => <ClaudeUserSetupSection setup={setup()} disabled={props.disabled} />}
+        <Show when={props.option.id === "claude" && (props.claudeUserSetup || props.claudeAiTools)}>
+          <ClaudeSetupSection setup={props.claudeUserSetup} tools={props.claudeAiTools} disabled={props.disabled} />
         </Show>
         <Show when={models()}>{(control) => <ModelsSection control={control()} />}</Show>
       </Show>
@@ -1829,44 +1845,86 @@ function CompactWindowSection(props: {
 /* ---------------------------------------------- Claude Code setup */
 
 /**
- * Claude only. Off, the agents load no user settings, CLAUDE.md, skills, agents, hooks or plugins
- * from the user's own Claude Code, so each turn sends a shorter prompt. A change applies to the next
- * Claude process.
+ * Claude only. "Use my Claude Code setup": off, the agents load no user settings, CLAUDE.md, skills,
+ * agents, hooks or plugins from the user's own Claude Code, so each turn sends a shorter prompt.
+ * "Use claude.ai tools": on, the agents get the Artifact tools and the claude.ai connectors of the
+ * Claude sign-in. A change applies to the next Claude process.
  */
-function ClaudeUserSetupSection(props: { setup: ProviderClaudeUserSetup; disabled: boolean | undefined }) {
+function ClaudeSetupSection(props: {
+  setup: ProviderClaudeUserSetup | undefined;
+  tools: ProviderClaudeAiTools | undefined;
+  disabled: boolean | undefined;
+}) {
   const { t } = useText();
-  function claudeUserSetupDescription(): string {
-    if (props.setup.remote === true) return t("provider.settings.claudeUserSetupServerDescription");
-    return t("provider.settings.claudeUserSetupDescription");
-  }
   return (
     <SettingsSection title={t("provider.settings.claudeSetup")}>
       <ItemGroup class="settings-modal-card">
-        <Item class="settings-modal-row">
-          <ItemContent>
-            <ItemTitle id="provider-settings-claude-setup-label">{t("provider.settings.claudeUserSetup")}</ItemTitle>
-            <Show when={props.setup.error} fallback={<ItemDescription>{claudeUserSetupDescription()}</ItemDescription>}>
-              {(message) => (
-                <ItemDescription class="provider-settings-error" role="alert">
-                  {message()}
-                </ItemDescription>
-              )}
-            </Show>
-          </ItemContent>
-          <Show when={props.setup.value !== null}>
-            <ItemActions>
-              <Switch
-                checked={props.setup.value === true}
-                disabled={Boolean(props.disabled || props.setup.pending)}
-                aria-busy={props.setup.pending ? "true" : "false"}
-                aria-labelledby="provider-settings-claude-setup-label"
-                onChange={(enabled: boolean) => props.setup.onChange(enabled)}
-              />
-            </ItemActions>
-          </Show>
-        </Item>
+        <Show when={props.setup}>
+          {(setup) => (
+            <ClaudeSwitchRow
+              control={setup()}
+              labelId="provider-settings-claude-setup-label"
+              title={t("provider.settings.claudeUserSetup")}
+              description={
+                setup().remote === true
+                  ? t("provider.settings.claudeUserSetupServerDescription")
+                  : t("provider.settings.claudeUserSetupDescription")
+              }
+              disabled={props.disabled}
+            />
+          )}
+        </Show>
+        <Show when={props.tools}>
+          {(tools) => (
+            <ClaudeSwitchRow
+              control={tools()}
+              labelId="provider-settings-claude-ai-tools-label"
+              title={t("provider.settings.claudeAiTools")}
+              description={
+                tools().remote === true
+                  ? t("provider.settings.claudeAiToolsServerDescription")
+                  : t("provider.settings.claudeAiToolsDescription")
+              }
+              disabled={props.disabled}
+            />
+          )}
+        </Show>
       </ItemGroup>
     </SettingsSection>
+  );
+}
+
+function ClaudeSwitchRow(props: {
+  control: ProviderClaudeUserSetup | ProviderClaudeAiTools;
+  labelId: string;
+  title: string;
+  description: string;
+  disabled: boolean | undefined;
+}) {
+  return (
+    <Item class="settings-modal-row">
+      <ItemContent>
+        <ItemTitle id={props.labelId}>{props.title}</ItemTitle>
+        <Show when={props.control.error} fallback={<ItemDescription>{props.description}</ItemDescription>}>
+          {(message) => (
+            <ItemDescription class="provider-settings-error" role="alert">
+              {message()}
+            </ItemDescription>
+          )}
+        </Show>
+      </ItemContent>
+      <Show when={props.control.value !== null}>
+        <ItemActions>
+          <Switch
+            checked={props.control.value === true}
+            disabled={Boolean(props.disabled || props.control.pending)}
+            aria-busy={props.control.pending ? "true" : "false"}
+            aria-labelledby={props.labelId}
+            onChange={(enabled: boolean) => props.control.onChange(enabled)}
+          />
+        </ItemActions>
+      </Show>
+    </Item>
   );
 }
 

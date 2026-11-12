@@ -28,6 +28,7 @@ import {
   AgentTemplateInstall,
   GlobalSearch,
   JoinServerDialog,
+  MarketplaceAppConnect,
   MarketplaceModal,
   ServerSettingsModal,
 } from "./lazy-views";
@@ -73,7 +74,7 @@ export function MarketplaceOverlay(props: {
   onAgentInstalled: (agent: AddedAgent, serverId?: string) => void | Promise<void>;
   /** The listing a plugin link named. Closing the marketplace forgets it too. */
   pluginSlug?: string | null | undefined;
-  /** The person pressed Connect for `pluginSlug` on a chat card. */
+  /** The person pressed Connect for the connector `pluginSlug` on a chat card. */
   pluginConnect?: boolean | undefined;
   onPluginSlugConsumed: () => void;
   /** The agent or skill a Marketplace link named. Closing the marketplace forgets it too. */
@@ -89,22 +90,9 @@ export function MarketplaceOverlay(props: {
   onAddServer?: ((serverId: string) => void) | undefined;
 }) {
   const controller = useConversationController();
-  const manage = createMemo(() => serverCanAdminister(props.server, "skills-admin-v1"));
-  /* A plugin's app is an MCP server, which the host holds. A joined server takes one over
-     `mcp-servers-v1` from an admin, or from a member with `mcp-member-access-v1`; another member
-     browses the listings and installs nothing. */
-  const pluginServerId = createMemo(() => (serverCanManageMcp(props.server) ? props.server.id : undefined));
-  /* Why a joined server's apps do not connect, so the app page says it rather than hide Connect. A
-     host always lists capabilities, so an empty list on a live connection is one that this app has
-     not read yet. An offline, failed or incompatible server has its own notice. */
-  const pluginsBlocked = createMemo((): MarketplaceAppsBlock | undefined => {
-    const server = props.server;
-    if (server?.kind !== "remote" || pluginServerId()) return undefined;
-    if (!server.compatibility?.capabilities.length)
-      return server.state === "connecting" || server.state === "online" ? { reason: "checking" } : undefined;
-    const member = serverSupportsCapability(server, "mcp-servers-v1") && !serverRoleCanAdminister(server);
-    return { reason: member ? "member" : "update", host: server.name };
-  });
+  const access = createMarketplaceServerAccess(props);
+  const manage = access.manage;
+  const pluginServerId = () => access.props.pluginServerId;
   /** Add custom, for a user who can add a server to the host. */
   const addServer = () => {
     const serverId = pluginServerId();
@@ -134,15 +122,11 @@ export function MarketplaceOverlay(props: {
     <Show when={props.open}>
       <Loading>
         <MarketplaceModal
+          {...access.props}
           open={true}
           calls={props.calls}
           macOS={props.macOS}
           connectors={props.connectors}
-          agents={manage() ? props.agents : []}
-          activeAgentId={manage() ? props.activeAgentId : ""}
-          hostServerId={remoteAdminServer(props.server, "skills-admin-v1")?.id}
-          agentServerId={remoteAdminServer(props.server, "agent-install-v1")?.id}
-          agentUpdateServerId={remoteAdminServer(props.server, "agent-update-v1")?.id}
           onOpenChange={(open) => {
             /* The slug is consumed by opening, so closing forgets it: reopening the marketplace by
                hand lands on the catalog rather than on the listing a link once named. */
@@ -169,17 +153,7 @@ export function MarketplaceOverlay(props: {
           onInitialPluginSlugConsumed={props.onPluginSlugConsumed}
           initialListing={props.marketplaceListing ?? undefined}
           onInitialListingConsumed={props.onMarketplaceListingConsumed}
-          pluginServerId={pluginServerId()}
-          pluginsBlocked={pluginsBlocked()}
           onAddServer={addServer()}
-          pluginHostName={
-            props.server?.kind === "remote" && serverCanManageMcp(props.server) ? props.server.name : undefined
-          }
-          pluginSignInRelay={
-            props.server?.kind === "remote" && serverSupportsCapability(props.server, "sign-in-relay-v1")
-          }
-          pluginAccounts={serverSupportsCapability(props.server, "mcp-accounts-v1")}
-          pluginAccess={serverCanAdminister(props.server, "mcp-access-v1")}
           onRunPluginPrompt={
             composerFree()
               ? (agentId, prompt) =>
@@ -190,6 +164,117 @@ export function MarketplaceOverlay(props: {
       </Loading>
     </Show>
   );
+}
+
+/**
+ * Connect on a chat suggestion card for a catalog plugin: its connect step in a dialog over the chat,
+ * on the same server data as the Marketplace. The person stays in the chat. A connector's connect step
+ * is on its page, so the clients open Marketplace for it.
+ */
+export function MarketplaceAppConnectOverlay(props: {
+  /** The app to connect. Absent: no connect step runs. */
+  appId: string | null | undefined;
+  server: ServerSummary | undefined;
+  agents: readonly MarketplaceAgentRow[];
+  activeAgentId: string;
+  /** The connectors of `server`. */
+  connectors?: ConnectorRegistry | undefined;
+  /** What the connect step calls. Absent: this computer's bridge. */
+  calls?: MarketplaceCalls | undefined;
+  /** This computer runs macOS. The web client leaves it out. */
+  macOS?: boolean | undefined;
+  /** The connect step ended: connected, closed, or failed with a toast. */
+  onDone: () => void;
+  /** Opens the app's Marketplace page, for an app that cannot connect here. The page tells why. */
+  onOpenPage: (appId: string) => void;
+}) {
+  const access = createMarketplaceServerAccess(props);
+  return (
+    <Show when={props.appId} keyed>
+      {(appId) => (
+        <Loading>
+          <MarketplaceAppConnect
+            {...access.props}
+            appId={appId}
+            calls={props.calls}
+            macOS={props.macOS}
+            connectors={props.connectors}
+            plugins={MARKETPLACE_PLUGINS}
+            onDone={props.onDone}
+            onOpenPage={props.onOpenPage}
+          />
+        </Loading>
+      )}
+    </Show>
+  );
+}
+
+/**
+ * What the Marketplace reads from the server on screen: the agents a skill can go to, the hosts that
+ * install, and where an app connects. The Marketplace page and the connect step of a chat card share
+ * it, so the two cannot drift apart. The props are getters, so they follow the server.
+ */
+function createMarketplaceServerAccess(props: {
+  server: ServerSummary | undefined;
+  agents: readonly MarketplaceAgentRow[];
+  activeAgentId: string;
+}) {
+  const manage = createMemo(() => serverCanAdminister(props.server, "skills-admin-v1"));
+  /* A plugin's app is an MCP server, which the host holds. A joined server takes one over
+     `mcp-servers-v1` from an admin, or from a member with `mcp-member-access-v1`; another member
+     browses the listings and installs nothing. */
+  const pluginServerId = createMemo(() => (serverCanManageMcp(props.server) ? props.server.id : undefined));
+  /* Why a joined server's apps do not connect, so the app page says it rather than hide Connect. A
+     host always lists capabilities, so an empty list on a live connection is one that this app has
+     not read yet. An offline, failed or incompatible server has its own notice. */
+  const pluginsBlocked = createMemo((): MarketplaceAppsBlock | undefined => {
+    const server = props.server;
+    if (server?.kind !== "remote" || pluginServerId()) return undefined;
+    if (!server.compatibility?.capabilities.length)
+      return server.state === "connecting" || server.state === "online" ? { reason: "checking" } : undefined;
+    const member = serverSupportsCapability(server, "mcp-servers-v1") && !serverRoleCanAdminister(server);
+    return { reason: member ? "member" : "update", host: server.name };
+  });
+  return {
+    manage,
+    props: {
+      get agents() {
+        return manage() ? props.agents : [];
+      },
+      get activeAgentId() {
+        return manage() ? props.activeAgentId : "";
+      },
+      get hostServerId() {
+        return remoteAdminServer(props.server, "skills-admin-v1")?.id;
+      },
+      get agentServerId() {
+        return remoteAdminServer(props.server, "agent-install-v1")?.id;
+      },
+      get agentUpdateServerId() {
+        return remoteAdminServer(props.server, "agent-update-v1")?.id;
+      },
+      get pluginServerId() {
+        return pluginServerId();
+      },
+      get pluginsBlocked() {
+        return pluginsBlocked();
+      },
+      get pluginHostName() {
+        const server = props.server;
+        return server?.kind === "remote" && serverCanManageMcp(server) ? server.name : undefined;
+      },
+      get pluginSignInRelay() {
+        const server = props.server;
+        return server?.kind === "remote" && serverSupportsCapability(server, "sign-in-relay-v1");
+      },
+      get pluginAccounts() {
+        return serverSupportsCapability(props.server, "mcp-accounts-v1");
+      },
+      get pluginAccess() {
+        return serverCanAdminister(props.server, "mcp-access-v1");
+      },
+    },
+  };
 }
 
 /**

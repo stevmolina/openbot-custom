@@ -1,4 +1,8 @@
-import type { AgentEvent } from "@openbot/contracts/ipc";
+import {
+  type AgentEvent,
+  type ConversationMessage,
+  MARKETPLACE_SUGGESTION_ITEM_TYPE_PREFIX,
+} from "@openbot/contracts/ipc";
 import type { ServerView } from "@openbot/ui/features/servers/ServerMenu";
 import { onCleanup } from "solid-js";
 import type { Meta, StoryObj } from "storybook-solidjs-vite";
@@ -6,7 +10,7 @@ import { App } from "../src/App";
 import { LEFT_PANEL_COLLAPSED_STORAGE_KEY, SERVER_VIEW_STORAGE_KEY } from "../src/layout-constants";
 import { createMockOpenBot, type MockOpenBotOptions } from "../src/preview/mock-openbot";
 import { OpenBotPlayground } from "../src/preview/OpenBotPlayground";
-import { STORY_AGENT_STATUS, STORY_AGENT_SUMMARIES, STORY_APP_INFO, STORY_SERVERS } from "./fixtures";
+import { STORY_AGENT_STATUS, STORY_AGENT_SUMMARIES, STORY_APP_INFO, STORY_SERVERS, STORY_SNAPSHOTS } from "./fixtures";
 
 const [storyLocalServer, storyRemoteServer] = STORY_SERVERS;
 if (!storyLocalServer || !storyRemoteServer) throw new Error("Story server fixtures need a local and a remote server.");
@@ -329,4 +333,59 @@ export const AgentsWaitingForInput: Story = {
 
 export const CompactAgentsWaitingForInput: Story = {
   render: () => <WaitingForInputPlayground compact />,
+};
+
+const chiefSnapshot = STORY_SNAPSHOTS.chief;
+if (!chiefSnapshot) throw new Error("Story snapshots need the chief agent.");
+
+/** A Marketplace app that an agent suggests in the chat, as a card under its reply. */
+function suggestion(id: string, appId: string, createdAt: string): ConversationMessage {
+  return {
+    id,
+    author: "system",
+    source: "system",
+    itemType: `${MARKETPLACE_SUGGESTION_ITEM_TYPE_PREFIX}${appId}`,
+    text: "",
+    createdAt,
+    status: "completed",
+  };
+}
+
+/**
+ * An agent suggests Typefully and GitHub in the chat. Connect on Typefully runs its sign-in in a dialog
+ * over the chat, and the card then shows Connected. GitHub is a connector: Connect opens its page.
+ */
+export const AppSuggestionInChat: Story = {
+  render: () => (
+    <OpenBotPlayground
+      options={{
+        snapshots: {
+          ...STORY_SNAPSHOTS,
+          chief: {
+            ...chiefSnapshot,
+            messages: [
+              {
+                id: "message-suggest-ask",
+                author: "user",
+                source: "user",
+                text: "Can you post the launch thread on X for me?",
+                createdAt: "2026-08-19T09:50:00.000Z",
+                status: "completed",
+              },
+              {
+                id: "message-suggest-answer",
+                author: "assistant",
+                source: "assistant",
+                text: "I can draft and schedule it in Typefully once it is connected.",
+                createdAt: "2026-08-19T09:50:20.000Z",
+                status: "completed",
+              },
+              suggestion("message-suggest-typefully", "typefully", "2026-08-19T09:50:21.000Z"),
+              suggestion("message-suggest-github", "github", "2026-08-19T09:50:22.000Z"),
+            ],
+          },
+        },
+      }}
+    />
+  ),
 };

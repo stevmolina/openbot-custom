@@ -6,7 +6,9 @@ import {
   Globe2,
   Input,
   Listbox,
+  Moon,
   Search,
+  Sun,
   TriangleAlert,
   UserRound,
   Waypoints,
@@ -24,7 +26,12 @@ import { BrowserPageMenu } from "./BrowserPageMenu";
 import { BrowserProfileDot } from "./BrowserProfileColor";
 import { BROWSER_OWNER_EYE_SCALE, BrowserOwnerIcon } from "./BrowserTabIcon";
 import { browserActionLabel } from "./browser-action-labels";
-import { type BrowserFullViewProps, browserTabProfileLabel, browserTabStoppable } from "./browser-full-view-types";
+import {
+  type BrowserFullViewProps,
+  browserPageDark,
+  browserTabProfileLabel,
+  browserTabStoppable,
+} from "./browser-full-view-types";
 import { useBrowserPageCover } from "./browser-page-cover";
 import {
   type BrowserSuggestion,
@@ -384,6 +391,25 @@ export function BrowserAddressRow(props: {
           >
             <TriangleAlert /> {errorCount()}
           </span>
+        )}
+      </Show>
+      {/* A narrow row has the theme in the page menu. */}
+      <Show when={!props.narrow && props.view.onSetColorScheme}>
+        {(setColorScheme) => (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t(browserPageDark(tab()) ? "browser.pageTheme.toLight" : "browser.pageTheme.toDark")}
+            disabled={!tab()}
+            onClick={() => {
+              const current = tab();
+              if (current) setColorScheme()(current.id, browserPageDark(current) ? "light" : "dark");
+            }}
+          >
+            <Show when={browserPageDark(tab())} fallback={<Moon aria-hidden="true" />}>
+              <Sun aria-hidden="true" />
+            </Show>
+          </Button>
         )}
       </Show>
       <BrowserPageMenu view={props.view} narrow={props.narrow} onNewTab={props.onNewTab} />

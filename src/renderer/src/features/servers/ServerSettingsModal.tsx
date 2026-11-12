@@ -59,6 +59,7 @@ import { type ServerBrowserProfilesOptions, ServerBrowserProfilesPanel } from ".
 import { type ServerStorageOptions, ServerStoragePanel } from "../files/ServerStoragePanel";
 import { hostedPlanStorageGb } from "../files/storage-usage";
 import { type HostProviderSettings, HostProviderSettingsPanel } from "../settings/ProviderSettingsSection";
+import type { HostClaudeAiToolsOptions, ProviderClaudeAiToolsSource } from "../settings/provider-claude-ai-tools";
 import type {
   HostClaudeCompactWindowOptions,
   ProviderClaudeCompactWindowSource,
@@ -258,6 +259,11 @@ export interface ServerSettingsModalProps {
    */
   claudeUserSetup?: HostClaudeUserSetupOptions | undefined;
   /**
+   * The Claude provider page shows "Use claude.ai tools" only when a caller supplies this, and only
+   * for the local server or a remote host with `claude-ai-tools-v1` that this member administers.
+   */
+  claudeAiTools?: HostClaudeAiToolsOptions | undefined;
+  /**
    * The Claude provider page shows the size at which Claude Code compacts chats only when a caller
    * supplies this, and only for the local server or a remote host with `claude-compact-window-v1`
    * that this member administers.
@@ -442,6 +448,11 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
   function claudeUserSetupSource(): ProviderClaudeUserSetupSource | undefined {
     const options = props.claudeUserSetup;
     if (!options || !actionsAvailable() || !serverCanAdminister(props.server, "claude-user-setup-v1")) return undefined;
+    return { ...options, serverId: props.server.id, remote: !local() };
+  }
+  function claudeAiToolsSource(): ProviderClaudeAiToolsSource | undefined {
+    const options = props.claudeAiTools;
+    if (!options || !actionsAvailable() || !serverCanAdminister(props.server, "claude-ai-tools-v1")) return undefined;
     return { ...options, serverId: props.server.id, remote: !local() };
   }
   function claudeCompactWindowSource(): ProviderClaudeCompactWindowSource | undefined {
@@ -1046,6 +1057,7 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
                   onDetailChange={setProviderDetail}
                   promptCache={promptCacheSource()}
                   claudeUserSetup={claudeUserSetupSource()}
+                  claudeAiTools={claudeAiToolsSource()}
                   claudeCompactWindow={claudeCompactWindowSource()}
                   modelVisibility={modelVisibilitySource()}
                   hostDefaultProvider={hostDefaultProviderSource()}

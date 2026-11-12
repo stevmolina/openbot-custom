@@ -317,6 +317,7 @@ const teamBrowser: TeamApiBrowser = {
   close: unused,
   capturePreview: unused,
   setVisible: unused,
+  setColorScheme: unused,
   getDisplayState: () => ({ tabs: [], activeTabId: null }),
   loadUrl: unused,
   isPrivate: () => false,

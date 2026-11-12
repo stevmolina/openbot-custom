@@ -61,6 +61,7 @@ export const messages = {
   "error.backend.browserSignInReadFailed": "O OpenBot não conseguiu ler o login da janela.",
   "error.backend.browserStopUnsupported":
     "Este computador anfitrião remoto não consegue parar o carregamento de uma página.",
+  "error.backend.browserColorSchemeUnsupported": "Este host remoto não pode mudar o tema da página.",
   "error.backend.sharedDataLocalOnly":
     "Os dados compartilhados são gerenciados no computador que executa estes agentes.",
   "error.backend.browserUrlProtocol": "Somente URLs HTTP(S) são permitidas no navegador.",

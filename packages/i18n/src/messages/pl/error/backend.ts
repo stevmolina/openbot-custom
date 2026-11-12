@@ -57,6 +57,7 @@ export const messages = {
   "error.backend.browserSignInOpenFailed": "OpenBot nie mógł otworzyć okna logowania.",
   "error.backend.browserSignInReadFailed": "OpenBot nie mógł odczytać logowania z okna.",
   "error.backend.browserStopUnsupported": "Ten zdalny host nie może zatrzymać wczytywania strony.",
+  "error.backend.browserColorSchemeUnsupported": "Ten zdalny host nie może zmienić motywu strony.",
   "error.backend.sharedDataLocalOnly": "Dane współdzielone są zarządzane na komputerze, na którym działają ci agenci.",
   "error.backend.browserUrlProtocol": "Dozwolone są tylko adresy URL HTTP(S).",
   "error.backend.sunshineNotReady": "Sunshine nie osiągnął gotowości.",

@@ -1,6 +1,7 @@
 import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
 import type {
   BrowserBounds,
+  BrowserColorSchemeInput,
   BrowserLocalSignInFinish,
   BrowserLocalSignInInput,
   BrowserNavigateInput,
@@ -45,6 +46,16 @@ export function parseBrowserNavigate(value: unknown): BrowserNavigateInput {
     tabId: requireString(value.tabId, "tabId"),
     direction: value.direction,
   };
+}
+
+export function parseBrowserColorScheme(value: unknown): BrowserColorSchemeInput {
+  if (
+    !isObject(value) ||
+    (value.colorScheme !== "light" && value.colorScheme !== "dark" && value.colorScheme !== "system")
+  ) {
+    throw new Error("Invalid browser color scheme request.");
+  }
+  return { tabId: requireString(value.tabId, "tabId"), colorScheme: value.colorScheme };
 }
 
 export function parseBrowserTeachStop(value: unknown): BrowserTeachStopInput {

@@ -63,6 +63,33 @@ import {
   Text,
 } from "@openbot/ui";
 import { normalizeAvatarFile } from "@openbot/ui/avatar-image";
+import mascotBlue from "../agents/assets/pokebots/blue.webp";
+import mascotDesign from "../agents/assets/pokebots/design.webp";
+import mascotDev from "../agents/assets/pokebots/dev.webp";
+import mascotMarketing from "../agents/assets/pokebots/marketing.webp";
+import mascotMint from "../agents/assets/pokebots/mint.webp";
+import mascotOps from "../agents/assets/pokebots/ops.webp";
+import mascotOrange from "../agents/assets/pokebots/orange.webp";
+import mascotPurple from "../agents/assets/pokebots/purple.webp";
+import mascotResearch from "../agents/assets/pokebots/research.webp";
+import mascotSales from "../agents/assets/pokebots/sales.webp";
+import mascotSupport from "../agents/assets/pokebots/support.webp";
+
+/** The first Pokebots app's plush mascots, offered as ready-made agent pictures. */
+const POKEBOTS_MASCOTS = [
+  mascotBlue,
+  mascotDev,
+  mascotDesign,
+  mascotResearch,
+  mascotSales,
+  mascotMarketing,
+  mascotOps,
+  mascotSupport,
+  mascotOrange,
+  mascotMint,
+  mascotPurple,
+] as const;
+
 import {
   AVATAR_COLOR_CHOICES,
   AVATAR_EXPRESSIONS,
@@ -749,6 +776,17 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
     }
   }
 
+  /** Saves one Pokebots mascot as the agent picture, through the same path as an upload. */
+  async function selectMascot(url: string): Promise<void> {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      await uploadAgentAvatar(new File([blob], "pokebots-mascot.webp", { type: "image/webp" }));
+    } catch (error) {
+      reportSaveError(props.agent.id, error, t("agentSettings.avatar.processFailed"));
+    }
+  }
+
   async function uploadAgentAvatar(file: File | undefined): Promise<void> {
     if (!file) return;
     setDraft((state) => {
@@ -1173,6 +1211,35 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
                         <small>{t("agentSettings.avatar.imageHint")}</small>
                       </span>
                     </Button>
+                    <div class="avatar-editor-heading">
+                      <span>{t("agentSettings.avatar.mascots")}</span>
+                    </div>
+                    <fieldset class="avatar-face-grid" aria-label={t("agentSettings.avatar.mascots")}>
+                      <For each={[...POKEBOTS_MASCOTS]}>
+                        {(mascot, index) => (
+                          <Button
+                            variant="ghost"
+                            type="button"
+                            class="avatar-face-choice"
+                            disabled={draft.avatar.uploadBusy}
+                            aria-label={t("agentSettings.avatar.mascotOption", { number: index() + 1 })}
+                            onClick={() => void selectMascot(mascot)}
+                          >
+                            <img
+                              src={mascot}
+                              alt=""
+                              draggable={false}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                "object-fit": "cover",
+                                "border-radius": "var(--openbot-radius-md)",
+                              }}
+                            />
+                          </Button>
+                        )}
+                      </For>
+                    </fieldset>
                     <div class="avatar-editor-divider" />
                     <div class="avatar-editor-heading">
                       <span>{t("agentSettings.avatar.shape")}</span>

@@ -8,6 +8,8 @@ import { useConversationViewScope } from "./conversation-scope";
 export interface McpSignInChatCardProps {
   config: McpServerConfig;
   signedIn: boolean;
+  /** The user wrote in the chat after this card, so the agent already got the news. */
+  replied?: boolean | undefined;
   onSignIn?: ((trigger: HTMLElement | null) => void) | undefined;
   /** Sends the message that tells the agent to test again. False when it could not be sent now. */
   onContinue: (body: string) => boolean | Promise<boolean>;
@@ -21,7 +23,8 @@ export function McpSignInChatCard(props: McpSignInChatCardProps) {
   const { t } = useText();
   const [sent, setSent] = createSignal(false);
   const state = (): McpSignInCardState => {
-    if (sent()) return "sent";
+    // A message the user typed, or a Continue sent before a reload, also told the agent.
+    if (sent() || (props.signedIn && props.replied)) return "sent";
     if (!props.onSignIn) return "unavailable";
     return props.signedIn ? "signed-in" : "sign-in";
   };
@@ -51,12 +54,29 @@ export function McpSignInChatCard(props: McpSignInChatCardProps) {
   );
 }
 
+/** The sign-in card messages that a later user message follows. */
+export function mcpSignInRepliedIds(messages: readonly AgentMessage[]): Set<string> {
+  const replied = new Set<string>();
+  let waiting: string[] = [];
+  for (const message of messages) {
+    if (message.author === "you") {
+      for (const id of waiting) replied.add(id);
+      waiting = [];
+    } else if (message.actionMarker?.kind === "mcp-sign-in") waiting.push(message.id);
+  }
+  return replied;
+}
+
 /**
  * The sign-in card of a side thread message, as the agent's own chat draws it. Continue goes to that
  * thread. Another message, or a row this client cannot read, keeps its row.
  */
-export function useThreadMcpSignInCard(onContinue: (body: string) => Promise<boolean>) {
+export function useThreadMcpSignInCard(
+  messages: readonly AgentMessage[],
+  onContinue: (body: string) => Promise<boolean>,
+) {
   const { props, mcpServers } = useConversationViewScope();
+  const replied = createMemo(() => mcpSignInRepliedIds(messages));
   const config = (mcpServerId: string) =>
     mcpServers().find((candidate) => candidate.id === mcpServerId && candidate.transport === "http");
   // The http rows by id. A list read again with the same rows keeps each card, and what it shows.
@@ -74,6 +94,7 @@ export function useThreadMcpSignInCard(onContinue: (body: string) => Promise<boo
           <McpSignInChatCard
             config={row()}
             signedIn={props.mcpSignedIn?.(row().id) ?? false}
+            replied={replied().has(message.id)}
             onSignIn={props.onOpenMcpSignIn ? (trigger) => props.onOpenMcpSignIn?.(row().id, trigger) : undefined}
             onContinue={onContinue}
           />

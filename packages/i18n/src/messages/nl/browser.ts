@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "Vooruit",
   "browser.reload": "Pagina opnieuw laden",
   "browser.stopLoading": "Laden stoppen",
+  "browser.pageTheme.toDark": "Pagina donker tonen",
+  "browser.pageTheme.toLight": "Pagina licht tonen",
   "browser.recording.label": "Browseropname actief",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -103,6 +105,7 @@ export const messages = {
   "browser.error.closeTab": "Kan het browsertabblad niet sluiten.",
   "browser.error.reloadTab": "Kan het browsertabblad niet opnieuw laden.",
   "browser.error.stopLoading": "Kan het laden van de pagina niet stoppen.",
+  "browser.error.colorScheme": "Kan het thema van de pagina niet wijzigen.",
   "browser.error.teachStart": "Kan de opname van de taak niet starten.",
   "browser.error.teachStop": "Kan de opname van de taak niet stoppen.",
   "browser.error.teachEmpty": "De opname heeft geen stappen.",

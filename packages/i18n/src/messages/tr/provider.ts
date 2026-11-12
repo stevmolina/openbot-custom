@@ -260,6 +260,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "Ajanlar sunucudaki ~/.claude konumundan CLAUDE.md, beceriler, ajanlar, hook’lar ve eklentileri yükler. Kapalıyken her tur daha kısa bir istem gönderir. Çalışma alanı dosyaları yine yüklenir.",
   "provider.settings.claudeUserSetupLoadFailed": "Claude Code ayarı yüklenemedi.",
+  "provider.settings.claudeAiTools": "claude.ai araçlarını kullan",
+  "provider.settings.claudeAiToolsDescription":
+    "Claude ajanları Artifacts yayımlayabilir ve Gmail, Notion ve Slack gibi claude.ai bağlayıcılarınızı kullanabilir. claude.ai ile oturum açmayı gerektirir. Her isteğe yaklaşık 13k token ekler.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Claude ajanları Artifacts yayımlayabilir ve sunucudaki Claude hesabının claude.ai bağlayıcılarını kullanabilir. claude.ai ile oturum açmayı gerektirir. Her isteğe yaklaşık 13k token ekler.",
+  "provider.settings.claudeAiToolsLoadFailed": "claude.ai araçları ayarı yüklenemedi.",
   "provider.settings.context": "Bağlam",
   "provider.settings.compactWindow": "Sohbetleri sıkıştırma boyutu",
   "provider.settings.compactWindowDescription":

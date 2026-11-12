@@ -2,7 +2,7 @@ import { buttonVariants, DropdownMenu, Ellipsis } from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
 import { createSignal, Show } from "solid-js";
 import { BrowserShortcutHint } from "./BrowserTabIcon";
-import { type BrowserFullViewProps, browserTabStoppable } from "./browser-full-view-types";
+import { type BrowserFullViewProps, browserPageDark, browserTabStoppable } from "./browser-full-view-types";
 import { useBrowserPageCover } from "./browser-page-cover";
 
 /** The actions of the view in one menu: a new tab, reopen, Picture in Picture, a sign-in on this computer, hide. */
@@ -55,6 +55,19 @@ export function BrowserPageMenu(props: { view: BrowserFullViewProps; narrow: boo
               >
                 {t("browser.stopLoading")}
               </DropdownMenu.Item>
+            </Show>
+            <Show when={props.view.onSetColorScheme}>
+              {(setColorScheme) => (
+                <DropdownMenu.Item
+                  disabled={!tab()}
+                  onSelect={() => {
+                    const current = tab();
+                    if (current) setColorScheme()(current.id, browserPageDark(current) ? "light" : "dark");
+                  }}
+                >
+                  {t(browserPageDark(tab()) ? "browser.pageTheme.toLight" : "browser.pageTheme.toDark")}
+                </DropdownMenu.Item>
+              )}
             </Show>
             <DropdownMenu.Separator />
           </Show>

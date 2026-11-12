@@ -40,6 +40,7 @@ import { AGENT_WAITS_CAPABILITY } from "./agent-waits-v1";
 import { AGENT_WELCOME_CAPABILITY } from "./agent-welcome-v1";
 import { BACKGROUND_PROCESSES_CAPABILITY } from "./background-processes-v1";
 import { BITWARDEN_CONNECTOR_CAPABILITY } from "./bitwarden-connector-v1";
+import { BROWSER_COLOR_SCHEME_CAPABILITY } from "./browser-color-scheme-v1";
 import { BROWSER_EGRESS_CAPABILITY } from "./browser-egress-v1";
 import { TEAM_BROWSER_NAVIGATION_CAPABILITY } from "./browser-navigation-v1";
 import { BROWSER_PAGE_STATE_CAPABILITY } from "./browser-page-state-v1";
@@ -65,6 +66,7 @@ import { CHANNEL_ISOLATION_CAPABILITY } from "./channel-isolation-v1";
 import { CHANNEL_PICTURE_CAPABILITY } from "./channel-picture-v1";
 import { CHAT_COLORS_CAPABILITY } from "./chat-colors-v1";
 import { CHAT_HISTORY_CAPABILITY } from "./chat-history-v1";
+import { CLAUDE_AI_TOOLS_CAPABILITY } from "./claude-ai-tools-v1";
 import { CLAUDE_API_KEY_CAPABILITY } from "./claude-api-key-v1";
 import { CLAUDE_COMPACT_WINDOW_CAPABILITY } from "./claude-compact-window-v1";
 import { CLAUDE_USER_SETUP_CAPABILITY } from "./claude-user-setup-v1";
@@ -273,6 +275,7 @@ export {
   ANDROID_PUSH_NOTIFICATIONS_CAPABILITY,
   BACKGROUND_PROCESSES_CAPABILITY,
   BITWARDEN_CONNECTOR_CAPABILITY,
+  BROWSER_COLOR_SCHEME_CAPABILITY,
   BROWSER_EGRESS_CAPABILITY,
   BROWSER_PAGE_STATE_CAPABILITY,
   BROWSER_PROFILES_CAPABILITY,
@@ -577,6 +580,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   ROUTINES_ONCE_CAPABILITY,
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
+  CLAUDE_AI_TOOLS_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -592,6 +596,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
   WEB_PUSH_NOTIFICATIONS_CAPABILITY,
+  BROWSER_COLOR_SCHEME_CAPABILITY,
 ] as const;
 
 export type TeamCurrentCapability = (typeof TEAM_CURRENT_CAPABILITIES)[number];
@@ -791,6 +796,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== ROUTINES_ONCE_CAPABILITY &&
     capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
     capability !== CLAUDE_USER_SETUP_CAPABILITY &&
+    capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
     capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
     capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
     capability !== HERMES_IMPORT_CAPABILITY &&
@@ -805,7 +811,8 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
     capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
     capability !== AGENT_COMPUTER_CAPABILITY &&
-    capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY,
+    capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY &&
+    capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
 );
 /**
  * The capabilities that only a protocol 9 peer sends and gets. Protocols 7 and 8 read at most 128
@@ -880,6 +887,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   ROUTINES_ONCE_CAPABILITY,
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
+  CLAUDE_AI_TOOLS_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -895,6 +903,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   REMOTE_COMPUTER_USE_CAPABILITY,
   AGENT_COMPUTER_CAPABILITY,
   WEB_PUSH_NOTIFICATIONS_CAPABILITY,
+  BROWSER_COLOR_SCHEME_CAPABILITY,
 ]);
 // A v8 host reads at most 128 capabilities, so a client sends the protocol 9 ones only after it
 // negotiates protocol 9.
@@ -1053,6 +1062,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== ROUTINES_ONCE_CAPABILITY &&
       capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
       capability !== CLAUDE_USER_SETUP_CAPABILITY &&
+      capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
       capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
       capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
       capability !== HERMES_IMPORT_CAPABILITY &&
@@ -1067,6 +1077,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== PROVIDER_ACCOUNT_POOL_CAPABILITY &&
       capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
       capability !== AGENT_COMPUTER_CAPABILITY &&
-      capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY,
+      capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY &&
+      capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
   );
 }

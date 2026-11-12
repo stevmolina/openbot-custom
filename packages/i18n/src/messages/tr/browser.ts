@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "İleri git",
   "browser.reload": "Sayfayı yenile",
   "browser.stopLoading": "Yüklemeyi durdur",
+  "browser.pageTheme.toDark": "Sayfayı koyu modda göster",
+  "browser.pageTheme.toLight": "Sayfayı açık modda göster",
   "browser.recording.label": "Tarayıcı kaydı etkin",
   "browser.recording.badge": "KAYIT",
   "browser.diagnosticErrors": {
@@ -96,6 +98,7 @@ export const messages = {
   "browser.error.closeTab": "Tarayıcı sekmesi kapatılamadı.",
   "browser.error.reloadTab": "Tarayıcı sekmesi yeniden yüklenemedi.",
   "browser.error.stopLoading": "Sayfanın yüklenmesi durdurulamadı.",
+  "browser.error.colorScheme": "Sayfa teması değiştirilemedi.",
   "browser.error.teachStart": "Görevin kaydı başlatılamadı.",
   "browser.error.teachStop": "Görevin kaydı durdurulamadı.",
   "browser.error.teachEmpty": "Kayıtta hiç adım yok.",

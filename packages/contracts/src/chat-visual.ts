@@ -1,3 +1,4 @@
+import { attachmentFileExtension } from "./attachment-files";
 import { INPUT_LIMITS } from "./input-limits";
 import { isBoundedString } from "./ipc-bounded-values";
 import { isBoolean, isDynamicRecord, isNumber, isOneOf } from "./runtime-values";
@@ -72,6 +73,18 @@ export function chatVisualItemType(height?: number): string {
 /** Only an HTML file can be a visual page. */
 export function isChatVisualMimeType(mimeType: string): boolean {
   return (mimeType.split(";", 1)[0] ?? "").trim().toLowerCase() === "text/html";
+}
+
+/**
+ * Whether a file preview shows this attachment as a page. A visual reply is `text/html`. An HTML file
+ * that an agent or a member attaches keeps the `text/plain` type of a text file, so its name decides.
+ * The page runs in the same sandbox as a visual reply.
+ */
+export function isHtmlPageFile(file: { name: string; mimeType: string }): boolean {
+  if (isChatVisualMimeType(file.mimeType)) return true;
+  const extension = attachmentFileExtension(file.name);
+  const mimeType = (file.mimeType.split(";", 1)[0] ?? "").trim().toLowerCase();
+  return (extension === "html" || extension === "htm") && mimeType === "text/plain";
 }
 
 export function chatVisualReply<Attachment extends { mimeType: string }>(message: {
@@ -195,12 +208,15 @@ export function chatVisualFrameUrl(src: string, theme: ChatVisualTheme): string 
   return `${base}#${CHAT_VISUAL_THEME_FRAGMENT}${encodeURIComponent(JSON.stringify(theme))}`;
 }
 
-/** The message that sends the theme to a page that has loaded. */
-export function chatVisualThemeMessage(theme: ChatVisualTheme) {
+/**
+ * The message that sends the theme to a page that has loaded. `light` also makes the page's own
+ * colour scheme light, for a page that the user shows in light; `dark` keeps the base style.
+ */
+export function chatVisualThemeMessage(theme: ChatVisualTheme, appearance: ChatVisualAppearance = "dark") {
   return {
     jsonrpc: "2.0",
     method: CHAT_VISUAL_HOST_CONTEXT_CHANGED,
-    params: { theme: "dark", styles: { variables: theme } },
+    params: { theme: appearance, styles: { variables: theme } },
   } as const;
 }
 
@@ -372,6 +388,7 @@ if(event.source!==parentWindow||!data||data.jsonrpc!=="2.0")return;
 if(data.method==="${CHAT_VISUAL_HOST_CONTEXT_CHANGED}"){
 const params=data.params||{};
 apply(params.styles&&params.styles.variables);
+if(params.theme==="light")root.style.colorScheme="light";else if(params.theme==="dark")root.style.removeProperty("color-scheme");
 if(params.displayMode==="inline"||params.displayMode==="fullscreen")displayMode=params.displayMode;
 return;
 }

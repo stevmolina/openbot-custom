@@ -1,9 +1,11 @@
 import {
   CHAT_VISUAL_FRAME_SANDBOX,
+  type ChatVisualAppearance,
   type ChatVisualKey,
   type ChatVisualRect,
   type ChatVisualReplyResult,
   type ChatVisualTheme,
+  chatVisualAppTheme,
   chatVisualDisplayModeMessage,
   chatVisualDocument,
   chatVisualFrameHeight,
@@ -110,6 +112,11 @@ interface ChatVisualProps {
   quoteShortcut?: QuoteShortcutModifier | undefined;
   /** The window draws the macOS window controls over the top start corner. The image viewer leaves room. */
   macWindowControls?: boolean | undefined;
+  /**
+   * The scheme that the user chose for the page. The page gets the colors of that palette, and its
+   * `prefers-color-scheme` follows it. Absent: the page follows the app.
+   */
+  colorScheme?: ChatVisualAppearance | undefined;
 }
 
 /**
@@ -155,6 +162,21 @@ function VisualFrame(props: ChatVisualProps) {
   let frame: HTMLIFrameElement | undefined;
   let box: HTMLDivElement | undefined;
   let expandButton: HTMLButtonElement | undefined;
+  /** The colors for the page: the palette that the user chose, or the app's at the place of the frame. */
+  const pageTheme = (element: Element) => {
+    const scheme = untrack(() => props.colorScheme);
+    return scheme ? chatVisualAppTheme(scheme) : visualTheme(element);
+  };
+  const sendTheme = () => {
+    if (frame && untrack(theme))
+      frame.contentWindow?.postMessage(
+        chatVisualThemeMessage(
+          pageTheme(frame),
+          untrack(() => props.colorScheme),
+        ),
+        "*",
+      );
+  };
   // The page waits for the theme, which the frame reads at its place once it is mounted.
   const url = () => {
     const current = theme();
@@ -302,7 +324,7 @@ function VisualFrame(props: ChatVisualProps) {
   };
 
   onSettled(() => {
-    if (frame) setTheme(visualTheme(frame));
+    if (frame) setTheme(pageTheme(frame));
     window.addEventListener("message", onMessage);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("pointerdown", onPointerDown);
@@ -322,8 +344,24 @@ function VisualFrame(props: ChatVisualProps) {
   createEffect(documentColorScheme, (scheme) => {
     if (scheme === shownScheme) return;
     shownScheme = scheme;
-    if (frame && untrack(theme)) frame.contentWindow?.postMessage(chatVisualThemeMessage(visualTheme(frame)), "*");
+    sendTheme();
   });
+  // A scheme that the user chose also goes as a message, so the page keeps its state.
+  let chosenScheme = untrack(() => props.colorScheme);
+  createEffect(
+    () => props.colorScheme,
+    (scheme) => {
+      if (scheme === chosenScheme) return;
+      chosenScheme = scheme;
+      sendTheme();
+    },
+  );
+  const frameStyle = () => {
+    const scheme = props.colorScheme;
+    const parts = filled() ? [] : [`height: ${chatVisualFrameHeight(reported(), props.height)}px`];
+    if (scheme) parts.push(`color-scheme: ${scheme}`, `background: ${chatVisualAppTheme(scheme)["--background"]}`);
+    return parts.length ? parts.join("; ") : undefined;
+  };
 
   return (
     <div
@@ -361,12 +399,11 @@ function VisualFrame(props: ChatVisualProps) {
           loading={props.fill ? undefined : "lazy"}
           src={url()}
           srcdoc={pageDocument()}
-          style={filled() ? undefined : `height: ${chatVisualFrameHeight(reported(), props.height)}px`}
+          style={frameStyle()}
           // The frame loads `about:blank` while it is inserted, which runs this handler inside a render.
           onLoad={() => {
             // The colors at this time, which can be the other palette since the URL was made.
-            if (frame && untrack(theme))
-              frame.contentWindow?.postMessage(chatVisualThemeMessage(visualTheme(frame)), "*");
+            sendTheme();
           }}
         />
       </section>

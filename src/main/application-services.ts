@@ -205,6 +205,11 @@ import {
 } from "./central-auth-manager";
 import { ChatVisualPreviewer } from "./chat-visual-preview";
 import {
+  type ClaudeAiToolsControl,
+  claudeAiToolsControl,
+  createClaudeAiToolsPreferenceStore,
+} from "./claude-ai-tools-preference-store";
+import {
   type ClaudeCompactWindowControl,
   claudeCompactWindowControl,
   createClaudeCompactWindowPreferenceStore,
@@ -481,6 +486,7 @@ const SERVER_TIMEZONE_PREFERENCE_FILE = "openbot-server-timezone-v1.json";
 const SERVER_PERSONALITY_PREFERENCE_FILE = "openbot-server-personality-v1.json";
 const PROMPT_CACHE_TTL_PREFERENCE_FILE = "openbot-prompt-cache-ttl-v1.json";
 const CLAUDE_USER_SETUP_PREFERENCE_FILE = "openbot-claude-user-setup-v1.json";
+const CLAUDE_AI_TOOLS_PREFERENCE_FILE = "openbot-claude-ai-tools-v1.json";
 const CLAUDE_COMPACT_WINDOW_PREFERENCE_FILE = "openbot-claude-compact-window-v1.json";
 const MODEL_VISIBILITY_PREFERENCE_FILE = "openbot-model-visibility-v1.json";
 const REMOTE_SESSION_REUSE_PREFERENCE_FILE = "openbot-remote-session-reuse-preference-v1.json";
@@ -747,6 +753,7 @@ export interface ApplicationServices {
   serverPersonality: ServerPersonalityPreferenceStore;
   promptCacheTtl: PromptCacheTtlPreferenceStore;
   claudeUserSetup: ClaudeUserSetupControl;
+  claudeAiTools: ClaudeAiToolsControl;
   claudeCompactWindow: ClaudeCompactWindowControl;
   modelVisibility: ModelVisibility;
   remoteSessionReuse: RemoteSessionReusePreferenceStore;
@@ -1550,6 +1557,9 @@ export async function createApplicationServices({
   const claudeUserSetup = createClaudeUserSetupPreferenceStore(
     join(app.getPath("userData"), CLAUDE_USER_SETUP_PREFERENCE_FILE),
   );
+  const claudeAiTools = createClaudeAiToolsPreferenceStore(
+    join(app.getPath("userData"), CLAUDE_AI_TOOLS_PREFERENCE_FILE),
+  );
   const claudeCompactWindow = createClaudeCompactWindowPreferenceStore(
     join(app.getPath("userData"), CLAUDE_COMPACT_WINDOW_PREFERENCE_FILE),
   );
@@ -1593,6 +1603,7 @@ export async function createApplicationServices({
       serverPersonality.load(),
       promptCacheTtl.load(),
       claudeUserSetup.load(),
+      claudeAiTools.load(),
       claudeCompactWindow.load(),
       remoteSessionReuse.load(),
       externalLinkPreference.load(),
@@ -2288,6 +2299,8 @@ export async function createApplicationServices({
       promptCacheTtl: () => promptCacheTtl.get().ttl,
       // Also read at each Claude spawn, from Settings > Providers > Claude of this computer.
       claudeUserSetup: () => claudeUserSetup.get().enabled,
+      // Also read at each Claude spawn: the Artifact tools and the claude.ai connectors.
+      claudeAiTools: () => claudeAiTools.get().enabled,
       // Also read at each Claude spawn: the size at which Claude Code compacts a chat.
       claudeCompactWindow: () => claudeCompactWindow.get().tokens,
       // `configs()`, not `list()`: this is the one path the API keys travel, and it ends at the
@@ -2404,6 +2417,7 @@ export async function createApplicationServices({
   const agentMemoryLimitSetting = reloadingAgentMemoryLimit(agentMemoryLimit, service);
   promptCacheTtl.onChange(() => service.notifyProviderSettingsChanged());
   const claudeUserSetupSetting = claudeUserSetupControl(claudeUserSetup, () => service.notifyProviderSettingsChanged());
+  const claudeAiToolsSetting = claudeAiToolsControl(claudeAiTools, () => service.notifyProviderSettingsChanged());
   const claudeCompactWindowSetting = claudeCompactWindowControl(claudeCompactWindow, () =>
     service.notifyProviderSettingsChanged(),
   );
@@ -3365,6 +3379,7 @@ export async function createApplicationServices({
       browsingMemory,
       promptCacheTtl,
       claudeUserSetup: claudeUserSetupSetting,
+      claudeAiTools: claudeAiToolsSetting,
       claudeCompactWindow: claudeCompactWindowSetting,
       providerDetection: { detection: providerDetection, settings: providerDetectionSettings },
       modelVisibility,
@@ -4461,6 +4476,7 @@ export async function createApplicationServices({
     serverPersonality,
     promptCacheTtl,
     claudeUserSetup: claudeUserSetupSetting,
+    claudeAiTools: claudeAiToolsSetting,
     claudeCompactWindow: claudeCompactWindowSetting,
     modelVisibility,
     remoteSessionReuse,

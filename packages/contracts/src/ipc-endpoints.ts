@@ -226,6 +226,7 @@ import type {
 import type { BitwardenConnectorStatus, BitwardenHostConnectInput } from "./ipc-bitwarden-connector";
 import type {
   BrowserBounds,
+  BrowserColorSchemeInput,
   BrowserControlState,
   BrowserDisplayState,
   BrowserLiveViewEvent,
@@ -285,6 +286,7 @@ import type {
   DeleteChannelMessageInput,
   SetChannelImageInput,
 } from "./ipc-chat-channels";
+import type { ClaudeAiToolsSetting } from "./ipc-claude-ai-tools";
 import type { ClaudeCompactWindowSetting } from "./ipc-claude-compact-window";
 import type { ClaudeUserSetupSetting } from "./ipc-claude-user-setup";
 import type {
@@ -1428,6 +1430,10 @@ export const IPC_ENDPOINTS = {
     setClaudeUserSetup: scopedRequest<boolean, ClaudeUserSetupSetting, "required">()(
       "host-admin:set-claude-user-setup",
     ),
+    // Whether the Claude agents of the server get the Artifact tools and the claude.ai connectors of
+    // the host's Claude Code sign-in (`claude-ai-tools-v1`). An owner or admin sets it.
+    getClaudeAiTools: scopedQuery<ClaudeAiToolsSetting, "required">()("host-admin:get-claude-ai-tools"),
+    setClaudeAiTools: scopedRequest<boolean, ClaudeAiToolsSetting, "required">()("host-admin:set-claude-ai-tools"),
     // The size at which Claude Code compacts the chats of the server's agents
     // (`claude-compact-window-v1`). `null` is Claude Code's own size. An owner or admin sets it.
     getClaudeCompactWindow: scopedQuery<ClaudeCompactWindowSetting, "required">()(
@@ -2015,6 +2021,9 @@ export const IPC_ENDPOINTS = {
     navigate: request<BrowserNavigateInput, void>()("browser:navigate"),
     reload: request<string, void>()("browser:reload"),
     stop: request<string, void>()("browser:stop"),
+    // The color scheme that the tab gives to its page. `system` follows the computer that runs the tab.
+    // A joined server needs `browser-color-scheme-v1`.
+    setColorScheme: request<BrowserColorSchemeInput, void>()("browser:set-color-scheme"),
     close: request<string, void>()("browser:close"),
     takeControl: request<string, void>()("browser:take-control"),
     releaseControl: request<string, void>()("browser:release-control"),

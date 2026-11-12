@@ -298,6 +298,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "Agents laden CLAUDE.md, skills, agents, hooks en plug-ins uit ~/.claude op de server. Uit: elke beurt stuurt een kortere prompt. Bestanden van de werkruimte worden nog steeds geladen.",
   "provider.settings.claudeUserSetupLoadFailed": "Kan de Claude Code-instelling niet laden.",
+  "provider.settings.claudeAiTools": "claude.ai-tools gebruiken",
+  "provider.settings.claudeAiToolsDescription":
+    "Claude-agents kunnen Artifacts publiceren en je claude.ai-connectors gebruiken, zoals Gmail, Notion en Slack. Vereist een claude.ai-aanmelding. Voegt ongeveer 13k tokens toe aan elk verzoek.",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Claude-agents kunnen Artifacts publiceren en de claude.ai-connectors van het Claude-account op de server gebruiken. Vereist een claude.ai-aanmelding. Voegt ongeveer 13k tokens toe aan elk verzoek.",
+  "provider.settings.claudeAiToolsLoadFailed": "De instelling voor de claude.ai-tools kon niet worden geladen.",
   "provider.settings.context": "Context",
   "provider.settings.compactWindow": "Chats comprimeren bij",
   "provider.settings.compactWindowDescription":

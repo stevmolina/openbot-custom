@@ -261,6 +261,12 @@ export const messages = {
   "provider.settings.claudeUserSetupServerDescription":
     "エージェントはサーバー上の ~/.claude から CLAUDE.md、スキル、エージェント、フック、プラグインを読み込みます。オフにすると、各ターンで送るプロンプトが短くなります。ワークスペースのファイルは引き続き読み込まれます。",
   "provider.settings.claudeUserSetupLoadFailed": "Claude Code の設定を読み込めませんでした。",
+  "provider.settings.claudeAiTools": "claude.ai のツールを使う",
+  "provider.settings.claudeAiToolsDescription":
+    "Claude エージェントが Artifacts を公開し、Gmail、Notion、Slack などの claude.ai コネクタを使えるようになります。claude.ai でのサインインが必要です。リクエストごとに約 13k トークン増えます。",
+  "provider.settings.claudeAiToolsServerDescription":
+    "Claude エージェントが Artifacts を公開し、サーバー上の Claude アカウントの claude.ai コネクタを使えるようになります。claude.ai でのサインインが必要です。リクエストごとに約 13k トークン増えます。",
+  "provider.settings.claudeAiToolsLoadFailed": "claude.ai のツールの設定を読み込めませんでした。",
   "provider.settings.context": "コンテキスト",
   "provider.settings.compactWindow": "チャットを圧縮するサイズ",
   "provider.settings.compactWindowDescription":

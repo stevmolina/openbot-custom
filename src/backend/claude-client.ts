@@ -236,6 +236,7 @@ const claudeFlagSettings = Effect.fn("claudeFlagSettings")(function* (
   configDirectory: string,
   cwd: string,
   sources: NonNullable<Options["settingSources"]>,
+  claudeAiTools: boolean,
 ) {
   const files = [
     ...(sources.includes("user") ? [join(configDirectory, "settings.json")] : []),
@@ -250,7 +251,9 @@ const claudeFlagSettings = Effect.fn("claudeFlagSettings")(function* (
   const ownOverride = (skill: string) =>
     ownSettings.some((file) => isDynamicRecord(file.skillOverrides) && Object.hasOwn(file.skillOverrides, skill));
   const overrides: Array<[string, "off" | "name-only"]> = [
-    ...CLAUDE_UNFIT_SKILLS.map((skill): [string, "off"] => [skill, "off"]),
+    ...CLAUDE_UNFIT_SKILLS.filter((skill) => !(claudeAiTools && CLAUDE_ARTIFACT_SKILLS.includes(skill))).map(
+      (skill): [string, "off"] => [skill, "off"],
+    ),
     ...CLAUDE_NAME_ONLY_SKILLS.map((skill): [string, "name-only"] => [skill, "name-only"]),
   ];
   const ownAttribution = ownSettings.some((file) => "attribution" in file || "includeCoAuthoredBy" in file);
@@ -272,13 +275,28 @@ const LABELLED_TOOLS: ReadonlySet<string> = new Set(["Bash", "Task", "Agent"]);
  * Claude's 5-hour window counts `sdk-*` requests about twice as heavily (anthropics/claude-code#97074).
  * With a label other than `sdk-*`, the CLI turns on the claude.ai Artifact tools for accounts that
  * have Artifacts. They publish pages to the user's claude.ai account, outside OpenBot, and their
- * schemas cost about 13k tokens in each request. `CLAUDE_CODE_ARTIFACT=0` keeps them off.
+ * schemas cost about 13k tokens in each request. `CLAUDE_CODE_ARTIFACT=0` keeps them off unless
+ * "Use claude.ai tools" is on (`withClaudeClientLabels`).
  */
 const OPENBOT_CLAUDE_CLIENT = {
   CLAUDE_AGENT_SDK_CLIENT_APP: "openbot/0.1.0",
-  CLAUDE_CODE_ARTIFACT: "0",
   CLAUDE_CODE_ENTRYPOINT: "openbot",
 };
+/**
+ * "Use claude.ai tools" on: the CLI loads the Artifact tools and the claude.ai connectors only
+ * without `--strict-mcp-config` (CLI 2.1.322: `headlessSyncsClaudeAiConnectors` and the Artifacts
+ * MCP entry both stop on the strict flag). Without it, the CLI would also load the user, project and
+ * local MCP servers (`~/.claude.json`, `.mcp.json`) and the MCP servers of plugins. These keep the
+ * MCP panel the only other source: `strictPluginOnlyCustomization: ["mcp"]` drops the user, project
+ * and local servers, and `CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS` drops the plugin servers. The servers
+ * that OpenBot gives (`mcpServers`, `--mcp-config`) and the claude.ai connectors stay.
+ */
+const CLAUDE_AI_TOOLS_MANAGED_SETTINGS: NonNullable<Options["managedSettings"]> = {
+  strictPluginOnlyCustomization: ["mcp"],
+};
+const CLAUDE_AI_TOOLS_ENVIRONMENT = { CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS: "1" };
+/** The bundled skill that makes a claude.ai Design artifact. It works only with the Artifact tools. */
+const CLAUDE_ARTIFACT_SKILLS: readonly string[] = ["design"];
 /**
  * The channel tools whose accepted call ends the turn: the tool result tells the agent to end it with no
  * more text. When a step ends with no text, Claude Code asks the model for a visible answer, and the agent
@@ -312,12 +330,14 @@ function terminalChannelRefusal(namespace: string, name: string, content: CallTo
  * The client labels for a CLI environment. Anthropic bills a request with a label other than `sdk-*`
  * as Claude Code, and promotional API credit can leave Claude Code out: a key with $200 of such credit
  * got "Credit balance is too low" with `openbot`, and an answer with `sdk-ts` (#5550). An API key has
- * no 5-hour window, so a request with a key keeps the SDK label.
+ * no 5-hour window, so a request with a key keeps the SDK label. The `sdk-ts` label also keeps the
+ * Artifact tools off, so `claudeAiTools` gives them only to a claude.ai sign-in.
  */
-function withClaudeClientLabels(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+function withClaudeClientLabels(environment: NodeJS.ProcessEnv, claudeAiTools = false): NodeJS.ProcessEnv {
   return {
     ...environment,
     ...OPENBOT_CLAUDE_CLIENT,
+    ...(claudeAiTools ? {} : { CLAUDE_CODE_ARTIFACT: "0" }),
     ...(environment.ANTHROPIC_API_KEY ? { CLAUDE_CODE_ENTRYPOINT: "sdk-ts" } : {}),
   };
 }
@@ -667,6 +687,8 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
   readonly #fallbackApiKey: (() => string | null) | undefined;
   /** Off: the agents load no user settings, CLAUDE.md, skills, agents, hooks or plugins of `~/.claude`, and no `~/.agents/skills`. */
   readonly #userSetup: () => boolean;
+  /** On: the agents get the Artifact tools and the claude.ai connectors of the sign-in ("Use claude.ai tools"). */
+  readonly #claudeAiTools: () => boolean;
   /** Whether the last account read found no claude.ai account and signed in with the key. */
   #onApiKey = false;
   /** Whether this client read the account. A client for one generation without tools does not. */
@@ -712,6 +734,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     historyIndexDirectory?: string,
     fallbackApiKey?: () => string | null,
     userSetup: () => boolean = () => false,
+    claudeAiTools: () => boolean = () => false,
   ) {
     super();
     this.#cli = cli;
@@ -727,6 +750,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     this.#agentEnvironment = agentEnvironment;
     this.#fallbackApiKey = fallbackApiKey;
     this.#userSetup = userSetup;
+    this.#claudeAiTools = claudeAiTools;
     const historyEnvironment = agentEnvironment?.();
     const resolvedHistoryIndexDirectory = historyIndexDirectory ?? stateDirectory;
     const historyOptions: ClaudeHistoryOptions = {
@@ -1300,6 +1324,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     const stateDirectory = this.#stateDirectory;
     // Read once, so that the settings and the home skills of one query agree.
     const userSetup = !config.profileGeneration && this.#userSetup();
+    const claudeAiTools = !config.profileGeneration && this.#claudeAiTools();
     const skillPlugin =
       config.workspaceOnly && stateDirectory ? yield* claudeWorkspaceSkillPlugin(stateDirectory, config.cwd) : null;
     const configDirectory =
@@ -1355,7 +1380,7 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
     // A profile generation has no tools and no skills, so it needs none of the OpenBot settings.
     const openBotSettings: Settings = config.profileGeneration
       ? {}
-      : yield* claudeFlagSettings(configDirectory, config.cwd, settingSources);
+      : yield* claudeFlagSettings(configDirectory, config.cwd, settingSources, claudeAiTools);
     const flagSettings: Settings = { ...openBotSettings, ...nodeOptionsSettings };
     const sandbox = config.workspaceOnly
       ? claudeWorkspaceSandbox(config.additionalDirectories, config.excludedFolders)
@@ -1429,8 +1454,10 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
           // with the same OpenBot settings give their agents different tools and "which servers does
           // my agent have" has no answer. The flag takes away MCP and nothing else, so permissions and
           // hooks still load from those files. Workspace only loads the user settings alone: see
-          // `claude-workspace-sandbox.ts`.
-          strictMcpConfig: true,
+          // `claude-workspace-sandbox.ts`. "Use claude.ai tools" adds the claude.ai connectors and
+          // the Artifact tools, which the flag also takes away: `CLAUDE_AI_TOOLS_MANAGED_SETTINGS`
+          // keeps the other sources closed.
+          strictMcpConfig: !claudeAiTools,
           permissionMode: "default",
           includePartialMessages: true,
           persistSession: config.persistSession,
@@ -1444,22 +1471,31 @@ export class ClaudeAgentClient extends EventEmitter<ClientEvents> {
               : {}),
           ...(sandbox && !settingsFile ? { sandbox } : {}),
           ...(config.workspaceOnly
+            ? { hooks: claudeWorkspaceHooks(config.cwd, config.additionalDirectories, config.excludedFolders) }
+            : {}),
+          ...(config.workspaceOnly || claudeAiTools
             ? {
-                hooks: claudeWorkspaceHooks(config.cwd, config.additionalDirectories, config.excludedFolders),
-                managedSettings: CLAUDE_WORKSPACE_MANAGED_SETTINGS,
+                managedSettings: {
+                  ...(config.workspaceOnly ? CLAUDE_WORKSPACE_MANAGED_SETTINGS : {}),
+                  ...(claudeAiTools ? CLAUDE_AI_TOOLS_MANAGED_SETTINGS : {}),
+                },
               }
             : {}),
           ...(plugins.length ? { plugins } : {}),
           mcpServers,
           env: {
-            ...withClaudeClientLabels({
-              ...claudeEnvironment(this.#cli),
-              // The login shell's `PATH`, so the Bash tool and hooks find Homebrew and `~/.local/bin`
-              // tools when Finder starts OpenBot. An `env.PATH` in the Claude settings still wins.
-              ...(launchPath ? { PATH: launchPath } : {}),
-              ...this.#environment(this.#onApiKey),
-              ...(display ? { DISPLAY: display } : {}),
-            }),
+            ...withClaudeClientLabels(
+              {
+                ...claudeEnvironment(this.#cli),
+                // The login shell's `PATH`, so the Bash tool and hooks find Homebrew and `~/.local/bin`
+                // tools when Finder starts OpenBot. An `env.PATH` in the Claude settings still wins.
+                ...(launchPath ? { PATH: launchPath } : {}),
+                ...this.#environment(this.#onApiKey),
+                ...(display ? { DISPLAY: display } : {}),
+              },
+              claudeAiTools,
+            ),
+            ...(claudeAiTools ? CLAUDE_AI_TOOLS_ENVIRONMENT : {}),
             // Without a terminal, the CLI gives the newer models no TodoWrite or task tools, so the
             // agent has no plan for OpenBot to show as a task list.
             CLAUDE_CODE_ENABLE_TODO_TOOLS: "1",
