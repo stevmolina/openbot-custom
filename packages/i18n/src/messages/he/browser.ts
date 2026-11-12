@@ -44,6 +44,8 @@ export const messages = {
   "browser.goForward": "קדימה",
   "browser.reload": "טעינת הדף מחדש",
   "browser.stopLoading": "עצירת הטעינה",
+  "browser.pageTheme.toDark": "הצגת הדף במצב כהה",
+  "browser.pageTheme.toLight": "הצגת הדף במצב בהיר",
   "browser.recording.label": "הקלטת דפדפן פעילה",
   "browser.recording.badge": "REC",
   "browser.diagnosticErrors": {
@@ -103,6 +105,7 @@ export const messages = {
   "browser.error.closeTab": "לא ניתן לסגור את לשונית הדפדפן.",
   "browser.error.reloadTab": "לא ניתן לטעון מחדש את לשונית הדפדפן.",
   "browser.error.stopLoading": "לא ניתן לעצור את טעינת הדף.",
+  "browser.error.colorScheme": "לא ניתן לשנות את ערכת הנושא של הדף.",
   "browser.error.teachStart": "לא ניתן היה להתחיל את הקלטת המשימה.",
   "browser.error.teachStop": "לא ניתן היה לעצור את הקלטת המשימה.",
   "browser.error.teachEmpty": "בהקלטה אין שלבים.",

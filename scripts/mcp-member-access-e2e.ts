@@ -161,6 +161,7 @@ const teamBrowser: TeamApiBrowser = {
   navigate: unused,
   reload: unused,
   stop: unused,
+  setColorScheme: unused,
   takeUserControl: unused,
   startTeach: unused,
   stopTeach: () => [],

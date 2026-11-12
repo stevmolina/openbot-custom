@@ -659,6 +659,8 @@ export type TeamApiBrowser = Pick<
   | "stopTeach"
   // Behind `browser-page-state`.
   | "stop"
+  // Behind `browser-color-scheme-v1`.
+  | "setColorScheme"
   // Behind `browser-sign-in`.
   | "importSignIn"
   // The live view, behind `browser-view`. `browser-view-gateway.ts` is what reaches these; a route

@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "Mostra il sorgente Markdown",
   "preview.panel.rawHtml": "Mostra il sorgente HTML",
   "preview.panel.wrapLines": "Vai a capo nelle righe lunghe",
+  "preview.panel.darkPage": "Mostra pagina in modalità scura",
+  "preview.panel.lightPage": "Mostra pagina in modalità chiara",
   "preview.folder.empty": "Questa cartella è vuota.",
   "preview.folder.truncated": "Vengono mostrati solo i primi {limit} elementi.",
   "preview.truncated": "Anteprima troncata dopo {limit} caratteri.",

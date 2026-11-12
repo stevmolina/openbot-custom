@@ -9,6 +9,10 @@ import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
 import { type DynamicRecord, isBoolean } from "@openbot/contracts/runtime-values";
 import { TEAM_API_ROUTES } from "@openbot/contracts/team-api-routes";
 import {
+  BROWSER_COLOR_SCHEME_CAPABILITY,
+  BROWSER_COLOR_SCHEME_ROUTES,
+} from "@openbot/contracts/team-protocol/browser-color-scheme-v1";
+import {
   BROWSER_PAGE_STATE_CAPABILITY,
   BROWSER_PAGE_STATE_ROUTES,
 } from "@openbot/contracts/team-protocol/browser-page-state-v1";
@@ -177,6 +181,19 @@ export async function routeBrowser(
         .filter((tab) => !hidden(tab.id))
         .map((tab) => ({ tabId: tab.id, canGoBack: tab.canGoBack === true, canGoForward: tab.canGoForward === true })),
     });
+  }
+
+  // Behind `browser-color-scheme-v1`. Any member who can see a tab sets the color scheme of its page.
+  // The tab list carries the new scheme; `browser-changed` tells each client to read it.
+  if (method === "POST" && url.pathname === BROWSER_COLOR_SCHEME_ROUTES.set) {
+    if (!capabilities.has(BROWSER_COLOR_SCHEME_CAPABILITY))
+      throw new HttpError(400, sourceText("error.backend.browserColorSchemeUnsupported"));
+    const body = await readJson(request);
+    const colorScheme = body.colorScheme;
+    if (colorScheme !== "light" && colorScheme !== "dark" && colorScheme !== "system")
+      throw new HttpError(400, "Invalid browser color scheme.");
+    await runCauseEffect(browser.setColorScheme(tabId(body), colorScheme));
+    return json(200, {});
   }
 
   // Behind `browser-sign-in`. Any member who can see a tab gives it the cookies of a sign-in made on

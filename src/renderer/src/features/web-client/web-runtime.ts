@@ -13,6 +13,8 @@ import type {
   AgentWaitsSnapshot,
   AttachmentSummary,
   AvatarImageInput,
+  BrowserColorSchemeInput,
+  BrowserEnvironment,
   BrowserLiveViewEvent,
   BrowserNavigateInput,
   BrowserOpenInput,
@@ -102,6 +104,10 @@ import {
   AGENT_WAITS_ROUTES,
   decodeAgentWaitsResponse,
 } from "@openbot/contracts/team-protocol/agent-waits-v1";
+import {
+  BROWSER_COLOR_SCHEME_CAPABILITY,
+  BROWSER_COLOR_SCHEME_ROUTES,
+} from "@openbot/contracts/team-protocol/browser-color-scheme-v1";
 import {
   BROWSER_PAGE_STATE_CAPABILITY,
   BROWSER_PAGE_STATE_ROUTES,
@@ -297,6 +303,8 @@ export interface WebWorkspaceRuntime {
   reloadBrowserTab(tabId: string): Promise<void>;
   /** Behind `browser-page-state`. */
   stopBrowserTab(tabId: string): Promise<void>;
+  /** Behind `browser-color-scheme-v1`. */
+  setBrowserColorScheme(input: BrowserColorSchemeInput): Promise<void>;
   closeBrowserTab(tabId: string): Promise<void>;
   /** Behind `browser-user-control`: the owning agent waits on the tab until the release. */
   takeBrowserControl(tabId: string): Promise<void>;
@@ -1224,6 +1232,11 @@ export function createWebWorkspaceRuntime(
         throw new Error(currentText().t("error.backend.browserStopUnsupported"));
       decodeBrowserPageStateSnapshot(await request("POST", BROWSER_PAGE_STATE_ROUTES.stop, { tabId }));
     },
+    async setBrowserColorScheme(input) {
+      if (!capabilities.includes(BROWSER_COLOR_SCHEME_CAPABILITY))
+        throw new Error(currentText().t("error.backend.browserColorSchemeUnsupported"));
+      await request("POST", BROWSER_COLOR_SCHEME_ROUTES.set, { ...input });
+    },
     async closeBrowserTab(tabId) {
       await request("POST", TEAM_API_ROUTES.browser.close, { tabId });
     },
@@ -1984,6 +1997,26 @@ function decodeWebBrowserTab(tab: unknown): BrowserTab {
     loading: tab.loading,
     ownerThreadId: tab.ownerThreadId,
     ownerAgentId: tab.ownerAgentId,
+    ...webBrowserEnvironment(tab.environment),
+  };
+}
+
+/** The environment of a host's tab, which tells the page theme. A value that does not decode is left out. */
+function webBrowserEnvironment(value: unknown): { environment: BrowserEnvironment } | Record<string, never> {
+  if (!isDynamicRecord(value) || !isDynamicRecord(value.viewport) || typeof value.reducedMotion !== "boolean")
+    return {};
+  const { colorScheme, viewport } = value;
+  const { mode, width, height, deviceScaleFactor, preset } = viewport;
+  if (colorScheme !== "light" && colorScheme !== "dark" && colorScheme !== "system") return {};
+  if (mode !== "fill" && mode !== "custom") return {};
+  if (!isNumber(width) || !isNumber(height) || !isNumber(deviceScaleFactor)) return {};
+  if (preset !== null && preset !== "desktop" && preset !== "tablet" && preset !== "mobile") return {};
+  return {
+    environment: {
+      viewport: { mode, width, height, deviceScaleFactor, preset },
+      colorScheme,
+      reducedMotion: value.reducedMotion,
+    },
   };
 }
 

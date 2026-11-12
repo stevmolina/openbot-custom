@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "显示 Markdown 源码",
   "preview.panel.rawHtml": "显示 HTML 源码",
   "preview.panel.wrapLines": "自动换行",
+  "preview.panel.darkPage": "以深色模式显示页面",
+  "preview.panel.lightPage": "以浅色模式显示页面",
   "preview.folder.empty": "该文件夹为空。",
   "preview.folder.truncated": "仅显示前 {limit} 项。",
   "preview.truncated": "预览已超过 {limit} 个字符，内容已截断。",

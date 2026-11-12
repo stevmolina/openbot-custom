@@ -13,6 +13,8 @@ export const messages = {
   "preview.panel.rawMarkdown": "Markdown のソースを表示",
   "preview.panel.rawHtml": "HTML のソースを表示",
   "preview.panel.wrapLines": "長い行を折り返す",
+  "preview.panel.darkPage": "ページをダークモードで表示",
+  "preview.panel.lightPage": "ページをライトモードで表示",
   "preview.folder.empty": "このフォルダーは空です。",
   "preview.folder.truncated": "最初の {limit} 件だけを表示しています。",
   "preview.truncated": "プレビューは {limit} 文字までです。",

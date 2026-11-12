@@ -54,6 +54,7 @@ export const messages = {
   "error.backend.browserSignInOpenFailed": "تعذّر على OpenBot فتح نافذة تسجيل الدخول.",
   "error.backend.browserSignInReadFailed": "تعذّر على OpenBot قراءة تسجيل الدخول من النافذة.",
   "error.backend.browserStopUnsupported": "لا يمكن لهذا المضيف البعيد إيقاف تحميل الصفحة.",
+  "error.backend.browserColorSchemeUnsupported": "لا يمكن لهذا المضيف البعيد تغيير مظهر الصفحة.",
   "error.backend.sharedDataLocalOnly": "تتم إدارة البيانات المشتركة على الحاسوب الذي يشغّل هؤلاء الوكلاء.",
   "error.backend.browserUrlProtocol": "يُسمح فقط بعناوين URL من نوع HTTP(S) في المتصفح.",
   "error.backend.sunshineNotReady": "لم يصبح Sunshine جاهزًا.",

@@ -395,6 +395,7 @@ export function createWebConversationRuntime(
       openPictureInPicture: unavailable,
       reload: (tabId) => remote.reloadBrowserTab(tabId),
       stop: (tabId) => remote.stopBrowserTab(tabId),
+      setColorScheme: (input) => remote.setBrowserColorScheme(input),
       takeControl: (tabId) => remote.takeBrowserControl(tabId),
       releaseControl: (tabId) => remote.releaseBrowserControl(tabId),
       startTeach: (tabId) => remote.startBrowserTeach(tabId),

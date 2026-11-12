@@ -8,6 +8,10 @@ import {
 } from "@openbot/contracts/ipc";
 import { TEAM_API_ROUTES } from "@openbot/contracts/team-api-routes";
 import {
+  BROWSER_COLOR_SCHEME_CAPABILITY,
+  BROWSER_COLOR_SCHEME_ROUTES,
+} from "@openbot/contracts/team-protocol/browser-color-scheme-v1";
+import {
   BROWSER_PAGE_STATE_CAPABILITY,
   BROWSER_PAGE_STATE_ROUTES,
   decodeBrowserPageStateSnapshot,
@@ -52,6 +56,7 @@ import { acceptEmpty, decodeVoid } from "../remote-host-decoding";
 import type { RemoteServerManager } from "../remote-server-manager";
 import {
   parseBrowserBounds,
+  parseBrowserColorScheme,
   parseBrowserNavigate,
   parseBrowserOpen,
   parseBrowserTeachStop,
@@ -77,6 +82,7 @@ export interface BrowserIpcDependencies {
     | "navigate"
     | "reload"
     | "stop"
+    | "setColorScheme"
     | "close"
     | "takeUserControl"
     | "releaseUserControl"
@@ -245,6 +251,21 @@ export function browserIpcHandlers({
               remoteServers.request(serverId, BROWSER_PAGE_STATE_ROUTES.stop, decodeBrowserPageStateSnapshot, {
                 method: "POST",
                 body: { tabId },
+              }),
+            );
+          },
+        }),
+      ),
+      setColorScheme: payloadHandler(parseBrowserColorScheme, (input) =>
+        routeToServer(remoteServers.activeServerId, {
+          local: () => runCauseEffect(browser.setColorScheme(input.tabId, input.colorScheme)),
+          remote: async (serverId) => {
+            if (!remoteServers.supportsCapability(serverId, BROWSER_COLOR_SCHEME_CAPABILITY))
+              throw new Error(sourceText("error.backend.browserColorSchemeUnsupported"));
+            await runCauseEffect(
+              remoteServers.request(serverId, BROWSER_COLOR_SCHEME_ROUTES.set, acceptEmpty, {
+                method: "POST",
+                body: { ...input },
               }),
             );
           },

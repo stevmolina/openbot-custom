@@ -226,6 +226,7 @@ import type {
 import type { BitwardenConnectorStatus, BitwardenHostConnectInput } from "./ipc-bitwarden-connector";
 import type {
   BrowserBounds,
+  BrowserColorSchemeInput,
   BrowserControlState,
   BrowserDisplayState,
   BrowserLiveViewEvent,
@@ -2015,6 +2016,9 @@ export const IPC_ENDPOINTS = {
     navigate: request<BrowserNavigateInput, void>()("browser:navigate"),
     reload: request<string, void>()("browser:reload"),
     stop: request<string, void>()("browser:stop"),
+    // The color scheme that the tab gives to its page. `system` follows the computer that runs the tab.
+    // A joined server needs `browser-color-scheme-v1`.
+    setColorScheme: request<BrowserColorSchemeInput, void>()("browser:set-color-scheme"),
     close: request<string, void>()("browser:close"),
     takeControl: request<string, void>()("browser:take-control"),
     releaseControl: request<string, void>()("browser:release-control"),

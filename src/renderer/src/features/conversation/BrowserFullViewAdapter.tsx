@@ -1,4 +1,5 @@
 import type { BrowserTab } from "@openbot/contracts/ipc";
+import { BROWSER_COLOR_SCHEME_CAPABILITY } from "@openbot/contracts/team-protocol/browser-color-scheme-v1";
 import { BROWSER_PROFILES_CAPABILITY } from "@openbot/contracts/team-protocol/browser-profiles-v1";
 import { BROWSER_PROXIES_CAPABILITY } from "@openbot/contracts/team-protocol/browser-proxies-v1";
 import BrowserFullView from "@openbot/ui/features/browser/BrowserFullView";
@@ -45,6 +46,7 @@ export default function BrowserFullViewAdapter() {
     openBrowserAddress,
     reloadBrowserTab,
     stopBrowserTab,
+    setBrowserColorScheme,
     setActiveRightPanel,
     setBrowserSurfaceElement,
     showBrowserPip,
@@ -184,6 +186,12 @@ export default function BrowserFullViewAdapter() {
       }}
       onReload={(tabId) => void reloadBrowserTab(tabId)}
       onStop={(tabId) => void stopBrowserTab(tabId)}
+      // A joined server sets the scheme of its tabs behind `browser-color-scheme-v1`. An older host hides the toggle.
+      onSetColorScheme={
+        serverSupportsCapability(props.server, BROWSER_COLOR_SCHEME_CAPABILITY)
+          ? (tabId, colorScheme) => void setBrowserColorScheme(tabId, colorScheme)
+          : undefined
+      }
       onNavigate={(tabId, direction) => void navigateBrowserTab(tabId, direction)}
       onOpenAddress={(url, tabId) => void openBrowserAddress(url, tabId === undefined)}
       // A host's tab can show in Picture in Picture only through the live view.

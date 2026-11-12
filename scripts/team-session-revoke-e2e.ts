@@ -112,6 +112,7 @@ async function runHost(root: string, configure: boolean): Promise<void> {
     navigate: unused,
     reload: unused,
     stop: unused,
+    setColorScheme: unused,
     takeUserControl: unused,
     startTeach: unused,
     stopTeach: () => [],

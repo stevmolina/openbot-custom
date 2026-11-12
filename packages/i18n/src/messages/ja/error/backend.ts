@@ -57,6 +57,7 @@ export const messages = {
   "error.backend.browserSignInOpenFailed": "OpenBot はサインインウィンドウを開けませんでした。",
   "error.backend.browserSignInReadFailed": "OpenBot はウィンドウからサインインを読み取れませんでした。",
   "error.backend.browserStopUnsupported": "このリモートホストはページの読み込みを停止できません。",
+  "error.backend.browserColorSchemeUnsupported": "このリモートホストはページのテーマを変更できません。",
   "error.backend.sharedDataLocalOnly": "共有データは、これらのエージェントを実行しているコンピューターで管理されます。",
   "error.backend.browserUrlProtocol": "HTTP(S) のブラウザー URL のみ使用できます。",
   "error.backend.sunshineNotReady": "Sunshine の準備ができませんでした。",

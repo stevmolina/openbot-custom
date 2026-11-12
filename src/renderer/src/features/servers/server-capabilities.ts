@@ -37,6 +37,7 @@ export function serverSupportsCapability(
       capability === "browser-view-clipboard" ||
       capability === "browser-user-control" ||
       capability === "browser-sign-in" ||
+      capability === "browser-color-scheme-v1" ||
       capability === "mcp-servers-v1" ||
       capability === "mcp-sign-in-v1" ||
       capability === "mcp-sign-in-app-v1" ||

@@ -1561,6 +1561,7 @@ const browser: TeamApiBrowser = {
   navigate: unused("navigate"),
   reload: unused("reload"),
   stop: unused("stop"),
+  setColorScheme: unused("setColorScheme"),
   takeUserControl: unused("takeUserControl"),
   releaseUserControl: unused("releaseUserControl"),
   // The holder of a recording is one session of a member.
