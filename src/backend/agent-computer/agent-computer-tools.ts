@@ -16,7 +16,12 @@ import {
 } from "./agent-computer-api";
 
 const machineId = z.string().trim().min(1).max(200).describe("The machine id, from computer_start or computer_list.");
-const remotePath = z.string().trim().min(1).max(4_096).describe("An absolute path on the machine, such as /home/user/out.mp4.");
+const remotePath = z
+  .string()
+  .trim()
+  .min(1)
+  .max(4_096)
+  .describe("An absolute path on the machine, such as /home/user/out.mp4.");
 
 const startSchema = z.strictObject({
   context: z
@@ -36,7 +41,9 @@ const bashSchema = z.strictObject({
     .min(1)
     .max(AGENT_COMPUTER_BASH_TIMEOUT_MAX)
     .optional()
-    .describe(`Seconds to wait, 1-${AGENT_COMPUTER_BASH_TIMEOUT_MAX}. The default is 120. Run longer jobs with nohup … & and poll.`),
+    .describe(
+      `Seconds to wait, 1-${AGENT_COMPUTER_BASH_TIMEOUT_MAX}. The default is 120. Run longer jobs with nohup … & and poll.`,
+    ),
   cwd: z.string().trim().min(1).max(4_096).optional().describe("The working directory. The default is /home/user."),
 });
 const idSchema = z.strictObject({ id: machineId });
@@ -80,7 +87,8 @@ export const AGENT_COMPUTER_TOOL_DEFINITIONS = [
   },
   {
     name: "computer_screenshot",
-    description: "See the desktop of a running cloud computer now, as an image. Only you see it; it is not posted in the chat.",
+    description:
+      "See the desktop of a running cloud computer now, as an image. Only you see it; it is not posted in the chat.",
     shape: idSchema.shape,
   },
   {
@@ -137,84 +145,88 @@ export const handleAgentComputerTool = Effect.fn("AgentComputerTools.handle")(fu
   api: AgentComputerApi,
   request: AgentComputerToolRequest,
 ) {
-  const outcome: Effect.Effect<DynamicToolResult, AgentComputerFailed | z.ZodError | Error> = Effect.gen(
-    function* () {
-      switch (request.tool) {
-        case "computer_list": {
-          const machines = yield* api.list();
-          return textResult({
-            machines: machines.map(({ id, context, status, deadline_at, updated_at }) => ({
-              id,
-              context,
-              status,
-              deadline_at,
-              updated_at,
-            })),
-          });
-        }
-        case "computer_start": {
-          const input = yield* parse(startSchema, request.arguments);
-          return textResult(yield* api.start(input.context));
-        }
-        case "computer_bash": {
-          const input = yield* parse(bashSchema, request.arguments);
-          return textResult(yield* api.bash(input.id, input));
-        }
-        case "computer_screenshot": {
-          const input = yield* parse(idSchema, request.arguments);
-          const image = yield* api.screenshot(input.id);
-          return {
-            success: true,
-            contentItems: [
-              { type: "inputText", text: JSON.stringify({ id: input.id, bytes: image.bytes.length }) },
-              { type: "inputImage", imageUrl: `data:${image.mimeType};base64,${image.bytes.toString("base64")}` },
-            ],
-          };
-        }
-        case "computer_get_file": {
-          const input = yield* parse(getFileSchema, request.arguments);
-          const file = yield* api.file(input.id, input.path);
-          const target = yield* Effect.try({
-            try: () => workspaceTarget(request.workspacePath, input.saveAs ?? join("computer-files", basename(input.path))),
-            catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
-          });
-          yield* Effect.tryPromise({
-            try: async () => {
-              await mkdir(resolve(target, ".."), { recursive: true });
-              await writeFile(target, file.bytes);
-            },
-            catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
-          });
-          const text = textPreview(file.bytes, file.mimeType);
-          const result = { path: target, bytes: file.bytes.length, mimeType: file.mimeType, ...(text === null ? {} : { text }) };
-          if (!file.mimeType.startsWith("image/")) return textResult(result);
-          return {
-            success: true,
-            contentItems: [
-              { type: "inputText", text: JSON.stringify(result) },
-              { type: "inputImage", imageUrl: `data:${file.mimeType};base64,${file.bytes.toString("base64")}` },
-            ],
-          };
-        }
-        case "computer_publish": {
-          const input = yield* parse(publishSchema, request.arguments);
-          return textResult(yield* api.publish(input.id, input.path, input.filename));
-        }
-        case "computer_stop": {
-          const input = yield* parse(idSchema, request.arguments);
-          return textResult(yield* api.stop(input.id));
-        }
-        case "computer_destroy": {
-          const input = yield* parse(idSchema, request.arguments);
-          const approved = yield* request.approve(
-            sourceText("status.agent.agentComputerDestroyApproval", { id: input.id }),
-          );
-          if (!approved) return failure(sourceText("error.agent.agentComputerDestroyDeclined"));
-          return textResult(yield* api.destroy(input.id));
-        }
+  const outcome: Effect.Effect<DynamicToolResult, AgentComputerFailed | z.ZodError | Error> = Effect.gen(function* () {
+    switch (request.tool) {
+      case "computer_list": {
+        const machines = yield* api.list();
+        return textResult({
+          machines: machines.map(({ id, context, status, deadline_at, updated_at }) => ({
+            id,
+            context,
+            status,
+            deadline_at,
+            updated_at,
+          })),
+        });
       }
-    },
-  );
+      case "computer_start": {
+        const input = yield* parse(startSchema, request.arguments);
+        return textResult(yield* api.start(input.context));
+      }
+      case "computer_bash": {
+        const input = yield* parse(bashSchema, request.arguments);
+        return textResult(yield* api.bash(input.id, input));
+      }
+      case "computer_screenshot": {
+        const input = yield* parse(idSchema, request.arguments);
+        const image = yield* api.screenshot(input.id);
+        return {
+          success: true,
+          contentItems: [
+            { type: "inputText", text: JSON.stringify({ id: input.id, bytes: image.bytes.length }) },
+            { type: "inputImage", imageUrl: `data:${image.mimeType};base64,${image.bytes.toString("base64")}` },
+          ],
+        };
+      }
+      case "computer_get_file": {
+        const input = yield* parse(getFileSchema, request.arguments);
+        const file = yield* api.file(input.id, input.path);
+        const target = yield* Effect.try({
+          try: () =>
+            workspaceTarget(request.workspacePath, input.saveAs ?? join("computer-files", basename(input.path))),
+          catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+        });
+        yield* Effect.tryPromise({
+          try: async () => {
+            await mkdir(resolve(target, ".."), { recursive: true });
+            await writeFile(target, file.bytes);
+          },
+          catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+        });
+        const text = textPreview(file.bytes, file.mimeType);
+        const result = {
+          path: target,
+          bytes: file.bytes.length,
+          mimeType: file.mimeType,
+          ...(text === null ? {} : { text }),
+        };
+        if (!file.mimeType.startsWith("image/")) return textResult(result);
+        return {
+          success: true,
+          contentItems: [
+            { type: "inputText", text: JSON.stringify(result) },
+            { type: "inputImage", imageUrl: `data:${file.mimeType};base64,${file.bytes.toString("base64")}` },
+          ],
+        };
+      }
+      case "computer_publish": {
+        const input = yield* parse(publishSchema, request.arguments);
+        return textResult(yield* api.publish(input.id, input.path, input.filename));
+      }
+      case "computer_stop": {
+        const input = yield* parse(idSchema, request.arguments);
+        return textResult(yield* api.stop(input.id));
+      }
+      case "computer_destroy": {
+        const input = yield* parse(idSchema, request.arguments);
+        const approved = yield* request.approve(
+          sourceText("status.agent.agentComputerDestroyApproval", { id: input.id }),
+        );
+        if (!approved) return failure(sourceText("error.agent.agentComputerDestroyDeclined"));
+        return textResult(yield* api.destroy(input.id));
+      }
+    }
+  });
   return yield* outcome.pipe(
     Effect.catch((error) =>
       Effect.succeed(
