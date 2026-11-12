@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { defineConfig, type Plugin } from "vite";
 import { lazyLanguageCatalogs } from "../../packages/i18n/src/vite-plugin";
+import { brandPlugins } from "../../scripts/brand-layer";
 import { contentImages } from "./content-images";
 import { DEVELOPMENT_APNS_PATH, developmentApnsProxy } from "./dev-apns-proxy";
 import { developmentNetworkRequestAllowed } from "./dev-network-access";
@@ -54,6 +55,8 @@ export default defineConfig(({ command }) => {
       allowedHosts: [".openbot.localhost", ".trycloudflare.com"],
     },
     plugins: [
+      // Empty unless `OPENBOT_BRAND_NAME` is set: the product name of a self-hosted Worker.
+      ...brandPlugins(fileURLToPath(new URL("../..", import.meta.url))),
       developmentLanGuard(),
       developmentApnsProxy(),
       cloudflare({

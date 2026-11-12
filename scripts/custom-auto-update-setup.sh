@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the launchd job that keeps "/Applications/OpenBot Custom.app" on the newest `origin/main`.
+# Installs the launchd job that keeps "/Applications/Pokebots.app" on the newest `origin/main`.
 #
 #   scripts/custom-auto-update-setup.sh             install or update the job (runs every 5 minutes)
 #   scripts/custom-auto-update-setup.sh --run-now   install it and start one run now

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keeps "/Applications/OpenBot Custom.app" on the newest commit of `origin/main`.
+# Keeps "/Applications/Pokebots.app" on the newest commit of `origin/main`.
 #
 # A launchd job runs this script every 5 minutes (`scripts/custom-auto-update-setup.sh` installs the
 # job). The job does not belong to an agent session, so it cannot stop when a session ends.
@@ -27,8 +27,9 @@ main() {
   source_repo="${OPENBOT_CUSTOM_REPO:?Set OPENBOT_CUSTOM_REPO to the openbot-custom checkout.}"
   worktree="$state/repo"
   log="$state/update.log"
-  target="/Applications/OpenBot Custom.app"
-  app_process="^${target}/Contents/MacOS/OpenBot"
+  target="/Applications/Pokebots.app"
+  legacy_target="/Applications/OpenBot Custom.app"
+  app_process="^/Applications/(Pokebots|OpenBot Custom)\\.app/Contents/MacOS/(Pokebots|OpenBot)"
   mkdir -p "$state"
   # Keep the log small: the last 2000 lines.
   if [[ -f "$log" ]] && (($(wc -l <"$log") > 4000)); then
@@ -191,7 +192,7 @@ wait_for_idle_agents() {
 
 quit_app() {
   pgrep -f "$app_process" >/dev/null || return 0
-  say "Quitting OpenBot Custom."
+  say "Quitting Pokebots."
   osascript -e 'tell application id "app.openbot.custom" to quit' >/dev/null 2>&1 || true
 
   for _ in $(seq 60); do pgrep -f "$app_process" >/dev/null || return 0; sleep 1; done
@@ -203,7 +204,7 @@ quit_app() {
 }
 
 install_app() {
-  local commit="$1" built backup
+  local commit="$1" built backup restore_target
   built="$(find "$worktree/dist-custom" -maxdepth 2 -name '*.app' -type d | head -n 1)"
   [[ -n "$built" ]] || { say "No built app in $worktree/dist-custom."; return 1; }
 
@@ -211,8 +212,16 @@ install_app() {
   quit_app
   mkdir -p "$HOME/OpenBot/backups"
   backup=""
-  if [[ -d "$target" ]]; then
+  restore_target="$target"
+  if [[ -d "$legacy_target" ]]; then
     backup="$HOME/OpenBot/backups/OpenBot-Custom-before-$(short "$commit")-$(date -u +%Y%m%dT%H%M%SZ).app"
+    restore_target="$legacy_target"
+    ditto "$legacy_target" "$backup"
+    rm -rf "$legacy_target"
+  fi
+  if [[ -d "$target" ]]; then
+    backup="$HOME/OpenBot/backups/Pokebots-before-$(short "$commit")-$(date -u +%Y%m%dT%H%M%SZ).app"
+    restore_target="$target"
     ditto "$target" "$backup"
     rm -rf "$target"
   fi
@@ -230,10 +239,10 @@ install_app() {
   else
     say "The new app did not stay up. Restoring the previous app."
     echo "$commit" >"$state/failed-commit"
+    rm -rf "$target"
     if [[ -n "$backup" ]]; then
-      rm -rf "$target"
-      ditto "$backup" "$target"
-      open -a "$target"
+      ditto "$backup" "$restore_target"
+      open -a "$restore_target"
     fi
     write_status launch_failed "$commit" "$(describe "$commit") did not start. The previous app is back."
     notify "$(describe "$commit") did not start. The previous app is back."
@@ -243,7 +252,7 @@ install_app() {
 
 prune_backups() {
   # The names end in a UTC time stamp, so the newest sort last.
-  find "$HOME/OpenBot/backups" -maxdepth 1 -name 'OpenBot-Custom-before-*.app' -type d |
+  find "$HOME/OpenBot/backups" -maxdepth 1 \( -name 'Pokebots-before-*.app' -o -name 'OpenBot-Custom-before-*.app' \) -type d |
     awk -F- '{ print $NF "\t" $0 }' | sort | cut -f2- |
     awk '{ line[NR] = $0 } END { for (i = 1; i <= NR - 3; i++) print line[i] }' |
     while IFS= read -r old; do rm -rf "$old"; done
@@ -267,7 +276,7 @@ write_status() {
 
 notify() {
   local text="${1//\"/\'}"
-  osascript -e "display notification \"$text\" with title \"OpenBot Custom\"" >/dev/null 2>&1 || true
+  osascript -e "display notification \"$text\" with title \"Pokebots\"" >/dev/null 2>&1 || true
 }
 
 main "$@"

@@ -292,15 +292,22 @@ risks since the last release.
 Read [check design notes](docs/development-checks.md#lint-and-ui-rules) when changing these checks.
 They describe the enforced syntax, fixture behavior, and reasons for removed rules.
 
-## After merge: OpenBot Custom app
+## After merge: Pokebots app
 
-This repository is Steven's fork. Steven uses the `OpenBot Custom` app in `/Applications`, which
-`electron-builder.custom.yml` builds. A launchd job on his Mac updates that app; agents do not.
+This repository is Steven's fork. Steven uses the `Pokebots` app (`/Applications/Pokebots.app`),
+which `electron-builder.custom.yml` builds. It was `OpenBot Custom` before. A launchd job on his
+Mac updates that app; agents do not.
 
 - The job (`scripts/custom-auto-update.sh`) checks `origin/main` every 5 minutes. On a new commit
   that changes the app, it builds it, waits until no local agent works (10 minutes at most), quits
   the app, installs the new build, and opens it. It keeps the 3 newest copies in
-  `~/OpenBot/backups/` and puts the old app back when the new one does not start.
+  `~/OpenBot/backups/`, backs up and removes an old `OpenBot Custom.app`, and puts the old app back
+  when the new one does not start.
+- The name Pokebots comes from the brand layer (`scripts/brand-layer.ts`), not from source edits.
+  Keep "OpenBot" in the source, so that the daily upstream merge does not conflict.
+  `scripts/custom-build-install.sh` sets `OPENBOT_BRAND_NAME`, `OPENBOT_BRAND_AUTH_API_URL` and
+  `OPENBOT_BRAND_SIGNAL_URL` for the build. When the build warns that the brand layer did not find a
+  literal, update `LITERAL_RULES` and run `bun scripts/pokebots-brand-e2e.ts`.
 - Do not build or install the app yourself after a merge, and do not ask Steven to quit it. Builds
   from agent sessions stopped when the session ended, and they raced each other.
 - After a merge, wait for the job instead. `scripts/custom-auto-update-setup.sh --status` shows the
