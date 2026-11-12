@@ -48,8 +48,12 @@ export function useAgentModelPicker(): () => ComponentProps<typeof ProviderModel
     });
     return { label: t(ACCESS_LABEL[level]), onOpen: () => setActiveRightPanel("settings") };
   };
+  /**
+   * The keyboard: the one that main reports on desktop. The web client has a fixed app info, so the
+   * browser's guess counts there.
+   */
+  const keyboard = () => shortcutPlatform(platform.appInfoLoadedFromHost() ? platform.appInfo()?.platform : undefined);
   return () => {
-    const info = platform.appInfo();
     return {
       variant: "composer",
       provider: settingsProvider(),
@@ -75,7 +79,7 @@ export function useAgentModelPicker(): () => ComponentProps<typeof ProviderModel
       fastMode: fastMode(),
       ultrafast: ultrafast(),
       onFastModeChange: fastModeChange(),
-      shortcutPlatform: info ? shortcutPlatform(info.platform) : undefined,
+      shortcutPlatform: keyboard(),
       access: access(),
     };
   };

@@ -156,6 +156,8 @@
   /* Half of the one-line height, so one line is a full pill. The cards above tuck in this far. */
   --composer-pill-radius: 24px;
 
+  /* The model chip reads the width of the message box. */
+  container: openbot-composer / inline-size;
   position: relative;
   z-index: 11;
   display: grid;

@@ -1220,15 +1220,132 @@
   outline-offset: 1px;
 }
 
+/* A narrow message box, such as a phone or a narrow window: the chip shows the provider mark
+   only. Its label and its tooltip still name the model and the effort. */
+@container openbot-composer (max-width: 480px) {
+  .provider-model-trigger-composer {
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    border-radius: var(--openbot-radius-pill);
+    padding: 0;
+  }
+
+  .provider-model-trigger-composer :is(.provider-model-trigger-name, .provider-model-trigger-effort) {
+    display: none;
+  }
+
+  .provider-model-trigger-composer .provider-model-trigger-mark {
+    margin: 0;
+  }
+}
+
+/* A phone: the panel takes the width of the screen. The providers are a row on top, the models
+   fill the middle, and the efforts are a row of chips under them. */
+@media (max-width: 560px) {
+  .provider-model-popover-composer {
+    width: calc(100vw - 16px);
+    min-height: 0;
+  }
+
+  .provider-model-popover-composer .provider-model-layout {
+    flex-direction: column;
+    max-height: min(560px, calc(100dvh - 140px), var(--kb-popper-content-available-height, 560px));
+  }
+
+  .provider-model-popover-composer .provider-model-rail {
+    width: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--openbot-border);
+    padding: 6px 8px;
+  }
+
+  .provider-model-popover-composer .provider-model-rail-tabs {
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .provider-model-popover-composer .provider-model-rail-button.provider-model-rail-button-selected::before {
+    inset-block: auto -5px;
+    inset-inline: 9px;
+    width: auto;
+    height: 3px;
+  }
+
+  .provider-model-popover-composer .provider-model-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .provider-model-popover-composer .provider-model-main {
+    min-height: 0;
+    padding: 6px 10px 4px;
+  }
+
+  /* A phone has no keys to press. */
+  .provider-model-popover-composer .provider-model-keycap {
+    display: none;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning {
+    width: auto;
+    flex: 0 0 auto;
+    border-inline-start: 0;
+    border-top: 1px solid var(--openbot-border);
+    padding: 6px 10px 8px;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-heading {
+    height: 26px;
+    margin-bottom: var(--openbot-space-1);
+    border-bottom: 0;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--openbot-space-1);
+    overflow: visible;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-option.ui-button {
+    width: auto;
+    min-height: 30px;
+    border-radius: var(--openbot-radius-pill);
+    background: var(--ui-menu-item-hover);
+    padding-inline: 12px;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-option.ui-button[aria-pressed="true"] {
+    background: var(--openbot-text-primary);
+    color: var(--openbot-bg-surface);
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-option :is(.provider-model-check, small) {
+    display: none;
+  }
+
+  .provider-model-popover-composer .provider-model-footer {
+    padding: 6px 8px;
+  }
+}
+
 @media (max-width: 720px) {
-  /* A form field keeps the width of its row. */
-  .provider-model-trigger:not(.provider-model-trigger-field) {
+  /* A form field keeps the width of its row. The composer chip follows its message box instead. */
+  .provider-model-trigger:not(.provider-model-trigger-field, .provider-model-trigger-composer) {
     max-width: 148px;
   }
 
   /* A narrow header keeps the model name; the label and the title still name the effort. A form
      field has the room of its row. */
-  .provider-model-trigger:not(.provider-model-trigger-field) .provider-model-trigger-effort {
+  .provider-model-trigger:not(.provider-model-trigger-field, .provider-model-trigger-composer)
+  .provider-model-trigger-effort {
     display: none;
   }
 }
