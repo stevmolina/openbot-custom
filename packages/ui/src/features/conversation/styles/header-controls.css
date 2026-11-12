@@ -849,15 +849,510 @@
   translate: 0 -50%;
 }
 
+/* The composer variant: a chip in the message box that opens a wide panel upward, with the
+   providers, the models and the reasoning efforts side by side, and a footer for the speed and the
+   access of the agent. */
+
+.provider-model-trigger-composer {
+  max-width: 260px;
+  height: 30px;
+  border-color: transparent;
+  border-radius: var(--openbot-radius-md);
+  background: color-mix(in srgb, var(--openbot-text-primary) 6%, transparent);
+  box-shadow: none;
+  padding-inline: 9px 10px;
+}
+
+.provider-model-trigger-composer:hover:not(:disabled),
+.provider-model-trigger-composer[aria-expanded="true"] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--openbot-text-primary) 10%, transparent);
+}
+
+.provider-model-trigger-composer
+  .provider-model-trigger-effort:not(.provider-model-trigger-fast, .provider-model-trigger-account) {
+  color: var(--openbot-text-primary);
+}
+
+.provider-model-trigger-composer .provider-model-trigger-effort::before {
+  content: none;
+}
+
+.provider-model-trigger-composer .provider-model-trigger-value {
+  gap: 5px;
+}
+
+.provider-model-trigger-composer .provider-model-trigger-mark {
+  margin-inline-end: 2px;
+}
+
+.provider-model-heading[hidden] {
+  display: none;
+}
+
+/* Outside the composer, the main box adds nothing: its parts stay children of the panel. */
+.provider-model-main {
+  display: contents;
+}
+
+.provider-model-popover-composer {
+  display: flex;
+  width: min(640px, calc(100vw - 24px));
+  min-height: 340px;
+  flex-direction: column;
+}
+
+.provider-model-popover-composer .provider-model-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(440px, calc(100dvh - 160px), var(--kb-popper-content-available-height, 440px));
+}
+
+.provider-model-popover-composer .provider-model-rail {
+  width: 56px;
+  flex-basis: 56px;
+  padding: 10px 8px;
+}
+
+/* The provider in view: a bar at the inner edge of the rail, beside its mark. */
+.provider-model-popover-composer .provider-model-rail-button-selected {
+  background: transparent;
+  box-shadow: none;
+}
+
+.provider-model-popover-composer .provider-model-rail-button-selected::before {
+  position: absolute;
+  inset-block: 9px;
+  /* Inside the padding of the scrolling tab list, which would clip a bar further out. */
+  inset-inline-end: -5px;
+  width: 3px;
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-accent);
+  content: "";
+}
+
+/* The marks keep their brand colors, as in the rows. */
+.provider-model-popover-composer .provider-model-rail-button.provider-model-rail-button-selected .provider-model-mark {
+  fill: var(--openbot-provider-current);
+}
+
+.provider-model-popover-composer .provider-model-panel {
+  flex-direction: row;
+  padding: 0;
+}
+
+.provider-model-popover-composer .provider-model-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 10px 12px 8px;
+}
+
+/* The search field comes first; a provider that cannot run shows its status under it. */
+.provider-model-search-field {
+  display: flex;
+  flex-shrink: 0;
+  order: -1;
+  align-items: center;
+  gap: var(--openbot-space-2);
+  margin-bottom: var(--openbot-space-2);
+  border-bottom: 1px solid var(--openbot-border);
+  padding-inline: var(--openbot-space-1);
+  color: var(--openbot-text-muted);
+  transition: border-color var(--openbot-duration-hover) ease;
+}
+
+.provider-model-search-field:focus-within {
+  border-bottom-color: var(--openbot-accent);
+}
+
+.provider-model-popover-composer .provider-model-search-field > svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+}
+
+/* The limit chip of a spent account, under the search, as the composer hides the heading. */
+.provider-model-popover-composer .provider-model-main > .provider-model-limit {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-bottom: var(--openbot-space-2);
+}
+
+.provider-model-popover-composer .provider-model-search {
+  height: 38px;
+  flex: 1 1 auto;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
+  font-size: var(--openbot-text-md);
+}
+
+.provider-model-popover-composer .provider-model-search:focus-visible {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.provider-model-popover-composer .provider-model-option {
+  min-height: 36px;
+  padding-inline: var(--openbot-space-2);
+}
+
+.provider-model-popover-composer .provider-model-option::before {
+  content: none;
+}
+
+.provider-model-popover-composer .provider-model-option-name {
+  flex: 1 1 auto;
+  gap: 10px;
+}
+
+.provider-model-popover-composer .provider-model-option-selected {
+  background: color-mix(in srgb, var(--openbot-text-primary) 4%, transparent);
+}
+
+.provider-model-popover-composer .provider-model-check,
+.provider-model-reasoning .provider-model-check {
+  position: static;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  stroke: var(--openbot-text-secondary);
+  stroke-width: 2;
+  translate: none;
+}
+
+/* The key that chooses the row, such as ⌘1. */
+.provider-model-keycap {
+  flex: 0 0 auto;
+  min-width: 30px;
+  border-radius: var(--openbot-radius-sm);
+  background: color-mix(in srgb, var(--openbot-text-primary) 7%, transparent);
+  padding: 2px 6px;
+  color: var(--openbot-text-muted);
+  font-family: inherit;
+  font-size: var(--openbot-text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+}
+
+.provider-model-popover-composer .provider-model-older {
+  padding-inline: var(--openbot-space-2);
+  color: var(--openbot-text-muted);
+}
+
+.provider-model-reasoning {
+  display: flex;
+  width: 210px;
+  flex: 0 0 210px;
+  flex-direction: column;
+  border-inline-start: 1px solid var(--openbot-border);
+  padding: 10px 12px 8px;
+}
+
+.provider-model-reasoning-heading {
+  display: flex;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--openbot-space-2);
+  margin-bottom: var(--openbot-space-2);
+  border-bottom: 1px solid var(--openbot-border);
+  padding-inline: var(--openbot-space-1);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-md);
+}
+
+.provider-model-reasoning-heading small {
+  overflow: hidden;
+  color: var(--openbot-text-dim);
+  font-size: var(--openbot-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-model-reasoning-list {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.provider-model-reasoning-option.ui-button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: 36px;
+  justify-content: flex-start;
+  font-weight: var(--openbot-weight-regular);
+  align-items: center;
+  gap: var(--openbot-space-2);
+  border: 0;
+  border-radius: var(--ui-menu-item-radius);
+  background: transparent;
+  padding-inline: var(--openbot-space-2);
+  color: var(--openbot-text-primary);
+  cursor: pointer;
+  font-size: var(--openbot-text-md);
+  text-align: start;
+  transition: background-color var(--openbot-duration-hover) ease;
+}
+
+.provider-model-reasoning-option > span {
+  flex: 1 1 auto;
+}
+
+.provider-model-reasoning-option small {
+  color: var(--openbot-text-dim);
+  font-size: var(--openbot-text-sm);
+}
+
+.provider-model-reasoning-option:hover:not(:disabled),
+.provider-model-reasoning-option:focus-visible {
+  background: var(--ui-menu-item-hover);
+}
+
+.provider-model-reasoning-option:focus-visible {
+  outline: 1px solid var(--openbot-border-focus);
+  outline-offset: 1px;
+}
+
+.provider-model-reasoning-option:disabled {
+  color: var(--openbot-text-dim);
+  cursor: not-allowed;
+}
+
+.provider-model-reasoning-fixed {
+  margin: 0;
+  padding: var(--openbot-space-2);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-sm);
+}
+
+.provider-model-footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--openbot-space-2);
+  border-top: 1px solid var(--openbot-border);
+  padding: 8px 10px;
+}
+
+.provider-model-speed-switch {
+  display: inline-flex;
+  min-width: 0;
+  gap: 2px;
+  margin: 0;
+  border: 0;
+  border-radius: var(--openbot-radius-md);
+  background: color-mix(in srgb, var(--openbot-text-primary) 6%, transparent);
+  padding: 2px;
+}
+
+.provider-model-speed-segment.ui-button {
+  display: inline-flex;
+  font-weight: var(--openbot-weight-regular);
+  height: 26px;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: var(--openbot-radius-sm);
+  background: transparent;
+  padding-inline: 10px;
+  color: var(--openbot-text-muted);
+  cursor: pointer;
+  font-size: var(--openbot-text-sm);
+  transition:
+    background-color var(--openbot-duration-hover) ease,
+    color var(--openbot-duration-hover) ease;
+}
+
+.provider-model-footer .provider-model-speed-segment svg {
+  width: 13px;
+  height: 13px;
+}
+
+.provider-model-speed-segment:hover:not(:disabled) {
+  color: var(--openbot-text-primary);
+}
+
+.provider-model-speed-segment[aria-pressed="true"] {
+  background: var(--openbot-bg-surface-raised);
+  box-shadow: 0 1px 2px var(--openbot-shadow-popover-ambient);
+  color: var(--openbot-text-primary);
+}
+
+.provider-model-access.ui-button {
+  display: inline-flex;
+  font-weight: var(--openbot-weight-regular);
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+  border: 0;
+  border-radius: var(--ui-menu-item-radius);
+  background: transparent;
+  padding-inline: 8px;
+  color: var(--openbot-text-muted);
+  cursor: pointer;
+  font-size: var(--openbot-text-sm);
+  transition:
+    background-color var(--openbot-duration-hover) ease,
+    color var(--openbot-duration-hover) ease;
+}
+
+.provider-model-footer .provider-model-access svg {
+  width: 14px;
+  height: 14px;
+}
+
+.provider-model-access:hover {
+  background: var(--ui-menu-item-hover);
+  color: var(--openbot-text-primary);
+}
+
+.provider-model-speed-segment:focus-visible,
+.provider-model-access:focus-visible {
+  outline: 1px solid var(--openbot-border-focus);
+  outline-offset: 1px;
+}
+
+/* A narrow message box, such as a phone or a narrow window: the chip shows the provider mark
+   only. Its label and its tooltip still name the model and the effort. */
+@container openbot-composer (max-width: 480px) {
+  .provider-model-trigger-composer {
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    border-radius: var(--openbot-radius-pill);
+    padding: 0;
+  }
+
+  .provider-model-trigger-composer :is(.provider-model-trigger-name, .provider-model-trigger-effort) {
+    display: none;
+  }
+
+  .provider-model-trigger-composer .provider-model-trigger-mark {
+    margin: 0;
+  }
+}
+
+/* A phone: the panel takes the width of the screen. The providers are a row on top, the models
+   fill the middle, and the efforts are a row of chips under them. */
+@media (max-width: 560px) {
+  .provider-model-popover-composer {
+    width: calc(100vw - 16px);
+    min-height: 0;
+  }
+
+  .provider-model-popover-composer .provider-model-layout {
+    flex-direction: column;
+    max-height: min(560px, calc(100dvh - 140px), var(--kb-popper-content-available-height, 560px));
+  }
+
+  .provider-model-popover-composer .provider-model-rail {
+    width: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--openbot-border);
+    padding: 6px 8px;
+  }
+
+  .provider-model-popover-composer .provider-model-rail-tabs {
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .provider-model-popover-composer .provider-model-rail-button.provider-model-rail-button-selected::before {
+    inset-block: auto -5px;
+    inset-inline: 9px;
+    width: auto;
+    height: 3px;
+  }
+
+  .provider-model-popover-composer .provider-model-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .provider-model-popover-composer .provider-model-main {
+    min-height: 0;
+    padding: 6px 10px 4px;
+  }
+
+  /* A phone has no keys to press. */
+  .provider-model-popover-composer .provider-model-keycap {
+    display: none;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning {
+    width: auto;
+    flex: 0 0 auto;
+    border-inline-start: 0;
+    border-top: 1px solid var(--openbot-border);
+    padding: 6px 10px 8px;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-heading {
+    height: 26px;
+    margin-bottom: var(--openbot-space-1);
+    border-bottom: 0;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--openbot-space-1);
+    overflow: visible;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-option.ui-button {
+    width: auto;
+    min-height: 30px;
+    border-radius: var(--openbot-radius-pill);
+    background: var(--ui-menu-item-hover);
+    padding-inline: 12px;
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-option.ui-button[aria-pressed="true"] {
+    background: var(--openbot-text-primary);
+    color: var(--openbot-bg-surface);
+  }
+
+  .provider-model-popover-composer .provider-model-reasoning-option :is(.provider-model-check, small) {
+    display: none;
+  }
+
+  .provider-model-popover-composer .provider-model-footer {
+    padding: 6px 8px;
+  }
+}
+
 @media (max-width: 720px) {
-  /* A form field keeps the width of its row. */
-  .provider-model-trigger:not(.provider-model-trigger-field) {
+  /* A form field keeps the width of its row. The composer chip follows its message box instead. */
+  .provider-model-trigger:not(.provider-model-trigger-field, .provider-model-trigger-composer) {
     max-width: 148px;
   }
 
   /* A narrow header keeps the model name; the label and the title still name the effort. A form
      field has the room of its row. */
-  .provider-model-trigger:not(.provider-model-trigger-field) .provider-model-trigger-effort {
+  .provider-model-trigger:not(.provider-model-trigger-field, .provider-model-trigger-composer)
+  .provider-model-trigger-effort {
     display: none;
   }
 }

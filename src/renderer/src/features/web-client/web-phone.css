@@ -536,24 +536,6 @@
     display: none;
   }
 
-  /* The header of a chat shows the model as its logo only; a tap still opens the picker. */
-  .web-app-frame > .server-connection-workspace .conversation-header .provider-model-trigger {
-    width: 36px;
-    height: 36px;
-    justify-content: center;
-    border-radius: var(--openbot-radius-pill);
-    padding: 0;
-  }
-
-  .web-app-frame
-    > .server-connection-workspace
-    .conversation-header
-    .provider-model-trigger
-    :is(.provider-model-trigger-name, .provider-model-trigger-effort),
-  .web-app-frame > .server-connection-workspace .conversation-header .provider-model-trigger > svg:last-child {
-    display: none;
-  }
-
   /* The message box floats, as the tab bar of the list does. */
   .web-app-frame > .server-connection-workspace .composer-wrap > .composer {
     box-shadow: 0 10px 30px var(--openbot-shadow-dialog);
