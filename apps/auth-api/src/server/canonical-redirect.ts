@@ -26,7 +26,25 @@ export function webAppHostRedirect(request: Request): Response | null {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const url = new URL(request.url);
   if (!url.hostname.startsWith("app.") || url.pathname !== "/") return null;
-  return Response.redirect(`${url.origin}/app${url.search}`, 302);
+  // The Worker cache keeps one copy of `/` for every address of the Worker, so the redirect is never
+  // stored: the API address would get it.
+  return new Response(null, {
+    status: 302,
+    headers: { Location: `${url.origin}/app${url.search}`, "Cache-Control": "no-store" },
+  });
+}
+
+/**
+ * The Worker cache keeps one copy of `/` for every address of the Worker. On a self-hosted deploy with
+ * an app address, a stored home page of the API address would answer the app address before the
+ * Worker can redirect it. So only the site's own address lets the cache store its home page.
+ */
+export function uncachedSelfHostedHome(request: Request, response: Response): Response {
+  const url = new URL(request.url);
+  if (url.pathname !== "/" || url.hostname === SITE_HOST || response.status !== 200) return response;
+  const uncached = new Response(response.body, response);
+  uncached.headers.set("Cache-Control", "no-store");
+  return uncached;
 }
 
 /**

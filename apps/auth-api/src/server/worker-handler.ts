@@ -3,7 +3,12 @@ import { routeRequest as routeHostedSiteRequest } from "../../../site-router/src
 import { type AuthRetentionResult, pruneExpiredAuthData } from "./auth-data-retention";
 import { BillingSales } from "./billing-sales";
 import { captureBillingSnapshot } from "./billing-snapshots";
-import { canonicalHostRedirect, permanentTrailingSlashRedirect, webAppHostRedirect } from "./canonical-redirect";
+import {
+  canonicalHostRedirect,
+  permanentTrailingSlashRedirect,
+  uncachedSelfHostedHome,
+  webAppHostRedirect,
+} from "./canonical-redirect";
 import { runApiEffect } from "./effect-runtime";
 import { createHostedBilling } from "./hosted-billing";
 import type { HostedServerBindings } from "./hosted-server-service";
@@ -79,7 +84,7 @@ export function createWorkerHandler(
       const markdown = await pageMarkdownResponse(request, fetchHandler);
       if (markdown) return markdown;
       const response = Promise.resolve(fetchHandler(request)).then((result) =>
-        permanentTrailingSlashRedirect(request, result),
+        uncachedSelfHostedHome(request, permanentTrailingSlashRedirect(request, result)),
       );
       if (context && isEmailSignInStart(request)) {
         context.waitUntil(
