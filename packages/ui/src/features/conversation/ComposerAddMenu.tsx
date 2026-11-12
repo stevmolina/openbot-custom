@@ -1,4 +1,13 @@
-import { AudioLines, CircleDot, DropdownMenu, File, MessageCircleQuestionMark, Plus, Puzzle } from "@openbot/ui";
+import {
+  AudioLines,
+  Blocks,
+  CircleDot,
+  DropdownMenu,
+  File,
+  MessageCircleQuestionMark,
+  Plus,
+  Puzzle,
+} from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
 import { Show } from "solid-js";
 
@@ -17,6 +26,8 @@ export interface ComposerAddMenuProps {
   onSideQuestion?: (() => void) | undefined;
   /** Without it, no voice conversation item. */
   onVoice?: (() => void) | undefined;
+  /** Adds a claude.ai artifact to this one request. Without it, no artifact item. */
+  onCreateArtifact?: (() => void) | undefined;
 }
 
 /** The "+" menu of a message box: files, skills, and the side panes of the agent. */
@@ -62,6 +73,14 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
               <File aria-hidden="true" />
               <span>{t("composer.add.files")}</span>
             </DropdownMenu.Item>
+          </Show>
+          <Show when={props.onCreateArtifact}>
+            {(createArtifact) => (
+              <DropdownMenu.Item onSelectAfterClose={() => createArtifact()()}>
+                <Blocks aria-hidden="true" />
+                <span>{t("composer.add.artifact")}</span>
+              </DropdownMenu.Item>
+            )}
           </Show>
           <Show when={props.onPickSkill}>
             <DropdownMenu.Item

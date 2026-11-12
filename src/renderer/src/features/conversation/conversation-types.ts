@@ -327,6 +327,7 @@ export interface ConversationProps {
     target?: ConversationTarget,
     clientMessageId?: string,
     voiceRecordingDraftId?: string,
+    createArtifact?: boolean,
   ) => Promise<SendMessageResult>;
   onMarkRead: () => Promise<void>;
   /** Marks an agent message and the messages after it unread. Without it, the message menu has no such item. */
@@ -429,6 +430,8 @@ export interface ComposerDraft {
   text: string;
   attachments: DraftAttachment[];
   replyToMessageId: string | null;
+  /** This send asks Claude for one claude.ai artifact. It clears when the message leaves the box. */
+  createArtifact?: boolean;
 }
 
 /**

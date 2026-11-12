@@ -4604,5 +4604,7 @@
   "vault.unreadableTitle": ["de", "es", "fr", "it", "ja", "ko", "pt", "ru", "tr"],
   "vault.untitledContact": ["de", "es", "fr", "it", "ja", "ko", "pt", "ru", "tr"],
   "vault.untitledLogin": ["de", "es", "fr", "it", "ja", "ko", "pt", "ru", "tr"],
-  "vault.variableNameHint": ["de", "es", "fr", "it", "ja", "ko", "nl", "pt", "ru", "tr", "zh"]
+  "vault.variableNameHint": ["de", "es", "fr", "it", "ja", "ko", "nl", "pt", "ru", "tr", "zh"],
+  "composer.add.artifact": ["ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"],
+  "composer.artifact.remove": ["ar", "de", "es", "fr", "he", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr", "zh"]
 }

@@ -76,6 +76,8 @@ export const messages = defineMessages("composer", {
   "composer.add.files": "Attach files",
   "composer.add.teach": "Teach a task",
   "composer.add.skill": "Use a skill",
+  "composer.add.artifact": "Create an artifact",
+  "composer.artifact.remove": "Remove artifact",
   "composer.upload.cancel": "Cancel upload",
   "composer.upload.uploading": "Uploading {name}",
   "composer.upload.progress": "{sent} of {total}",

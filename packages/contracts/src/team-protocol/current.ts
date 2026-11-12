@@ -68,6 +68,7 @@ import { CHAT_COLORS_CAPABILITY } from "./chat-colors-v1";
 import { CHAT_HISTORY_CAPABILITY } from "./chat-history-v1";
 import { CLAUDE_AI_TOOLS_CAPABILITY } from "./claude-ai-tools-v1";
 import { CLAUDE_API_KEY_CAPABILITY } from "./claude-api-key-v1";
+import { CLAUDE_ARTIFACT_REQUEST_CAPABILITY } from "./claude-artifact-request-v1";
 import { CLAUDE_COMPACT_WINDOW_CAPABILITY } from "./claude-compact-window-v1";
 import { CLAUDE_USER_SETUP_CAPABILITY } from "./claude-user-setup-v1";
 import { CODEX_API_KEY_CAPABILITY } from "./codex-api-key-v1";
@@ -176,6 +177,8 @@ import { WORKFLOWS_CHATS_CAPABILITY } from "./workflows-chats-v1";
 import { WORKFLOWS_GITHUB_CAPABILITY } from "./workflows-github-v1";
 import { WORKFLOWS_CAPABILITY } from "./workflows-v1";
 import { WORKSPACE_DIRECTORY_CAPABILITY } from "./workspace-directory-v1";
+
+export { CLAUDE_ARTIFACT_REQUEST_CAPABILITY };
 
 export const TEAM_SEMANTIC_TAGS_CAPABILITY = "installed-skills";
 export const TEAM_AGENT_ACTIVITY_CAPABILITY = "agent-activity";
@@ -581,6 +584,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
   CLAUDE_AI_TOOLS_CAPABILITY,
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -797,6 +801,7 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
     capability !== CLAUDE_USER_SETUP_CAPABILITY &&
     capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
+    capability !== CLAUDE_ARTIFACT_REQUEST_CAPABILITY &&
     capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
     capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
     capability !== HERMES_IMPORT_CAPABILITY &&
@@ -888,6 +893,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   ROUTINE_RUN_COMMAND_CAPABILITY,
   CLAUDE_USER_SETUP_CAPABILITY,
   CLAUDE_AI_TOOLS_CAPABILITY,
+  CLAUDE_ARTIFACT_REQUEST_CAPABILITY,
   AGENT_THREAD_QUEUE_CAPABILITY,
   AGENT_USAGE_LIMIT_CAPABILITY,
   HERMES_IMPORT_CAPABILITY,
@@ -1063,6 +1069,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== ROUTINE_RUN_COMMAND_CAPABILITY &&
       capability !== CLAUDE_USER_SETUP_CAPABILITY &&
       capability !== CLAUDE_AI_TOOLS_CAPABILITY &&
+      capability !== CLAUDE_ARTIFACT_REQUEST_CAPABILITY &&
       capability !== AGENT_THREAD_QUEUE_CAPABILITY &&
       capability !== AGENT_USAGE_LIMIT_CAPABILITY &&
       capability !== HERMES_IMPORT_CAPABILITY &&

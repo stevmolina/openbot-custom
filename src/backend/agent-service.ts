@@ -141,6 +141,7 @@ import {
   type ModelSwitchReason,
   type QueueSteerFallback,
   type ResponseStyle,
+  readArtifactRequest,
   type SkillLearningMode,
   sameAgentBrowserProfile,
   sameAgentModelChoice,
@@ -5953,13 +5954,16 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
             (failure) => new AgentLifecycleFailed({ operation: "resume remote coding job", cause: failure.cause }),
           ),
         );
+    const marked = readArtifactRequest(input.text);
+    const createArtifact = input.createArtifact === true || marked.createArtifact;
     const receipt = yield* this.#mailbox
       .enqueue({
         sender: { kind: "user" },
         ...(sender ? { senderMember: sender } : {}),
         ...(task ? { taskId: task.taskId } : {}),
         recipientAgentIds: [agent.id],
-        text: input.text,
+        text: marked.text,
+        ...(createArtifact ? { createArtifact: true as const } : {}),
         draftIds: input.attachmentDraftIds ?? [],
         ...(input.voiceRecordingDraftId ? { voiceRecordingDraftId: input.voiceRecordingDraftId } : {}),
         // A reply names a message of the thread that takes it: the agent's own chat, or the task's thread.
