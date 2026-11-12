@@ -122,6 +122,16 @@ const usageRows = accountUsageProviderRows({
       primary: { usedPercent: 82, windowDurationMins: 300, resetsAt: nowSeconds + 3_600 },
       secondary: { usedPercent: 45, windowDurationMins: 10_080, resetsAt: nowSeconds + 400_000 },
     },
+    {
+      id: "gemini",
+      primary: { usedPercent: 12, windowDurationMins: 1_440, resetsAt: nowSeconds + 50_000 },
+      secondary: null,
+    },
+    {
+      id: "cursor",
+      primary: { usedPercent: 54, windowDurationMins: 43_200, resetsAt: nowSeconds + 900_000 },
+      secondary: null,
+    },
   ],
 });
 
