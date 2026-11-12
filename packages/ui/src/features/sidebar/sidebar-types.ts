@@ -51,7 +51,7 @@ export const SIDEBAR_LANE_IDS = {
 } as const;
 
 /**
- * The dock of the chat sidebar opens one group at a time. The open group is saved in
+ * The groups of the chat sidebar dock open and close one by one. Each open group is saved in
  * `collapsedSectionIds` as `dock:open:<group id>`, and `dock:none` records that the user closed all
  * of them. With neither, "Working" is open. A folder group's id is its section id, and "Settled" is
  * the unassigned section. The colon keeps these ids apart from the section ids that the layout makes.
