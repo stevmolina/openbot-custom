@@ -895,14 +895,10 @@
 
 /* The providers in the open pill, before More: an avatar stack. The provider with the least left is in
  * front with its rings; the next ones are small logos tucked behind it, each edged in its usage tone. */
-.sidebar-pill-spacer {
-  flex: 1;
-}
-
 .sidebar-chat .sidebar-pill-button.sidebar-provider-stack {
   --sidebar-provider-stack-ring: 32px;
-  --sidebar-provider-stack-avatar: 20px;
-  --sidebar-provider-stack-overlap: 6px;
+  --sidebar-provider-stack-avatar: 18px;
+  --sidebar-provider-stack-overlap: 7px;
 
   width: auto;
   min-width: var(--sidebar-pill-button);
@@ -1011,17 +1007,6 @@
   aspect-ratio: 1;
   overflow: visible;
   fill: var(--openbot-provider-current);
-}
-
-/* The count is a pill whose left part hides behind the logo before it, so its text starts after it. */
-.sidebar-provider-stack-count {
-  width: auto;
-  min-width: var(--sidebar-provider-stack-avatar);
-  padding-inline: calc(var(--sidebar-provider-stack-overlap) + 3px) 6px;
-  font-size: var(--openbot-text-sm);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--openbot-weight-semibold);
-  line-height: 1;
 }
 
 /* Hover spreads the stack a little, so each logo shows whole. */

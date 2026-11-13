@@ -7,7 +7,7 @@ import { createVerticalDragPreview } from "../../components/createVerticalDragPr
 import { useText } from "../../text";
 import pokebotsIcon from "./assets/pokebots-icon.png";
 import { type ServerActionCallbacks, ServerActionItems, serverMuteDescription } from "./ServerActionItems";
-import { ServerMonogram } from "./ServerMonogram";
+import { ServerMascot } from "./ServerMascot";
 
 const SERVER_RAIL_TOOLTIP_OPEN_DELAY = 150;
 
@@ -608,11 +608,11 @@ function ServerRailButton(
   );
 }
 
-/** What a server mark needs: the logo, or else the name and place for the monogram. */
+/** What a server mark needs: the logo, or else the id that picks its plush machine and its place. */
 export type ServerMarkServer = Pick<ServerSummary, "id" | "logoUrl"> &
   Partial<Pick<ServerSummary, "name" | "kind">> & { thisComputer?: boolean | undefined };
 
-/** The server logo, this computer's Pokebots plush, or the monogram when there is no logo. */
+/** The server logo, this computer's Pokebots plush, or a plush machine when there is no logo. */
 export function ServerMark(props: { server: ServerMarkServer }) {
   const [failed, setFailed] = createSignal(false);
   createEffect(
@@ -626,7 +626,7 @@ export function ServerMark(props: { server: ServerMarkServer }) {
     <Show
       when={!failed() ? props.server.logoUrl : null}
       fallback={
-        <Show when={thisComputer()} fallback={<ServerMonogram name={props.server.name} thisComputer={false} />}>
+        <Show when={thisComputer()} fallback={<ServerMascot serverId={props.server.id} />}>
           <img class="server-rail-logo" src={pokebotsIcon} alt="" draggable={false} />
         </Show>
       }
