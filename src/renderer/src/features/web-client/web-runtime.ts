@@ -1322,20 +1322,23 @@ export function createWebWorkspaceRuntime(
       },
     },
     async browserTabs() {
-      const value = await request("GET", TEAM_API_ROUTES.browser.tabs);
-      if (!Array.isArray(value)) throw new Error(currentText().t("error.remote.invalidData"));
       // The frozen tab list has no field for a person's control or the history state, so the host
-      // answers on their own routes.
-      const held = capabilities.includes(BROWSER_USER_CONTROL_CAPABILITY)
-        ? new Set(decodeBrowserUserControlSnapshot(await request("POST", BROWSER_USER_CONTROL_ROUTES.state, {})).tabIds)
-        : new Set<string>();
-      const pageStates = capabilities.includes(BROWSER_PAGE_STATE_CAPABILITY)
-        ? new Map(
-            decodeBrowserPageStateSnapshot(await request("POST", BROWSER_PAGE_STATE_ROUTES.state, {})).tabs.map(
-              ({ tabId, ...state }) => [tabId, state],
-            ),
-          )
-        : new Map<string, { canGoBack: boolean; canGoForward: boolean }>();
+      // answers on their own routes. The three reads go out together: the first screen waits for them.
+      const [value, held, pageStates] = await Promise.all([
+        request("GET", TEAM_API_ROUTES.browser.tabs),
+        capabilities.includes(BROWSER_USER_CONTROL_CAPABILITY)
+          ? request("POST", BROWSER_USER_CONTROL_ROUTES.state, {}).then(
+              (snapshot) => new Set(decodeBrowserUserControlSnapshot(snapshot).tabIds),
+            )
+          : new Set<string>(),
+        capabilities.includes(BROWSER_PAGE_STATE_CAPABILITY)
+          ? request("POST", BROWSER_PAGE_STATE_ROUTES.state, {}).then(
+              (snapshot) =>
+                new Map(decodeBrowserPageStateSnapshot(snapshot).tabs.map(({ tabId, ...state }) => [tabId, state])),
+            )
+          : new Map<string, { canGoBack: boolean; canGoForward: boolean }>(),
+      ]);
+      if (!Array.isArray(value)) throw new Error(currentText().t("error.remote.invalidData"));
       return value.map(decodeWebBrowserTab).map((tab) => ({
         ...tab,
         ...(held.has(tab.id) ? { userControl: true as const } : {}),
