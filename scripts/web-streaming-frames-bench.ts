@@ -3,7 +3,8 @@
 // `before` and `after` reports both exist.
 //
 // Each case streams one reply of 300 chunks and counts the DOM changes in the chat and in the sidebar,
-// the frames, the longest frame, and the time that the 300 chunks took. A `burst` reply sends the
+// the frames, the longest frame, and the time that the 300 chunks took, up to the second frame after
+// the last chunk, so text that waits for a frame is counted. A `burst` reply sends the
 // chunks one task apart, so its time is the work per chunk; a `paced` reply sends one chunk each
 // 5 ms, as a fast model does, so its frames show what the reader sees. The cases are the phone with the chat hidden under its chat list,
 // the phone with the chat open, and the iPad, which shows the chat beside the list. Storybook is a dev
@@ -85,6 +86,8 @@ function streamAndCount(page: Page, marker: string, gapMs: number): Promise<Stre
       requestAnimationFrame(frame);
       const started = performance.now();
       await globalThis.openbotWebBench.stream(tokens, text, false, gap);
+      // Text that waits for a frame is applied in the next one, and drawn in the one after.
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
       const streamMs = Math.round(performance.now() - started);
       watching = false;
       // The records of the last task arrive in the next microtask checkpoint.
@@ -134,7 +137,8 @@ async function openStory(browser: Browser, device: string, record: boolean): Pro
     ...(record && { recordVideo: { dir: OUT, size: descriptor.viewport } }),
   });
   const page = await context.newPage();
-  await page.goto(`${storybook}/iframe.html?id=${STORY}&viewMode=story`);
+  // A Storybook that just started builds the story on its first load.
+  await page.goto(`${storybook}/iframe.html?id=${STORY}&viewMode=story`, { timeout: 300_000 });
   await page.waitForFunction("globalThis.openbotWebBench !== undefined", undefined, { timeout: 300_000 });
   await page.evaluate("globalThis.openbotWebBench.ready");
   await page.locator(".conversation-scroll").waitFor({ state: "attached", timeout: 60_000 });

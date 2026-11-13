@@ -2258,6 +2258,11 @@ export function createWebWorkspace(
       const current = generation;
       await remove({ kind: "agent", agentId, messageId });
       if (disposed || current !== generation) return;
+      // Text that waits for a frame or a read must not add the deleted message again.
+      const kept = (entry: QueuedDelta) => entry.event.agentId !== agentId || entry.event.messageId !== messageId;
+      queuedDeltas = queuedDeltas.filter(kept);
+      const held = heldDeltas.get(agentId);
+      if (held) heldDeltas.set(agentId, held.filter(kept));
       setState((draft) => {
         const item = draft.conversations[agentId];
         const page = item?.page;
