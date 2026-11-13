@@ -234,13 +234,20 @@ const HISTORY_BOUNDARY_DISTANCE = 80;
  * while the reader sits at the newest message: the chat then pages in its history under a reply
  * that is still arriving, and each page moves the transcript under the reader. The distance alone
  * reports the boundary in a virtualized transcript that keeps its first row far above the screen.
+ *
+ * A reader who follows the latest message is at the bottom, so the distance is from the bottom
+ * position. A chat that opens paints at the top for the frames before its first follow lands, which
+ * is longer on a slow device such as an iPad. A page asked for then lands above the newest message:
+ * the chat jumps up into the older messages and then glides down again.
  */
 export function chatHistoryBoundaryReached(
   scrollElement: HTMLElement | undefined,
   firstRenderedIndex: number,
+  followingLatest = false,
 ): boolean {
   if (!scrollElement) return false;
-  return scrollElement.scrollTop <= HISTORY_BOUNDARY_DISTANCE && firstRenderedIndex <= HISTORY_BOUNDARY_ROWS;
+  const top = followingLatest ? scrollElement.scrollHeight - scrollElement.clientHeight : scrollElement.scrollTop;
+  return top <= HISTORY_BOUNDARY_DISTANCE && firstRenderedIndex <= HISTORY_BOUNDARY_ROWS;
 }
 
 export function calculateChatScrollMargin(
