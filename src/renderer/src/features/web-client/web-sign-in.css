@@ -25,6 +25,8 @@
 @import "@openbot/ui/features/account/app-loading-screen.css";
 @import "@openbot/ui/features/account/language-wheel.css";
 @import "../onboarding/onboarding.css";
+/* Whole, as `styles.css` imports it: the consent avatars use its `.agent-avatar` rules. */
+@import "../../styles/app-shell.css";
 @import "@openbot/ui/features/channels/channel-avatar.css";
 @import "../../styles/chat-background.css";
 @import "../../styles/app-root.css";

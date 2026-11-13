@@ -20,8 +20,9 @@
 //   layout time that each frame's change needs; `frameMs` and `framesOver20Ms` are the frame times,
 //   which also include other work on the main thread.
 //   It needs `--storybook=<url>` too.
-// - look: the signed-out screens of `/app` (sign-in, a wrong email, the code step, a wrong code, the
-//   account service down) in a desktop and a phone layout, dark and light, from `vite preview` of the
+// - look: the signed-out screens of `/app` (sign-in, a wrong email, the analytics box ticked while its
+//   avatars pop, the code step and a wrong code with and without the full stylesheet, the account
+//   service down) in a desktop and a phone layout, dark and light, from `vite preview` of the
 //   last build or `--url`. It saves each element's computed style and a screenshot to `<out>/look/`.
 //   `--compare-look=<folder>` fails on any property that differs from that folder, except the ones in
 //   `--allow-look`. `signInSheetsOn` counts the sign-in stylesheets that are on.
@@ -437,12 +438,15 @@ async function measureLoad(browser: Browser, samples: Samples): Promise<void> {
 // In the page: the computed style of each element and of its `::before` and `::after`, by DOM path.
 // A transition or an animation that ends jumps to its end, and one that repeats stops at its start, so
 // two builds give the same values for the same screen.
-const READ_LOOK = `(async () => {
+// With `freezeMs`, every animation stops at that time instead, to read a screen while it moves. A
+// moving screen also skips what is inside each SVG: script draws it, such as the random agent faces.
+const readLook = (freezeMs?: number) => `(async () => {
   await document.fonts.ready;
+  const freezeMs = ${JSON.stringify(freezeMs ?? null)};
   for (const animation of document.getAnimations()) {
-    if (animation.effect?.getComputedTiming().iterations === Infinity) {
+    if (freezeMs !== null || animation.effect?.getComputedTiming().iterations === Infinity) {
       animation.pause();
-      animation.currentTime = 0;
+      animation.currentTime = freezeMs ?? 0;
     } else animation.finish();
   }
   const nodes = {};
@@ -457,6 +461,7 @@ const READ_LOOK = `(async () => {
       }
       nodes[path + (pseudo ?? "")] = values;
     }
+    if (freezeMs !== null && element.localName === "svg") return;
     [...element.children].forEach((child, index) => {
       // The head holds the links of the build's chunks, which change with the chunks, and shows nothing.
       if (child.localName !== "head") visit(child, path + ">" + child.localName + ":" + index);
@@ -471,7 +476,12 @@ type LookNodes = Record<string, Record<string, string>>;
 // In the page: the enabled stylesheets whose last style rule is the mark of `web-sign-in.css`.
 const SIGN_IN_SHEETS_ON = `[...document.styleSheets].filter((sheet) => {
   if (sheet.disabled) return false;
-  const rules = [...sheet.cssRules].filter((rule) => rule instanceof CSSStyleRule);
+  let rules = [];
+  try {
+    rules = [...sheet.cssRules].filter((rule) => rule instanceof CSSStyleRule);
+  } catch {
+    return false;
+  }
   return rules.at(-1)?.selectorText === ".openbot-web-sign-in-sheet";
 }).length`;
 
@@ -480,6 +490,10 @@ const LOOK_SCREENS: {
   name: string;
   account: (path: string) => AccountAnswer | undefined;
   open: (page: Page) => Promise<void>;
+  /** Reads the screen at this time of its animations, with motion on. */
+  freezeMs?: number;
+  /** Stops `web-client.css`, so the screen shows with the sign-in stylesheet only, as on a slow network. */
+  signInStylesOnly?: boolean;
 }[] = [
   {
     name: "sign-in",
@@ -531,6 +545,46 @@ const LOOK_SCREENS: {
     },
   },
   {
+    name: "consent",
+    account: () => undefined,
+    freezeMs: 400,
+    open: async (page) => {
+      // Ticking the analytics box makes three agent avatars pop out of the row.
+      const box = page.getByRole("checkbox").first();
+      await box.uncheck();
+      await box.check();
+    },
+  },
+  {
+    name: "code-early",
+    account: (path) =>
+      path === "email/start"
+        ? { status: 200, body: { challengeId: "look", resendAt: 0, expiresAt: Date.now() + 600_000 } }
+        : undefined,
+    signInStylesOnly: true,
+    open: async (page) => {
+      await page.locator('input[type="email"]').fill("look@example.com");
+      await page.locator('button[type="submit"]').click();
+      await page.locator(".otp-input-native").waitFor({ state: "visible" });
+    },
+  },
+  {
+    name: "code-error-early",
+    account: (path) =>
+      path === "email/start"
+        ? { status: 200, body: { challengeId: "look", resendAt: 0, expiresAt: Date.now() + 600_000 } }
+        : path === "email/verify"
+          ? { status: 400, body: { error: { code: "invalid_sign_in_code", message: "That code is not right." } } }
+          : undefined,
+    signInStylesOnly: true,
+    open: async (page) => {
+      await page.locator('input[type="email"]').fill("look@example.com");
+      await page.locator('button[type="submit"]').click();
+      await page.locator(".otp-input-native").fill("23456789");
+      await page.locator('.otp-input[data-status="error"]').waitFor({ state: "visible" });
+    },
+  },
+  {
     name: "unavailable",
     account: (path) =>
       path === "session" ? { status: 503, body: { error: { code: "unavailable", message: "Down." } } } : undefined,
@@ -569,10 +623,15 @@ async function measureLook(browser: Browser, samples: Samples): Promise<void> {
         for (const screen of LOOK_SCREENS) {
           const name = `${screen.name}-${layout}-${theme}`;
           current = screen.account;
-          const context = await browser.newContext({ ...options, reducedMotion: "reduce" });
+          const context = await browser.newContext({
+            ...options,
+            reducedMotion: screen.freezeMs === undefined ? "reduce" : "no-preference",
+          });
           try {
             await context.addInitScript(`localStorage.setItem("openbot.web.appearance", ${JSON.stringify(theme)})`);
             const page = await context.newPage();
+            // Main has no `web-client-*.css`: there, this stops nothing and the full stylesheet shows.
+            if (screen.signInStylesOnly) await page.route("**/assets/web-client-*.css", (route) => route.abort());
             await page.goto(`${proxy.url}/app`);
             await screen.open(page).catch(async (error: unknown) => {
               await page.screenshot({ path: resolve(lookDir, `${name}-failed.png`) });
@@ -580,7 +639,7 @@ async function measureLook(browser: Browser, samples: Samples): Promise<void> {
             });
             await page.waitForLoadState("networkidle");
             await page.waitForFunction("!document.querySelector('.app-loading')", undefined, { timeout: 30_000 });
-            const nodes = await page.evaluate<LookNodes>(READ_LOOK);
+            const nodes = await page.evaluate<LookNodes>(readLook(screen.freezeMs));
             await page.screenshot({ path: resolve(lookDir, `${name}.png`) });
             writeFileSync(resolve(lookDir, `${name}.json`), JSON.stringify(nodes));
             record(samples, `look.${name}.nodes`, Object.keys(nodes).length);
