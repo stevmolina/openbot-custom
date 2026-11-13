@@ -74,8 +74,28 @@ interface HostProcess {
   pid: number;
   ppid: number;
   rssMb: number;
+  /**
+   * macOS only: the memory that `top` shows, with the compressed part. macOS compresses an idle
+   * process, so its resident memory falls while the process still holds that memory.
+   */
+  footprintMb: number | null;
   cpuPercent: number;
   kind: string;
+}
+
+const MEMORY_UNITS_MB: Record<string, number> = { B: 1 / 1_048_576, K: 1 / 1024, M: 1, G: 1024 };
+
+/** The footprint of each process, from one `top` sample. Empty off macOS. */
+function footprints(): Map<number, number> {
+  const result = new Map<number, number>();
+  if (process.platform !== "darwin") return result;
+  const output = execFileSync("top", ["-l", "1", "-stats", "pid,mem"], { encoding: "utf8", maxBuffer: 16_000_000 });
+  for (const line of output.split("\n")) {
+    const match = /^\s*(\d+)\s+([\d.]+)([BKMG])[+-]?\s*$/u.exec(line);
+    const unit = match?.[3] ? MEMORY_UNITS_MB[match[3]] : undefined;
+    if (match && unit !== undefined) result.set(Number(match[1]), Math.round(Number(match[2]) * unit * 10) / 10);
+  }
+  return result;
 }
 
 const cdpTargetList = z.array(z.object({ type: z.string(), url: z.string(), title: z.string() }));
@@ -124,6 +144,7 @@ function hostProcesses(hostPid: number): HostProcess[] {
       const [, pid, ppid, rss, cpu, command] = match;
       return [{ pid: Number(pid), ppid: Number(ppid), rssKb: Number(rss), cpu: Number(cpu), command: command ?? "" }];
     });
+  const memory = footprints();
   const tree = new Set([hostPid]);
   for (let grew = true; grew; ) {
     grew = false;
@@ -149,6 +170,7 @@ function hostProcesses(hostPid: number): HostProcess[] {
         pid: row.pid,
         ppid: row.ppid,
         rssMb: Math.round(row.rssKb / 102.4) / 10,
+        footprintMb: memory.get(row.pid) ?? null,
         cpuPercent: row.cpu,
         kind,
       };
@@ -187,11 +209,13 @@ function electronMainPid(record: DevInstanceRecord): number {
 interface ProcessSummary {
   appProcessCount: number;
   appRssMb: number;
+  /** macOS only, null elsewhere: see `HostProcess.footprintMb`. */
+  appFootprintMb: number | null;
   appCpuPercent: number;
   processCount: number;
   rssMb: number;
   cpuPercent: number;
-  byKind: { kind: string; count: number; rssMb: number }[];
+  byKind: { kind: string; count: number; rssMb: number; footprintMb: number }[];
 }
 
 const summarize = (processes: HostProcess[]): ProcessSummary => {
@@ -199,11 +223,12 @@ const summarize = (processes: HostProcess[]): ProcessSummary => {
   for (const item of processes) {
     let entry = byKind.find((candidate) => candidate.kind === item.kind);
     if (!entry) {
-      entry = { kind: item.kind, count: 0, rssMb: 0 };
+      entry = { kind: item.kind, count: 0, rssMb: 0, footprintMb: 0 };
       byKind.push(entry);
     }
     entry.count += 1;
     entry.rssMb = Math.round((entry.rssMb + item.rssMb) * 10) / 10;
+    entry.footprintMb = Math.round((entry.footprintMb + (item.footprintMb ?? 0)) * 10) / 10;
   }
   const app = processes.filter((item) => !item.kind.startsWith("provider:"));
   const total = (items: HostProcess[], field: "rssMb" | "cpuPercent") =>
@@ -211,6 +236,10 @@ const summarize = (processes: HostProcess[]): ProcessSummary => {
   return {
     appProcessCount: app.length,
     appRssMb: total(app, "rssMb"),
+    appFootprintMb:
+      process.platform === "darwin"
+        ? Math.round(app.reduce((sum, item) => sum + (item.footprintMb ?? 0), 0) * 10) / 10
+        : null,
     appCpuPercent: total(app, "cpuPercent"),
     processCount: processes.length,
     rssMb: total(processes, "rssMb"),
