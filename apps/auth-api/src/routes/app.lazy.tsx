@@ -3,7 +3,8 @@ import { Dynamic } from "@solidjs/web";
 import { createLazyFileRoute } from "@tanstack/solid-router";
 import { type Component, createSignal, flush, lazy, onSettled, Show } from "solid-js";
 import { showSavedAppearance } from "../../../../src/renderer/src/features/web-client/web-appearance-preference";
-import "../../../../src/renderer/src/features/web-client/web-client.css";
+// The sign-in styles. The full web client stylesheet loads with the workspace (`WebApp.tsx`).
+import "../../../../src/renderer/src/features/web-client/web-sign-in.css";
 
 const loadWebApp = () => import("@openbot/renderer-web");
 // The saved language loads with the code, so the first screen is not English for a moment. If it

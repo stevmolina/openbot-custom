@@ -21,6 +21,9 @@ board: its root component imports its stylesheet, so the web client loads it wit
 stylesheet comes after the app stylesheet, so it must select only its own feature classes, and a
 later app rule must not tie with it on specificity. WebKit tests a class rule only on elements that
 have the class, so this saves download and parse time, not style time.
+KaTeX's stylesheet loads with KaTeX, from `MathFormula.tsx`, on the same terms.
+The web client's sign-in screens load `web-sign-in.css`, an ordered part of the app stylesheet; add
+a file there only when a sign-in screen needs it, and check with `bun run perf:web --phases=look`.
 `features/conversation/conversation.css` is the ordered style manifest. Keep component rules in
 its `styles/` directory and preserve override order. Do not import those fragments separately.
 Keep platform features in typed content slots or adapters, not environment checks in shared UI.
