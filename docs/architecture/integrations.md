@@ -394,7 +394,8 @@ is one folder per plugin in [`marketplace/plugin-catalog/`](../../marketplace/pl
    bun run marketplace:build:plugins -- --check
    ```
    The build writes `src/renderer/src/features/settings/marketplace-plugin-catalog.ts`,
-   `apps/auth-api/src/lib/plugin-catalog.generated.ts`,
+   `src/renderer/src/features/settings/marketplace-plugin-slugs.ts` (the slugs alone, for the
+   analytics filter), `apps/auth-api/src/lib/plugin-catalog.generated.ts`,
    `apps/mobile/src/features/marketplace/model/plugin-catalog.generated.ts` and
    `resources/plugin-catalog/`. Do not edit them by hand. The mobile copy states its own types and
    leaves out the vendor icon addresses: the phone loads icons from `/plugins/icon/<slug>?app=<id>`.

@@ -9,11 +9,12 @@ import * as PopoverPrimitive from "@kobalte/core/popover";
 import * as RadioGroupPrimitive from "@kobalte/core/radio-group";
 import * as KobalteSelect from "@kobalte/core/select";
 import * as TabsPrimitive from "@kobalte/core/tabs";
-import * as TooltipPrimitive from "@kobalte/core/tooltip";
 import type { ValidComponent } from "@solidjs/web";
 import { createContext, createEffect, merge, onCleanup, untrack, useContext } from "solid-js";
 import { useMenuMotion } from "./menu-motion";
 import { createPressedPopupCue } from "./utils";
+
+export { Tooltip } from "./tooltip-primitive";
 
 type OpenChangeHandler = (open: boolean) => void;
 
@@ -430,20 +431,6 @@ export const Popover: PopoverApi = {
   CloseButton: (props) => (
     <PopoverPrimitive.CloseButton data-cuelume-close="" data-cuelume-emphasis="subtle" {...props} />
   ),
-};
-
-interface TooltipApi {
-  Root: typeof TooltipPrimitive.Root;
-  Portal: typeof TooltipPrimitive.Portal;
-  Trigger: typeof TooltipPrimitive.Trigger;
-  Content: typeof TooltipPrimitive.Content;
-}
-
-export const Tooltip: TooltipApi = {
-  Root: (props) => <TooltipPrimitive.Root {...props} />,
-  Portal: (props) => <TooltipPrimitive.Portal {...props} />,
-  Trigger: (props) => <TooltipPrimitive.Trigger {...props} />,
-  Content: (props) => <TooltipPrimitive.Content {...props} />,
 };
 
 interface TabsApi {

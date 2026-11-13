@@ -139,6 +139,7 @@ import {
 } from "@openbot/contracts/team-protocol/channel-picture-v1";
 import { CHAT_COLORS_CAPABILITY } from "@openbot/contracts/team-protocol/chat-colors-v1";
 import { CHAT_HISTORY_CAPABILITY, CHAT_HISTORY_ROUTES } from "@openbot/contracts/team-protocol/chat-history-v1";
+import { COMPACT_RPC_CAPABILITY } from "@openbot/contracts/team-protocol/compact-rpc-v1";
 import {
   CONTEXT_COMPACT_CAPABILITY,
   CONTEXT_COMPACT_ROUTES,
@@ -203,7 +204,9 @@ import {
 import {
   createRemoteTeamPeer,
   type RemoteFileUpload,
+  type RemoteHostProtocols,
   type RemoteLargeDownload,
+  type RemoteSignalRoute,
   type RemoteTeamCommandResult,
   type RemoteTeamConnectionUpdate,
   type RemoteTeamPeerActions,
@@ -575,6 +578,77 @@ function savedHostProtocol(accountId: string, hostId: string): number | undefine
   return Number.isSafeInteger(protocol) && protocol > 0 ? protocol : undefined;
 }
 
+function hostCapabilitiesKey(accountId: string, hostId: string): string {
+  return `openbot.web.host-capabilities:${accountId}:${hostId}`;
+}
+
+/** The capabilities of the host's last compatibility read, so that the first reads can use them. */
+function savedHostCapabilities(accountId: string, hostId: string): string[] | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(hostCapabilitiesKey(accountId, hostId)) ?? "null");
+    return Array.isArray(value) && value.every(isString) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function sameCapabilities(left: readonly string[], right: readonly string[]): boolean {
+  const known = new Set(left);
+  return known.size === new Set(right).size && right.every((capability) => known.has(capability));
+}
+
+/** A saving that only speeds up the next page must not fail a connection, such as when storage is full. */
+function saveHint(save: () => void): void {
+  try {
+    save();
+  } catch {
+    // The next page reads the host again.
+  }
+}
+
+function compactRpcKey(accountId: string, hostId: string): string {
+  return `openbot.web.host-compact-rpc:${accountId}:${hostId}`;
+}
+
+function savedCompactRpc(accountId: string, hostId: string): boolean {
+  return localStorage.getItem(compactRpcKey(accountId, hostId)) === "1";
+}
+
+function signalRouteKey(accountId: string, hostId: string): string {
+  return `openbot.web.host-signal:${accountId}:${hostId}`;
+}
+
+/** The Signal route of the host's last `ready`. Its TURN credentials expire, and the peer checks their age. */
+function savedSignalRoute(accountId: string, hostId: string): RemoteSignalRoute | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(signalRouteKey(accountId, hostId)) ?? "null");
+    if (
+      !isDynamicRecord(value) ||
+      !isString(value.signalUrl) ||
+      !isNumber(value.at) ||
+      !Array.isArray(value.iceServers)
+    )
+      return null;
+    const url = new URL(value.signalUrl);
+    if (url.protocol !== "wss:" && !(import.meta.env.DEV && url.protocol === "ws:")) return null;
+    const iceServers = value.iceServers.filter(isIceServer);
+    return iceServers.length === value.iceServers.length
+      ? { signalUrl: value.signalUrl, iceServers, at: value.at }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isIceServer(value: unknown): value is RTCIceServer {
+  return (
+    isDynamicRecord(value) &&
+    (isString(value.urls) || (Array.isArray(value.urls) && value.urls.every(isString))) &&
+    (value.username === undefined || isString(value.username)) &&
+    (value.credential === undefined || isString(value.credential))
+  );
+}
+
 /** Pin after directory validation and before connecting. Never silently replace a saved identity. */
 function pinWebHostKey(accountId: string, host: RemoteTeamHost): void {
   const key = `openbot.web.host-key:${accountId}:${host.hostId}`;
@@ -650,9 +724,19 @@ export function createWebWorkspaceRuntime(
   };
   // A new page sends its first reads with the protocol of the last visit, beside the compatibility
   // read. `connectHost` reads them again when the protocol changed.
-  const hostProtocols = {
+  const hostProtocols: RemoteHostProtocols = {
     get: (id: string) => savedHostProtocol(accountId, id),
     set: (id: string, protocol: number) => localStorage.setItem(hostProtocolKey(accountId, id), String(protocol)),
+    compactRpc: (id) => savedCompactRpc(accountId, id),
+    setCompactRpc: (id, value) =>
+      saveHint(() => {
+        if (value) localStorage.setItem(compactRpcKey(accountId, id), "1");
+        else localStorage.removeItem(compactRpcKey(accountId, id));
+      }),
+    // The next page opens Signal while it asks the account service for a ticket.
+    signalRoute: (id) => savedSignalRoute(accountId, id),
+    setSignalRoute: (id, route) =>
+      saveHint(() => localStorage.setItem(signalRouteKey(accountId, id), JSON.stringify(route))),
   };
   function createOpenedPeer() {
     const actions = { current: openedActions };
@@ -1149,9 +1233,24 @@ export function createWebWorkspaceRuntime(
           result.ok ? null : (result.reference ?? null),
         );
       const knownProtocol = savedHostProtocol(accountId, host.hostId);
+      // Read before the compatibility answer replaces it: the early reads used it.
+      const knownCompactRpc = savedCompactRpc(accountId, host.hostId);
+      // The early reads use the capabilities of the last visit, so a model read sends its follow-up
+      // reads at once rather than after the compatibility answer.
+      const knownCapabilities = knownProtocol === undefined ? null : savedHostCapabilities(accountId, host.hostId);
+      if (knownCapabilities) capabilities = knownCapabilities;
       if (knownProtocol !== undefined) early?.start();
       const support = decodeTeamProtocolSupportV9(await request("GET", TEAM_API_ROUTES.compatibility));
-      if (knownProtocol !== undefined && support.protocol.maximum !== knownProtocol) early?.drop();
+      saveHint(() =>
+        localStorage.setItem(hostCapabilitiesKey(accountId, host.hostId), JSON.stringify(support.capabilities)),
+      );
+      if (
+        knownProtocol !== undefined &&
+        (support.protocol.maximum !== knownProtocol ||
+          (knownCompactRpc && !support.capabilities.includes(COMPACT_RPC_CAPABILITY)) ||
+          (knownCapabilities !== null && !sameCapabilities(knownCapabilities, support.capabilities)))
+      )
+        early?.drop();
       const updateDirection = teamProtocolUpdateDirection(
         { minimum: TEAM_PROTOCOL_V3, maximum: TEAM_PROTOCOL_V3 },
         support.protocol,
@@ -1731,13 +1830,10 @@ export function createWebWorkspaceRuntime(
       return runTeamEffect(setOwnServerNotificationLevel(teamApi, level).pipe(Effect.mapError((error) => error.cause)));
     },
     async models() {
-      const models = guardedListDecoder(
-        isClientAgentModelOption,
-        "models",
-      )(await request("GET", TEAM_API_ROUTES.agents.models));
       // The fast tiers and the picker listing are optional: when a route fails, the picker gets the
-      // models with no Fast switch or listing.
-      const [fast, listings] = await Promise.all([
+      // models with no Fast switch or listing. They go beside the model read, one round trip for all three.
+      const [listed, fast, listings] = await Promise.all([
+        request("GET", TEAM_API_ROUTES.agents.models),
         capabilities.includes(AGENT_FAST_MODE_CAPABILITY)
           ? request("POST", AGENT_FAST_MODE_ROUTES.models, {}).then(decodeAgentFastModels, () => [])
           : [],
@@ -1745,6 +1841,7 @@ export function createWebWorkspaceRuntime(
           ? request("POST", MODEL_VISIBILITY_ROUTES.listing, {}).then(decodeAgentModelListings, () => [])
           : [],
       ]);
+      const models = guardedListDecoder(isClientAgentModelOption, "models")(listed);
       return withModelListings(withFastServiceTiers(models, fast), listings);
     },
     async status() {

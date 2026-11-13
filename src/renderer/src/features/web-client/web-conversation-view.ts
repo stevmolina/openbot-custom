@@ -29,6 +29,11 @@ export function createWebConversationView(options: {
   remoteAgentAdmin: Pick<ReturnType<typeof createRemoteAgentAdmin>, "settings" | "update">;
   /** True when the agent form or a channel covers the conversation. */
   hidden: () => boolean;
+  /**
+   * True while the conversation stays mounted but cannot be seen, such as under the chat list of a
+   * phone. Its messages then keep their last value, and catch up when it shows again.
+   */
+  paused?: () => boolean;
   /** The open side thread's conversation, null when it has none, or undefined for the agent's own chat. */
   thread: () => ConversationSnapshot | null | undefined;
 }) {
@@ -118,9 +123,21 @@ export function createWebConversationView(options: {
   const rows = mapArray(storedMessages, (message) => createMemo(() => row(message())), {
     keyed: (message) => message.id,
   });
-  /** The rows, with the thinking of a turn joined. The result is reconciled by id, so the other messages keep their rows. */
+  /** The conversation that the rows show: its agent and thread, set when its first page has loaded. */
+  let shownConversation: string | undefined;
+  /**
+   * The rows, with the thinking of a turn joined. The result is reconciled by id, so the other messages keep their rows.
+   *
+   * A paused view keeps the rows of the conversation that it shows, so a reply that streams does not draw the
+   * hidden chat at each chunk. Another conversation, or the first page of one, still lands: a chat with no
+   * rows reads as empty and asks the host for its older pages.
+   */
   const messages = createProjection<AgentMessage[]>(
     () => {
+      const page = workspace.conversation()?.page;
+      const conversation = page ? `${page.agentId}:${page.threadId ?? ""}` : undefined;
+      if (options.paused?.() && conversation !== undefined && conversation === shownConversation) return;
+      shownConversation = conversation;
       const converted = rows();
       return toAgentMessages(
         storedMessages(),

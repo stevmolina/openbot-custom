@@ -93,7 +93,12 @@ import {
   type WebWorkspaceRuntime,
 } from "./web-runtime";
 import { orderWebHosts, readWebServerOrder, writeWebServerOrder } from "./web-server-order";
-import { readWebServerSelection, writeWebServerSelection } from "./web-server-selection";
+import {
+  readWebServerSelection,
+  readWebServerSelectionHost,
+  writeWebServerSelection,
+  writeWebServerSelectionHost,
+} from "./web-server-selection";
 
 interface WebConversation {
   page: ConversationPage | null;
@@ -1000,6 +1005,8 @@ export function createWebWorkspace(
       };
     });
   }
+  /** The connect to the saved server that the page starts beside its first server list read. */
+  let earlyConnect: Promise<void> | null = null;
   function refreshHosts(): Promise<void> {
     if (hostsRefreshPromise) return hostsRefreshPromise;
     const refreshGeneration = generation;
@@ -1024,7 +1031,9 @@ export function createWebWorkspace(
           props.accountId,
           hosts.map((host) => host.hostId),
         );
-        const activeGeneration = refreshGeneration === generation && refreshHostId === hostId;
+        // A page connects to its saved server before this read ends, and a retry of that connect can
+        // start meanwhile. Only a change of server makes this list too old to act on.
+        const activeGeneration = refreshHostId === hostId && (refreshGeneration === generation || hostId !== null);
         if (!activeGeneration) return;
         if (refreshHostId && !hosts.some((host) => host.hostId === refreshHostId)) {
           generation += 1;
@@ -1070,12 +1079,11 @@ export function createWebWorkspace(
           await runtime.disconnect().catch(() => undefined);
         }
         const connected = hosts.find((host) => host.hostId === hostId);
+        if (connected) writeWebServerSelectionHost(props.accountId, connected);
         setState((draft) => {
-          // The connected host is a copy from `connect`. An admin can rename it while connected.
-          if (connected && draft.host?.hostId === connected.hostId) {
-            draft.host.name = connected.name;
-            draft.host.logoKey = connected.logoKey;
-          }
+          // The connected host is a copy from `connect`, or from the last page. An admin can rename it while
+          // connected, and the account service can change its role or its plan.
+          if (connected && draft.host?.hostId === connected.hostId) draft.host = { ...connected };
           draft.hosts = hosts;
           draft.hostsLoaded = true;
           draft.hostsError = null;
@@ -1086,6 +1094,10 @@ export function createWebWorkspace(
           const initialHost =
             hosts.find((host) => host.hostId === savedHostId) ?? orderWebHosts(hosts, serverOrder())[0];
           if (initialHost) await connect(initialHost);
+        } else if (earlyConnect) {
+          const opening = earlyConnect;
+          earlyConnect = null;
+          await opening;
         }
         // After the opened host, so it takes its Signal connection before the status connections.
         if (!disposed) runtime.hosts?.setHosts(hosts);
@@ -1267,6 +1279,7 @@ export function createWebWorkspace(
     const recentAgentIds = frame?.recentAgentIds ?? [];
     hostId = host.hostId;
     writeWebServerSelection(props.accountId, host.hostId);
+    writeWebServerSelectionHost(props.accountId, host);
     if (!keepWorkspace) selectedId = null;
     if (!sameHost) hostLifecycle.endSleep();
     setState((draft) => {
@@ -2038,6 +2051,10 @@ export function createWebWorkspace(
   // The update dialog explains the restart of the update that it follows.
   createHostRestartToasts(() => hostViews().filter((host) => !followsServerUpdate(host.id)));
   onSettled(() => {
+    // The saved server connects beside the server list read, not after it: the read takes a round trip
+    // to the account service. The list then confirms the server, or removes it as it does when access ends.
+    const savedHost = readWebServerSelectionHost(props.accountId);
+    if (savedHost && !hostId) earlyConnect = connect(savedHost);
     void refreshHosts().catch(report);
     const pageFocus = () => setPageFocused(!document.hidden && document.hasFocus());
     const focus = () => {

@@ -80,7 +80,10 @@ export function createChatVirtualizer<TScrollElement extends Element, TItemEleme
       // A new row gets its ResizeObserver size before paint. A read of its height when it mounts
       // lays out the page again while the chat still renders. The size that the virtualizer has now
       // changes nothing, so the first real size stays a first measurement.
-      if (!entry) {
+      // A hidden chat, such as the one under the chat list of a phone, reports a size of 0 for each
+      // row. Its sizes from before stay, so the rows and the reader's place are the same when it shows.
+      // The observer calls this after layout, so the read of the boxes does not lay out the page.
+      if (!entry || element.getClientRects().length === 0) {
         const index = instance.indexFromElement(element);
         return (
           instance.itemSizeCache.get(instance.options.getItemKey(index)) ??
@@ -245,7 +248,9 @@ export function chatHistoryBoundaryReached(
   firstRenderedIndex: number,
   followingLatest = false,
 ): boolean {
-  if (!scrollElement) return false;
+  // A hidden chat, such as the one under the chat list of a phone, has no height and reads as the
+  // top. It would ask for every older page in turn, and draw them, while nobody sees it.
+  if (!scrollElement || scrollElement.clientHeight === 0) return false;
   const top = followingLatest ? scrollElement.scrollHeight - scrollElement.clientHeight : scrollElement.scrollTop;
   return top <= HISTORY_BOUNDARY_DISTANCE && firstRenderedIndex <= HISTORY_BOUNDARY_ROWS;
 }

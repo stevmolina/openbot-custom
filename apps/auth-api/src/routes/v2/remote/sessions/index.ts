@@ -25,10 +25,12 @@ export const Route = createFileRoute("/v2/remote/sessions/")({
             if (!user) return apiError(401, "unauthorized", "Sign in is required.");
             const body = yield* readJsonObject(request);
             if (!isString(body.hostId)) return apiError(400, "invalid_remote_request", "The host ID is invalid.");
-            return json(
-              yield* requestRemoteControlPlane().startSession(user.id, body.hostId, yield* sha256(token)),
-              201,
-            );
+            const remote = requestRemoteControlPlane();
+            const session = yield* remote.startSession(user.id, body.hostId, yield* sha256(token));
+            // With the client key, the first ticket comes in the same answer: one round trip less before Signal.
+            if (!isString(body.clientPublicKey)) return json(session, 201);
+            const ticket = yield* remote.issueSessionTicket(user.id, session.sessionId, body.clientPublicKey);
+            return json({ ...session, ticket }, 201);
           }),
           remoteControlPlaneErrorResponse,
         ),

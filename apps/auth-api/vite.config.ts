@@ -50,6 +50,20 @@ export default defineConfig(({ command }) => {
       // Worker chunks import each other in cycles. Without strict order, a chunk can run before
       // the chunk that defines its imports, and every request fails with a 500.
       ssr: { build: { rolldownOptions: { output: { strictExecutionOrder: true } } } },
+      // Every page runs the modules that the browser entry imports, so they are one file, not about
+      // 60 small ones. A phone opens each file as its own request and module. Style sheets keep
+      // their own chunks and order.
+      client: {
+        build: {
+          rolldownOptions: {
+            output: {
+              codeSplitting: {
+                groups: [{ name: "start", test: startModule }],
+              },
+            },
+          },
+        },
+      },
     },
     server: {
       host: readApiHost(process.env.OPENBOT_API_HOST),
@@ -88,6 +102,16 @@ export default defineConfig(({ command }) => {
     ],
   };
 });
+
+/**
+ * The route tree and the parts of each route that are not split off (`head`, `loader`): the browser
+ * entry imports them on every page. Their static imports join the same chunk. A `.lazy.tsx` route
+ * loads only when it opens.
+ */
+function startModule(id: string): boolean {
+  if (/\.lazy\.tsx$/.test(id)) return false;
+  return /[\\/]apps[\\/]auth-api[\\/]src[\\/](?:router\.tsx|routeTree\.gen\.ts|routes[\\/][^?]*)$/.test(id);
+}
 
 function readApiPort(value: string | undefined): number {
   if (value === undefined || value.trim() === "") return 3_100;

@@ -17,7 +17,8 @@ import {
   collectionFeedUrl,
   collectionIndexUrl,
 } from "./content-collection";
-import { PLUGIN_PAGE_SOCIAL_IMAGE, pluginUrl, type SitePlugin } from "./plugins";
+import { PLUGIN_PAGE_SOCIAL_IMAGE, pluginUrl } from "./plugin-pages";
+import type { SitePlugin } from "./plugins";
 import {
   OPENBOT_LOGO_URL,
   OPENBOT_SITE_TITLE,

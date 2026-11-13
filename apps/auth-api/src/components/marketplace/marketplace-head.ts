@@ -7,7 +7,7 @@ import {
   type PageSocialImage,
   pageSocialImageMeta,
 } from "../../lib/site-metadata";
-import { isMarketplaceMissingData } from "./MarketplaceMissingPage";
+import { isMarketplaceMissingData } from "./marketplace-missing-data";
 import type { MarketplaceHeadText, MarketplaceListingHeadText } from "./marketplace-page-text";
 
 /*

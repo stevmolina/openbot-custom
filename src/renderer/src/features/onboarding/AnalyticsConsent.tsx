@@ -1,6 +1,8 @@
-import { Button, Checkbox, toast } from "@openbot/ui";
+import { Button } from "@openbot/ui/button";
+import { Checkbox } from "@openbot/ui/checkbox";
 import { AgentAvatar } from "@openbot/ui/features/agents/AgentAvatar";
 import { useText } from "@openbot/ui/text";
+import { toast } from "@openbot/ui/toast";
 import { createSignal, createUniqueId, For, Match, onCleanup, Show, Switch } from "solid-js";
 import type { OnboardingAvatarVariant } from "./onboarding-avatars";
 

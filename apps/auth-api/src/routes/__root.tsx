@@ -1,12 +1,17 @@
 import interLatinFont from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
 import type { JSX } from "@solidjs/web";
-import { createRootRoute, type ErrorComponentProps, HeadContent, Outlet, Scripts } from "@tanstack/solid-router";
+import {
+  createRootRoute,
+  type ErrorComponentProps,
+  HeadContent,
+  lazyRouteComponent,
+  Outlet,
+  Scripts,
+} from "@tanstack/solid-router";
 import { createSignal, onSettled, Show } from "solid-js";
 import "@openbot/brand/logo.css";
 import { installPointerFocusGuard } from "@openbot/ui/pointer-focus";
 import "../styles.css";
-import { NotFoundPage } from "../components/landing/NotFoundPage";
-import { PageError } from "../components/landing/PageError";
 import { SiteTextProvider, useRouteSiteChrome } from "../components/landing/SiteText";
 import { type RootPageText, rootPageText } from "../components/transactional/page-text";
 import { loadPageText, type PageText } from "../lib/page-text";
@@ -17,6 +22,12 @@ import { OPENBOT_SECURITY_HEADERS, openBotRootHead } from "../lib/site-metadata"
 import type { SiteChrome } from "../lib/site-text";
 
 const NOT_FOUND_TITLE = "Page not found · OpenBot";
+
+// The 404 and error pages show the site header, which holds the plugin catalog of the menu. The
+// root route is in the first chunk of every page, `/app` included, so these pages load only when
+// they show.
+const NotFoundPage = lazyRouteComponent(() => import("../components/landing/NotFoundPage"), "NotFoundPage");
+const PageError = lazyRouteComponent(() => import("../components/landing/PageError"), "PageError");
 
 export const Route = createRootRoute({
   beforeLoad: () => ({ siteUrl: servingSiteUrl(), locale: requestLocale() }),

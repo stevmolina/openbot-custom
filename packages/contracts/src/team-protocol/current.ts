@@ -73,6 +73,7 @@ import { CLAUDE_ARTIFACT_REQUEST_CAPABILITY } from "./claude-artifact-request-v1
 import { CLAUDE_COMPACT_WINDOW_CAPABILITY } from "./claude-compact-window-v1";
 import { CLAUDE_USER_SETUP_CAPABILITY } from "./claude-user-setup-v1";
 import { CODEX_API_KEY_CAPABILITY } from "./codex-api-key-v1";
+import { COMPACT_RPC_CAPABILITY } from "./compact-rpc-v1";
 import { COMPUTER_ACTIVITY_CAPABILITY } from "./computer-activity-v1";
 import { CONNECTORS_CAPABILITY } from "./connectors-v1";
 import { CONTEXT_COMPACT_CAPABILITY } from "./context-compact-v1";
@@ -603,6 +604,7 @@ export const TEAM_CURRENT_CAPABILITIES = [
   AGENT_COMPUTER_CAPABILITY,
   WEB_PUSH_NOTIFICATIONS_CAPABILITY,
   BROWSER_COLOR_SCHEME_CAPABILITY,
+  COMPACT_RPC_CAPABILITY,
 ] as const;
 
 export type TeamCurrentCapability = (typeof TEAM_CURRENT_CAPABILITIES)[number];
@@ -820,7 +822,8 @@ export const TEAM_BOOTSTRAP_CAPABILITIES = TEAM_CURRENT_CAPABILITIES.filter(
     capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
     capability !== AGENT_COMPUTER_CAPABILITY &&
     capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY &&
-    capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
+    capability !== BROWSER_COLOR_SCHEME_CAPABILITY &&
+    capability !== COMPACT_RPC_CAPABILITY,
 );
 /**
  * The capabilities that only a protocol 9 peer sends and gets. Protocols 7 and 8 read at most 128
@@ -914,6 +917,7 @@ export const TEAM_PROTOCOL_V9_ONLY_CAPABILITIES: ReadonlySet<string> = new Set<T
   AGENT_COMPUTER_CAPABILITY,
   WEB_PUSH_NOTIFICATIONS_CAPABILITY,
   BROWSER_COLOR_SCHEME_CAPABILITY,
+  COMPACT_RPC_CAPABILITY,
 ]);
 // A v8 host reads at most 128 capabilities, so a client sends the protocol 9 ones only after it
 // negotiates protocol 9.
@@ -1090,6 +1094,7 @@ export function legacyTeamCapabilities(capabilities: readonly string[]): string[
       capability !== REMOTE_COMPUTER_USE_CAPABILITY &&
       capability !== AGENT_COMPUTER_CAPABILITY &&
       capability !== WEB_PUSH_NOTIFICATIONS_CAPABILITY &&
-      capability !== BROWSER_COLOR_SCHEME_CAPABILITY,
+      capability !== BROWSER_COLOR_SCHEME_CAPABILITY &&
+      capability !== COMPACT_RPC_CAPABILITY,
   );
 }
