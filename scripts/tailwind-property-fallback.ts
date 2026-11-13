@@ -10,9 +10,9 @@
 //     }
 //   }
 //
-// The condition finds Safari before 16.4 by the absence of `margin-trim: inline`. Newer WebKit builds
-// (Playwright WebKit 27, Safari Technology Preview) also do not parse `margin-trim: inline`, so the
-// block applies there too. A rule that matches every element then makes each style change on a high
+// Tailwind 4.3.3 finds Safari before 16.4 by the absence of `margin-trim: inline` (4.3.5 tests
+// `margin-trim: block`). Newer WebKit builds (Playwright WebKit 27, Safari Technology Preview) do not
+// parse `margin-trim: inline`, so the block applies there too. A rule that matches every element then makes each style change on a high
 // element slower: on the web client's iPad layout, a change of one custom property on the app root
 // took 61 ms with the block and 36 ms without it.
 //
@@ -21,10 +21,12 @@
 // Tailwind has a `polyfills` compile option, but `@tailwindcss/vite` does not pass one on.
 //
 // The plugin runs after `@tailwindcss/vite` (put it after `tailwindcss()` in the plugin list) and
-// before Vite's own CSS step, on the Tailwind output of each stylesheet.
+// before Vite's own CSS step, on the Tailwind output of each stylesheet. If a Tailwind update writes
+// the block in another shape, the plugin keeps the stylesheet and warns, so the build log shows it.
 import type { Plugin } from "vite";
 
-const FALLBACK_START = "@supports ((-webkit-hyphens: none) and (not (margin-trim: inline)))";
+/** The start of the fallback's `@supports` rule, for any `margin-trim` value that Tailwind tests. */
+const FALLBACK_START = /@supports\s*\(\(-webkit-hyphens:\s*none\)\s*and\s*\(not\s*\(margin-trim:\s*[\w-]+\)\)\)/;
 const PROPERTIES_LAYER = /@layer properties\s*\{\s*\}/g;
 
 /** The index after the block that opens at `open` (a `{`), with strings and comments skipped. */
@@ -51,17 +53,22 @@ function blockEnd(css: string, open: number): number {
 /** The stylesheet without Tailwind's `@property` fallback, or `undefined` when it has none. */
 export function removeTailwindPropertyFallback(css: string): string | undefined {
   let result = css;
-  let start = result.indexOf(FALLBACK_START);
-  if (start < 0) return undefined;
-  while (start >= 0) {
-    const open = result.indexOf("{", start + FALLBACK_START.length);
+  let match = FALLBACK_START.exec(result);
+  if (!match) return undefined;
+  while (match) {
+    const open = result.indexOf("{", match.index + match[0].length);
     const end = open < 0 ? -1 : blockEnd(result, open);
     // An unexpected shape keeps the stylesheet as Tailwind wrote it.
     if (end < 0) return undefined;
-    result = result.slice(0, start) + result.slice(end);
-    start = result.indexOf(FALLBACK_START, start);
+    result = result.slice(0, match.index) + result.slice(end);
+    match = FALLBACK_START.exec(result);
   }
   return result.replace(PROPERTIES_LAYER, "");
+}
+
+/** Tailwind output that still has a fallback block, in a shape that this file does not know. */
+function keepsFallback(css: string): boolean {
+  return /@layer properties\s*\{/.test(css) && css.includes("-webkit-hyphens");
 }
 
 export function tailwindPropertyFallbackRemoval(): Plugin {
@@ -70,8 +77,11 @@ export function tailwindPropertyFallbackRemoval(): Plugin {
     enforce: "pre",
     transform: {
       filter: { id: /\.css(?:\?.*)?$/ },
-      handler(code) {
+      handler(code, id) {
         const css = removeTailwindPropertyFallback(code);
+        if (keepsFallback(css ?? code)) {
+          this.warn(`${id} keeps Tailwind's @property fallback: update scripts/tailwind-property-fallback.ts.`);
+        }
         return css === undefined ? null : { code: css, map: null };
       },
     },
