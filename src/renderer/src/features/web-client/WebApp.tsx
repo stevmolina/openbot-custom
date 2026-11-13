@@ -46,6 +46,7 @@ import { takeWebAppStart, WEB_APP_BILLING_PARAM, type WebAppStart } from "./web-
 import type { WebRuntimeFactory } from "./web-client-context";
 import { takeHostingReturn } from "./web-hosted-servers";
 import { createWebLanguagePreference } from "./web-language-preference";
+import { trackVisualViewport } from "./web-visual-viewport";
 
 // The site loads this before it mounts `WebApp` (`apps/auth-api/src/routes/app.lazy.tsx`).
 export { loadSavedLanguage } from "./web-language-preference";
@@ -573,6 +574,8 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
       window.removeEventListener("pageshow", restore);
     };
   });
+  let appElement: HTMLDivElement | undefined;
+  onSettled(() => (appElement ? trackVisualViewport(appElement) : undefined));
   const variant: AppVariant = import.meta.env.DEV ? "dev" : "production";
   const consentAgents = createOnboardingTeam(onboardingSessionSeed(), 3);
   const languagePreference = createWebLanguagePreference();
@@ -583,7 +586,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
       formatLocale={formatLocale(languagePreference.language(), navigator.language)}
     >
       <NotificationObserver onShown={reportNotification}>
-        <div class="web-app">
+        <div class="web-app" ref={(element) => (appElement = element)}>
           {/* The installed app draws under the notch, so the toasts start below the status bar. */}
           <Toaster
             onToastShown={reportNotification}
