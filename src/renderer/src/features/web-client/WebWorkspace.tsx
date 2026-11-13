@@ -416,6 +416,8 @@ const QUEUE_EDIT_ACCOUNT_KEY = "openbot.web.queue-edit-account";
 const SEARCH_ROUTINE_REQUESTS = 4;
 /** After the host answers, the first page load waits at most this long for the sidebar before its cover goes. */
 const SIDEBAR_WAIT_MS = 5000;
+/** While the agent status is not ready, it is read again at this interval. */
+const STATUS_READ_INTERVAL_MS = 5000;
 
 function newAgentAvatar(): Pick<FirstAgentDraft, "avatarSeed" | "avatarHue" | "avatarColor"> {
   const { avatarSeed, avatarHue } = createFirstAgentDraft();
@@ -512,19 +514,18 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     modelsShown = request;
     setModels(list);
   }
-  const workspace = createWebWorkspace(props, {
-    onStatus: (next) => {
-      setStatus(next);
-      // As in the desktop app: a ready status can follow a provider sign-in or a new endpoint, so
-      // the models are read again.
-      if (next.phase !== "ready") return;
-      const request = ++modelsRequest;
-      workspace.runtime.models().then(
-        (list) => showModels(request, list),
-        () => undefined,
-      );
-    },
-  });
+  function receiveStatus(next: AgentStatus): void {
+    setStatus(next);
+    // As in the desktop app: a ready status can follow a provider sign-in or a new endpoint, so
+    // the models are read again.
+    if (next.phase !== "ready") return;
+    const request = ++modelsRequest;
+    workspace.runtime.models().then(
+      (list) => showModels(request, list),
+      () => undefined,
+    );
+  }
+  const workspace = createWebWorkspace(props, { onStatus: receiveStatus });
   const notifications = createWebServerNotifications(props.accountId);
   // A stored queue edit holds message text of the account that opened it. Another account must not restore it.
   try {
@@ -2607,6 +2608,29 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
       modelsShown = ++modelsRequest;
       setModels([]);
       setStatus(CONNECTING_STATUS);
+    },
+  );
+  /**
+   * The host sends a status event only when the status changes. A browser that sleeps, such as an
+   * iPad web app in the background, can miss the event that says ready, and Send then stays disabled
+   * with no later event to enable it. So while the host is online and the status is not ready, the
+   * status is read again.
+   */
+  createEffect(
+    () =>
+      workspace.state.status === "online" && status().phase !== "ready" ? (workspace.state.host?.hostId ?? null) : null,
+    (host) => {
+      if (!host) return;
+      const timer = window.setInterval(() => {
+        workspace.runtime.status().then(
+          (next) => {
+            // An answer that arrives after a switch to another server describes the wrong computer.
+            if (workspace.state.host?.hostId === host && workspace.state.status === "online") receiveStatus(next);
+          },
+          () => undefined,
+        );
+      }, STATUS_READ_INTERVAL_MS);
+      return () => window.clearInterval(timer);
     },
   );
   createEffect(
