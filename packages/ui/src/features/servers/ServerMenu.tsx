@@ -20,7 +20,7 @@ import { SwapLabel } from "@openbot/ui/components/SwapLabel";
 import { createEffect, createSignal, For, Show, untrack } from "solid-js";
 import { useText } from "../../text";
 import { type ServerActionCallbacks, ServerActionItems } from "./ServerActionItems";
-import { AllMachinesMonogram } from "./ServerMonogram";
+import { AllMachinesMark } from "./ServerMascot";
 import {
   addServerLabel,
   type HiddenLocalServer,
@@ -210,7 +210,7 @@ export function ServerMenu(props: ServerMenuProps) {
               <>
                 <Show when={allMachinesOn()}>
                   <span class="server-menu-mark sidebar-server-name-mark" aria-hidden="true">
-                    <AllMachinesMonogram />
+                    <AllMachinesMark />
                   </span>
                 </Show>
                 {/* Keyed by server, so the logo of a newly selected server springs in. */}
@@ -260,7 +260,7 @@ export function ServerMenu(props: ServerMenuProps) {
               </For>
               <Show when={allMachinesOn()}>
                 <span class="sidebar-account-logo sidebar-account-logo-front">
-                  <AllMachinesMonogram />
+                  <AllMachinesMark />
                 </span>
               </Show>
             </span>
@@ -308,7 +308,7 @@ export function ServerMenu(props: ServerMenuProps) {
                 >
                   <CheckCircle checked={allMachinesOn()} />
                   <span class="server-menu-mark" aria-hidden="true">
-                    <AllMachinesMonogram />
+                    <AllMachinesMark />
                   </span>
                   <span class="server-menu-name">{t("server.allMachines.title")}</span>
                 </DropdownMenu.Item>

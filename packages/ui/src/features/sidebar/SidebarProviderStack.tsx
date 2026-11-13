@@ -16,7 +16,7 @@ import type { SidebarCustomAgentUsage } from "./sidebar-pages";
 
 /** The reset countdown shows minutes, so a half-minute tick keeps it current. */
 const RESET_CLOCK_MS = 30_000;
-/** The small logos behind the front provider. More providers show as a count. */
+/** The small logos behind the front provider. The card lists the rest, so the stack stays narrow. */
 const BEHIND_SIZE = 2;
 
 /**
@@ -117,7 +117,6 @@ function ProviderStackPopover(props: {
     return item?.kind === "usage" ? item.ring : undefined;
   };
   const behind = () => props.items.slice(1, 1 + BEHIND_SIZE);
-  const hidden = () => Math.max(0, props.items.length - 1 - BEHIND_SIZE);
   const rows = () => props.items.flatMap((item) => (item.kind === "usage" ? item.rows : []));
   const tone = (item: StackItem): AccountUsageTone | undefined => (item.kind === "usage" ? item.ring.tone : undefined);
   const label = () =>
@@ -164,11 +163,6 @@ function ProviderStackPopover(props: {
                 </span>
               )}
             </For>
-            <Show when={hidden() > 0}>
-              <span class="sidebar-provider-stack-avatar sidebar-provider-stack-count">
-                {t("sidebar.pill.moreProviders", { number: hidden() })}
-              </span>
-            </Show>
           </span>
         </Popover.Trigger>
       </MotionTooltip>

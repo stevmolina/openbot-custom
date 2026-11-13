@@ -18,40 +18,18 @@
   outline-offset: -1px;
 }
 
-/* The mark of a server with no logo: ink and paper, which stay the same in both themes. */
-.ui-server-monogram {
+/* The mark of a server with no logo: a plush machine on the paper ink, which stays the same in both
+   themes. */
+.ui-server-mascot {
   background: var(--openbot-paper-text);
 }
 
-.ui-server-monogram-art {
+.ui-server-mascot-art {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-.ui-server-monogram-shape {
-  fill: var(--openbot-paper);
-}
-
-.ui-server-monogram-letter {
-  fill: var(--openbot-paper-text);
-  font-family: var(--openbot-font-sans);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-.ui-server-monogram-tiles {
-  fill: var(--openbot-paper);
-}
-
-.ui-server-monogram-laptop {
-  fill: none;
-  stroke: var(--openbot-paper-text);
-  stroke-width: 2.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  object-fit: contain;
+  transform: scale(0.94) translateY(3%);
 }
 
 :where(.ui-text)[data-tone="secondary"],
