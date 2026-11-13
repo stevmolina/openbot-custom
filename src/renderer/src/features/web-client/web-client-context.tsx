@@ -116,8 +116,11 @@ interface WebConversation {
 
 /** The messages that a conversation keeps when it is not open, as on the desktop. */
 const LATEST_PAGE_SIZE = 50;
-/** The recently opened agents whose latest page a new page reads after the open one. */
-const PRELOADED_AGENTS = 3;
+/**
+ * The recently opened agents whose latest page a new page reads after the open one. The reads run one at a
+ * time, so more agents only make the background read longer, not heavier.
+ */
+const PRELOADED_AGENTS = 6;
 
 /**
  * Releases the older pages of a conversation that is not open. Only the open conversation gets new
@@ -339,6 +342,12 @@ export function createWebWorkspace(
   const readWrites = new Map<string, Promise<void>>();
   /** The conversation reads in flight by agent, and the deltas that wait for them to finish. */
   const conversationReads = new Map<string, number>();
+  /** The latest-page reads in flight, by agent. See `loadLatest`. */
+  const latestReads = new Map<string, { generation: number; opened: number | null; promise: Promise<void> }>();
+  /** Counts the opens of an agent, so that a read knows which open it belongs to. See `loadLatest`. */
+  let openCount = 0;
+  /** The agent of the one `prefetch` read in flight, or null. */
+  let prefetching: string | null = null;
   /** The newest read around a message for each agent. A newer jump or a return to the latest messages wins. */
   const aroundReads = new Map<string, number>();
   const heldDeltas = new Map<string, Array<Extract<AgentEvent, { type: "conversation-delta" }>>>();
@@ -1558,7 +1567,8 @@ export function createWebWorkspace(
       });
   }
 
-  async function load(id: string, older = false) {
+  /** `quiet`: an early read in the background. Its failure leaves the conversation as it is. */
+  async function load(id: string, older = false, quiet = false) {
     const current = generation;
     const previous = state.conversations[id];
     // The cursor of a trimmed conversation is after a gap until a latest read gives the host's cursor.
@@ -1620,7 +1630,8 @@ export function createWebWorkspace(
         item.olderError = null;
       });
     } catch (error) {
-      if (!disposed && current === generation && !blockAccess(error))
+      // A failed early read must not show an error over the page that the open read loads.
+      if (!quiet && !disposed && current === generation && !blockAccess(error))
         setState((draft) => {
           const item = draft.conversations[id];
           if (!item) return;
@@ -1725,6 +1736,7 @@ export function createWebWorkspace(
   async function select(id: string) {
     const current = generation;
     selectedId = id;
+    openCount += 1;
     if (state.status === "online" && state.host)
       saveRemoteWorkspaceFrame(props.accountId, state.host.hostId, { selectedAgentId: id });
     setState((draft) => {
@@ -1744,11 +1756,54 @@ export function createWebWorkspace(
       draft.conversations[id].error = null;
     });
     try {
-      await load(id);
+      await loadLatest(id, false);
     } catch (error) {
       if (disposed || current !== generation) return;
       report(error);
     }
+  }
+  /**
+   * Reads the latest page of an agent. A read that is already running for the agent is shared, but an
+   * open does not share a read that started before the agent was selected: deltas of a conversation that
+   * is not open are dropped, so that page can miss text that streamed before the open. The open starts
+   * its own read, and the early page still shows first.
+   */
+  function loadLatest(id: string, background: boolean): Promise<void> {
+    const running = latestReads.get(id);
+    // An open shares only a read that this same open started. A read from an earlier open of the agent
+    // also missed the text that streamed while the user was on another agent.
+    const opened = selectedId === id ? openCount : null;
+    if (running?.generation === generation && (opened === null || running.opened === opened)) return running.promise;
+    const read: { generation: number; opened: number | null; promise: Promise<void> } = {
+      generation,
+      opened,
+      promise: load(id, false, background && opened === null).finally(() => {
+        if (latestReads.get(id) === read) latestReads.delete(id);
+      }),
+    };
+    latestReads.set(id, read);
+    return read.promise;
+  }
+  /**
+   * Starts the read of an agent's latest page when the pointer goes down on its row, a moment before the
+   * click that opens it. It does not change the selection, and an agent with a kept page is not read again.
+   * The page stays trimmed until the agent opens, as for `preloadRecent`.
+   */
+  function prefetch(id: string): void {
+    if (disposed || state.status !== "online" || id === selectedId || state.conversations[id]?.page) return;
+    // A finger that starts a scroll also puts the pointer down on rows. One early read at a time keeps a
+    // scroll from sending a read for every row that it touches.
+    if (prefetching !== null) return;
+    setState((draft) => {
+      draft.conversations[id] ??= { page: null, draft: "", attachments: [], loading: false, trimmed: true };
+    });
+    prefetching = id;
+    // A failed early read only costs the early page. The agent loads when it opens.
+    loadLatest(id, true)
+      .catch(() => undefined)
+      .finally(() => {
+        if (prefetching === id) prefetching = null;
+      });
   }
   /**
    * Reads the latest page of recently opened agents, one at a time, so that the first switch to one
@@ -1763,7 +1818,7 @@ export function createWebWorkspace(
         draft.conversations[id] ??= { page: null, draft: "", attachments: [], loading: false, trimmed: true };
       });
       try {
-        await load(id);
+        await loadLatest(id, true);
       } catch {
         // A failed early read only costs the early page. The agent loads when it opens.
       }
@@ -2072,6 +2127,7 @@ export function createWebWorkspace(
     joinInvite,
     connect,
     select,
+    prefetch,
     refresh,
     send,
     cancelQueued: (deliveryId: string) => changeQueue((agentId) => runtime.cancelQueued({ agentId, deliveryId })),

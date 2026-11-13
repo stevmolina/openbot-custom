@@ -648,8 +648,13 @@ export function AgentRoutinesSettings(props: AgentRoutinesSettingsProps) {
    * Pauses or resumes a routine from the list. It saves the routine as the editor does, with only
    * `active` changed, so the host keeps every other field.
    */
+  function toggleRoutineActive(routine: RoutineEditorRecord, active: boolean): Promise<void> | undefined {
+    // A second tap while the save runs does nothing, so the switch keeps the value it shows.
+    if (togglingIds().has(routine.id)) return undefined;
+    return setRoutineActive(routine, active);
+  }
+
   async function setRoutineActive(routine: RoutineEditorRecord, active: boolean): Promise<void> {
-    if (togglingIds().has(routine.id)) return;
     setTogglingIds((current) => new Set(current).add(routine.id));
     const schedule = routineScheduleOf(routine);
     const tracked = { triggerKind: routineTriggerKind(routine), schedule };
@@ -893,8 +898,8 @@ export function AgentRoutinesSettings(props: AgentRoutinesSettingsProps) {
                             <Switch
                               aria-label={routine().name}
                               checked={routine().active}
-                              disabled={routineCompleted(routine()) || togglingIds().has(routine().id)}
-                              onChange={(active) => void setRoutineActive(routine(), active)}
+                              disabled={routineCompleted(routine())}
+                              onChange={(active) => toggleRoutineActive(routine(), active)}
                             />
                           </div>
                         </ItemGroup>

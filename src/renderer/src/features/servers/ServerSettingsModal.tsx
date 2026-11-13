@@ -94,7 +94,7 @@ import type { ServerTimezoneOptions } from "./ServerTimezoneSetting";
 import { type ServerTransferOptions, ServerTransferPanel } from "./ServerTransferPanel";
 import { type ServerUpdateOptions, ServerUpdatePanel } from "./ServerUpdatePanel";
 import { serverCanAdminister, serverCanManageMcp, serverRoleCanAdminister } from "./server-capabilities";
-import type { ServerSettingsSectionHost } from "./server-settings-section";
+import { CONCURRENT_ACTION_KEYS, type ServerSettingsSectionHost } from "./server-settings-section";
 
 export interface ServerSettingsModalProps {
   open: boolean;
@@ -408,8 +408,11 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
     if (section() === "roles") return roles.crumb();
     return section() === "providers" ? providerDetail() : null;
   };
-  /** The key of the one action in flight, gating every panel at once rather than belonging to any. */
-  const [busy, setBusy] = createSignal<string | null>(null);
+  /** The keys of the actions in flight. Only the exclusive ones gate every panel at once. */
+  const [busyKeys, setBusyKeys] = createSignal<ReadonlySet<string>>(new Set());
+  const busy = (): string | null => busyKeys().values().next().value ?? null;
+  const blocked = (): boolean => [...busyKeys()].some((key) => !CONCURRENT_ACTION_KEYS.has(key));
+  const isBusy = (key: string): boolean => busyKeys().has(key) || blocked();
   const [modalElement, setModalElement] = createSignal<HTMLElement | undefined>();
   /**
    * The height of the error toast, or 0 while no toast is shown. The panel reserves this much
@@ -482,8 +485,9 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
   const published = () => (local() ? props.hostStatus?.phase === "online" : props.server.state === "online");
 
   async function run(key: string, action: () => Promise<void>): Promise<boolean> {
-    if (busy()) return false;
-    setBusy(key);
+    // A concurrent setting waits for itself and for exclusive actions. Any other action waits for all of them.
+    if (CONCURRENT_ACTION_KEYS.has(key) ? isBusy(key) : busyKeys().size > 0) return false;
+    setBusyKeys((keys) => new Set(keys).add(key));
     try {
       await action();
       return true;
@@ -496,7 +500,11 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
       });
       return false;
     } finally {
-      setBusy(null);
+      setBusyKeys((keys) => {
+        const next = new Set(keys);
+        next.delete(key);
+        return next;
+      });
     }
   }
 
@@ -508,6 +516,8 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
     actionsAvailable,
     menuMount: modalElement,
     busy,
+    blocked,
+    isBusy,
     run,
     showCopyError() {
       actionToast.error(t("server.settings.copyFailedTitle"), {
@@ -921,7 +931,7 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
                   <ServerPersonalitySetting
                     {...options()}
                     serverId={props.server.id}
-                    disabled={Boolean(busy())}
+                    disabled={isBusy("personality")}
                     menuMount={modalElement()}
                     run={run}
                   />

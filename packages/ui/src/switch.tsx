@@ -15,7 +15,17 @@ type SwitchAccessibilityProps = {
 type OpenBotSwitchProps = SwitchAccessibilityProps & {
   class?: JSX.HTMLAttributes<HTMLElement>["class"];
   size?: SwitchSize;
+  /**
+   * Called with the new value. Return a promise for a slow save: the switch then shows the new value at
+   * once and falls back to `checked` when the promise settles, so a failed save reverts by itself. Any
+   * other return value is ignored, as before.
+   */
+  onChange?: (checked: boolean) => unknown;
 };
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return typeof value === "object" && value !== null && "then" in value && typeof value.then === "function";
+}
 
 export type SwitchProps<T extends ValidComponent = "div"> = PolymorphicProps<T, SwitchPrimitive.SwitchRootProps<T>> &
   OpenBotSwitchProps &
@@ -239,7 +249,33 @@ function SwitchMotionControl(props: SwitchMotionControlProps): JSX.Element {
 
 export function Switch<T extends ValidComponent = "div">(props: SwitchProps<T>): JSX.Element {
   const [pointerFocus, setPointerFocus] = createSignal(false);
-  const others = omit(props, "class", "size", "id", "aria-label", "aria-labelledby", "aria-describedby", "children");
+  // The value the user just chose while a slow save is still pending. Only a controlled switch uses it.
+  const [intended, setIntended] = createSignal<boolean | undefined>();
+  let sequence = 0;
+  const checked = (): boolean | undefined => (props.checked === undefined ? undefined : (intended() ?? props.checked));
+  const handleChange = (next: boolean): void => {
+    const result = props.onChange?.(next);
+    if (!isThenable(result) || props.checked === undefined) return;
+    const mine = ++sequence;
+    setIntended(next);
+    const settle = (): void => {
+      if (mine === sequence) setIntended(undefined);
+    };
+    // A separate chain: it never throws, and the caller keeps its own handling of the rejection.
+    result.then(settle, settle);
+  };
+  const others = omit(
+    props,
+    "class",
+    "size",
+    "id",
+    "aria-label",
+    "aria-labelledby",
+    "aria-describedby",
+    "children",
+    "checked",
+    "onChange",
+  );
   // biome-ignore lint/nursery/noUnsafeTypeAssertion: Solid 2's omit cannot preserve Kobalte's generic polymorphic props.
   const rootProps = others as PolymorphicProps<T, SwitchPrimitive.SwitchRootProps<T>>;
 
@@ -252,6 +288,8 @@ export function Switch<T extends ValidComponent = "div">(props: SwitchProps<T>):
       data-cuelume-toggle=""
       class={cx("ui-switch", props.class)}
       {...rootProps}
+      checked={checked()}
+      onChange={handleChange}
     >
       <SwitchPrimitive.Input
         id={props.id}

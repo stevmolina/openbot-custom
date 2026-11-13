@@ -40,3 +40,46 @@ export const Gallery: Story = {
     );
   },
 };
+
+const SAVE_DELAY_MS = 600;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * A slow save, as over a far host. The switch moves at once. The saved value follows after 600 ms. When the save
+ * fails, the switch goes back to the saved value by itself.
+ */
+export const SlowSave: Story = {
+  args: {},
+  render: () => {
+    const [saved, setSaved] = createSignal(false);
+    const [failing, setFailing] = createSignal(false);
+    return (
+      <main class="foundation-story">
+        <Heading as="h1" size="lg">
+          Slow save
+        </Heading>
+        <div class="foundation-story-stack" style={{ "max-width": "440px" }}>
+          <SwitchField
+            checked={saved()}
+            onChange={async (next) => {
+              await wait(SAVE_DELAY_MS);
+              if (failing()) throw new Error("The host did not answer.");
+              setSaved(next);
+            }}
+            label="Saves in 600 ms"
+            description={`Saved value: ${saved() ? "on" : "off"}`}
+          />
+          <SwitchField
+            checked={failing()}
+            onChange={setFailing}
+            label="Make the next save fail"
+            description="The switch above then moves and goes back after 600 ms."
+          />
+        </div>
+      </main>
+    );
+  },
+};
