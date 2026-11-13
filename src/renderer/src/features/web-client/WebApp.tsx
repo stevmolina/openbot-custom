@@ -50,6 +50,7 @@ import { takeWebAppStart, WEB_APP_BILLING_PARAM, type WebAppStart } from "./web-
 import type { WebRuntimeFactory } from "./web-client-context";
 import { takeHostingReturn } from "./web-hosted-servers";
 import { createWebLanguagePreference } from "./web-language-preference";
+import { retireSignInStyles } from "./web-sign-in-styles";
 import { trackVisualViewport } from "./web-visual-viewport";
 
 // The site loads this before it mounts `WebApp` (`apps/auth-api/src/routes/app.lazy.tsx`).
@@ -60,11 +61,17 @@ export { loadSavedLanguage } from "./web-language-preference";
  * signed in starts it beside the session request, and a signed-in account waits for both. A
  * signed-out browser starts it when the user asks for a sign-in code: a phone then reads no
  * workspace code for a visitor who does not sign in. A failed import is tried again on the next call.
+ *
+ * The full stylesheet loads with it. The sign-in screens need only `web-sign-in.css`, which the
+ * route loads, and which turns off when the full one is in.
  */
 let workspaceImport: Promise<typeof WebWorkspace> | null = null;
 function loadWorkspace(): Promise<typeof WebWorkspace> {
   if (!workspaceImport) {
-    workspaceImport = import("./WebWorkspace").then((module) => module.WebWorkspace);
+    workspaceImport = Promise.all([import("./WebWorkspace"), import("./web-client.css")]).then(([module]) => {
+      retireSignInStyles();
+      return module.WebWorkspace;
+    });
     workspaceImport.catch(() => {
       workspaceImport = null;
     });

@@ -1,4 +1,4 @@
-// Measures the web client at `/app` in four phases and writes .openbot-build/<out>/report.json.
+// Measures the web client at `/app` in five phases and writes .openbot-build/<out>/report.json.
 //
 // - bundle: JS and CSS bytes (raw and gzip) of the chunks that `/app` loads, from the Vite manifest of
 //   the last `bun run api:build`, and the style rules in that CSS. `cssEveryElementRules` counts the
@@ -20,9 +20,15 @@
 //   layout time that each frame's change needs; `frameMs` and `framesOver20Ms` are the frame times,
 //   which also include other work on the main thread.
 //   It needs `--storybook=<url>` too.
+// - look: the signed-out screens of `/app` (sign-in, a wrong email, the code step, a wrong code, the
+//   account service down) in a desktop and a phone layout, dark and light, from `vite preview` of the
+//   last build or `--url`. It saves each element's computed style and a screenshot to `<out>/look/`.
+//   `--compare-look=<folder>` fails on any property that differs from that folder, except the ones in
+//   `--allow-look`. `signInSheetsOn` counts the sign-in stylesheets that are on.
 //
 // `bun run perf:web [--runs=5] [--storybook=<url>] [--url=<preview url>] [--out=<folder>]
-//  [--compare=<old report.json>] [--phases=bundle,load,runtime,style] [--throttle=mobile|none]`
+//  [--compare=<old report.json>] [--phases=bundle,load,runtime,style,look] [--throttle=mobile|none]
+//  [--compare-look=<old out folder>/look] [--allow-look=<property>,...]`
 import assert from "node:assert/strict";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -86,6 +92,8 @@ interface ManifestChunk {
 const WEB_APP_KEY = "../../src/renderer/src/features/web-client/WebApp.tsx";
 const WEB_WORKSPACE_KEY = "../../src/renderer/src/features/web-client/WebWorkspace.tsx";
 const APP_ROUTE_KEY = "src/routes/app.lazy.tsx";
+// The full web client stylesheet, when it loads with the workspace and not with the route.
+const WEB_CLIENT_CSS_KEY = "../../src/renderer/src/features/web-client/web-client.css";
 
 function readManifest(): Record<string, ManifestChunk> {
   assert.ok(existsSync(MANIFEST), `No Vite manifest at ${MANIFEST}. Run \`bun run api:build\` first.`);
@@ -161,14 +169,26 @@ function measureBundle(samples: Samples): void {
   const entry = Object.keys(manifest).find((key) => manifest[key]?.isEntry);
   assert.ok(entry, "The Vite manifest has no entry chunk.");
   assert.ok(manifest[APP_ROUTE_KEY] && manifest[WEB_APP_KEY], "The manifest has no /app route or WebApp chunk.");
-  const sizes = (files: Set<string>) => {
-    const totals = { js: 0, jsGzip: 0, css: 0, cssGzip: 0, files: files.size, cssRules: 0, cssEveryElementRules: 0 };
+  // With a full stylesheet that loads with the workspace, the route's sign-in stylesheet turns off
+  // then: the workspace downloads it, but its rules no longer count.
+  const retired = new Set(manifest[WEB_CLIENT_CSS_KEY] ? (manifest[APP_ROUTE_KEY]?.css ?? []) : []);
+  const sizes = (files: Set<string>, retiredFiles: ReadonlySet<string> = new Set()) => {
+    const totals = {
+      js: 0,
+      jsGzip: 0,
+      css: 0,
+      cssGzip: 0,
+      files: files.size,
+      jsFiles: [...files].filter((file) => file.endsWith(".js")).length,
+      cssRules: 0,
+      cssEveryElementRules: 0,
+    };
     for (const file of files) {
       const content = readFileSync(resolve(CLIENT_DIR, file));
       const kind = file.endsWith(".css") ? "css" : "js";
       totals[kind] += content.byteLength;
       totals[`${kind}Gzip`] += gzipSync(content, { level: 9 }).byteLength;
-      if (kind === "css") {
+      if (kind === "css" && !retiredFiles.has(file)) {
         const { rules, everyElement } = countRules(content.toString("utf8"));
         totals.cssRules += rules;
         totals.cssEveryElementRules += everyElement;
@@ -179,13 +199,13 @@ function measureBundle(samples: Samples): void {
   // The sign-in screen needs the entry, the route and the WebApp chunk. The workspace adds its own
   // chunk when it is split off; until then it is part of WebApp.
   const signedOut = closure(manifest, [entry, APP_ROUTE_KEY, WEB_APP_KEY]);
-  const workspace = closure(manifest, [entry, APP_ROUTE_KEY, WEB_APP_KEY, WEB_WORKSPACE_KEY]);
-  for (const [name, files] of [
-    ["signedOut", signedOut],
-    ["workspace", workspace],
+  const workspace = closure(manifest, [entry, APP_ROUTE_KEY, WEB_APP_KEY, WEB_WORKSPACE_KEY, WEB_CLIENT_CSS_KEY]);
+  for (const [name, files, retiredFiles] of [
+    ["signedOut", signedOut, new Set<string>()],
+    ["workspace", workspace, retired],
   ] as const) {
-    for (const [metric, value] of Object.entries(sizes(files))) {
-      const count = metric === "files" || metric.startsWith("cssRules") || metric === "cssEveryElementRules";
+    for (const [metric, value] of Object.entries(sizes(files, retiredFiles))) {
+      const count = ["files", "jsFiles", "cssRules", "cssEveryElementRules"].includes(metric);
       record(samples, `bundle.${name}.${metric}${count ? "" : "KB"}`, count ? value : value / 1024);
     }
   }
@@ -251,12 +271,29 @@ const COMPRESSIBLE = /^(text\/|application\/(javascript|json)|image\/svg)/u;
 
 const SIGNED_OUT = JSON.stringify({ error: { code: "sign_in_required", message: "Sign in is required." } });
 
-/** Gzips what the upstream sends uncompressed, as the production edge does. Keeps one copy per asset. */
-async function startGzipProxy(upstream: string): Promise<{ url: string; server: Server }> {
+/** A stand-in answer of the account service: a status and a JSON body. */
+type AccountAnswer = { status: number; body: unknown };
+
+/**
+ * Gzips what the upstream sends uncompressed, as the production edge does. Keeps one copy per asset.
+ * `account` answers `/api/browser/<path>` in place of the account service; without an answer, the
+ * session check is signed out.
+ */
+async function startGzipProxy(
+  upstream: string,
+  account: (path: string) => AccountAnswer | undefined = () => undefined,
+): Promise<{ url: string; server: Server }> {
   const cache = new Map<string, { status: number; headers: [string, string][]; body: Buffer }>();
   const server = createServer((request, response) => {
     void (async () => {
       const path = request.url ?? "/";
+      const answer = path.startsWith("/api/browser/") ? account(path.slice("/api/browser/".length)) : undefined;
+      if (answer) {
+        response
+          .writeHead(answer.status, { "content-type": "application/json", "cache-control": "no-store" })
+          .end(JSON.stringify(answer.body));
+        return;
+      }
       if (path === "/api/browser/session") {
         response.writeHead(401, { "content-type": "application/json", "cache-control": "no-store" }).end(SIGNED_OUT);
         return;
@@ -393,6 +430,199 @@ async function measureLoad(browser: Browser, samples: Samples): Promise<void> {
     proxy.server.close();
     preview?.stop();
   }
+}
+
+// ---------------------------------------------------------------- look
+
+// In the page: the computed style of each element and of its `::before` and `::after`, by DOM path.
+// A transition or an animation that ends jumps to its end, and one that repeats stops at its start, so
+// two builds give the same values for the same screen.
+const READ_LOOK = `(async () => {
+  await document.fonts.ready;
+  for (const animation of document.getAnimations()) {
+    if (animation.effect?.getComputedTiming().iterations === Infinity) {
+      animation.pause();
+      animation.currentTime = 0;
+    } else animation.finish();
+  }
+  const nodes = {};
+  const visit = (element, path) => {
+    for (const pseudo of [null, "::before", "::after"]) {
+      const style = getComputedStyle(element, pseudo);
+      if (pseudo && (style.content === "none" || style.content === "normal")) continue;
+      const values = {};
+      for (let index = 0; index < style.length; index++) {
+        const name = style[index];
+        values[name] = style.getPropertyValue(name);
+      }
+      nodes[path + (pseudo ?? "")] = values;
+    }
+    [...element.children].forEach((child, index) => {
+      // The head holds the links of the build's chunks, which change with the chunks, and shows nothing.
+      if (child.localName !== "head") visit(child, path + ">" + child.localName + ":" + index);
+    });
+  };
+  visit(document.documentElement, "html");
+  return nodes;
+})()`;
+
+type LookNodes = Record<string, Record<string, string>>;
+
+// In the page: the enabled stylesheets whose last style rule is the mark of `web-sign-in.css`.
+const SIGN_IN_SHEETS_ON = `[...document.styleSheets].filter((sheet) => {
+  if (sheet.disabled) return false;
+  const rules = [...sheet.cssRules].filter((rule) => rule instanceof CSSStyleRule);
+  return rules.at(-1)?.selectorText === ".openbot-web-sign-in-sheet";
+}).length`;
+
+/** The signed-out screens of `/app`: how each one opens, and the account service answers it needs. */
+const LOOK_SCREENS: {
+  name: string;
+  account: (path: string) => AccountAnswer | undefined;
+  open: (page: Page) => Promise<void>;
+}[] = [
+  {
+    name: "sign-in",
+    account: () => undefined,
+    open: async (page) => {
+      await page.locator('input[type="email"]').waitFor({ state: "visible" });
+    },
+  },
+  {
+    name: "email-error",
+    account: () => undefined,
+    open: async (page) => {
+      await page.locator('input[type="email"]').fill("not-an-email");
+      await page.locator('input[type="email"]').blur();
+      await page.locator("#account-email-error:not([aria-hidden])").waitFor({ state: "visible" });
+    },
+  },
+  {
+    name: "code",
+    account: (path) =>
+      path === "email/start"
+        ? {
+            status: 200,
+            body: { challengeId: "look", resendAt: 0, expiresAt: Date.now() + 600_000 },
+          }
+        : undefined,
+    open: async (page) => {
+      await page.locator('input[type="email"]').fill("look@example.com");
+      await page.locator('button[type="submit"]').click();
+      await page.locator(".otp-input-native").waitFor({ state: "visible" });
+    },
+  },
+  {
+    name: "code-error",
+    account: (path) =>
+      path === "email/start"
+        ? {
+            status: 200,
+            body: { challengeId: "look", resendAt: 0, expiresAt: Date.now() + 600_000 },
+          }
+        : path === "email/verify"
+          ? { status: 400, body: { error: { code: "invalid_sign_in_code", message: "That code is not right." } } }
+          : undefined,
+    open: async (page) => {
+      await page.locator('input[type="email"]').fill("look@example.com");
+      await page.locator('button[type="submit"]').click();
+      await page.locator(".otp-input-native").fill("23456789");
+      await page.locator('.otp-input[data-status="error"]').waitFor({ state: "visible" });
+    },
+  },
+  {
+    name: "unavailable",
+    account: (path) =>
+      path === "session" ? { status: 503, body: { error: { code: "unavailable", message: "Down." } } } : undefined,
+    open: async (page) => {
+      await page.locator("button.account-login-primary").waitFor({ state: "visible" });
+      await page.waitForFunction("!document.querySelector('input[type=\"email\"]')");
+    },
+  },
+];
+
+const LOOK_LAYOUTS = {
+  desktop: { viewport: { width: 1280, height: 800 } },
+  phone: { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+} as const;
+
+/**
+ * Saves the computed styles and a screenshot of each signed-out screen, in each layout and theme, to
+ * `<out>/look/`. With `--compare-look=<folder>`, it fails on any style that is not the same as there.
+ */
+async function measureLook(browser: Browser, samples: Samples): Promise<void> {
+  const preview = option("url") ? null : await startPreview();
+  const upstream = option("url")?.replace(/\/$/, "") ?? preview?.url;
+  assert.ok(upstream);
+  const lookDir = resolve(OUT, "look");
+  mkdirSync(lookDir, { recursive: true });
+  const compareDir = option("compare-look");
+  // Properties that a change is meant to alter, such as `counter-reset` on the body, which KaTeX's
+  // stylesheet sets for its equation numbers when it loads.
+  const allowedLook = new Set(option("allow-look")?.split(",") ?? []);
+  const differences: { screen: string; node: string; property: string; before: string; after: string }[] = [];
+  let current: (path: string) => AccountAnswer | undefined = () => undefined;
+  const proxy = await startGzipProxy(upstream, (path) => current(path));
+  try {
+    for (const [layout, options] of Object.entries(LOOK_LAYOUTS)) {
+      for (const theme of ["dark", "light"] as const) {
+        for (const screen of LOOK_SCREENS) {
+          const name = `${screen.name}-${layout}-${theme}`;
+          current = screen.account;
+          const context = await browser.newContext({ ...options, reducedMotion: "reduce" });
+          try {
+            await context.addInitScript(`localStorage.setItem("openbot.web.appearance", ${JSON.stringify(theme)})`);
+            const page = await context.newPage();
+            await page.goto(`${proxy.url}/app`);
+            await screen.open(page).catch(async (error: unknown) => {
+              await page.screenshot({ path: resolve(lookDir, `${name}-failed.png`) });
+              throw error;
+            });
+            await page.waitForLoadState("networkidle");
+            await page.waitForFunction("!document.querySelector('.app-loading')", undefined, { timeout: 30_000 });
+            const nodes = await page.evaluate<LookNodes>(READ_LOOK);
+            await page.screenshot({ path: resolve(lookDir, `${name}.png`) });
+            writeFileSync(resolve(lookDir, `${name}.json`), JSON.stringify(nodes));
+            record(samples, `look.${name}.nodes`, Object.keys(nodes).length);
+            // The sign-in stylesheet is on until the workspace code and the full stylesheet load.
+            record(samples, `look.${name}.signInSheetsOn`, await page.evaluate<number>(SIGN_IN_SHEETS_ON));
+            if (!compareDir) continue;
+            const before: LookNodes = JSON.parse(readFileSync(resolve(compareDir, `${name}.json`), "utf8"));
+            for (const node of new Set([...Object.keys(before), ...Object.keys(nodes)])) {
+              if (node.startsWith("html>head")) continue;
+              const old = before[node] ?? {};
+              const now = nodes[node] ?? {};
+              for (const property of new Set([...Object.keys(old), ...Object.keys(now)])) {
+                // A custom property shows only where a property reads it, and those are compared.
+                if (property.startsWith("--") || allowedLook.has(property)) continue;
+                if (old[property] !== now[property])
+                  differences.push({
+                    screen: name,
+                    node,
+                    property,
+                    before: old[property] ?? "(none)",
+                    after: now[property] ?? "(none)",
+                  });
+              }
+            }
+          } finally {
+            await context.close();
+          }
+        }
+      }
+    }
+  } finally {
+    proxy.server.close();
+    preview?.stop();
+  }
+  if (!compareDir) return;
+  writeFileSync(resolve(OUT, "look-differences.json"), `${JSON.stringify(differences, null, 2)}\n`);
+  record(samples, "look.differences", differences.length);
+  assert.equal(
+    differences.length,
+    0,
+    `${differences.length} computed styles changed; see ${resolve(OUT, "look-differences.json")}.`,
+  );
 }
 
 // ---------------------------------------------------------------- runtime
@@ -614,13 +844,14 @@ function comparison(before: Report, after: Report): string {
 
 const samples: Samples = {};
 if (phases.has("bundle")) measureBundle(samples);
-if (phases.has("load") || phases.has("runtime")) {
+if (phases.has("load") || phases.has("runtime") || phases.has("look")) {
   const browser = await chromium.launch(
     browserExecutable ? { executablePath: browserExecutable } : { channel: "chrome" },
   );
   try {
     if (phases.has("load")) await measureLoad(browser, samples);
     if (phases.has("runtime")) await measureRuntime(browser, samples);
+    if (phases.has("look")) await measureLook(browser, samples);
   } finally {
     await browser.close();
   }

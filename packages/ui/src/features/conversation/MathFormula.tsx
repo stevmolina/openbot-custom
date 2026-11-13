@@ -7,15 +7,15 @@ import { CodeBlock } from "./CodeBlock";
 const MATH_CACHE_LIMIT = 500;
 const mathCache = new Map<string, string | null>();
 
-// KaTeX is its own chunk: most conversations have no formula. The first formula loads it, and a
-// failed load is tried again by the next formula that renders.
+// KaTeX and its stylesheet are their own chunks: most conversations have no formula. The first
+// formula loads both, and a failed load is tried again by the next formula that renders.
 const [loadedKatex, setLoadedKatex] = createSignal<typeof katex>();
 let katexLoading = false;
 function loadKatex(): void {
   if (katexLoading) return;
   katexLoading = true;
-  import("katex").then(
-    (module) => setLoadedKatex(() => module.default),
+  Promise.all([import("katex"), import("katex/dist/katex.min.css")]).then(
+    ([module]) => setLoadedKatex(() => module.default),
     () => {
       katexLoading = false;
     },

@@ -1,0 +1,15 @@
+/*
+ * Reduced motion: every transition and animation ends at once. The selectors match every element with
+ * no specificity, so a component rule that sets its own duration still wins. Only the `:where()` rules
+ * of `primitives.css` tie with it, and they come before this file, so this file follows it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}

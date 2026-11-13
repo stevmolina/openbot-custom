@@ -6,11 +6,11 @@ import {
   MarketplaceSuggestionCard,
   type MarketplaceSuggestionState,
 } from "@openbot/ui/features/conversation/MarketplaceSuggestionCard";
-import { isPluginAppConfig } from "@openbot/ui/features/settings/marketplace-plugins";
+import { isPluginAppConfig, type MarketplacePluginDetail } from "@openbot/ui/features/settings/marketplace-plugins";
 import { useText } from "@openbot/ui/text";
-import { createMemo } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 import type { ConnectorRegistry } from "../connectors/connector-registry";
-import { MARKETPLACE_PLUGINS } from "../settings/marketplace-plugin-catalog";
+import { MARKETPLACE_PLUGIN_SLUGS } from "../settings/marketplace-plugin-slugs";
 import { localizedPlugin } from "../settings/marketplace-plugin-text";
 import { dismissMarketplaceSuggestion, marketplaceSuggestionDismissed } from "./marketplace-suggestion-dismissals";
 
@@ -24,9 +24,24 @@ export interface MarketplaceSuggestionChatCardProps {
   onOpenMarketplaceApp?: ((request: { appId: string; connect: boolean }) => void) | undefined;
 }
 
+// The plugin catalog is about 400 KB of code and few chats suggest a plugin, so the first plugin card
+// loads it. A failed load is tried again by the next card that renders.
+const [pluginCatalog, setPluginCatalog] = createSignal<readonly MarketplacePluginDetail[]>();
+let pluginCatalogLoading = false;
+function loadPluginCatalog(): void {
+  if (pluginCatalogLoading) return;
+  pluginCatalogLoading = true;
+  import("../settings/marketplace-plugin-catalog").then(
+    (module) => setPluginCatalog(() => module.MARKETPLACE_PLUGINS),
+    () => {
+      pluginCatalogLoading = false;
+    },
+  );
+}
+
 /** True when this client can draw a card for the app: a catalog plugin, or a connector. */
 export function marketplaceSuggestionKnown(appId: string): boolean {
-  return isConnectorId(appId) || MARKETPLACE_PLUGINS.some((plugin) => plugin.slug === appId);
+  return isConnectorId(appId) || MARKETPLACE_PLUGIN_SLUGS.includes(appId);
 }
 
 /**
@@ -35,7 +50,15 @@ export function marketplaceSuggestionKnown(appId: string): boolean {
  */
 export function MarketplaceSuggestionChatCard(props: MarketplaceSuggestionChatCardProps) {
   const { t } = useText();
-  const plugin = createMemo(() => MARKETPLACE_PLUGINS.find((candidate) => candidate.slug === props.appId));
+  const plugin = createMemo(() => {
+    if (isConnectorId(props.appId)) return undefined;
+    const catalog = pluginCatalog();
+    if (!catalog) {
+      loadPluginCatalog();
+      return undefined;
+    }
+    return catalog.find((candidate) => candidate.slug === props.appId);
+  });
   const connector = () => {
     const id = props.appId;
     return isConnectorId(id) ? (props.connectors?.get(id) ?? { id, access: "hidden" as const }) : undefined;
@@ -78,23 +101,26 @@ export function MarketplaceSuggestionChatCard(props: MarketplaceSuggestionChatCa
   };
   const open = (connect: boolean) => props.onOpenMarketplaceApp?.({ appId: props.appId, connect });
   return (
-    <MarketplaceSuggestionCard
-      kind="app"
-      name={name()}
-      description={description()}
-      iconUrl={plugin()?.iconUrl ?? null}
-      mark={listing()?.Mark()}
-      state={state()}
-      unavailableText={
-        connector()?.access === "local-only"
-          ? t("chat.suggestion.localOnly", { name: name() })
-          : t("chat.suggestion.unavailable", { name: name() })
-      }
-      dismissed={marketplaceSuggestionDismissed(props.messageId)}
-      onConnect={props.onOpenMarketplaceApp ? () => open(true) : undefined}
-      onOpenDetails={props.onOpenMarketplaceApp && state() !== "unavailable" ? () => open(false) : undefined}
-      onDismiss={() => dismissMarketplaceSuggestion(props.messageId, true)}
-      onRestore={() => dismissMarketplaceSuggestion(props.messageId, false)}
-    />
+    // A plugin card shows when the catalog has loaded, with its name and icon.
+    <Show when={isConnectorId(props.appId) || plugin()}>
+      <MarketplaceSuggestionCard
+        kind="app"
+        name={name()}
+        description={description()}
+        iconUrl={plugin()?.iconUrl ?? null}
+        mark={listing()?.Mark()}
+        state={state()}
+        unavailableText={
+          connector()?.access === "local-only"
+            ? t("chat.suggestion.localOnly", { name: name() })
+            : t("chat.suggestion.unavailable", { name: name() })
+        }
+        dismissed={marketplaceSuggestionDismissed(props.messageId)}
+        onConnect={props.onOpenMarketplaceApp ? () => open(true) : undefined}
+        onOpenDetails={props.onOpenMarketplaceApp && state() !== "unavailable" ? () => open(false) : undefined}
+        onDismiss={() => dismissMarketplaceSuggestion(props.messageId, true)}
+        onRestore={() => dismissMarketplaceSuggestion(props.messageId, false)}
+      />
+    </Show>
   );
 }
