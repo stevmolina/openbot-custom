@@ -10,7 +10,11 @@ import {
   selfHostedApiOrigin,
 } from "@openbot/contracts/invite-links";
 import type { MobileConnectHostBinding } from "@openbot/contracts/mobile-connect";
-import { decodeRemoteSession, decodeRemoteSessionTicket } from "@openbot/contracts/remote-control-plane";
+import {
+  decodeRemoteSession,
+  decodeRemoteSessionTicket,
+  decodeRemoteSessionWithTicket,
+} from "@openbot/contracts/remote-control-plane";
 import { isBoolean, isDynamicRecord, isNumber, isString } from "@openbot/contracts/runtime-values";
 import { sourceText } from "@openbot/i18n/source";
 import { referenceFrom, safeReference } from "@openbot/user-errors/reference";
@@ -417,7 +421,15 @@ export class RemoteTeamDirectoryClient {
         );
         if (existing) return existing;
       }
-      const sessionId = yield* this.startSession(hostId);
+      // The key in the session request gets the first ticket in the same answer. An older account
+      // service ignores it and answers the session alone.
+      const started = yield* this.#request("/v2/remote/sessions/", {
+        method: "POST",
+        body: { hostId, clientPublicKey },
+      });
+      const { session, ticket } = yield* directoryDecode(() => decodeRemoteSessionWithTicket(started));
+      const sessionId = session.sessionId;
+      if (ticket) return { sessionId, signalUrl: ticket.signalUrl, ticket: ticket.ticket };
       return yield* this.#ticket(sessionId, clientPublicKey).pipe(
         Effect.catch((error) =>
           this.endSession(sessionId).pipe(

@@ -59,6 +59,21 @@ export function decodeRemoteSessionTicket(value: unknown): RemoteSessionTicket {
   };
 }
 
+/**
+ * The answer to a session request that named the client key: the session and its first ticket, in one
+ * round trip. An account service from before the field answers the session alone, and `ticket` is null.
+ */
+export function decodeRemoteSessionWithTicket(value: unknown): {
+  session: RemoteSession;
+  ticket: RemoteSessionTicket | null;
+} {
+  const record = decodeRecord(value, "remote session");
+  return {
+    session: decodeRemoteSession(value),
+    ticket: record.ticket === undefined ? null : decodeRemoteSessionTicket(record.ticket),
+  };
+}
+
 function text(value: unknown, field: string): string {
   if (!isString(value)) throw new Error(`Invalid ${field}.`);
   return value;
