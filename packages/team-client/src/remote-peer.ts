@@ -27,6 +27,11 @@ import {
   teamCapabilitiesForProtocol,
   teamProtocolV2AuthenticationTranscript,
 } from "@openbot/contracts/team-protocol";
+import {
+  COMPACT_RPC_CAPABILITY,
+  COMPACT_RPC_UNKNOWN_KEY_CODE,
+  compressedRpcResult,
+} from "@openbot/contracts/team-protocol/compact-rpc-v1";
 import type { LiveVoiceEvent } from "@openbot/contracts/team-protocol/live-voice-v1";
 import { optionalTeamEvent, optionalTeamEventToCurrent } from "@openbot/contracts/team-protocol/optional-events";
 import { teamSideRouteCodec } from "@openbot/contracts/team-protocol/side-routes";
@@ -42,6 +47,7 @@ import { sourceText } from "@openbot/i18n/source";
 import { errorReference, referenceFrom } from "@openbot/user-errors/reference";
 import { Context, Deferred, Effect, Exit, Layer, ManagedRuntime, Result, Schema, Scope, Semaphore } from "effect";
 import { base64UrlToBytes, bytesToBase64Url } from "./base64";
+import { canInflateResponses, capabilityListKey, inflateRpcBody } from "./compact-rpc";
 import { createEd25519Identity, type Ed25519Identity, signEd25519, verifyEd25519Pem } from "./ed25519";
 
 /** `reference` is the code a user can copy, such as `signal/host_busy`. It never holds server text. */
@@ -431,6 +437,12 @@ interface PeerState {
   preparedAt: number;
   /** When the cached ICE servers of that connection arrived, in an earlier `ready`. */
   preparedIceServersAt: number;
+  /** The host serves compact-rpc-v1: from its last compatibility read, then from this connection's. */
+  compactRpc: boolean;
+  /** compact-rpc-v1: the requests went out with `auth-complete`, and `auth-confirmed` is still due. */
+  awaitingConfirmation: boolean;
+  /** compact-rpc-v1: the keys of the capability lists that this connection sent in full. */
+  sentCapabilityKeys: Set<string>;
 }
 
 const CHANNELS: ChannelKind[] = ["rpc", "events", "files", "desktop"];
@@ -535,6 +547,22 @@ class RemotePeerIO extends Context.Service<
 export interface RemoteHostProtocols {
   get(hostId: string): number | undefined;
   set(hostId: string, protocol: number): void;
+  /**
+   * The host advertised compact-rpc-v1 on its last compatibility read. A new connection to such a
+   * host sends its first requests with `auth-complete`, one round trip before `auth-confirmed`.
+   */
+  compactRpc?(hostId: string): boolean;
+  setCompactRpc?(hostId: string, value: boolean): void;
+  /** The Signal URL and ICE servers of the host's last `ready`, so that a new page opens Signal at once. */
+  signalRoute?(hostId: string): RemoteSignalRoute | null;
+  setSignalRoute?(hostId: string, route: RemoteSignalRoute): void;
+}
+
+export interface RemoteSignalRoute {
+  signalUrl: string;
+  iceServers: RTCIceServer[];
+  /** When the ICE servers arrived. Their TURN credentials are used for half of their lifetime. */
+  at: number;
 }
 
 /**
@@ -596,6 +624,20 @@ export function createRemoteTeamPeer(
   // The last `ready` of a host. A new connection to it opens its Signal socket while the ticket
   // request runs, and gathers ICE candidates before `ready`.
   let lastSignal: { hostId: string; signalUrl: string; iceServers: RTCIceServer[]; at: number } | null = null;
+  const compactHosts = new Map<string, boolean>();
+  function knownCompactRpc(hostId: string): boolean {
+    return hostProtocols.compactRpc?.(hostId) ?? compactHosts.get(hostId) === true;
+  }
+  function rememberCompactRpc(hostId: string, value: boolean): void {
+    compactHosts.set(hostId, value);
+    hostProtocols.setCompactRpc?.(hostId, value);
+  }
+  /** The last `ready` of this peer, or the one that an earlier page kept. */
+  function knownSignalRoute(hostId: string) {
+    if (lastSignal?.hostId === hostId) return lastSignal;
+    const saved = hostProtocols.signalRoute?.(hostId);
+    return saved ? { hostId, ...saved } : null;
+  }
 
   return {
     async sendHostStreamData(data: string | ArrayBuffer) {
@@ -1061,7 +1103,7 @@ export function createRemoteTeamPeer(
       });
       // The ticket names the Signal machine of the host, which seldom changes. Its socket opens while
       // the ticket request runs, and says hello when the ticket arrives.
-      const known = lastSignal?.hostId === hostId ? lastSignal : null;
+      const known = knownSignalRoute(hostId);
       const preparedSocket = known && Date.now() >= signalRetryAt ? prepareSignalSocket(known.signalUrl) : null;
       // A failed bootstrap keeps the session for the next attempt.
       const bootstrap = yield* RemotePeerIO.use((io) => io.bootstrap(hostId, clientPublicKey, existingSessionId)).pipe(
@@ -1134,6 +1176,9 @@ export function createRemoteTeamPeer(
         offerPending: false,
         preparedAt: 0,
         preparedIceServersAt: 0,
+        compactRpc: knownCompactRpc(hostId),
+        awaitingConfirmation: false,
+        sentCapabilityKeys: new Set(),
       };
       peer = state;
       const connected = Deferred.makeUnsafe<void, RemotePeerError>();
@@ -1438,6 +1483,11 @@ export function createRemoteTeamPeer(
         if (state.iceServers.length === 0)
           return yield* referenced(sourceText("error.remote.relayUnavailable"), "signal/no_ice_servers");
         lastSignal = { hostId: state.hostId, signalUrl: state.signalUrl, iceServers: state.iceServers, at: Date.now() };
+        hostProtocols.setSignalRoute?.(state.hostId, {
+          signalUrl: lastSignal.signalUrl,
+          iceServers: lastSignal.iceServers,
+          at: lastSignal.at,
+        });
         const connectionId = state.connectionId;
         state.signalReady = true;
         // The first offer of a connection made before `ready` goes out now, before any candidate. Its
@@ -1742,7 +1792,7 @@ export function createRemoteTeamPeer(
         return;
       }
       if (!isString(data)) return;
-      if (kind === "rpc" && !state.authenticated) {
+      if (kind === "rpc" && (!state.authenticated || state.awaitingConfirmation)) {
         yield* handleAuthenticationFrameEffect(state, yield* peerDecode(() => decodeTeamProtocolV2AuthFrame(data)));
         return;
       }
@@ -1753,6 +1803,8 @@ export function createRemoteTeamPeer(
         if (frame.type !== "response")
           return yield* new RemotePeerError({ message: "The host returned an invalid RPC frame." });
         state.answeredRequest = true;
+        // A key that the host does not keep: the next requests send their lists again.
+        if ("error" in frame && frame.error.code === COMPACT_RPC_UNKNOWN_KEY_CODE) state.sentCapabilityKeys.clear();
         const pending = pendingRequests.get(frame.requestId);
         if (!pending) return;
         pending.profile?.responded(data);
@@ -1775,13 +1827,17 @@ export function createRemoteTeamPeer(
         } else {
           const sideRoute = teamSideRouteCodec(pending.path);
           const status = frame.result.status;
-          const body = frame.result.body;
+          const compressed = compressedRpcResult(frame.result);
+          const body = compressed ? yield* peerCall(() => inflateRpcBody(compressed.deflated)) : frame.result.body;
           if (pending.method === "GET" && pending.path === TEAM_API_ROUTES.compatibility && status === 200) {
-            state.hostProtocol = (yield* peerDecode(() => decodeTeamProtocolSupportV9(body))).protocol.maximum;
+            const support = yield* peerDecode(() => decodeTeamProtocolSupportV9(body));
+            state.hostProtocol = support.protocol.maximum;
             hostProtocols.set(state.hostId, state.hostProtocol);
+            state.compactRpc = support.capabilities.includes(COMPACT_RPC_CAPABILITY);
+            rememberCompactRpc(state.hostId, state.compactRpc);
           }
           pending.resolve({
-            status: frame.result.status,
+            status,
             body: sideRoute
               ? yield* peerDecode(() =>
                   sideRoute.response(pending.path, status, body, {
@@ -1859,7 +1915,7 @@ export function createRemoteTeamPeer(
   function handleAuthenticationFrameEffect(state: PeerState, frame: TeamProtocolV2AuthFrame) {
     return Effect.fn("RemotePeer.handleAuthenticationFrame")(function* () {
       if (frame.type === "auth-ready") {
-        if (!state.binding || frame.clientNonce !== state.clientNonce)
+        if (!state.binding || frame.clientNonce !== state.clientNonce || state.awaitingConfirmation)
           return yield* new RemotePeerError({ message: "Host authentication did not match." });
         const binding = state.binding;
         const transcript = yield* peerDecode(() =>
@@ -1895,6 +1951,11 @@ export function createRemoteTeamPeer(
             }),
           ),
         );
+        // compact-rpc-v1: the host is verified, and it reads requests that follow `auth-complete`.
+        if (state.compactRpc) {
+          state.awaitingConfirmation = true;
+          yield* markAuthenticated(state);
+        }
         return;
       }
       if (
@@ -1904,10 +1965,23 @@ export function createRemoteTeamPeer(
       ) {
         return yield* new RemotePeerError({ message: "The desktop returned an invalid authentication confirmation." });
       }
+      if (state.awaitingConfirmation) {
+        state.awaitingConfirmation = false;
+        yield* sendEventAckEffect(state);
+        return;
+      }
+      yield* markAuthenticated(state);
+    })();
+  }
+
+  function markAuthenticated(state: PeerState) {
+    return Effect.fn("RemotePeer.markAuthenticated")(function* () {
       state.authenticated = true;
       yield* notify(diagnosticCall(state, "authenticated"));
       settleConnected(state);
-      yield* sendEventAckEffect(state);
+      // The events channel is not ordered with `auth-complete`, so its first frame waits for the
+      // confirmation when the requests went out with `auth-complete`.
+      if (!state.awaitingConfirmation) yield* sendEventAckEffect(state);
       yield* RemotePeerIO.use((io) =>
         io.connectionUpdate({
           hostId: state.hostId,
@@ -1967,6 +2041,10 @@ export function createRemoteTeamPeer(
                 }),
               );
         const requestId = createTeamRequestId((size) => crypto.getRandomValues(new Uint8Array(size)));
+        const listProtocol = checksConnection ? undefined : state.hostProtocol;
+        // compact-rpc-v1: a list goes in full once on each connection, then by its key only.
+        const capabilitiesKey = state.compactRpc ? capabilityListKey(listProtocol) : null;
+        const listSent = capabilitiesKey !== null && state.sentCapabilityKeys.has(capabilitiesKey);
         const payload = yield* peerDecode(() =>
           encodeTeamProtocolV2Frame({
             version: 2,
@@ -1978,7 +2056,9 @@ export function createRemoteTeamPeer(
               path,
               body: payloadBody,
               ...(bodyTransferId && upload ? { bodyTransferId, contentType: upload.mimeType } : {}),
-              capabilities: [...teamCapabilitiesForProtocol(checksConnection ? undefined : state.hostProtocol)],
+              ...(listSent ? {} : { capabilities: [...teamCapabilitiesForProtocol(listProtocol)] }),
+              ...(capabilitiesKey === null ? {} : { capabilitiesKey }),
+              ...(state.compactRpc && canInflateResponses() ? { compressResponse: true } : {}),
             },
           }),
         );
@@ -2055,6 +2135,12 @@ export function createRemoteTeamPeer(
             // The frame is sent in the work scope: a request that stops waiting does not cut a frame.
             Effect.forkIn(
               sendPayload(state, "rpc", payload).pipe(
+                // Only after the frame is on the channel: a request by key must follow its list.
+                Effect.tap(() =>
+                  Effect.sync(() => {
+                    if (capabilitiesKey !== null && !listSent) state.sentCapabilityKeys.add(capabilitiesKey);
+                  }),
+                ),
                 Effect.catch((error) =>
                   Effect.sync(() => {
                     const pending = pendingRequests.get(requestId);
@@ -2309,6 +2395,8 @@ export function createRemoteTeamPeer(
     code?: RemoteTeamConnectionUpdate["code"],
   ): void {
     if (state.closed || peer !== state) return;
+    // A host that did not confirm requests sent with `auth-complete` gets them after it confirms next time.
+    if (state.awaitingConfirmation) rememberCompactRpc(state.hostId, false);
     const failure = referenced(failureMessage(error), failureReference(error));
     diagnose(state, "failed", failureDetail(failure, code));
     rejectConnection(state, failure);
@@ -2326,6 +2414,7 @@ export function createRemoteTeamPeer(
   ) {
     return Effect.gen(function* () {
       if (state.closed || peer !== state) return;
+      if (state.awaitingConfirmation) rememberCompactRpc(state.hostId, false);
       const failure = referenced(failureMessage(error), failureReference(error));
       yield* notify(diagnosticCall(state, "failed", failureDetail(failure, code)));
       rejectConnection(state, failure);

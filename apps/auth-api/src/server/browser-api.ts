@@ -430,11 +430,23 @@ const handleBrowserOperation = Effect.fn("BrowserApi.handleOperation")(function*
   if (request.method !== "POST")
     return failure(404, "browser_operation_not_found", "This browser operation is not available.");
   const body = yield* readJsonObject(request);
-  if (path === "v2/remote/sessions")
-    return json(
-      yield* services.remote.startSession(user.id, yield* requiredString(body, "hostId"), yield* sha256(token)),
-      201,
+  if (path === "v2/remote/sessions") {
+    const authSessionHash = yield* sha256(token);
+    const session = yield* services.remote.startSession(
+      user.id,
+      yield* requiredString(body, "hostId"),
+      authSessionHash,
     );
+    // With the client key, the first ticket comes in the same answer: one round trip less before Signal.
+    if (!isString(body.clientPublicKey)) return json(session, 201);
+    const ticket = yield* services.remote.issueSessionTicket(
+      user.id,
+      session.sessionId,
+      body.clientPublicKey,
+      authSessionHash,
+    );
+    return json({ ...session, ticket }, 201);
+  }
   const [, encodedSessionId, sessionAction] = /^v2\/remote\/sessions\/([^/]+)\/(ticket|end)$/u.exec(path) ?? [];
   if (encodedSessionId !== undefined) {
     const sessionId = decodeURIComponent(encodedSessionId);

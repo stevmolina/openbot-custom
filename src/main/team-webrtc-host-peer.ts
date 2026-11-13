@@ -2,11 +2,18 @@ import { createHash, randomBytes, verify } from "node:crypto";
 import { openAsBlob } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { deflateRawSync } from "node:zlib";
 import { BROWSER_SECRET_RESPONSE_PATH } from "@openbot/contracts/ipc";
 import { isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { TEAM_API_ROUTES } from "@openbot/contracts/team-api-routes";
 import { AGENT_TASK_UI_BLOCKS_CAPABILITY } from "@openbot/contracts/team-protocol/agent-task-ui-blocks-v1";
 import { browserViewStreamSessionId } from "@openbot/contracts/team-protocol/browser-view-v1";
+import {
+  COMPACT_RPC_MAX_KEPT_LISTS,
+  COMPACT_RPC_MIN_COMPRESSED_BYTES,
+  COMPACT_RPC_UNKNOWN_KEY_CODE,
+  isCompactRpcKey,
+} from "@openbot/contracts/team-protocol/compact-rpc-v1";
 import {
   BROWSER_SIGN_IN_CAPABILITY,
   CHANNEL_BROWSER_CAPABILITY,
@@ -192,6 +199,11 @@ export class TeamWebRtcHostPeer {
   readonly #desktopSockets = new Map<string, Ws.WebSocket>();
   #sessionExpirationTimer: ReturnType<typeof setTimeout> | null = null;
   #sessionPreparation: Deferred.Deferred<void, RemoteWorkflowError> | null = null;
+  // compact-rpc-v1: set when `auth-complete` arrives, done after `auth-confirmed` is sent. A frame that
+  // the client sent with `auth-complete` waits for it, so no answer goes out before the confirmation.
+  #sessionReady: Deferred.Deferred<void, RemoteWorkflowError> | null = null;
+  // compact-rpc-v1: the capability lists that this connection named by key, kept in arrival order.
+  readonly #capabilityLists = new Map<string, string[]>();
   #pendingConnection: IncomingConnection | null = null;
   #peerBinding: { localFingerprint: string; remoteFingerprint: string } | null = null;
   #sessionBinding: { localFingerprint: string; remoteFingerprint: string } | null = null;
@@ -383,12 +395,17 @@ export class TeamWebRtcHostPeer {
       return;
     }
     if (authFrame?.type === "auth-complete") {
+      const ready = Deferred.makeUnsafe<void, RemoteWorkflowError>();
+      this.#sessionReady = ready;
       this.#dispatch(
-        this.#completeAuthentication(peerId, authFrame).pipe(Effect.catchCause(() => this.#failProtocol(peerId))),
+        this.#completeAuthentication(peerId, authFrame).pipe(
+          Effect.onExit((exit) => Effect.sync(() => Deferred.doneUnsafe(ready, exit))),
+          Effect.catchCause(() => this.#failProtocol(peerId)),
+        ),
       );
       return;
     }
-    if (!this.#localSessionToken) {
+    if (!this.#localSessionToken && !this.#sessionReady) {
       this.#dispatch(this.#failProtocol(peerId));
       return;
     }
@@ -402,9 +419,10 @@ export class TeamWebRtcHostPeer {
       if (channel === "rpc" || channel === "events") this.#dispatch(this.#failProtocol(peerId));
       return;
     }
-    if (channel === "rpc")
+    if (channel === "rpc") {
+      this.#keepCapabilityList(data);
       this.#dispatch(this.#handleRpc(data).pipe(Effect.catchCause(() => this.#failProtocol(peerId))));
-    else if (channel === "events")
+    } else if (channel === "events")
       this.#dispatch(this.#handleEventControl(data).pipe(Effect.catchCause(() => this.#failProtocol(peerId))));
   };
 
@@ -412,6 +430,8 @@ export class TeamWebRtcHostPeer {
     if (peerId === this.#peerId) {
       this.#setPeerAuthenticated(peerId, false);
       this.#sessionPreparation = null;
+      this.#sessionReady = null;
+      this.#capabilityLists.clear();
       this.#pendingConnection = null;
       this.#peerBinding = null;
       this.#peerCapabilities.clear();
@@ -427,6 +447,24 @@ export class TeamWebRtcHostPeer {
   readonly #onPathRestored = (peerId: string): void => {
     if (peerId === this.#peerId && this.#localSessionId) this.#pathChanged(this.#localSessionId, false);
   };
+
+  /** compact-rpc-v1: keeps a named capability list when its frame arrives, before any frame after it runs. */
+  #keepCapabilityList(data: string): void {
+    if (!data.includes('"capabilitiesKey"')) return;
+    let payload: unknown;
+    try {
+      const frame = JSON.parse(data);
+      payload = isDynamicRecord(frame) ? frame.payload : null;
+    } catch {
+      return;
+    }
+    if (!isDynamicRecord(payload) || !isCompactRpcKey(payload.capabilitiesKey)) return;
+    const list = payload.capabilities;
+    if (!Array.isArray(list) || !list.every(isString)) return;
+    const key = payload.capabilitiesKey;
+    if (!this.#capabilityLists.has(key) && this.#capabilityLists.size >= COMPACT_RPC_MAX_KEPT_LISTS) return;
+    this.#capabilityLists.set(key, list);
+  }
 
   readonly #handleAuthentication = Effect.fn("TeamHostPeer.handleAuthentication")(function* (
     this: TeamWebRtcHostPeer,
@@ -545,6 +583,7 @@ export class TeamWebRtcHostPeer {
     this: TeamWebRtcHostPeer,
     data: string,
   ): Effect.fn.Return<void, RemoteWorkflowError, HostPeerTransport> {
+    if (this.#sessionReady) yield* Deferred.await(this.#sessionReady);
     if (this.#sessionPreparation) yield* Deferred.await(this.#sessionPreparation);
     const peerId = this.#peerId;
     if (!peerId) return;
@@ -602,7 +641,8 @@ export class TeamWebRtcHostPeer {
           cause: new GatewayError(400, "unsupported_operation", "The Team API operation is not supported."),
         });
       }
-      const result = yield* this.#dispatchHttpEffect(request.payload);
+      const answer = yield* this.#dispatchHttpEffect(request.payload);
+      const result = request.payload.compressResponse === true ? compressedRpcResult(answer) : answer;
       return yield* remoteDecode(() =>
         decodeTeamProtocolV2RpcFrame({ version: 2, type: "response", requestId: request.requestId, result }),
       );
@@ -654,7 +694,15 @@ export class TeamWebRtcHostPeer {
       return yield* new RemoteWorkflowError({
         cause: new GatewayError(503, "remote_disconnected", sourceText("error.remote.peerDisconnected")),
       });
-    const peerCapabilities = new Set(input.capabilities ?? []);
+    // compact-rpc-v1: a request can name a list that an earlier frame of this connection sent.
+    const listed =
+      input.capabilities ??
+      (input.capabilitiesKey === undefined ? undefined : this.#capabilityLists.get(input.capabilitiesKey));
+    if (listed === undefined && input.capabilitiesKey !== undefined)
+      return yield* new RemoteWorkflowError({
+        cause: new GatewayError(409, COMPACT_RPC_UNKNOWN_KEY_CODE, "The capability list of this request is unknown."),
+      });
+    const peerCapabilities = new Set(listed ?? []);
     const capabilitiesChanged =
       peerCapabilities.size !== this.#peerCapabilities.size ||
       [...peerCapabilities].some((capability) => !this.#peerCapabilities.has(capability));
@@ -955,6 +1003,7 @@ export class TeamWebRtcHostPeer {
     this: TeamWebRtcHostPeer,
     data: string,
   ): Effect.fn.Return<void, RemoteWorkflowError, HostPeerTransport> {
+    if (this.#sessionReady) yield* Deferred.await(this.#sessionReady);
     if (this.#sessionPreparation) yield* Deferred.await(this.#sessionPreparation);
     const frame = yield* remoteDecode(() => decodeTeamProtocolV2EventFrame(data));
     if (!this.#eventsSocket && this.#localSessionToken) this.#connectLocalEvents(this.#localSessionToken);
@@ -1017,6 +1066,7 @@ export class TeamWebRtcHostPeer {
     this: TeamWebRtcHostPeer,
     data: string | ArrayBuffer,
   ): Effect.fn.Return<void, RemoteWorkflowError, HostPeerTransport> {
+    if (this.#sessionReady) yield* Deferred.await(this.#sessionReady);
     if (this.#sessionPreparation) yield* Deferred.await(this.#sessionPreparation);
     const peerId = this.#peerId;
     if (!peerId || !this.#localApiPort || !this.#localSessionId) return;
@@ -1136,6 +1186,8 @@ export class TeamWebRtcHostPeer {
     this.#sessionMembershipId = null;
     this.#sessionBinding = null;
     this.#sessionPreparation = null;
+    this.#sessionReady = null;
+    this.#capabilityLists.clear();
     this.#authenticationCompletion = null;
     if (endLogicalSession && closingSessionId) {
       // Invalidate local access immediately. Remote logout must not delay the next handshake.
@@ -1175,6 +1227,10 @@ interface HttpRequestPayload {
   bodyTransferId?: string;
   contentType?: string;
   capabilities?: string[];
+  /** compact-rpc-v1 */
+  capabilitiesKey?: string;
+  /** compact-rpc-v1 */
+  compressResponse?: boolean;
 }
 
 function isHttpRequest(value: TeamProtocolV2Json): value is TeamProtocolV2Json & HttpRequestPayload {
@@ -1195,6 +1251,8 @@ function isHttpRequest(value: TeamProtocolV2Json): value is TeamProtocolV2Json &
               ? 128
               : 64) &&
         value.capabilities.every(isString))) &&
+    (value.capabilitiesKey === undefined || isCompactRpcKey(value.capabilitiesKey)) &&
+    (value.compressResponse === undefined || typeof value.compressResponse === "boolean") &&
     (value.bodyTransferId === undefined || isString(value.bodyTransferId)) &&
     (value.contentType === undefined || isString(value.contentType))
   );
@@ -1204,6 +1262,24 @@ function isHttpRequest(value: TeamProtocolV2Json): value is TeamProtocolV2Json &
  * A response larger than one JSON frame cannot be sent. The client gets an error for its request and
  * the connection stays open: a dropped connection makes the client reconnect and ask again.
  */
+/**
+ * compact-rpc-v1: a JSON body of `COMPACT_RPC_MIN_COMPRESSED_BYTES` or more goes as raw DEFLATE in
+ * base64url. A fresh data channel sends little in its first round trips, so the first reads of a far
+ * client wait for every byte. A file result stays as it is.
+ */
+function compressedRpcResult(result: TeamProtocolV2Json): TeamProtocolV2Json {
+  if (!isDynamicRecord(result) || Object.keys(result).length !== 2 || !Object.hasOwn(result, "body")) return result;
+  const status = result.status;
+  if (typeof status !== "number") return result;
+  const text = JSON.stringify(result.body);
+  if (text === undefined || text.length < COMPACT_RPC_MIN_COMPRESSED_BYTES) return result;
+  try {
+    return { status, body: null, deflated: deflateRawSync(Buffer.from(text)).toString("base64url") };
+  } catch {
+    return result;
+  }
+}
+
 function encodeRpcResponse(response: TeamProtocolV2RpcFrame): string {
   try {
     return encodeTeamProtocolV2Frame(response);
