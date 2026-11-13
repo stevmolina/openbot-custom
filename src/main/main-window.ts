@@ -230,6 +230,11 @@ export function createMainWindowController({
       reportError,
     });
   let rendererReloadTimes: number[] = [];
+  /**
+   * The windows that were asked to load the app page. The window of a server never is: its empty page
+   * that stops is not replaced with the app page.
+   */
+  const appPageWindows = new WeakSet<BrowserWindow>();
 
   function createWindow(): BrowserWindow {
     const cursor = screen.getCursorScreenPoint();
@@ -325,6 +330,7 @@ export function createMainWindowController({
       if (
         isQuitting() ||
         window.isDestroyed() ||
+        !appPageWindows.has(window) ||
         !RELOADABLE_RENDERER_EXITS.has(details.reason) ||
         rendererReloadTimes.length >= RENDERER_RELOAD_MAX
       ) {
@@ -451,6 +457,7 @@ export function createMainWindowController({
   }
 
   function loadRenderer(window: BrowserWindow): Promise<void> {
+    appPageWindows.add(window);
     onRendererLoadStarted();
     return window.loadURL(appRendererUrl(process.env.ELECTRON_RENDERER_URL).toString());
   }

@@ -272,10 +272,22 @@ const localServerControl = localServerChild
       logger.error("The local server has no control pipe from the desktop app:", toLogValue(cause)),
     )
   : null;
+// Nobody looks at the window of a server, so its main window loads no app page, as the window of a
+// local server does not. The window stays: the agent browser and the services attach to it. The app
+// page with its Dynamic Island cost each server about 400 MB and a steady part of a core while idle.
+// Development builds only: `OPENBOT_DEV_HEADLESS_SERVER=1` gives a dev host the same start, for
+// `scripts/headless-server-e2e.ts`. The test client of the same stack keeps its window.
+const rendererlessServer =
+  serverMode !== null ||
+  hostedServer !== null ||
+  (!app.isPackaged &&
+    !localServerChild &&
+    developmentRemoteRole !== "client" &&
+    process.env.OPENBOT_DEV_HEADLESS_SERVER === "1");
 if (serverMode || hostedServer || localServerChild) hideExceptionErrorBox();
 // A local server keeps a main window that never loads. A second launch on its profile, a deep link or
 // an MCP sign-in showed it as an empty window next to the desktop app.
-if (serverMode || hostedServer || localServerChild) keepWindowsHidden();
+if (rendererlessServer || localServerChild) keepWindowsHidden();
 // A local server has no window, so it has no Dock tile either.
 if (localServerChild && process.platform === "darwin") app.dock?.hide();
 const inviteLinkOptions = {
@@ -1852,37 +1864,42 @@ if (!hasSingleInstanceLock) {
           sendToRenderer(window, IPC_ENDPOINTS.app.appInterfaceSizePreference, preference);
         }
       });
-      await runCauseEffect(dynamicIsland.initialize()).catch((error) =>
-        logger.error("Unable to initialize Dynamic Island:", toLogValue(error)),
-      );
       const reconcileDynamicIsland = () =>
         void Effect.runPromise(dynamicIsland.reconcileWindow()).catch((error) =>
           logger.error("Unable to reconcile Dynamic Island displays:", toLogValue(error)),
         );
-      // The island pages load beside the main window, not before it.
-      reconcileDynamicIsland();
-      await windows.loadRenderer(mainWindow);
-      performance.mark("openbot:renderer-loaded");
-      // The start is finished: the database is open and the main window loaded.
+      // A server has no Dynamic Island, no agent dock and no app page: see `rendererlessServer`.
+      if (!rendererlessServer) {
+        await runCauseEffect(dynamicIsland.initialize()).catch((error) =>
+          logger.error("Unable to initialize Dynamic Island:", toLogValue(error)),
+        );
+        // The island pages load beside the main window, not before it.
+        reconcileDynamicIsland();
+        await windows.loadRenderer(mainWindow);
+        performance.mark("openbot:renderer-loaded");
+      }
+      // The start is finished: the database is open and the main window loaded, or a server has its services.
       startAttempts?.finished();
       built.startup?.rendererLoaded();
       // After the first window, so the new process does not compete with the start for the CPU.
       Effect.runFork(built.prewarmAgentDatabase);
       // After the load: `sendToRenderer` drops events aimed at a window that is still loading.
       await Effect.runPromise(remoteServers.startEventConnections());
-      screen.on("display-added", reconcileDynamicIsland);
-      screen.on("display-removed", reconcileDynamicIsland);
-      screen.on("display-metrics-changed", reconcileDynamicIsland);
-      powerMonitor.on("resume", reconcileDynamicIsland);
-      // The agent dock window opens when the main renderer publishes the dock; this only moves it.
-      const reconcileAgentDock = () =>
-        void Effect.runPromise(agentDock.reconcileWindow()).catch((error) =>
-          logger.error("Unable to place the agent dock:", toLogValue(error)),
-        );
-      screen.on("display-added", reconcileAgentDock);
-      screen.on("display-removed", reconcileAgentDock);
-      screen.on("display-metrics-changed", reconcileAgentDock);
-      powerMonitor.on("resume", reconcileAgentDock);
+      if (!rendererlessServer) {
+        screen.on("display-added", reconcileDynamicIsland);
+        screen.on("display-removed", reconcileDynamicIsland);
+        screen.on("display-metrics-changed", reconcileDynamicIsland);
+        powerMonitor.on("resume", reconcileDynamicIsland);
+        // The agent dock window opens when the main renderer publishes the dock; this only moves it.
+        const reconcileAgentDock = () =>
+          void Effect.runPromise(agentDock.reconcileWindow()).catch((error) =>
+            logger.error("Unable to place the agent dock:", toLogValue(error)),
+          );
+        screen.on("display-added", reconcileAgentDock);
+        screen.on("display-removed", reconcileAgentDock);
+        screen.on("display-metrics-changed", reconcileAgentDock);
+        powerMonitor.on("resume", reconcileAgentDock);
+      }
       powerMonitor.on("resume", () => void Effect.runPromise(remoteServers.wake()));
       // A Slack socket can be dead after sleep without knowing it; reconnect instead of waiting for a ping.
       powerMonitor.on("resume", () => built.messaging.resume());

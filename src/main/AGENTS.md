@@ -24,7 +24,7 @@ below.
   `*-inputs.ts` parsers. The sender check must run before decoding. Do not bind raw `unknown` as a
   no-payload handler.
 - Use `sendToRenderer` from `renderer-ipc.ts` to send messages. It drops messages for destroyed or
-  loading windows. Its endpoint argument must be a direct `IPC_ENDPOINTS.group.name` reference;
+  loading windows, and for a window that never loaded a page. Its endpoint argument must be a direct `IPC_ENDPOINTS.group.name` reference;
   do not use a string literal or an intermediate variable. Handlers do not name channels; groups do.
 - Add a channel in one change across `ipc-endpoints.ts`, `src/main/ipc/`, `src/preload/index.ts`
   and `src/renderer/src/preview/mock-openbot.ts`. See

@@ -14,6 +14,7 @@ export interface RendererIpcWindow {
   webContents: {
     isDestroyed(): boolean;
     isLoadingMainFrame(): boolean;
+    getURL(): string;
     mainFrame: {
       isDestroyed(): boolean;
       readonly detached: boolean;
@@ -32,6 +33,8 @@ export function sendToRenderer<Payload>(
   try {
     const contents = window.webContents;
     if (contents.isDestroyed() || contents.isLoadingMainFrame()) return false;
+    // A window that never loaded a page has nobody to read the event, such as the main window of a server.
+    if (contents.getURL() === "") return false;
     const frame = contents.mainFrame;
     if (frame.isDestroyed() || frame.detached) return false;
     contents.send(endpoint.channel, ...args);
