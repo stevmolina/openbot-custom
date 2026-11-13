@@ -250,6 +250,7 @@ import { currentText } from "@openbot/ui/text";
 import { referenceFrom } from "@openbot/user-errors";
 import { Effect } from "effect";
 import type { ServerAdminPort } from "../servers/servers-port";
+import { createFirstScreenHold } from "./web-first-screen";
 import {
   createWebHostConnections,
   type WebHostConnections,
@@ -304,6 +305,11 @@ type WebHistoryDelete = { kind: "agent"; agentId: string } | { kind: "channel"; 
 
 export interface WebWorkspaceRuntime {
   admin?: WebAdminRuntime;
+  /**
+   * Holds the host requests that the first screen does not show (`web-first-screen`) until the returned
+   * release, or for `FIRST_SCREEN_HOLD_MS` at most. The requests of that screen go at once.
+   */
+  holdFirstScreen?: () => () => void;
   /** The status connections of the hosts that this tab has not opened. */
   hosts?: WebHostConnections;
   browser: BrowserViewRuntime;
@@ -807,6 +813,7 @@ export function createWebWorkspaceRuntime(
   let disposed = false;
   let generation = 0;
   let uploadGeneration = 0;
+  const firstScreen = createFirstScreenHold();
   let capabilities: string[] = [];
   let connectedHost: RemoteTeamHost | null = null;
   const duplicateOperationIds = new Map<string, string>();
@@ -893,6 +900,11 @@ export function createWebWorkspaceRuntime(
   ) {
     if (disposed) throw new Error(currentText().t("webClient.error.connectionClosed"));
     const current = generation;
+    const held = firstScreen.wait(path);
+    if (held) {
+      await held;
+      if (disposed || generation !== current) throw new Error(currentText().t("webClient.error.hostChanged"));
+    }
     const requestHostId = lockedHostId;
     const timeoutMs =
       method === "GET" && path === TEAM_API_ROUTES.me ? 15_000 : remoteWorkspaceReadTimeout(method, path);
@@ -1155,6 +1167,8 @@ export function createWebWorkspaceRuntime(
       await peer.cancelUpload().catch(() => undefined);
       await discardCompletedDrafts(hostForCleanup);
       generation += 1;
+      // The held requests were for this host: they fail now, not after the hold.
+      firstScreen.clear();
       await releaseLiveView();
       browserView.disconnect();
       await peer.execute({ id: crypto.randomUUID(), type: "disconnect" });
@@ -1308,20 +1322,23 @@ export function createWebWorkspaceRuntime(
       },
     },
     async browserTabs() {
-      const value = await request("GET", TEAM_API_ROUTES.browser.tabs);
-      if (!Array.isArray(value)) throw new Error(currentText().t("error.remote.invalidData"));
       // The frozen tab list has no field for a person's control or the history state, so the host
-      // answers on their own routes.
-      const held = capabilities.includes(BROWSER_USER_CONTROL_CAPABILITY)
-        ? new Set(decodeBrowserUserControlSnapshot(await request("POST", BROWSER_USER_CONTROL_ROUTES.state, {})).tabIds)
-        : new Set<string>();
-      const pageStates = capabilities.includes(BROWSER_PAGE_STATE_CAPABILITY)
-        ? new Map(
-            decodeBrowserPageStateSnapshot(await request("POST", BROWSER_PAGE_STATE_ROUTES.state, {})).tabs.map(
-              ({ tabId, ...state }) => [tabId, state],
-            ),
-          )
-        : new Map<string, { canGoBack: boolean; canGoForward: boolean }>();
+      // answers on their own routes. The three reads go out together: the first screen waits for them.
+      const [value, held, pageStates] = await Promise.all([
+        request("GET", TEAM_API_ROUTES.browser.tabs),
+        capabilities.includes(BROWSER_USER_CONTROL_CAPABILITY)
+          ? request("POST", BROWSER_USER_CONTROL_ROUTES.state, {}).then(
+              (snapshot) => new Set(decodeBrowserUserControlSnapshot(snapshot).tabIds),
+            )
+          : new Set<string>(),
+        capabilities.includes(BROWSER_PAGE_STATE_CAPABILITY)
+          ? request("POST", BROWSER_PAGE_STATE_ROUTES.state, {}).then(
+              (snapshot) =>
+                new Map(decodeBrowserPageStateSnapshot(snapshot).tabs.map(({ tabId, ...state }) => [tabId, state])),
+            )
+          : new Map<string, { canGoBack: boolean; canGoForward: boolean }>(),
+      ]);
+      if (!Array.isArray(value)) throw new Error(currentText().t("error.remote.invalidData"));
       return value.map(decodeWebBrowserTab).map((tab) => ({
         ...tab,
         ...(held.has(tab.id) ? { userControl: true as const } : {}),
@@ -1502,6 +1519,7 @@ export function createWebWorkspaceRuntime(
         }
       }
     },
+    holdFirstScreen: () => firstScreen.hold(),
     async disconnect() {
       try {
         await closeOpenedHost();
@@ -2021,6 +2039,7 @@ export function createWebWorkspaceRuntime(
       viewListeners.clear();
       disposed = true;
       generation += 1;
+      firstScreen.clear();
       connectedHost = null;
       duplicateOperationIds.clear();
       revokeLocalDraftPreviews([...localDraftPreviews.keys()]);

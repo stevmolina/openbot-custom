@@ -1332,6 +1332,8 @@ export function createWebWorkspace(
       draft.error = null;
       draft.incompatibility = null;
     });
+    // Set once the host answers: the reads that the first screen does not show wait for this release.
+    let releaseFirstScreen = () => {};
     try {
       markRemoteSync("connect-start");
       // The connect starts first: the frame render then runs while the connect waits for the network.
@@ -1396,6 +1398,8 @@ export function createWebWorkspace(
         recovery.dispose();
         recovery = makeRecovery();
       }
+      // Before the online state, which starts the reads of every panel.
+      releaseFirstScreen = runtime.holdFirstScreen?.() ?? releaseFirstScreen;
       setState((draft) => {
         if (unblocked) draft.recovery = null;
         draft.capabilities = capabilities;
@@ -1455,6 +1459,9 @@ export function createWebWorkspace(
         await opened;
         markRemoteSync("conversation-ready");
       }
+      // The sidebar reads went out with the open chat and are not held. The closed panels, the
+      // pictures, the early reads of other chats and their queues go now, so they did not slow it.
+      releaseFirstScreen();
       if (disposed || current !== generation) return;
       void preloadRecent(
         recentAgentIds.filter((id) => id !== first?.id && agents.some((agent) => agent.id === id)),
@@ -1463,6 +1470,7 @@ export function createWebWorkspace(
       // The other queues only give the sidebar its marks.
       for (const agent of agents) if (agent.id !== first?.id) loadQueue(agent.id);
     } catch (error) {
+      releaseFirstScreen();
       if (disposed || current !== generation) return;
       setState((draft) => {
         draft.status = "offline";

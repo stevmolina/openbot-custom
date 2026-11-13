@@ -99,6 +99,7 @@ import { WORKFLOWS_CAPABILITY } from "@openbot/contracts/team-protocol/workflows
 import { runTeamEffect } from "@openbot/team-client";
 import { createAgentComputerPort } from "@openbot/team-client/agent-computer";
 import { channelForThread } from "@openbot/team-client/channel-notifications";
+import { markRemoteSync } from "@openbot/team-client/sync-marks";
 import {
   cancelHostUpdate,
   checkHostForUpdate,
@@ -756,9 +757,15 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
       (connectionPhase() === "loading" || connectionPhase() === "connecting")) ||
     // The status check comes first: the sidebar state is defined after this point.
     (pageLoad() && workspace.state.status === "online" && sidebarLoading());
-  createEffect(fullWindowLoading, (loading) => {
-    if (!loading) setPageLoad(false);
-  });
+  createEffect(
+    () => ({ loading: fullWindowLoading(), first: untrack(pageLoad), online: workspace.state.status === "online" }),
+    ({ loading, first, online }) => {
+      if (loading) return;
+      // The cover goes and the host's sidebar and open chat show for the first time.
+      if (first && online) markRemoteSync("first-screen");
+      setPageLoad(false);
+    },
+  );
   // The full-window screen stays after the load ends, so its crew hop out before it goes. It mounts in
   // the first render, so the account screen in WebApp hands the pile to it and does not hop alone.
   const [loadingCover, setLoadingCover] = createSignal<boolean>(untrack(fullWindowLoading));
