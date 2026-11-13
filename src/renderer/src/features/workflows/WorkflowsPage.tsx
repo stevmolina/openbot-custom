@@ -1,3 +1,5 @@
+// The page uses the diagram page layout. Its stylesheet comes before the canvas stylesheets.
+import "@openbot/ui/features/diagrams/diagrams.css";
 import { WORKFLOWS_CAPABILITY } from "@openbot/contracts/team-protocol/workflows-v1";
 import { useText } from "@openbot/ui/text";
 import { Show } from "solid-js";

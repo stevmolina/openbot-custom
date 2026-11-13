@@ -175,6 +175,9 @@ import {
 } from "./workflow-presence";
 import { activeRun, indexRunView, isOpenRun, type WorkflowRunView } from "./workflow-run-view";
 import { DrawArt, ShapesArt, StickyArt } from "./workflow-tool-art";
+// The canvas loads its stylesheets with its code: most screens never show it (see packages/ui/AGENTS.md).
+import "./workflow-nodes.css";
+import "./workflows.css";
 
 export interface WorkflowCanvasProps {
   /** The open workflow. The canvas reads its graph only when it opens, or when `resetKey` changes. */

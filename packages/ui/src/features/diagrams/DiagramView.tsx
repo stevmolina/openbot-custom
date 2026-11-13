@@ -34,6 +34,8 @@ import { diagramRunStepStatus } from "./DiagramRoutineVisuals";
 import type { DiagramWebhookActions } from "./DiagramRoutineWebhookConfig";
 import { diagramLatestRun, diagramRoutineColor, diagramRunOf } from "./diagram-graph";
 import type { Diagram, DiagramChatMessage, DiagramNode, DiagramPoint, DiagramRunStatus } from "./diagram-model";
+// The board loads its stylesheet with its code: most screens never show it (see packages/ui/AGENTS.md).
+import "./diagrams.css";
 
 export interface DiagramViewProps {
   diagram: Diagram;

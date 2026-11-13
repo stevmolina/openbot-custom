@@ -1,7 +1,10 @@
-// Measures the web client at `/app` in three phases and writes .openbot-build/<out>/report.json.
+// Measures the web client at `/app` in four phases and writes .openbot-build/<out>/report.json.
 //
 // - bundle: JS and CSS bytes (raw and gzip) of the chunks that `/app` loads, from the Vite manifest of
-//   the last `bun run api:build`.
+//   the last `bun run api:build`, and the style rules in that CSS. `cssEveryElementRules` counts the
+//   selectors that match every element or its `::before` or `::after`, such as `*` or `::before`.
+//   WebKit tests those for each element at each style change, and with `::before` or `::after` it also
+//   resolves both pseudo-elements of every element.
 // - load: cold and warm loads of the signed-out `/app` in Chrome, with mobile CPU and network
 //   throttling, until the sign-in form shows. The script starts `vite preview` of that build (no
 //   secrets), or uses `--url`. A local gzip proxy sits in front, because `vite preview` sends assets
@@ -10,9 +13,16 @@
 // - runtime: the `Web/Workspace/LongConversation` story of a running Storybook (`--storybook=<url>`).
 //   It streams a reply into a 160-message conversation and counts the host requests per turn and per
 //   window focus. Storybook runs development builds, so compare its times only with each other.
+// - style: the same story in WebKit with the iPad and iPhone layouts of Safari. `rootVarMs` is the
+//   style time of one custom property change on the app root, which every element inherits.
+//   `keyboard.*` plays a keyboard that opens over 20 frames and then pans for 10, as iOS reports it
+//   through `visualViewport`, into the real `web-visual-viewport.ts`. `styleMs` is the style and
+//   layout time that each frame's change needs; `frameMs` and `framesOver20Ms` are the frame times,
+//   which also include other work on the main thread.
+//   It needs `--storybook=<url>` too.
 //
 // `bun run perf:web [--runs=5] [--storybook=<url>] [--url=<preview url>] [--out=<folder>]
-//  [--compare=<old report.json>] [--phases=bundle,load,runtime] [--throttle=mobile|none]`
+//  [--compare=<old report.json>] [--phases=bundle,load,runtime,style] [--throttle=mobile|none]`
 import assert from "node:assert/strict";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -21,7 +31,7 @@ import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { isDynamicRecord, isNumber } from "@openbot/contracts/runtime-values";
 import { createOpenBotLogger } from "@openbot/logging";
-import { type Browser, type BrowserContext, chromium, type Page } from "playwright-core";
+import { type Browser, type BrowserContext, chromium, devices, type Page, webkit } from "playwright-core";
 import { type Spread, spread } from "./dev-automation/bench-stats";
 import { startRenderRecording } from "./dev-automation/render-metrics";
 
@@ -92,6 +102,43 @@ function readManifest(): Record<string, ManifestChunk> {
   return manifest;
 }
 
+/** The style rules of a built stylesheet, and the selectors among them that match every element. */
+function countRules(css: string): { rules: number; everyElement: number } {
+  let rules = 0;
+  let everyElement = 0;
+  let prelude = "";
+  // One entry per open block: true for a block of declarations or keyframe steps.
+  const blocks: boolean[] = [];
+  for (let index = 0; index < css.length; index++) {
+    const char = css[index];
+    if (char === '"' || char === "'") {
+      const end = css.indexOf(char, index + 1);
+      prelude += css.slice(index, end + 1);
+      index = end;
+    } else if (char === "/" && css[index + 1] === "*") {
+      index = css.indexOf("*/", index + 2) + 1;
+    } else if (char === "{") {
+      const head = prelude.trim();
+      const inKeyframes = blocks.at(-1) === true;
+      const styleRule = !head.startsWith("@") && !inKeyframes;
+      if (styleRule) {
+        rules++;
+        for (const selector of head.split(",")) if (/^(\*|\*?::?(before|after))$/.test(selector.trim())) everyElement++;
+      }
+      blocks.push(styleRule || head.startsWith("@keyframes") || head.startsWith("@-webkit-keyframes"));
+      prelude = "";
+    } else if (char === "}") {
+      blocks.pop();
+      prelude = "";
+    } else if (char === ";") {
+      prelude = "";
+    } else {
+      prelude += char;
+    }
+  }
+  return { rules, everyElement };
+}
+
 /** The files that load with the given chunks: their static imports, and the CSS of each. */
 function closure(manifest: Record<string, ManifestChunk>, keys: readonly string[]): Set<string> {
   const files = new Set<string>();
@@ -115,12 +162,17 @@ function measureBundle(samples: Samples): void {
   assert.ok(entry, "The Vite manifest has no entry chunk.");
   assert.ok(manifest[APP_ROUTE_KEY] && manifest[WEB_APP_KEY], "The manifest has no /app route or WebApp chunk.");
   const sizes = (files: Set<string>) => {
-    const totals = { js: 0, jsGzip: 0, css: 0, cssGzip: 0, files: files.size };
+    const totals = { js: 0, jsGzip: 0, css: 0, cssGzip: 0, files: files.size, cssRules: 0, cssEveryElementRules: 0 };
     for (const file of files) {
       const content = readFileSync(resolve(CLIENT_DIR, file));
       const kind = file.endsWith(".css") ? "css" : "js";
       totals[kind] += content.byteLength;
       totals[`${kind}Gzip`] += gzipSync(content, { level: 9 }).byteLength;
+      if (kind === "css") {
+        const { rules, everyElement } = countRules(content.toString("utf8"));
+        totals.cssRules += rules;
+        totals.cssEveryElementRules += everyElement;
+      }
     }
     return totals;
   };
@@ -133,11 +185,8 @@ function measureBundle(samples: Samples): void {
     ["workspace", workspace],
   ] as const) {
     for (const [metric, value] of Object.entries(sizes(files))) {
-      record(
-        samples,
-        `bundle.${name}.${metric}${metric === "files" ? "" : "KB"}`,
-        metric === "files" ? value : value / 1024,
-      );
+      const count = metric === "files" || metric.startsWith("cssRules") || metric === "cssEveryElementRules";
+      record(samples, `bundle.${name}.${metric}${count ? "" : "KB"}`, count ? value : value / 1024);
     }
   }
 }
@@ -435,6 +484,91 @@ async function measureRuntime(browser: Browser, samples: Samples): Promise<void>
   }
 }
 
+// ---------------------------------------------------------------- style
+
+const STYLE_LAYOUTS = { ipad: "iPad Pro 11 landscape", iphone: "iPhone 15 Pro" } as const;
+
+// In the story: the median time of a custom property change on `.web-app`, until the last element has
+// its style again.
+const ROOT_RESTYLE = `(() => {
+  const app = document.querySelector(".web-app");
+  const all = app.querySelectorAll("*");
+  const leaf = all[all.length - 1];
+  const times = [];
+  for (let index = 0; index < 21; index++) {
+    const start = performance.now();
+    app.style.setProperty("--perf-probe", String(index));
+    void getComputedStyle(leaf).color;
+    times.push(performance.now() - start);
+  }
+  app.style.removeProperty("--perf-probe");
+  times.sort((a, b) => a - b);
+  return times[10];
+})()`;
+
+// In the story: iOS does not resize the page for the keyboard, it changes `visualViewport`. A stand-in
+// for it reports a keyboard that opens over 20 frames and then pans for 10, to the real module.
+const KEYBOARD = `(async () => {
+  const viewport = new EventTarget();
+  const full = document.documentElement.clientHeight;
+  Object.assign(viewport, { height: full, offsetTop: 0, scale: 1, width: innerWidth });
+  Object.defineProperty(window, "visualViewport", { value: viewport, configurable: true });
+  const { trackVisualViewport } = await import("/src/renderer/src/features/web-client/web-visual-viewport.ts");
+  const stop = trackVisualViewport(document.querySelector(".web-app"));
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  await frame();
+  await frame();
+  const frames = [];
+  const styles = [];
+  let last = performance.now();
+  for (let step = 1; step <= 30; step++) {
+    viewport.height = Math.round(full - full * 0.4 * Math.min(1, step / 20));
+    viewport.offsetTop = step > 20 ? (step - 20) * 3 : 0;
+    viewport.dispatchEvent(new Event("resize"));
+    viewport.dispatchEvent(new Event("scroll"));
+    await frame();
+    const styleStart = performance.now();
+    void document.body.offsetHeight;
+    styles.push(performance.now() - styleStart);
+    const now = performance.now();
+    frames.push(now - last);
+    last = now;
+  }
+  stop();
+  frames.sort((a, b) => a - b);
+  styles.sort((a, b) => a - b);
+  return { styleMs: styles[15], frameMs: frames[15], framesOver20Ms: frames.filter((ms) => ms > 20).length };
+})()`;
+
+async function measureStyle(samples: Samples): Promise<void> {
+  assert.ok(storybook, "The style phase needs --storybook=<url> from `bun run storybook`.");
+  const browser = await webkit.launch();
+  try {
+    for (const [layout, device] of Object.entries(STYLE_LAYOUTS)) {
+      for (let run = 0; run < runs; run++) {
+        const context = await browser.newContext({ ...devices[device] });
+        try {
+          const page = await context.newPage();
+          await page.goto(`${storybook}/iframe.html?id=${STORY}&viewMode=story`);
+          await page.waitForFunction("globalThis.openbotWebBench !== undefined", undefined, { timeout: 300_000 });
+          await page.evaluate("globalThis.openbotWebBench.ready");
+          await page.evaluate("globalThis.openbotWebBench.idle()");
+          record(samples, `style.${layout}.rootVarMs`, await page.evaluate<number>(ROOT_RESTYLE));
+          const keyboard = await page.evaluate(KEYBOARD);
+          assert.ok(isDynamicRecord(keyboard), "The keyboard reading is not an object.");
+          for (const [key, value] of Object.entries(keyboard))
+            if (isNumber(value)) record(samples, `style.${layout}.keyboard.${key}`, value);
+        } finally {
+          await context.close();
+        }
+      }
+      logger.info(`style ${layout}: ${samples[`style.${layout}.rootVarMs`]?.join(", ")} ms per root change`);
+    }
+  } finally {
+    await browser.close();
+  }
+}
+
 declare global {
   // The driver that `src/renderer/src/preview/bench-web-runtime.ts` installs in the story.
   var openbotWebBench: { stream(tokens: number, marker: string, other?: boolean): Promise<void> };
@@ -491,6 +625,7 @@ if (phases.has("load") || phases.has("runtime")) {
     await browser.close();
   }
 }
+if (phases.has("style")) await measureStyle(samples);
 
 const metrics: Record<string, Spread> = {};
 for (const [key, values] of Object.entries(samples)) {

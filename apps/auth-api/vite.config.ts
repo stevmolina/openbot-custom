@@ -6,6 +6,7 @@ import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { defineConfig, type Plugin } from "vite";
 import { lazyLanguageCatalogs } from "../../packages/i18n/src/vite-plugin";
 import { brandPlugins } from "../../scripts/brand-layer";
+import { tailwindPropertyFallbackRemoval } from "../../scripts/tailwind-property-fallback";
 import { contentImages } from "./content-images";
 import { DEVELOPMENT_APNS_PATH, developmentApnsProxy } from "./dev-apns-proxy";
 import { developmentNetworkRequestAllowed } from "./dev-network-access";
@@ -97,6 +98,7 @@ export default defineConfig(({ command }) => {
       // unsupported. Let Vite handle the final CSS bundle until that upstream
       // parser false positive is fixed.
       tailwindcss({ optimize: false }),
+      tailwindPropertyFallbackRemoval(),
       contentImages(),
       webServiceWorker(),
     ],

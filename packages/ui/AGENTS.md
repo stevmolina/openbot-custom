@@ -16,6 +16,11 @@ The one exception is interface text: call `useText()` from `@openbot/ui/text` fo
 and `errorMessage`. Do not add a `t` prop. See [docs/i18n.md](../../docs/i18n.md).
 Preserve existing markup, styles, and behavior unless the user requests a design change.
 Shared feature CSS lives in this package. The app stylesheet imports it in the existing order.
+The exception is a large feature that few screens show, such as the workflow canvas and the diagram
+board: its root component imports its stylesheet, so the web client loads it with that code. Such a
+stylesheet comes after the app stylesheet, so it must select only its own feature classes, and a
+later app rule must not tie with it on specificity. WebKit tests a class rule only on elements that
+have the class, so this saves download and parse time, not style time.
 `features/conversation/conversation.css` is the ordered style manifest. Keep component rules in
 its `styles/` directory and preserve override order. Do not import those fragments separately.
 Keep platform features in typed content slots or adapters, not environment checks in shared UI.
