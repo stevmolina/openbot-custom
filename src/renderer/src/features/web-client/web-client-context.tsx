@@ -367,9 +367,10 @@ export function createWebWorkspace(
   let prefetching: string | null = null;
   /** The newest read around a message for each agent. A newer jump or a return to the latest messages wins. */
   const aroundReads = new Map<string, number>();
-  const heldDeltas = new Map<string, ConversationDeltaEvent[]>();
-  /** The deltas that wait for the next frame, with the generation that they came in. See `applyDelta`. */
-  let queuedDeltas: Array<{ event: ConversationDeltaEvent; generation: number }> = [];
+  /** The deltas that wait for the next frame, or for a read, with the generation that they came in. */
+  type QueuedDelta = { event: ConversationDeltaEvent; generation: number };
+  const heldDeltas = new Map<string, QueuedDelta[]>();
+  let queuedDeltas: QueuedDelta[] = [];
   let cancelDeltaFrame: (() => void) | undefined;
   const hostEventListeners = new Set<(event: AgentEvent | TeamRealtimeEvent) => void>();
   let connectionPromise: { hostId: string; opened: boolean; promise: Promise<void> } | null = null;
@@ -1686,7 +1687,7 @@ export function createWebWorkspace(
         heldDeltas.delete(id);
         // The held deltas came before the queued ones, so they apply first.
         if (held.length > 0) {
-          queuedDeltas = [...held.map((event) => ({ event, generation })), ...queuedDeltas];
+          queuedDeltas = [...held, ...queuedDeltas];
           cancelDeltaFrame ??= onNextFrame(flushDeltas);
         }
       }
@@ -1712,13 +1713,14 @@ export function createWebWorkspace(
     const queued = queuedDeltas;
     queuedDeltas = [];
     const ready: ConversationDeltaEvent[] = [];
-    for (const { event, generation: queuedGeneration } of queued) {
+    for (const entry of queued) {
+      const { event } = entry;
       // A new connection or a closed chat reads its conversation again.
-      if (disposed || queuedGeneration !== generation || event.agentId !== selectedId) continue;
+      if (disposed || entry.generation !== generation || event.agentId !== selectedId) continue;
       if (conversationReads.has(event.agentId)) {
         const held = heldDeltas.get(event.agentId);
-        if (held) held.push(event);
-        else heldDeltas.set(event.agentId, [event]);
+        if (held) held.push(entry);
+        else heldDeltas.set(event.agentId, [entry]);
       } else ready.push(event);
     }
     if (ready.length === 0) return;
@@ -2120,6 +2122,11 @@ export function createWebWorkspace(
     const visibility = () => {
       pageFocus();
       if (document.hidden) {
+        // A hidden page gets no frames: the queued text then waits for a timer, not for the page to show.
+        if (cancelDeltaFrame) {
+          cancelDeltaFrame();
+          cancelDeltaFrame = onNextFrame(flushDeltas);
+        }
         hostLifecycle.cancelPending();
         if (hostId && state.status !== "online") generation += 1;
         recovery.setActive(false);
