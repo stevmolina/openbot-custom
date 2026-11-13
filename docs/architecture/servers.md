@@ -1494,7 +1494,7 @@ the time until the workspace can be used, and the host requests that block that 
   `:id`, and query values are dropped. Records never go to the trace file, the logs or analytics.
 - Marks use fixed names only, `openbot:remote-<step>`. Web: `session`, `workspace-code`,
   `hosts-start`, `hosts`, `connect-start`, `peer:<step>`, `connected`, `workspace-ready`,
-  `panels-ready` and `conversation-ready`. Desktop renderer:
+  `panels-ready`, `conversation-ready` and `first-screen` (the loading cover of the page goes). Desktop renderer:
   `workspace-load`, `workspace-shell`, `workspace-ready` and `conversation-ready`. Desktop main keeps
   its `remote-connect:*` spans in `logs/trace.ndjson`; the harness aligns them by their `at` time.
 - A request that ends before `workspace-ready` is a gate request. The report gives their count, bytes,
@@ -1553,6 +1553,15 @@ A client connects to a live host with as few serial round trips as it can.
   tab lock, and takes the opened host's actions and `waitForHost`. The switch then sends no session,
   ticket, Signal or ICE step. Status connections use the same stored host protocols as the opened
   host, so a handed-over peer sends the right capabilities.
+- The web client sends the reads of the first screen first: the sidebar and the open chat
+  (`web-first-screen.ts`). From the online state until the open chat shows, the web runtime holds
+  every other host request, such as closed panels, settings, routines and agent pictures, for
+  5 seconds at most. All requests share one ordered data channel and the host's work, so on a far
+  host each read also waits for the reads sent before it. The early reads of other chats and their
+  queues go after the open chat too.
+- `RemotePeer` inflates a compressed answer (compact-rpc-v1) beside the frame chain of the `rpc`
+  channel. A frame behind it does not wait for the decompression; each answer settles only its own
+  request.
 
 ## Remote workspace frame
 

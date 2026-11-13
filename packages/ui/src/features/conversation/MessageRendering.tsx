@@ -116,15 +116,21 @@ function cssDurationMs(style: CSSStyleDeclaration, property: string, fallback: n
   return value.endsWith("s") && !value.endsWith("ms") ? amount * 1000 : amount;
 }
 
-/* Read once per message: the tokens do not change while it streams, and reading computed style
-   on each step forces the browser to recalculate style. */
+let readStreamingTimings: { stepMs: number; fadeMs: number; catchUpMs: number } | undefined;
+
+/* Read once per page: the tokens are fixed on the root. Reading computed style forces the browser to
+   recalculate the style of the whole page, which takes tens of milliseconds on a tablet. */
 function streamingTimings() {
+  if (readStreamingTimings) return readStreamingTimings;
   const style = getComputedStyle(document.documentElement);
-  return {
+  const timings = {
     stepMs: Math.max(16, cssDurationMs(style, "--stream-gap", 40)),
     fadeMs: cssDurationMs(style, "--stream-fade", 300),
     catchUpMs: cssDurationMs(style, "--stream-catch-up", 400),
   };
+  // A page whose stylesheet has not loaded yet reads the defaults, and reads again later.
+  if (style.getPropertyValue("--stream-gap").trim()) readStreamingTimings = timings;
+  return timings;
 }
 
 function createStreamingBody(message: () => AgentMessage, animate?: boolean) {

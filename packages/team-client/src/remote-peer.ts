@@ -1783,6 +1783,42 @@ export function createRemoteTeamPeer(
     })();
   }
 
+  /** Decodes the body of an answer and resolves its request. A body that does not decode fails the peer. */
+  function resolveRpcAnswer(state: PeerState, pending: PendingRequest, status: number, body: TeamProtocolV2Json) {
+    return Effect.fn("RemotePeer.resolveRpcAnswer")(function* () {
+      if (pending.method === "GET" && pending.path === TEAM_API_ROUTES.compatibility && status === 200) {
+        const support = yield* peerDecode(() => decodeTeamProtocolSupportV9(body));
+        state.hostProtocol = support.protocol.maximum;
+        hostProtocols.set(state.hostId, state.hostProtocol);
+        state.compactRpc = support.capabilities.includes(COMPACT_RPC_CAPABILITY);
+        rememberCompactRpc(state.hostId, state.compactRpc);
+      }
+      const sideRoute = teamSideRouteCodec(pending.path);
+      pending.resolve({
+        status,
+        body: sideRoute
+          ? yield* peerDecode(() =>
+              sideRoute.response(pending.path, status, body, {
+                historyExtent: true,
+                channelAttention: true,
+                agentTaskUiBlocks: true,
+                channelIsolation: true,
+                channelPicture: true,
+                channelBrowser: true,
+                mcpManyServers: true,
+              }),
+            )
+          : yield* peerDecode(() =>
+              withWireBlockExtensions(
+                state,
+                decodeTeamProtocolV9WebRtcHttpResponse(pending.method, pending.path, status, body),
+                body,
+              ),
+            ),
+      });
+    })();
+  }
+
   function handleChannelData(state: PeerState, kind: ChannelKind, data: string | ArrayBuffer, actions: ActionsRef) {
     return Effect.fn("RemotePeer.handleChannelData")(function* () {
       if (state.closed || peer !== state) return;
@@ -1832,49 +1868,26 @@ export function createRemoteTeamPeer(
             (error: unknown) => pending.reject(error instanceof Error ? error : peerError(error)),
           );
         } else {
-          const sideRoute = teamSideRouteCodec(pending.path);
           const status = frame.result.status;
           const compressed = compressedRpcResult(frame.result);
-          // A body that does not inflate fails its own request, not the connection.
-          const inflated = compressed
-            ? yield* peerCall(() => inflateRpcBody(compressed.deflated)).pipe(Effect.result)
-            : null;
-          if (inflated && Result.isFailure(inflated)) {
-            clearTimeout(pending.timer);
-            pendingRequests.delete(frame.requestId);
-            pending.reject(inflated.failure);
+          if (compressed) {
+            // The body inflates beside this chain, so the frames behind it do not wait for the stream.
+            // Each answer settles only its own request; the events channel keeps its own chain.
+            const requestId = frame.requestId;
+            void runPeerEffect(
+              Effect.gen(function* () {
+                const inflated = yield* peerCall(() => inflateRpcBody(compressed.deflated)).pipe(Effect.result);
+                if (state.closed || peer !== state || pendingRequests.get(requestId) !== pending) return;
+                // A body that does not inflate fails its own request, not the connection.
+                if (Result.isFailure(inflated)) pending.reject(inflated.failure);
+                else yield* resolveRpcAnswer(state, pending, status, inflated.success);
+                clearTimeout(pending.timer);
+                pendingRequests.delete(requestId);
+              }),
+            ).catch((error) => failPeer(state, error, actions));
             return;
           }
-          const body = inflated ? inflated.success : frame.result.body;
-          if (pending.method === "GET" && pending.path === TEAM_API_ROUTES.compatibility && status === 200) {
-            const support = yield* peerDecode(() => decodeTeamProtocolSupportV9(body));
-            state.hostProtocol = support.protocol.maximum;
-            hostProtocols.set(state.hostId, state.hostProtocol);
-            state.compactRpc = support.capabilities.includes(COMPACT_RPC_CAPABILITY);
-            rememberCompactRpc(state.hostId, state.compactRpc);
-          }
-          pending.resolve({
-            status,
-            body: sideRoute
-              ? yield* peerDecode(() =>
-                  sideRoute.response(pending.path, status, body, {
-                    historyExtent: true,
-                    channelAttention: true,
-                    agentTaskUiBlocks: true,
-                    channelIsolation: true,
-                    channelPicture: true,
-                    channelBrowser: true,
-                    mcpManyServers: true,
-                  }),
-                )
-              : yield* peerDecode(() =>
-                  withWireBlockExtensions(
-                    state,
-                    decodeTeamProtocolV9WebRtcHttpResponse(pending.method, pending.path, status, body),
-                    body,
-                  ),
-                ),
-          });
+          yield* resolveRpcAnswer(state, pending, status, frame.result.body);
         }
         // Keep the request registered until decoding succeeds, so failPeer can
         // reject the caller if a malformed response tears down the connection.
