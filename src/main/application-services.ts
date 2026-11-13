@@ -1447,6 +1447,8 @@ export async function createApplicationServices({
   });
   // The agent service starts after the browser: a proxy failure before it has no open list to update.
   let browserProxyStatusChanged = () => {};
+  // Every agent counts as working until the agent service exists, so no active tab sleeps before it.
+  let browserAgentWorking = (_agentId: string) => true;
   const browser = new BrowserHost(mainWindow, store.downloadsRoot, join(app.getPath("userData"), BROWSER_STATE_FILE), {
     memoryLow: () => (hostMemory?.level() ?? "ok") !== "ok",
     browserProfile: (agentId) => {
@@ -1456,6 +1458,7 @@ export async function createApplicationServices({
     profileExists: (profileId) => browserProfileStore.get(profileId) !== undefined,
     profileProxy: (profileId) => browserProxyConnection(browserProxyStore, browserProxyCipher, profileId),
     onProxyStatusChanged: () => browserProxyStatusChanged(),
+    agentWorking: (agentId) => browserAgentWorking(agentId),
     computerExit: (memberId) => browserEgress.exit(memberId),
     quitShortcut: (input) => windows.handleQuitShortcut(mainWindow, input),
     pagePreload: join(__dirname, "../preload/browserPage.cjs"),
@@ -3033,6 +3036,7 @@ export async function createApplicationServices({
     onChanged: () => service.notifyBrowserProfilesChanged(),
   });
   browserProxyStatusChanged = () => service.notifyBrowserProfilesChanged();
+  browserAgentWorking = (agentId) => service.isAgentWorking(agentId);
   // A computer that comes online or goes offline changes the proxy list.
   browserEgress.on("changed", () => service.notifyBrowserProfilesChanged());
   const customProviderChanges = createCustomProviderChanges({ service, customProviders, providerRuntimes });

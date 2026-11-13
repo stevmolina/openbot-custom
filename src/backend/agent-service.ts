@@ -2154,6 +2154,11 @@ export class AgentService extends EventEmitter<AgentServiceEvents> {
     return this.listAgents().filter((agent) => working.has(agent.id) || this.#mailbox.hasUnfinishedDelivery(agent.id));
   }
 
+  /** Whether the agent runs a turn now, in any thread, or has a delivery whose turn has not started. */
+  isAgentWorking(agentId: string): boolean {
+    return this.#conversation.anyWorkingSnapshot(agentId) !== undefined || this.#mailbox.hasUnfinishedDelivery(agentId);
+  }
+
   hasActiveWork(): string[] {
     const reasons: string[] = [];
     for (const [, snapshot] of this.#conversation.activeSnapshots()) {
