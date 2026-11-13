@@ -6,9 +6,10 @@
  * pill. Collapsed, it is a dock: the same buttons, the faces of the chats, the usage rings and the
  * pill in a column.
  *
- * The open chat list has two zones (see `SidebarChatDock`): the pinned chats and "Needs you" at the
- * top, and a dock over the pill whose groups open one by one: "Working", each folder, "Settled".
- * The "All machines" view keeps both zones for the chats of every server, with machine chips on top.
+ * The open chat list is one scroll (see `SidebarChatDock`): the pinned chats and "Needs you", then the
+ * groups with quiet headings in line with the rows: "Working", each folder, "Settled". A floating
+ * button under the list counts the unread chats out of view and goes to the next one. The "All
+ * machines" view keeps the same list for the chats of every server, with machine chips on top.
  */
 
 import {
@@ -32,7 +33,13 @@ import { useText } from "../../text";
 import { ServerMark } from "../servers/ServerRail";
 import { ShortcutLabel } from "../shortcuts/ShortcutHint";
 import { type ShortcutId, type ShortcutPlatform, shortcutAria, shortcutText } from "../shortcuts/shortcut-registry";
-import { SidebarChatDock, SidebarChatNeedsYou, useSidebarChatDockGroups } from "./SidebarChatDock";
+import {
+  SidebarChatDock,
+  SidebarChatNeedsYou,
+  SidebarUnreadJump,
+  useSidebarChatDockGroups,
+  useSidebarDockOpenState,
+} from "./SidebarChatDock";
 import { SidebarChatRow } from "./SidebarChatRow";
 import { SidebarEmptyState } from "./SidebarEmptyState";
 import { SidebarMachineChips, SidebarMachineNotices } from "./SidebarMachineFilter";
@@ -312,7 +319,6 @@ function useRecentChats() {
   );
 }
 
-/** The open list: the top zone, which scrolls, and the dock. The drag measures both. */
 /**
  * The large title of the list. It reports when it has scrolled out of the list, so the top row shows
  * the name small, as an iOS large title does.
@@ -395,9 +401,14 @@ function SidebarChatList(listProps: { onTitleHiddenChange: (hidden: boolean) => 
   const { t } = useText();
   const recent = useRecentChats();
   const groups = useSidebarChatDockGroups(recent);
+  const dockOpen = useSidebarDockOpenState(groups);
+  const [listElement, setListElement] = createSignal<HTMLElement>();
   return (
     <nav
-      ref={setDragListElement}
+      ref={(element) => {
+        setDragListElement(element);
+        setListElement(element);
+      }}
       aria-label={t("sidebar.nav.label")}
       class="agent-list sidebar-chat-list"
       data-sidebar-dragging={draggingKind()}
@@ -444,11 +455,12 @@ function SidebarChatList(listProps: { onTitleHiddenChange: (hidden: boolean) => 
             {(view) => <SidebarMachineNotices view={view()} />}
           </Show>
           <SidebarChatNeedsYou chats={groups().waiting} />
+          <SidebarChatDock groups={groups()} open={dockOpen} />
         </div>
       </div>
-      <SidebarChatDock groups={groups()} />
-      {/* The free area sits under the folders, so the folders follow the top zone instead of the bottom. */}
+      {/* The free area takes the room under a short list. */}
       <FreeAreaMenu />
+      <SidebarUnreadJump list={listElement} open={dockOpen} />
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {reorderAnnouncement()}
       </span>

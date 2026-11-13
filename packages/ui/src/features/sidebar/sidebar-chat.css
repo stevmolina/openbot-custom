@@ -71,9 +71,11 @@
   height: 18px;
 }
 
-/* The list: a top zone that scrolls and is only as tall as its rows, the dock under it, and the free
- * area under the dock. The list itself does not scroll, so the drag measures both zones in place. */
+/* The list: one zone that scrolls and is only as tall as its rows, and the free area under it. The
+ * groups sit in the scroll zone, so the folders scroll with the chats. The unread button floats over
+ * the end of the list. */
 .sidebar-chat .sidebar-chat-list {
+  position: relative;
   overflow: hidden;
   padding: 0;
 }
@@ -124,23 +126,11 @@
   margin-top: var(--openbot-space-2);
 }
 
-/* The dock: one group open at a time, over the pill, under a hairline. It is as tall as its groups and
- * grows into the free area. When the list is full, the open group shrinks and scrolls on its own, so
- * the closed folders stay in view. */
+/* The groups: a quiet heading in line with the rows, then the rows. They scroll with the list. */
 .sidebar-dock {
   display: flex;
-  min-height: 0;
-  flex: 0 1 auto;
+  flex: none;
   flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-  border-top: 1px solid var(--openbot-border);
-  padding: var(--openbot-space-2) var(--openbot-space-3);
-  scrollbar-width: none;
-}
-
-.sidebar-dock::-webkit-scrollbar {
-  display: none;
 }
 
 .sidebar-chat .sidebar-dock-head.ui-button {
@@ -148,27 +138,23 @@
   width: 100%;
   height: auto;
   justify-content: flex-start;
-  gap: var(--openbot-space-2);
+  gap: var(--openbot-space-1-5);
   border-radius: var(--openbot-radius-md);
-  padding: var(--openbot-space-4) var(--openbot-space-3);
-  color: var(--openbot-text-secondary);
-  font-size: var(--openbot-text-sm);
-  font-weight: var(--openbot-weight-medium);
+  padding: var(--openbot-space-4) var(--openbot-space-3) var(--openbot-space-2);
+  color: var(--openbot-text-muted);
+  font-size: var(--openbot-text-md);
+  font-weight: var(--openbot-weight-regular);
 }
 
 .sidebar-chat .sidebar-dock-head.ui-button:is(:hover, :focus-visible) {
-  background: var(--openbot-hover);
-  color: var(--openbot-text-primary);
-}
-
-.sidebar-dock-chevron,
-.sidebar-dock-folder {
-  width: 14px;
-  height: 14px;
-  flex: none;
+  background: transparent;
+  color: var(--openbot-text-secondary);
 }
 
 .sidebar-dock-chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
   transition: transform var(--openbot-duration-fast) ease;
 }
 
@@ -178,7 +164,6 @@
 
 .sidebar-dock-name {
   min-width: 0;
-  flex: 1;
   overflow: hidden;
   text-align: start;
   text-overflow: ellipsis;
@@ -186,45 +171,62 @@
 }
 
 .sidebar-dock-count {
-  color: var(--openbot-text-muted);
+  flex: none;
   font-variant-numeric: tabular-nums;
 }
 
-/* A closed group keeps its height. The open one can shrink to the room that is left; its body scrolls. */
 .sidebar-dock-group {
   display: flex;
-  min-height: 0;
   flex: none;
   flex-direction: column;
 }
 
-.sidebar-dock-group:has(> .sidebar-section-collapse:not([data-collapsed])) {
-  flex: 0 1 auto;
-}
-
 .sidebar-dock-group > .sidebar-section-collapse {
-  min-height: 0;
-  flex: 0 1 auto;
   grid-template-columns: minmax(0, 1fr);
 }
 
-.sidebar-dock-group > .sidebar-section-collapse > .sidebar-section-body {
-  display: flex;
-  flex-direction: column;
-}
-
 .sidebar-dock-body {
-  min-height: 0;
-  flex: 0 1 auto;
-  overflow-x: hidden;
-  overflow-y: auto;
   padding-bottom: var(--openbot-space-1);
-  scrollbar-width: thin;
 }
 
 .sidebar-dock-body > .sidebar-section,
 .sidebar-dock-body > .sidebar-chat-group {
   margin-top: var(--openbot-space-2);
+}
+
+/* The unread button floats at the end of the list, over the rows, in the middle. */
+.sidebar-unread-jump-wrap {
+  position: absolute;
+  z-index: 3;
+  bottom: var(--openbot-space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.sidebar-chat .sidebar-unread-jump.ui-button {
+  display: flex;
+  height: auto;
+  align-items: center;
+  gap: var(--openbot-space-1-5);
+  border-radius: var(--openbot-radius-pill);
+  background: var(--openbot-accent);
+  box-shadow: var(--openbot-shadow-raised);
+  padding: var(--openbot-space-2) var(--openbot-space-4);
+  color: var(--openbot-text-on-accent);
+  font-size: var(--openbot-text-md);
+  font-weight: var(--openbot-weight-medium);
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.sidebar-chat .sidebar-unread-jump.ui-button:hover {
+  background: var(--openbot-accent-hover);
+}
+
+.sidebar-chat .sidebar-unread-jump svg {
+  width: 16px;
+  height: 16px;
 }
 
 .sidebar-chat-rows {
