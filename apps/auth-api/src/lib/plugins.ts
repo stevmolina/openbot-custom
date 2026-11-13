@@ -13,7 +13,10 @@ import { createPluginShareUrl } from "@openbot/contracts/plugin-links";
 import { type DynamicRecord, isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { MARKETPLACE_APPS_ROUTE } from "./marketplace-routes";
 import { PLUGIN_CATALOG_DETAILS, PLUGIN_CATALOG_INDEX, type PluginCatalogDetail } from "./plugin-catalog.generated";
-import { OPENBOT_SITE_URL, type PageSocialImage } from "./site-metadata";
+import { PLUGIN_INDEX_ROUTE } from "./plugin-pages";
+import { OPENBOT_SITE_URL } from "./site-metadata";
+
+export { PLUGIN_PAGE_SOCIAL_IMAGE, pluginPath, pluginUrl } from "./plugin-pages";
 
 /**
  * One listing as the pages read it: what the generator writes, and the two facts the index carries
@@ -35,17 +38,10 @@ export interface SitePluginSkill {
  * The routes, spelled out rather than built, so a route the generated tree does not hold is a type
  * error here instead of a link that answers 404.
  */
-/** The prefix of the plugin pages. `/plugins` itself sends a visitor to the Marketplace's Apps tab. */
-const PLUGIN_INDEX_ROUTE = "/plugins";
 export const PLUGIN_DETAIL_ROUTE = "/plugins/$slug";
 
 export const PLUGINS_DESCRIPTION =
   "Apps and skills an OpenBot agent can use. Open a plugin in the app, and decide there what it connects to.";
-/** One social card for the page of every plugin. */
-export const PLUGIN_PAGE_SOCIAL_IMAGE: PageSocialImage = {
-  path: "/social/plugin.jpg",
-  alt: "Plant an idea. Your agents do the rest. OpenBot agents among paper trees",
-};
 
 /** Newest listing first is not a thing here: the order is the order the index declares. */
 export const SITE_PLUGINS: readonly SitePlugin[] = PLUGIN_CATALOG_INDEX.plugins.flatMap((entry) => {
@@ -162,10 +158,6 @@ export function pluginConnectSteps(plugin: SitePlugin): SitePluginConnectStep[] 
   });
 }
 
-export function pluginPath(slug: string): string {
-  return `${PLUGIN_INDEX_ROUTE}/${slug}`;
-}
-
 /**
  * Where a listing's own icon is asked for: this origin, never the developer's. The Worker route
  * behind it reads the address from the catalog, so a reader of a plugin page connects to openbot.run
@@ -174,10 +166,6 @@ export function pluginPath(slug: string): string {
 export function pluginIconPath(slug: string, appId?: string): string {
   const path = `${PLUGIN_INDEX_ROUTE}/icon/${encodeURIComponent(slug)}`;
   return appId ? `${path}?app=${encodeURIComponent(appId)}` : path;
-}
-
-export function pluginUrl(slug: string, siteUrl: string = OPENBOT_SITE_URL): string {
-  return new URL(pluginPath(slug), siteUrl).toString();
 }
 
 export function pluginIndexUrl(siteUrl: string = OPENBOT_SITE_URL): string {

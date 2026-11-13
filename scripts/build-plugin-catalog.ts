@@ -31,6 +31,8 @@ const secretPattern =
 export interface PluginCatalogPaths {
   sourceRoot: string;
   rendererPath: string;
+  /** The slugs alone, for the analytics filter, which must not load the whole catalog. */
+  rendererSlugsPath: string;
   workerPath: string;
   mobilePath: string;
   snapshotDir: string;
@@ -40,6 +42,7 @@ export function defaultPluginCatalogPaths(root: string = projectRoot): PluginCat
   return {
     sourceRoot: join(root, "marketplace", "plugin-catalog"),
     rendererPath: join(root, "src", "renderer", "src", "features", "settings", "marketplace-plugin-catalog.ts"),
+    rendererSlugsPath: join(root, "src", "renderer", "src", "features", "settings", "marketplace-plugin-slugs.ts"),
     workerPath: join(root, "apps", "auth-api", "src", "lib", "plugin-catalog.generated.ts"),
     mobilePath: join(root, "apps", "mobile", "src", "features", "marketplace", "model", "plugin-catalog.generated.ts"),
     snapshotDir: join(root, "resources", "plugin-catalog"),
@@ -149,8 +152,8 @@ export interface PluginDetail {
 }
 
 /**
- * Reads the catalog source, validates every listing, and writes the four
- * generated outputs: the renderer literal the Apps tab reads, the Worker
+ * Reads the catalog source, validates every listing, and writes the five
+ * generated outputs: the renderer literal the Apps tab reads, its slugs for the analytics filter, the Worker
  * module the JSON routes will serve, the mobile literal the phone's
  * Marketplace reads, and the offline snapshot shipped with the app. With `check`, it fails when a checked-in file differs from a
  * fresh build, so a hand edit cannot ship.
@@ -162,14 +165,16 @@ export async function buildPluginCatalog(options?: {
   const paths = options?.paths ?? defaultPluginCatalogPaths();
   const { spec, plugins } = await loadPluginCatalog(paths.sourceRoot);
   const renderer = renderRendererModule(plugins);
+  const rendererSlugs = renderRendererSlugsModule(plugins);
   const worker = renderWorkerModule(spec, plugins);
   const mobile = renderMobileModule(plugins);
   const snapshot = renderSnapshot(spec, plugins);
   if (options?.check) {
-    await checkGenerated(paths, renderer, worker, mobile, snapshot);
+    await checkGenerated(paths, renderer, rendererSlugs, worker, mobile, snapshot);
     return { plugins: plugins.length, catalogVersion: spec.catalogVersion };
   }
   await writeFile(paths.rendererPath, renderer);
+  await writeFile(paths.rendererSlugsPath, rendererSlugs);
   await writeFile(paths.workerPath, worker);
   await mkdir(dirname(paths.mobilePath), { recursive: true });
   await writeFile(paths.mobilePath, mobile);
@@ -691,6 +696,25 @@ export const MARKETPLACE_PLUGINS: MarketplacePluginDetail[] = [
 }
 
 /**
+ * The slugs of the renderer catalog. The analytics filter reads them, and the web sign-in screen
+ * loads the analytics code, so it must not load the whole catalog.
+ */
+function renderRendererSlugsModule(plugins: PluginDetail[]): string {
+  return `/**
+ * The slugs of the plugins the marketplace offers, in catalog order.
+ *
+ * Generated from marketplace/plugin-catalog/ by scripts/build-plugin-catalog.ts.
+ * Do not edit by hand: run bun run marketplace:build:plugins, or
+ * bun run marketplace:build:plugins -- --check to verify.
+ */
+
+export const MARKETPLACE_PLUGIN_SLUGS: readonly string[] = [
+${plugins.map((plugin) => `  ${JSON.stringify(plugin.slug)},`).join("\n")}
+];
+`;
+}
+
+/**
  * The phone's copy. Mobile cannot import the renderer's types from `@openbot/ui`, so the module states
  * its own. The vendor icon addresses are left out: the phone loads each icon from the account
  * service's `/plugins/icon/<slug>?app=<id>`, so opening the Marketplace sends no request to a vendor.
@@ -889,17 +913,20 @@ async function writeSnapshot(dir: string, files: Array<{ path: string; content: 
 async function checkGenerated(
   paths: PluginCatalogPaths,
   renderer: string,
+  rendererSlugs: string,
   worker: string,
   mobile: string,
   snapshot: Array<{ path: string; content: string }>,
 ): Promise<void> {
   const expected = new Map<string, string>();
   expected.set(resolve(paths.rendererPath), renderer);
+  expected.set(resolve(paths.rendererSlugsPath), rendererSlugs);
   expected.set(resolve(paths.workerPath), worker);
   expected.set(resolve(paths.mobilePath), mobile);
   for (const file of snapshot) expected.set(resolve(join(paths.snapshotDir, file.path)), file.content);
   const actual = new Map<string, string>();
   actual.set(resolve(paths.rendererPath), await readFile(paths.rendererPath, "utf8"));
+  actual.set(resolve(paths.rendererSlugsPath), await readFile(paths.rendererSlugsPath, "utf8").catch(() => ""));
   actual.set(resolve(paths.workerPath), await readFile(paths.workerPath, "utf8"));
   actual.set(resolve(paths.mobilePath), await readFile(paths.mobilePath, "utf8").catch(() => ""));
   for (const file of snapshot) {

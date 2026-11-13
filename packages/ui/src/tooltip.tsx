@@ -1,7 +1,7 @@
 import type { TooltipRootOptions } from "@kobalte/core/tooltip";
 import type { JSX } from "@solidjs/web";
 import { createContext, createSignal, useContext } from "solid-js";
-import { Tooltip } from "./complex";
+import { Tooltip } from "./tooltip-primitive";
 import { cx } from "./utils";
 
 type Side = "top" | "right" | "bottom" | "left";

@@ -1,4 +1,4 @@
-import { isKeyOnlyProvider } from "@openbot/contracts/agent-providers";
+import { AGENT_PROVIDERS, type AgentProviderId, isKeyOnlyProvider } from "@openbot/contracts/agent-providers";
 import {
   BILLING_CURRENCIES,
   BILLING_INTERVALS,
@@ -8,20 +8,17 @@ import {
   type BillingPlanId,
 } from "@openbot/contracts/billing";
 import { HOSTED_SERVER_ENTRY_POINTS, type HostedServerEntryPoint } from "@openbot/contracts/hosted-servers";
+// Narrow contract files, not the `ipc` index: the web sign-in screen loads this file for its first
+// analytics event, and the index holds every IPC schema.
+import type { AppInfo, CentralAuthUser } from "@openbot/contracts/ipc";
 import {
-  AGENT_PROVIDERS,
   AGENT_REASONING_EFFORTS,
   type AgentModelId,
-  type AgentProviderId,
   type AgentReasoningEffort,
-  type AppInfo,
-  type CentralAuthUser,
   isAgentModel,
-  SPEECH_VOICES,
-  type SpeechVoice,
-  WORKFLOW_NODE_KINDS,
-  type WorkflowNodeKind,
-} from "@openbot/contracts/ipc";
+} from "@openbot/contracts/ipc-agent-identity";
+import { SPEECH_VOICES, type SpeechVoice } from "@openbot/contracts/ipc-voice";
+import { WORKFLOW_NODE_KINDS, type WorkflowNodeKind } from "@openbot/contracts/ipc-workflows";
 import { isBoolean, isDynamicRecord, isFunction, isNumber, isOneOf, isString } from "@openbot/contracts/runtime-values";
 import { normalizeEmailAddress } from "@openbot/contracts/validation";
 import { ANALYTICS_GENERATIONS } from "@openbot/telemetry";
@@ -32,13 +29,13 @@ import {
   configureErrorReports,
   webAnalyticsInstallId,
 } from "./error-reports";
-import { MARKETPLACE_PLUGINS } from "./features/settings/marketplace-plugin-catalog";
+import { MARKETPLACE_PLUGIN_SLUGS } from "./features/settings/marketplace-plugin-slugs";
 
 const OPENPANEL_API_URL = "https://analytics.openbot.run/api";
 const OPENPANEL_CLIENT_ID = "6c989975-87ef-4f0c-857e-ab449a65b5c2";
 const MAX_PENDING_EVENTS = 100;
 const CURATED_LISTING_PATTERN = /^openbot-curated-(?:skill|agent)-([a-z0-9][a-z0-9-]{0,63})$/u;
-const PLUGIN_SLUGS = new Set(MARKETPLACE_PLUGINS.map((plugin) => plugin.slug));
+const PLUGIN_SLUGS = new Set(MARKETPLACE_PLUGIN_SLUGS);
 
 type ServerKind = "local" | "remote" | "unknown";
 type AnalyticsResult = "succeeded" | "failed";

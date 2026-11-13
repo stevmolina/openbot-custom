@@ -1,29 +1,9 @@
 import { Show } from "solid-js";
-import type { PageText } from "../../lib/page-text";
 import { LandingFooter } from "../landing/LandingFooter";
 import { NotFoundPage } from "../landing/NotFoundPage";
 import { SiteHeader } from "../landing/SiteHeader";
 import { ButtonLink } from "../ui/button";
-import type { MarketplaceMissingText } from "./marketplace-page-text";
-
-export type MarketplaceMissingData = Pick<PageText<MarketplaceMissingText>, "lang" | "text">;
-
-/** The data a listing route throws with `notFound`. A not-found error from anywhere else has none. */
-export function isMarketplaceMissingData(value: unknown): value is MarketplaceMissingData {
-  if (typeof value !== "object" || value === null || !("text" in value) || !("lang" in value)) return false;
-  const text = value.text;
-  return (
-    typeof value.lang === "string" &&
-    typeof text === "object" &&
-    text !== null &&
-    "title" in text &&
-    "body" in text &&
-    "open" in text &&
-    typeof text.title === "string" &&
-    typeof text.body === "string" &&
-    typeof text.open === "string"
-  );
-}
+import { isMarketplaceMissingData } from "./marketplace-missing-data";
 
 /**
  * A listing that is not in the Marketplace: the creator removed it, OpenBot rejected it, or the

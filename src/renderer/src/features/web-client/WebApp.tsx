@@ -2,7 +2,8 @@ import { agentTemplateIdFromWebAppSearch, WEB_APP_AGENT_TEMPLATE_PARAM } from "@
 import { companySignInErrorKey, WEB_APP_COMPANY_SIGN_IN_ERROR_PARAM } from "@openbot/contracts/company-sign-in";
 import { type FirstTouch, readFirstTouch } from "@openbot/contracts/first-touch";
 import { inviteUrlFromWebAppSearch, WEB_APP_INVITE_FIELDS } from "@openbot/contracts/invite-links";
-import { type AppVariant, type CentralAuthState, type CentralAuthUser, isAvatarColor } from "@openbot/contracts/ipc";
+import type { AppVariant, CentralAuthState, CentralAuthUser } from "@openbot/contracts/ipc";
+import { isAvatarColor } from "@openbot/contracts/ipc-agent-identity";
 import {
   type MarketplaceListingLink,
   marketplaceListingFromWebAppSearch,
@@ -14,12 +15,15 @@ import { isBoolean, isDynamicRecord, isString } from "@openbot/contracts/runtime
 import { WEB_APP_WORKOS_SIGN_IN_ERROR_PARAM, workosSignInErrorKey } from "@openbot/contracts/workos-sign-in";
 import { formatLocale, resolveLocale } from "@openbot/i18n";
 import { sourceText } from "@openbot/i18n/source";
-import { markRemoteSync } from "@openbot/team-client/sync-profile";
+import { markRemoteSync } from "@openbot/team-client/sync-marks";
 import { classifyFailure } from "@openbot/telemetry";
-import { NotificationObserver, Toaster, toast } from "@openbot/ui";
+// UI subpaths, not the `@openbot/ui` index: the sign-in screen loads this file, and the index holds
+// every control.
+import { NotificationObserver } from "@openbot/ui/alert";
 import { AccountLogin } from "@openbot/ui/features/account/AccountLogin";
 import { AppLoadingScreen } from "@openbot/ui/features/account/AppLoadingScreen";
 import { currentText } from "@openbot/ui/text";
+import { Toaster, toast } from "@openbot/ui/toast";
 import { Dynamic } from "@solidjs/web";
 import { createEffect, createSignal, createStore, onSettled, Show } from "solid-js";
 import type { DesktopAnalyticsProperties } from "../../analytics";
@@ -36,7 +40,7 @@ import {
 import { StaticI18nProvider } from "../../i18n-context";
 import { AnalyticsConsentRow, ConsentNotice } from "../onboarding/AnalyticsConsent";
 import { createOnboardingTeam, onboardingSessionSeed } from "../onboarding/onboarding-avatars";
-import { deleteRemoteWorkspaceFrames } from "../servers/remote-workspace-frame";
+import { deleteRemoteWorkspaceFrames } from "../servers/remote-workspace-frame-keys";
 import { WebServiceWorkerUpdates } from "./WebServiceWorkerUpdates";
 import type { WebWorkspace } from "./WebWorkspace";
 import { createWebAccountCalls } from "./web-account";
@@ -52,9 +56,10 @@ import { trackVisualViewport } from "./web-visual-viewport";
 export { loadSavedLanguage } from "./web-language-preference";
 
 /**
- * The workspace is its own chunk, so the sign-in screen does not wait for it. Each session check
- * starts it beside the session request; a signed-in account waits for both. A failed import is
- * tried again on the next check.
+ * The workspace is its own chunk, so the sign-in screen does not wait for it. A browser that was
+ * signed in starts it beside the session request, and a signed-in account waits for both. A
+ * signed-out browser starts it when the user asks for a sign-in code: a phone then reads no
+ * workspace code for a visitor who does not sign in. A failed import is tried again on the next call.
  */
 let workspaceImport: Promise<typeof WebWorkspace> | null = null;
 function loadWorkspace(): Promise<typeof WebWorkspace> {
@@ -65,6 +70,24 @@ function loadWorkspace(): Promise<typeof WebWorkspace> {
     });
   }
   return workspaceImport;
+}
+
+/** Set while this browser has an account session, so the next visit loads the workspace at once. */
+const SIGNED_IN_HINT_KEY = "openbot.web.signedIn";
+function readSignedInHint(): boolean {
+  try {
+    return window.localStorage.getItem(SIGNED_IN_HINT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeSignedInHint(signedIn: boolean): void {
+  try {
+    if (signedIn) window.localStorage.setItem(SIGNED_IN_HINT_KEY, "1");
+    else window.localStorage.removeItem(SIGNED_IN_HINT_KEY);
+  } catch {
+    // Blocked storage: the workspace loads after the session check.
+  }
 }
 
 /** A sign-in refusal that the login form already shows. */
@@ -246,6 +269,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
   /** Sets the account when the workspace code is ready to show it. */
   async function showAccount(account: CentralAuthUser) {
     const view = await loadWorkspace();
+    writeSignedInHint(true);
     setWorkspace(() => view);
     return account;
   }
@@ -261,6 +285,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
   let sessionEnded = false;
   function clearSession(ended = true) {
     sessionEnded = ended;
+    writeSignedInHint(false);
     // The saved workspace frames name the agents of the account's servers.
     if (ended) {
       deleteRemoteWorkspaceFrames(null);
@@ -382,8 +407,8 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
   }
   async function checkSession() {
     const generation = sessionGeneration;
-    // The workspace code loads beside the session check, not after it.
-    void loadWorkspace().catch(() => undefined);
+    // The workspace code loads beside the session check, not after it, when this browser was signed in.
+    if (readSignedInHint()) void loadWorkspace().catch(() => undefined);
     try {
       const session = await request("session");
       markRemoteSync("session");
@@ -437,6 +462,8 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
       if (analyticsTouched) setWebAccountPending(analyticsChoice());
       import("./web-analytics").then((module) => module.followWebReportsPreference()).catch(() => undefined);
     }
+    // The user waits for the code email, so the workspace code loads now, before it is needed.
+    void loadWorkspace().catch(() => undefined);
     const value = await signInRequest("email/start", { email }).catch((error: unknown) => {
       if (error instanceof CompanySignInRequired) return error;
       throw error;
@@ -676,13 +703,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
             </Show>
           </Show>
           <Show when={loadingShown()}>
-            <AppLoadingScreen
-              ready={state.loaded}
-              onExited={() => {
-                setLoadingShown(false);
-                void loadWorkspace().catch(() => undefined);
-              }}
-            />
+            <AppLoadingScreen ready={state.loaded} onExited={() => setLoadingShown(false)} />
           </Show>
         </div>
       </NotificationObserver>
