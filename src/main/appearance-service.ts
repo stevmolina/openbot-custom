@@ -50,10 +50,11 @@ const DEFAULT_PREFERENCE: StoredAppearancePreference = {
 
 /**
  * The saved appearance, or the default when nothing was saved. A file that is unreadable or names an
- * appearance this build does not offer reads as a chosen Dark: a lost choice must not stop the app
+ * appearance this build does not offer reads as a chosen default appearance: a lost choice must not stop the app
  * from starting, and must not let a palette replace it. A file with no `transparentWindow` reads as
  * an opaque window. A file with no `palette`, which every file before palettes is, reads as no
- * palette, and one with no `themeChosen` as a chosen theme: the user saved it. A file with no chat
+ * palette, and one with no `themeChosen` as a chosen theme: the user saved it. A file with
+ * `themeChosen: false` reads as the default appearance, as an older build saved its own default there. A file with no chat
  * background, or with a value that is not a color, reads as the color of the theme. A file with no
  * font, which every file before the font choice is, or with a name that cannot go into a CSS font
  * list, reads as the default font.
@@ -63,15 +64,17 @@ const readAppearancePreference = Effect.fn("AppearancePreference.read")(function
     readPreferenceFile(path, (parsed): StoredAppearancePreference => {
       if (!isDynamicRecord(parsed) || parsed.version !== 1 || !isAppAppearance(parsed.appearance))
         return { ...DEFAULT_PREFERENCE, themeChosen: true };
+      const themeChosen = parsed.themeChosen !== false;
       return {
-        appearance: parsed.appearance,
+        // Until the user picks a theme, the saved appearance is only the default of an older build.
+        appearance: themeChosen ? parsed.appearance : DEFAULT_APP_APPEARANCE,
         transparentWindow: parsed.transparentWindow === true,
         palette: isAppThemePaletteId(parsed.palette) ? parsed.palette : null,
         chatBackgroundLight: isChatBackgroundColor(parsed.chatBackgroundLight) ? parsed.chatBackgroundLight : null,
         chatBackgroundDark: isChatBackgroundColor(parsed.chatBackgroundDark) ? parsed.chatBackgroundDark : null,
         interfaceFont: isAppFontFamily(parsed.interfaceFont) ? parsed.interfaceFont : null,
         codeFont: isAppFontFamily(parsed.codeFont) ? parsed.codeFont : null,
-        themeChosen: parsed.themeChosen !== false,
+        themeChosen,
       };
     }),
   );
