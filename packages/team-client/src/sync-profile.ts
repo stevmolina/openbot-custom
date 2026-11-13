@@ -11,6 +11,8 @@
 import { errorReference } from "@openbot/user-errors/reference";
 import { Cause, type Exit } from "effect";
 
+export { markRemoteSync } from "./sync-marks";
+
 /** One request to the host, timed from send to the end of decoding. Times are epoch milliseconds. */
 export interface RemoteRequestRecord {
   route: string;
@@ -132,17 +134,4 @@ export function startRemoteRequest(
       });
     },
   };
-}
-
-/**
- * Marks a connect or sync phase with `performance.mark("openbot:remote-<name>")`. The name is a fixed
- * word, never data. Only the latest mark of each name stays, so a tab that reconnects for days keeps
- * no more marks. React Native can lack the User Timing API; the mark is then skipped.
- */
-export function markRemoteSync(name: string): void {
-  const clock = globalThis.performance;
-  if (!clock || typeof clock.mark !== "function") return;
-  const mark = `openbot:remote-${name}`;
-  if (typeof clock.clearMarks === "function") clock.clearMarks(mark);
-  clock.mark(mark);
 }

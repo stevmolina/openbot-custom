@@ -1,5 +1,5 @@
 import { ONE_TIME_CODE_ALPHABET, ONE_TIME_CODE_LENGTH } from "@openbot/contracts/validation";
-import { Input } from "@openbot/ui";
+import { Input } from "@openbot/ui/form";
 import { prefersReducedMotion } from "@openbot/ui/utils";
 import { createEffect, createMemo, createSignal, createUniqueId, For, flush, Show, untrack } from "solid-js";
 import { useText } from "../../text";

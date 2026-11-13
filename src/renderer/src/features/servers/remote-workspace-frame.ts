@@ -12,6 +12,9 @@ import {
   type SidebarLayoutSnapshot,
 } from "@openbot/contracts/ipc";
 import { isDynamicRecord, isNumber, isString } from "@openbot/contracts/runtime-values";
+import { type FrameStorage, frameKey, savedChannelRows, savedUnreadCounts } from "./remote-workspace-frame-keys";
+
+export { deleteRemoteWorkspaceFrame, deleteRemoteWorkspaceFrames } from "./remote-workspace-frame-keys";
 
 /**
  * The frame of a joined server's workspace from its last load: the agents, their sidebar layout and
@@ -37,17 +40,10 @@ export interface RemoteWorkspaceFrame {
   unreadCounts: Record<string, number>;
 }
 
-type FrameStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "key" | "length">;
-
-const FRAME_KEY_PREFIX = "openbot:remote-frame:v1:";
 /** The agents that `recentAgentIds` keeps: the open one and the 3 before it. */
 const RECENT_AGENTS = 4;
 /** An older frame shows a workspace that has changed too much to be useful. */
 const FRAME_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-
-function frameKey(accountId: string, serverId: string): string {
-  return `${FRAME_KEY_PREFIX}${encodeURIComponent(accountId)}:${encodeURIComponent(serverId)}`;
-}
 
 /** A channel row with no text but its name and title. */
 function frameChannel(channel: Channel): ChannelSummary {
@@ -137,9 +133,6 @@ export function saveRemoteWorkspaceFrame(
   }
 }
 
-/** The last channel rows written for each frame. A channel list comes on each channel event. */
-const savedChannelRows = new Map<string, string>();
-
 /** Writes the channel rows of a list to the frame when they changed since the last write. */
 export function saveRemoteFrameChannels(
   accountId: string,
@@ -154,9 +147,6 @@ export function saveRemoteFrameChannels(
   saveRemoteWorkspaceFrame(accountId, serverId, { channels: rows });
 }
 
-/** The last unread counts written for each frame. The counts come again on each read of the host. */
-const savedUnreadCounts = new Map<string, string>();
-
 /** Writes the unread counts of the agents to the frame when they changed since the last write. */
 export function saveRemoteFrameUnreadCounts(
   accountId: string,
@@ -168,47 +158,4 @@ export function saveRemoteFrameUnreadCounts(
   if (savedUnreadCounts.get(key) === value) return;
   savedUnreadCounts.set(key, value);
   saveRemoteWorkspaceFrame(accountId, serverId, { unreadCounts: { ...counts } });
-}
-
-function frameKeys(storage: FrameStorage, prefix: string): string[] {
-  const keys: string[] = [];
-  for (let index = 0; index < storage.length; index += 1) {
-    const key = storage.key(index);
-    if (key?.startsWith(prefix)) keys.push(key);
-  }
-  return keys;
-}
-
-/**
- * Deletes the frames of an account. With `keepServerIds`, the frames of those servers stay; without
- * it, the frames of every account go, as after a sign-out.
- */
-export function deleteRemoteWorkspaceFrames(
-  accountId: string | null,
-  keepServerIds: readonly string[] = [],
-  storage: FrameStorage = window.localStorage,
-): void {
-  savedChannelRows.clear();
-  savedUnreadCounts.clear();
-  try {
-    const prefix = accountId === null ? FRAME_KEY_PREFIX : `${FRAME_KEY_PREFIX}${encodeURIComponent(accountId)}:`;
-    const kept = new Set(accountId === null ? [] : keepServerIds.map((serverId) => frameKey(accountId, serverId)));
-    for (const key of frameKeys(storage, prefix)) if (!kept.has(key)) storage.removeItem(key);
-  } catch {
-    // Blocked storage holds no frame.
-  }
-}
-
-export function deleteRemoteWorkspaceFrame(
-  accountId: string,
-  serverId: string,
-  storage: FrameStorage = window.localStorage,
-): void {
-  savedChannelRows.delete(frameKey(accountId, serverId));
-  savedUnreadCounts.delete(frameKey(accountId, serverId));
-  try {
-    storage.removeItem(frameKey(accountId, serverId));
-  } catch {
-    // Blocked storage holds no frame.
-  }
 }

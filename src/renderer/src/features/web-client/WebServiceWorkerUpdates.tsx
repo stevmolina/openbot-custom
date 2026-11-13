@@ -1,5 +1,5 @@
-import { toast } from "@openbot/ui";
 import { useText } from "@openbot/ui/text";
+import { toast } from "@openbot/ui/toast";
 import { onSettled } from "solid-js";
 import { applyWebUpdate, onWebUpdateReady, registerWebServiceWorker } from "./web-service-worker";
 

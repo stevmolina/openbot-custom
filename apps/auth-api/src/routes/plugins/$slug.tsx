@@ -1,13 +1,15 @@
 import { createFileRoute, notFound } from "@tanstack/solid-router";
 import { PluginPage } from "../../components/plugins/PluginPage";
 import { pluginHead } from "../../lib/content-metadata";
-import { findPlugin, type SitePlugin } from "../../lib/plugins";
+import type { SitePlugin } from "../../lib/plugins";
 
 // The same reason the article routes give: the lookup is in `loader`, so a slug the catalog does not
 // hold ends as a real not-found response rather than a 200 that draws an error card.
 // `loader` and `head` stay in the bundle of every page, so `head` imports the guides when it runs,
-// as routes/compare/$slug.tsx does.
-function loadPlugin(slug: string): SitePlugin {
+// as routes/compare/$slug.tsx does. The loader imports the plugin catalog when it runs too, so `/app`
+// does not load the catalog with its first chunk.
+async function loadPlugin(slug: string): Promise<SitePlugin> {
+  const { findPlugin } = await import("../../lib/plugins");
   const plugin = findPlugin(slug);
   if (!plugin) throw notFound();
   return plugin;
