@@ -38,11 +38,26 @@ function rememberReport(id: string | number, report: NotificationMetadata): void
     reports.delete(oldest.value);
   }
 }
+/**
+ * Every toast closes by itself. A toast that asks for a longer time, or for no end, gets the longest
+ * time, so toasts do not pile up. The update of a toast by its id keeps this limit too.
+ *
+ * Sonner calls `onDismiss` only for a close by the user. A toast that asked for no end was written
+ * for that close only, so its end of time runs the same cleanup.
+ */
+function timed(data: SonnerExternalToast | undefined): SonnerExternalToast | undefined {
+  if (data?.duration === undefined || data.duration <= TOAST_MAX_DURATION) return data;
+  return { ...data, duration: TOAST_MAX_DURATION, onAutoClose: data.onAutoClose ?? data.onDismiss };
+}
+type ToastContent = Parameters<typeof sonnerToast>[0];
+function timedToast(show: (message: ToastContent, data?: SonnerExternalToast) => string | number) {
+  return (message: ToastContent, data?: SonnerExternalToast) => show(message, timed(data));
+}
 function outcomeToast(kind: "error" | "warning") {
   return (message: Parameters<typeof sonnerToast>[0], options?: ExternalToast) => {
     const { report, error, fallback, ...data } = options ?? {};
     if (error !== undefined) data.description = withReference(error, data.description, fallback);
-    const id = sonnerToast[kind](message, data);
+    const id = sonnerToast[kind](message, timed(data));
     if (report) rememberReport(id, report);
     return id;
   };
@@ -83,14 +98,24 @@ function promiseToast<T>(
     id,
   });
 }
-export const toast = Object.assign((...args: Parameters<typeof sonnerToast>) => sonnerToast(...args), sonnerToast, {
-  error: outcomeToast("error"),
-  warning: outcomeToast("warning"),
-  promise: promiseToast,
-});
+export const toast = Object.assign(
+  (message: ToastContent, data?: SonnerExternalToast) => sonnerToast(message, timed(data)),
+  sonnerToast,
+  {
+    success: timedToast(sonnerToast.success),
+    info: timedToast(sonnerToast.info),
+    message: timedToast(sonnerToast.message),
+    custom: (...[content, data]: Parameters<typeof sonnerToast.custom>) => sonnerToast.custom(content, timed(data)),
+    error: outcomeToast("error"),
+    warning: outcomeToast("warning"),
+    promise: promiseToast,
+  },
+);
 
 /** Toast lifetime; exported so manual timers settle on the same count. */
-export const TOAST_DURATION = 6_000;
+export const TOAST_DURATION = 10_000;
+/** The longest time a toast shows. A toast that waits for an answer gets this time. */
+export const TOAST_MAX_DURATION = 30_000;
 
 const [hasVisibleToasts, setHasVisibleToasts] = createSignal(false);
 
@@ -156,7 +181,7 @@ export function Toaster(props: ToasterProps): JSX.Element {
         // A toast past the visible count stays hidden even when hover expands the stack, so an update
         // offer would wait behind another. Six providers can offer an update at once.
         visibleToasts={props.visibleToasts ?? 6}
-        duration={props.duration ?? TOAST_DURATION}
+        duration={Math.min(props.duration ?? TOAST_DURATION, TOAST_MAX_DURATION)}
         gap={props.gap ?? 8}
         richColors={props.richColors ?? false}
         closeButton={props.closeButton ?? true}
