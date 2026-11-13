@@ -803,8 +803,18 @@ function AccountsSection(props: SectionProps) {
   const planAccounts = () => accounts().filter((account) => !isApiKeyAccount(account.id));
   const poolOffered = () => Boolean(props.accountActions?.setPool) && (planAccounts().length > 1 || Boolean(pool()));
   const poolLabelId = `provider-settings-${props.option.id}-pool-label`;
-  const setPool = (enabled: boolean, leftOut: readonly string[]) =>
-    run(props.option.name, () => props.accountActions?.setPool?.(props.option.id, enabled, leftOut));
+  /** True while a pool save runs. Saves of the pool do not overlap, so an older answer cannot win. */
+  let poolSaving = false;
+  /** Returns nothing when a pool save already runs, so the switch keeps the value that it shows. */
+  const setPool = (enabled: boolean, leftOut: readonly string[]): Promise<void> | undefined => {
+    if (poolSaving) return undefined;
+    poolSaving = true;
+    return run(props.option.name, () => props.accountActions?.setPool?.(props.option.id, enabled, leftOut)).finally(
+      () => {
+        poolSaving = false;
+      },
+    );
+  };
   const removeDescription = (account: ProviderPickerAccount | null) => {
     if (!account) return "";
     const first = accounts()[0];

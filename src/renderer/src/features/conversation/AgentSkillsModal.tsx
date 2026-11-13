@@ -251,20 +251,22 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
   }
 
   /** Skills whose enable write is in flight. The switch of such a skill stays live and ignores a second tap. */
-  const togglingSkills = new Set<string>();
+  const [togglingSkills, setTogglingSkills] = createSignal<ReadonlySet<string>>(new Set());
+  /** Whether a write for this skill is in flight: an install, a removal, or an enable change. */
+  const skillBusy = (skillId: string): boolean => savingId() === skillId || togglingSkills().has(skillId);
 
   /** Starts the write, or returns nothing when this skill already has one in flight, so the switch keeps its value. */
   function toggleEnabled(skill: InstalledSkill, enabled: boolean): Promise<boolean> | undefined {
-    if (togglingSkills.has(skill.skillId) || savingId() === skill.skillId) return undefined;
+    if (skillBusy(skill.skillId)) return undefined;
     return setEnabled(skill, enabled);
   }
 
   async function setEnabled(skill: InstalledSkill, enabled: boolean): Promise<boolean> {
-    if (togglingSkills.has(skill.skillId) || savingId() === skill.skillId) return false;
+    if (skillBusy(skill.skillId)) return false;
     const analytics = desktopAnalytics.scope();
     const action = enabled ? "enable" : "disable";
     const agentId = props.agentId;
-    togglingSkills.add(skill.skillId);
+    setTogglingSkills((current) => new Set(current).add(skill.skillId));
     setError(null);
     try {
       await calls().setEnabled({ agentId, skillId: skill.skillId, enabled });
@@ -286,7 +288,11 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
       setError(errorMessage(caught, enabled ? t("skill.enableFailed") : t("skill.disableFailed")));
       return false;
     } finally {
-      togglingSkills.delete(skill.skillId);
+      setTogglingSkills((current) => {
+        const next = new Set(current);
+        next.delete(skill.skillId);
+        return next;
+      });
     }
   }
 
@@ -404,7 +410,7 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
                     <Show when={mutable() && !isFolderSkill(skill())}>
                       <SkillMoreMenu
                         skill={skill()}
-                        disabled={savingId() === skill().skillId}
+                        disabled={skillBusy(skill().skillId)}
                         onUpdate={() =>
                           skill().state === "modified" ? requestReplace(skill()) : void install(skill(), false)
                         }
@@ -567,7 +573,7 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
                                             </Show>
                                             <SkillMoreMenu
                                               skill={skill()}
-                                              disabled={savingId() === skill().skillId}
+                                              disabled={skillBusy(skill().skillId)}
                                               onUpdate={() =>
                                                 skill().state === "modified"
                                                   ? requestReplace(skill())
@@ -631,7 +637,7 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
                                           mutable() &&
                                           skill().state !== "needs-repair" &&
                                           skill().installedVersion === current().version &&
-                                          savingId() !== skill().skillId &&
+                                          !skillBusy(skill().skillId) &&
                                           props.onTrySkill
                                             ? async () => {
                                                 const selected = skill();
@@ -660,7 +666,7 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
                                               ? t("skill.unavailable.repair")
                                               : skill().installedVersion !== current().version
                                                 ? t("skill.unavailable.updateVersion")
-                                                : savingId() === skill().skillId
+                                                : skillBusy(skill().skillId)
                                                   ? t("skill.unavailable.saving")
                                                   : t("skill.unavailable.composer")
                                         }

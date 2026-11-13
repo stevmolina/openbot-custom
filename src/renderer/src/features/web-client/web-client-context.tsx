@@ -343,7 +343,9 @@ export function createWebWorkspace(
   /** The conversation reads in flight by agent, and the deltas that wait for them to finish. */
   const conversationReads = new Map<string, number>();
   /** The latest-page reads in flight, by agent. See `loadLatest`. */
-  const latestReads = new Map<string, { generation: number; selected: boolean; promise: Promise<void> }>();
+  const latestReads = new Map<string, { generation: number; opened: number | null; promise: Promise<void> }>();
+  /** Counts the opens of an agent, so that a read knows which open it belongs to. See `loadLatest`. */
+  let openCount = 0;
   /** The agent of the one `prefetch` read in flight, or null. */
   let prefetching: string | null = null;
   /** The newest read around a message for each agent. A newer jump or a return to the latest messages wins. */
@@ -1565,7 +1567,8 @@ export function createWebWorkspace(
       });
   }
 
-  async function load(id: string, older = false) {
+  /** `quiet`: an early read in the background. Its failure leaves the conversation as it is. */
+  async function load(id: string, older = false, quiet = false) {
     const current = generation;
     const previous = state.conversations[id];
     // The cursor of a trimmed conversation is after a gap until a latest read gives the host's cursor.
@@ -1627,7 +1630,8 @@ export function createWebWorkspace(
         item.olderError = null;
       });
     } catch (error) {
-      if (!disposed && current === generation && !blockAccess(error))
+      // A failed early read must not show an error over the page that the open read loads.
+      if (!quiet && !disposed && current === generation && !blockAccess(error))
         setState((draft) => {
           const item = draft.conversations[id];
           if (!item) return;
@@ -1732,6 +1736,7 @@ export function createWebWorkspace(
   async function select(id: string) {
     const current = generation;
     selectedId = id;
+    openCount += 1;
     if (state.status === "online" && state.host)
       saveRemoteWorkspaceFrame(props.accountId, state.host.hostId, { selectedAgentId: id });
     setState((draft) => {
@@ -1751,7 +1756,7 @@ export function createWebWorkspace(
       draft.conversations[id].error = null;
     });
     try {
-      await loadLatest(id);
+      await loadLatest(id, false);
     } catch (error) {
       if (disposed || current !== generation) return;
       report(error);
@@ -1763,13 +1768,16 @@ export function createWebWorkspace(
    * is not open are dropped, so that page can miss text that streamed before the open. The open starts
    * its own read, and the early page still shows first.
    */
-  function loadLatest(id: string): Promise<void> {
+  function loadLatest(id: string, background: boolean): Promise<void> {
     const running = latestReads.get(id);
-    if (running?.generation === generation && (running.selected || selectedId !== id)) return running.promise;
-    const read: { generation: number; selected: boolean; promise: Promise<void> } = {
+    // An open shares only a read that this same open started. A read from an earlier open of the agent
+    // also missed the text that streamed while the user was on another agent.
+    const opened = selectedId === id ? openCount : null;
+    if (running?.generation === generation && (opened === null || running.opened === opened)) return running.promise;
+    const read: { generation: number; opened: number | null; promise: Promise<void> } = {
       generation,
-      selected: selectedId === id,
-      promise: load(id).finally(() => {
+      opened,
+      promise: load(id, false, background && opened === null).finally(() => {
         if (latestReads.get(id) === read) latestReads.delete(id);
       }),
     };
@@ -1791,7 +1799,7 @@ export function createWebWorkspace(
     });
     prefetching = id;
     // A failed early read only costs the early page. The agent loads when it opens.
-    loadLatest(id)
+    loadLatest(id, true)
       .catch(() => undefined)
       .finally(() => {
         if (prefetching === id) prefetching = null;
@@ -1810,7 +1818,7 @@ export function createWebWorkspace(
         draft.conversations[id] ??= { page: null, draft: "", attachments: [], loading: false, trimmed: true };
       });
       try {
-        await loadLatest(id);
+        await loadLatest(id, true);
       } catch {
         // A failed early read only costs the early page. The agent loads when it opens.
       }
