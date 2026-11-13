@@ -229,6 +229,15 @@
   height: 16px;
 }
 
+/*
+ * A group body clips its rows while it opens and closes. `clip` and not `hidden`: a hidden body is
+ * still a scroll box, so `scrollIntoView` or a focus could scroll it, and the user cannot scroll it
+ * back. The rows then sit too high in the open group, with an empty band under them.
+ */
+.sidebar-chat .sidebar-section-body {
+  overflow: clip;
+}
+
 .sidebar-chat-rows {
   display: flex;
   flex-direction: column;
