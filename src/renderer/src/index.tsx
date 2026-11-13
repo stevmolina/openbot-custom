@@ -1,3 +1,6 @@
+// The app stylesheet comes first. The diagram and workflow stylesheets load with their components, and
+// the cascade needs them after it, where the app stylesheet imported them before.
+import "./styles.css";
 import { installPointerFocusGuard } from "@openbot/ui/pointer-focus";
 import { render } from "@solidjs/web";
 // Copying a selection with a formula in it gives its LaTeX source, not the typeset glyphs twice.
@@ -10,7 +13,6 @@ import { syncAppearance } from "./appearance-choice";
 import { readChatWindowTarget } from "./features/window/chat-window";
 import { syncLogoColor } from "./logo-color";
 import { startRendererTiming } from "./renderer-timing";
-import "./styles.css";
 
 const root = document.getElementById("root");
 

@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import { lazyLanguageCatalogs } from "./packages/i18n/src/vite-plugin";
 import { brandPlugins } from "./scripts/brand-layer";
+import { tailwindPropertyFallbackRemoval } from "./scripts/tailwind-property-fallback";
 
 const rendererPort = readRendererPort(process.env.OPENBOT_DEV_RENDERER_PORT);
 // Empty unless `OPENBOT_BRAND_NAME` is set: the product name of a custom build (`scripts/brand-layer.ts`).
@@ -72,6 +73,7 @@ export default defineConfig({
       ...brand,
       solidPlugin({ performanceTracks: false }),
       tailwindcss({ optimize: false }),
+      tailwindPropertyFallbackRemoval(),
       lazyLanguageCatalogs(),
     ],
     optimizeDeps: {
