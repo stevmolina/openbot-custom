@@ -2,9 +2,18 @@
 @import "./web-phone.css";
 @source "../../";
 
+/* The app covers the part of the screen that shows (`web-visual-viewport.ts`). Before that code runs,
+   it covers the layout viewport. `100dvh` can stop above the bottom edge on iPadOS, which left a band
+   of the page background under the app. */
 .web-app {
+  position: fixed;
+  top: var(--web-visual-top, 0px);
+  inset-inline: 0;
   min-width: 0;
-  height: 100dvh;
+  height: var(--web-visual-height, 100%);
+  /* A fixed box does not scroll the page, so a sign-in page taller than the screen scrolls in it. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--openbot-text-primary);
   background: var(--openbot-bg-canvas);
 }
