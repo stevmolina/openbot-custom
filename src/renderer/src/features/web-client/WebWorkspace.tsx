@@ -345,6 +345,7 @@ import { createWebNotificationRouting } from "./web-notification-routing";
 import { createWebNotificationSettings } from "./web-notification-settings";
 import { requestWebNotificationPermission } from "./web-notifications";
 import { webOnePasswordConnectorPort } from "./web-onepassword-connector";
+import { installWebPageScrollReset } from "./web-page-scroll";
 import { webPasswordManagersPort } from "./web-password-managers";
 import { installWebPhoneSheets } from "./web-phone-sheets";
 import { trackPhoneSwipeBack } from "./web-phone-stack";
@@ -776,6 +777,8 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   });
   // On a phone, a dialog is a bottom sheet that a drag down closes.
   onSettled(() => installWebPhoneSheets());
+  // Safari leaves the page moved up after the keyboard closes; the shell goes back to the top.
+  onSettled(() => installWebPageScrollReset());
   const compact = () => !phone() && layout.leftPanelCompact();
   const closeSidebar = () => layout.setSidebarClosed(true);
   /** A phone shows the agent list as a page, not as a column, so it has no button that closes the list. */

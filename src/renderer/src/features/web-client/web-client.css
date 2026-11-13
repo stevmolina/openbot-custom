@@ -13,6 +13,13 @@
   height: 100%;
 }
 
+/* The workspace is a fixed shell: its lists scroll inside it and the page does not move. The sign-in
+   and connect pages keep the page scroll, as they can be taller than a small screen. */
+html:has(.web-app-frame),
+html:has(.web-app-frame) body {
+  overflow: hidden;
+}
+
 /* The installed app draws under the notch and the rounded corners (`viewport-fit=cover` on /app), so
    the page keeps its content inside the safe area at the top and the sides. The bottom is the
    phone navigation's, which adds its own inset. */
