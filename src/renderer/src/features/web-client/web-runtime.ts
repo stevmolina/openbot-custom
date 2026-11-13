@@ -250,6 +250,7 @@ import { currentText } from "@openbot/ui/text";
 import { referenceFrom } from "@openbot/user-errors";
 import { Effect } from "effect";
 import type { ServerAdminPort } from "../servers/servers-port";
+import { createFirstScreenHold } from "./web-first-screen";
 import {
   createWebHostConnections,
   type WebHostConnections,
@@ -304,6 +305,11 @@ type WebHistoryDelete = { kind: "agent"; agentId: string } | { kind: "channel"; 
 
 export interface WebWorkspaceRuntime {
   admin?: WebAdminRuntime;
+  /**
+   * Holds the host requests that the first screen does not show (`web-first-screen`) until the returned
+   * release, or for `FIRST_SCREEN_HOLD_MS` at most. The requests of that screen go at once.
+   */
+  holdFirstScreen?: () => () => void;
   /** The status connections of the hosts that this tab has not opened. */
   hosts?: WebHostConnections;
   browser: BrowserViewRuntime;
@@ -807,6 +813,7 @@ export function createWebWorkspaceRuntime(
   let disposed = false;
   let generation = 0;
   let uploadGeneration = 0;
+  const firstScreen = createFirstScreenHold();
   let capabilities: string[] = [];
   let connectedHost: RemoteTeamHost | null = null;
   const duplicateOperationIds = new Map<string, string>();
@@ -893,6 +900,11 @@ export function createWebWorkspaceRuntime(
   ) {
     if (disposed) throw new Error(currentText().t("webClient.error.connectionClosed"));
     const current = generation;
+    const held = firstScreen.wait(path);
+    if (held) {
+      await held;
+      if (disposed || generation !== current) throw new Error(currentText().t("webClient.error.hostChanged"));
+    }
     const requestHostId = lockedHostId;
     const timeoutMs =
       method === "GET" && path === TEAM_API_ROUTES.me ? 15_000 : remoteWorkspaceReadTimeout(method, path);
@@ -1155,6 +1167,8 @@ export function createWebWorkspaceRuntime(
       await peer.cancelUpload().catch(() => undefined);
       await discardCompletedDrafts(hostForCleanup);
       generation += 1;
+      // The held requests were for this host: they fail now, not after the hold.
+      firstScreen.clear();
       await releaseLiveView();
       browserView.disconnect();
       await peer.execute({ id: crypto.randomUUID(), type: "disconnect" });
@@ -1502,6 +1516,7 @@ export function createWebWorkspaceRuntime(
         }
       }
     },
+    holdFirstScreen: () => firstScreen.hold(),
     async disconnect() {
       try {
         await closeOpenedHost();
@@ -2021,6 +2036,7 @@ export function createWebWorkspaceRuntime(
       viewListeners.clear();
       disposed = true;
       generation += 1;
+      firstScreen.clear();
       connectedHost = null;
       duplicateOperationIds.clear();
       revokeLocalDraftPreviews([...localDraftPreviews.keys()]);

@@ -6,7 +6,7 @@
 // candidates only. Then run
 // `bun run perf:remote [--runs=5] [--label=<name>] [--clients=web,desktop,desktop-start] [--api=<url>]
 //  [--compare=<old report.json>] [--browser-executable=<path>] [--host-id=<id>] [--allow-mutations]
-//  [--latency=<ms>]`.
+//  [--latency=<ms>] [--bandwidth=<KB/s>]`.
 // Add `OPENBOT_DEV_CLIENT_TRANSPORT=webrtc` to the stack to make the test client reach the host over
 // Signal and WebRTC, as a user does, and `OPENBOT_DEV_RTT_MS=<ms>`, equal to `--latency`, to add the
 // round trip to its data channel and account service reads.
@@ -17,7 +17,10 @@
 //   `web` runs start with no saved workspace frame; `web-warm` runs start with the frame of the
 //   first load, as a user who comes back does. `--latency` adds that many milliseconds to each
 //   document and fetch request of the page and to each WebSocket round trip (signaling), not to
-//   module files, and half of it to each data-channel message in each direction.
+//   module files, and half of it to each data-channel message in each direction. `--bandwidth` makes
+//   the data channels of the page share one link of that many kilobytes per second in each direction:
+//   a message waits until the bytes sent before it have passed, as on a far path whose congestion
+//   window is still small. Without it, a large answer does not delay the small answers behind it.
 // - desktop: reads the test-client app that is running. The first sample is its cold start: the
 //   connect spans of `logs/trace.ndjson`, the request file that main writes with
 //   `OPENBOT_DEV_SYNC_PROFILE=1`, and the renderer marks. With `--allow-mutations`, each further run
@@ -72,6 +75,8 @@ const hostId = argument("host-id");
 const allowMutations = process.argv.includes("--allow-mutations");
 const latencyMs = Number(argument("latency") ?? "0");
 assert.ok(Number.isInteger(latencyMs) && latencyMs >= 0, "--latency takes a whole number of milliseconds.");
+const bandwidthKBps = Number(argument("bandwidth") ?? "0");
+assert.ok(Number.isInteger(bandwidthKBps) && bandwidthKBps >= 0, "--bandwidth takes a whole number of KB/s.");
 const FRAME_KEY_PREFIX = "openbot:remote-frame:";
 
 type Client = "web" | "web-warm" | "desktop-cold" | "desktop-reload" | "desktop-start";
@@ -120,6 +125,8 @@ interface Report {
   runs: number;
   /** Added round trip, `--latency`: the web page's HTTP, WebSocket and data channel. */
   latencyMs: number;
+  /** The data-channel link of the web page, `--bandwidth`, in KB/s. 0 is no limit. */
+  bandwidthKBps: number;
   /** `OPENBOT_DEV_RTT_MS` of each desktop-start run, from its request file. */
   desktopRoundTripMs: number[];
   /** The failure codes of each client and how often each came. */
@@ -352,93 +359,121 @@ async function selectHost(page: Page, id: string): Promise<void> {
 }
 
 async function instrument(context: BrowserContext): Promise<void> {
-  await context.addInitScript((halfTrip: number) => {
-    const collected: NonNullable<Window["__syncPerfSink"]> = { records: [], open: 0 };
-    window.__syncPerfSink = collected;
-    // The recorder of `@openbot/team-client/sync-profile` finds this sink by its global name.
-    globalThis.__openbotSyncProfile = {
-      started() {
-        collected.open += 1;
-      },
-      push(record) {
-        collected.open -= 1;
-        collected.records.push(record);
-      },
-    };
-    const Native = window.RTCPeerConnection;
-    const peers: RTCPeerConnection[] = [];
-    window.__syncPerfPeers = peers;
-    window.RTCPeerConnection = class extends Native {
-      constructor(configuration?: RTCConfiguration) {
-        super(configuration);
-        peers.push(this);
+  await context.addInitScript(
+    ({ halfTrip, bytesPerMs }: { halfTrip: number; bytesPerMs: number }) => {
+      const collected: NonNullable<Window["__syncPerfSink"]> = { records: [], open: 0 };
+      window.__syncPerfSink = collected;
+      // The recorder of `@openbot/team-client/sync-profile` finds this sink by its global name.
+      globalThis.__openbotSyncProfile = {
+        started() {
+          collected.open += 1;
+        },
+        push(record) {
+          collected.open -= 1;
+          collected.records.push(record);
+        },
+      };
+      const Native = window.RTCPeerConnection;
+      const peers: RTCPeerConnection[] = [];
+      window.__syncPerfPeers = peers;
+      window.RTCPeerConnection = class extends Native {
+        constructor(configuration?: RTCConfiguration) {
+          super(configuration);
+          peers.push(this);
+        }
+      };
+      if (halfTrip <= 0 && bytesPerMs <= 0) return;
+      // Half of the round trip each way. With `--bandwidth`, a message also waits for the bytes ahead of
+      // it on the link of its direction. Arrival times only grow, so the messages keep their order. A
+      // send on a channel that is not open goes at once, so the client still gets the error it expects.
+      const freeAt = { up: 0, down: 0 };
+      const encoder = new TextEncoder();
+      const size = (data: Payload) =>
+        typeof data === "string" ? encoder.encode(data).byteLength : data instanceof Blob ? data.size : data.byteLength;
+      const wait = (direction: "up" | "down", bytes: number) => {
+        const now = performance.now();
+        if (bytesPerMs <= 0) return halfTrip;
+        freeAt[direction] = Math.max(now, freeAt[direction]) + bytes / bytesPerMs;
+        return freeAt[direction] + halfTrip - now;
+      };
+      const channel = RTCDataChannel.prototype;
+      // One native signature for each kind of payload: `send` is overloaded.
+      const sendText: (this: RTCDataChannel, data: string) => void = channel.send;
+      const sendBlob: (this: RTCDataChannel, data: Blob) => void = channel.send;
+      const sendBuffer: (this: RTCDataChannel, data: ArrayBuffer) => void = channel.send;
+      const sendView: (this: RTCDataChannel, data: ArrayBufferView<ArrayBuffer>) => void = channel.send;
+      type Payload = string | Blob | ArrayBuffer | ArrayBufferView<ArrayBuffer>;
+      const deliver = (target: RTCDataChannel, data: Payload) => {
+        if (typeof data === "string") sendText.call(target, data);
+        else if (data instanceof Blob) sendBlob.call(target, data);
+        else if (data instanceof ArrayBuffer) sendBuffer.call(target, data);
+        else sendView.call(target, data);
+      };
+      channel.send = function (this: RTCDataChannel, data: Payload) {
+        if (this.readyState !== "open") return deliver(this, data);
+        setTimeout(
+          () => {
+            if (this.readyState === "open") deliver(this, data);
+          },
+          wait("up", size(data)),
+        );
+      };
+      // Each listener of one message waits until the same arrival time.
+      const arrivals = new WeakMap<Event, number>();
+      const arrival = (event: Event) => {
+        const known = arrivals.get(event);
+        if (known !== undefined) return known;
+        const data = event instanceof MessageEvent ? event.data : null;
+        const bytes = typeof data === "string" || data instanceof Blob || data instanceof ArrayBuffer ? size(data) : 0;
+        const at = performance.now() + wait("down", bytes);
+        arrivals.set(event, at);
+        return at;
+      };
+      const later =
+        <E extends Event>(listener: (event: E) => void) =>
+        (event: E) =>
+          void setTimeout(() => listener(event), arrival(event) - performance.now());
+      const wrapped = new WeakMap<object, (event: Event) => void>();
+      const add = channel.addEventListener;
+      const remove = channel.removeEventListener;
+      channel.addEventListener = function (
+        this: RTCDataChannel,
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions,
+      ) {
+        if (type !== "message") return add.call(this, type, listener, options);
+        const delayed =
+          wrapped.get(listener) ??
+          later((event) => (typeof listener === "function" ? listener.call(this, event) : listener.handleEvent(event)));
+        wrapped.set(listener, delayed);
+        add.call(this, type, delayed, options);
+      };
+      channel.removeEventListener = function (
+        this: RTCDataChannel,
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | EventListenerOptions,
+      ) {
+        remove.call(this, type, wrapped.get(listener) ?? listener, options);
+      };
+      const onmessage = Object.getOwnPropertyDescriptor(channel, "onmessage");
+      if (onmessage?.set && onmessage.get) {
+        const { get, set } = onmessage;
+        Object.defineProperty(channel, "onmessage", {
+          configurable: true,
+          enumerable: onmessage.enumerable ?? true,
+          get() {
+            return get.call(this);
+          },
+          set(this: RTCDataChannel, handler: ((event: MessageEvent) => void) | null) {
+            set.call(this, handler ? later<MessageEvent>((event) => handler.call(this, event)) : null);
+          },
+        });
       }
-    };
-    if (halfTrip <= 0) return;
-    // Half of the round trip each way. Equal delays keep the order of the messages. A send on a
-    // channel that is not open goes at once, so the client still gets the error it expects.
-    const channel = RTCDataChannel.prototype;
-    // One native signature for each kind of payload: `send` is overloaded.
-    const sendText: (this: RTCDataChannel, data: string) => void = channel.send;
-    const sendBlob: (this: RTCDataChannel, data: Blob) => void = channel.send;
-    const sendBuffer: (this: RTCDataChannel, data: ArrayBuffer) => void = channel.send;
-    const sendView: (this: RTCDataChannel, data: ArrayBufferView<ArrayBuffer>) => void = channel.send;
-    type Payload = string | Blob | ArrayBuffer | ArrayBufferView<ArrayBuffer>;
-    const deliver = (target: RTCDataChannel, data: Payload) => {
-      if (typeof data === "string") sendText.call(target, data);
-      else if (data instanceof Blob) sendBlob.call(target, data);
-      else if (data instanceof ArrayBuffer) sendBuffer.call(target, data);
-      else sendView.call(target, data);
-    };
-    channel.send = function (this: RTCDataChannel, data: Payload) {
-      if (this.readyState !== "open") return deliver(this, data);
-      setTimeout(() => {
-        if (this.readyState === "open") deliver(this, data);
-      }, halfTrip);
-    };
-    const later =
-      <E extends Event>(listener: (event: E) => void) =>
-      (event: E) =>
-        void setTimeout(() => listener(event), halfTrip);
-    const wrapped = new WeakMap<object, (event: Event) => void>();
-    const add = channel.addEventListener;
-    const remove = channel.removeEventListener;
-    channel.addEventListener = function (
-      this: RTCDataChannel,
-      type: string,
-      listener: EventListenerOrEventListenerObject,
-      options?: boolean | AddEventListenerOptions,
-    ) {
-      if (type !== "message") return add.call(this, type, listener, options);
-      const delayed =
-        wrapped.get(listener) ??
-        later((event) => (typeof listener === "function" ? listener.call(this, event) : listener.handleEvent(event)));
-      wrapped.set(listener, delayed);
-      add.call(this, type, delayed, options);
-    };
-    channel.removeEventListener = function (
-      this: RTCDataChannel,
-      type: string,
-      listener: EventListenerOrEventListenerObject,
-      options?: boolean | EventListenerOptions,
-    ) {
-      remove.call(this, type, wrapped.get(listener) ?? listener, options);
-    };
-    const onmessage = Object.getOwnPropertyDescriptor(channel, "onmessage");
-    if (onmessage?.set && onmessage.get) {
-      const { get, set } = onmessage;
-      Object.defineProperty(channel, "onmessage", {
-        configurable: true,
-        enumerable: onmessage.enumerable ?? true,
-        get() {
-          return get.call(this);
-        },
-        set(this: RTCDataChannel, handler: ((event: MessageEvent) => void) | null) {
-          set.call(this, handler ? later<MessageEvent>((event) => handler.call(this, event)) : null);
-        },
-      });
-    }
-  }, latencyMs / 2);
+    },
+    { halfTrip: latencyMs / 2, bytesPerMs: bandwidthKBps * 1.024 },
+  );
 }
 
 /** The records and the count of requests in flight that the page sink holds. */
@@ -903,6 +938,7 @@ function parseReport(path: string): Report {
     commit: String(parsed.commit ?? ""),
     runs: isNumber(parsed.runs) ? parsed.runs : 0,
     latencyMs: isNumber(parsed.latencyMs) ? parsed.latencyMs : 0,
+    bandwidthKBps: isNumber(parsed.bandwidthKBps) ? parsed.bandwidthKBps : 0,
     desktopRoundTripMs: [],
     failures: {},
     candidates: {},
@@ -981,6 +1017,7 @@ const report: Report = {
   commit: execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim(),
   runs,
   latencyMs,
+  bandwidthKBps,
   desktopRoundTripMs: desktopRoundTrips,
   failures: Object.fromEntries([...byClient].map(([client, sample]) => [client, failureCounts(sample)])),
   candidates: Object.fromEntries(
