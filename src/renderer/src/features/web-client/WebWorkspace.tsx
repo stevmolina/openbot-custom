@@ -2578,6 +2578,8 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     workspace,
     remoteAgentAdmin,
     hidden: () => creating() || channelOpen(),
+    // A phone keeps the chat mounted under its chat list, so the Back swipe and the reader's place stay.
+    paused: () => phone() && mobilePane() === "workspace",
     // A new thread draft, or a side thread that has not loaded, asks nothing.
     thread: () => {
       const current = threads();
