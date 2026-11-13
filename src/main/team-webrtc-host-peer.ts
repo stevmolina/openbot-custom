@@ -55,6 +55,7 @@ import {
   decodeTeamProtocolV2EventFrame,
   decodeTeamProtocolV2RpcFrame,
   encodeTeamProtocolV2Frame,
+  TEAM_PROTOCOL_V2_MAX_JSON_FRAME_BYTES,
   type TeamProtocolV2AuthFrame,
   type TeamProtocolV2Json,
   type TeamProtocolV2RpcFrame,
@@ -460,7 +461,13 @@ export class TeamWebRtcHostPeer {
     }
     if (!isDynamicRecord(payload) || !isCompactRpcKey(payload.capabilitiesKey)) return;
     const list = payload.capabilities;
-    if (!Array.isArray(list) || !list.every(isString)) return;
+    // The same bounds as a request's own list (`isHttpRequest`).
+    if (
+      !Array.isArray(list) ||
+      list.length > TEAM_PROTOCOL_V9_CAPABILITY_LIMIT ||
+      !list.every((capability) => isString(capability) && capability.length <= 128)
+    )
+      return;
     const key = payload.capabilitiesKey;
     if (!this.#capabilityLists.has(key) && this.#capabilityLists.size >= COMPACT_RPC_MAX_KEPT_LISTS) return;
     this.#capabilityLists.set(key, list);
@@ -1272,7 +1279,13 @@ function compressedRpcResult(result: TeamProtocolV2Json): TeamProtocolV2Json {
   const status = result.status;
   if (typeof status !== "number") return result;
   const text = JSON.stringify(result.body);
-  if (text === undefined || text.length < COMPACT_RPC_MIN_COMPRESSED_BYTES) return result;
+  // A body above the JSON frame limit keeps its `response_too_large` answer, for that request only.
+  if (
+    text === undefined ||
+    text.length < COMPACT_RPC_MIN_COMPRESSED_BYTES ||
+    Buffer.byteLength(text) > TEAM_PROTOCOL_V2_MAX_JSON_FRAME_BYTES
+  )
+    return result;
   try {
     return { status, body: null, deflated: deflateRawSync(Buffer.from(text)).toString("base64url") };
   } catch {

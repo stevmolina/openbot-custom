@@ -1005,6 +1005,8 @@ export function createWebWorkspace(
       };
     });
   }
+  /** The connect to the saved server that the page starts beside its first server list read. */
+  let earlyConnect: Promise<void> | null = null;
   function refreshHosts(): Promise<void> {
     if (hostsRefreshPromise) return hostsRefreshPromise;
     const refreshGeneration = generation;
@@ -1092,6 +1094,10 @@ export function createWebWorkspace(
           const initialHost =
             hosts.find((host) => host.hostId === savedHostId) ?? orderWebHosts(hosts, serverOrder())[0];
           if (initialHost) await connect(initialHost);
+        } else if (earlyConnect) {
+          const opening = earlyConnect;
+          earlyConnect = null;
+          await opening;
         }
         // After the opened host, so it takes its Signal connection before the status connections.
         if (!disposed) runtime.hosts?.setHosts(hosts);
@@ -2048,7 +2054,7 @@ export function createWebWorkspace(
     // The saved server connects beside the server list read, not after it: the read takes a round trip
     // to the account service. The list then confirms the server, or removes it as it does when access ends.
     const savedHost = readWebServerSelectionHost(props.accountId);
-    if (savedHost && !hostId) void connect(savedHost);
+    if (savedHost && !hostId) earlyConnect = connect(savedHost);
     void refreshHosts().catch(report);
     const pageFocus = () => setPageFocused(!document.hidden && document.hasFocus());
     const focus = () => {

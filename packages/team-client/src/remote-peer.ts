@@ -600,7 +600,7 @@ export function createRemoteTeamPeer(
     (data) =>
       Effect.suspend(() => {
         const state = peer;
-        if (!state || !isPeerOnline(state))
+        if (!state || !isSideChannelOnline(state))
           return Effect.fail(new RemotePeerError({ message: sourceText("error.remote.selectedServerOffline") }));
         return sendPayload(state, "files", data);
       }),
@@ -609,7 +609,7 @@ export function createRemoteTeamPeer(
   const downloads = createRemoteFileReceiver((data) =>
     Effect.suspend(() => {
       const state = peer;
-      if (!state || !isPeerOnline(state))
+      if (!state || !isSideChannelOnline(state))
         return Effect.fail(new RemotePeerError({ message: sourceText("error.remote.selectedServerOffline") }));
       return sendPayload(state, "files", data);
     }),
@@ -642,14 +642,14 @@ export function createRemoteTeamPeer(
   return {
     async sendHostStreamData(data: string | ArrayBuffer) {
       const state = peer;
-      if (!state || !isPeerOnline(state)) throw new Error(sourceText("error.remote.hostConnectionOffline"));
+      if (!state || !isSideChannelOnline(state)) throw new Error(sourceText("error.remote.hostConnectionOffline"));
       await runPeerEffect(sendPayload(state, "desktop", data));
     },
     cancelUpload: () => runPeerEffect(files.cancelUpload()),
     /** Tells the host which agent this member is writing to. The host clears it after a few seconds. */
     setTyping(agentId: string | null, typing: boolean) {
       const state = peer;
-      if (!state || !isPeerOnline(state)) return;
+      if (!state || !isSideChannelOnline(state)) return;
       void runPeerEffect(sendEventControl(state, { type: "team-typing", agentId, typing })).catch(() => undefined);
     },
     execute: (command: RemoteTeamCommand) => runPeerEffect(executeCommand(command, actions)),
@@ -835,6 +835,13 @@ export function createRemoteTeamPeer(
       state.connection?.connectionState === "connected" &&
       CHANNELS.every((kind) => state.channels[kind]?.readyState === "open")
     );
+  }
+  /**
+   * The files, events and desktop channels have no order with `auth-complete` on the RPC channel, so
+   * they wait for `auth-confirmed` when the first requests went out with `auth-complete`.
+   */
+  function isSideChannelOnline(state: PeerState): boolean {
+    return isPeerOnline(state) && !state.awaitingConfirmation;
   }
   function canRecoverPeer(state: PeerState): boolean {
     const connectionState = state.connection?.connectionState;
@@ -1828,7 +1835,17 @@ export function createRemoteTeamPeer(
           const sideRoute = teamSideRouteCodec(pending.path);
           const status = frame.result.status;
           const compressed = compressedRpcResult(frame.result);
-          const body = compressed ? yield* peerCall(() => inflateRpcBody(compressed.deflated)) : frame.result.body;
+          // A body that does not inflate fails its own request, not the connection.
+          const inflated = compressed
+            ? yield* peerCall(() => inflateRpcBody(compressed.deflated)).pipe(Effect.result)
+            : null;
+          if (inflated && Result.isFailure(inflated)) {
+            clearTimeout(pending.timer);
+            pendingRequests.delete(frame.requestId);
+            pending.reject(inflated.failure);
+            return;
+          }
+          const body = inflated ? inflated.success : frame.result.body;
           if (pending.method === "GET" && pending.path === TEAM_API_ROUTES.compatibility && status === 200) {
             const support = yield* peerDecode(() => decodeTeamProtocolSupportV9(body));
             state.hostProtocol = support.protocol.maximum;

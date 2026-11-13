@@ -4,9 +4,20 @@ import { decodeTeamProtocolV2Json, type TeamProtocolV2Json } from "@openbot/cont
 import { TEAM_PROTOCOL_V2_MAX_JSON_FRAME_BYTES } from "@openbot/contracts/team-protocol/v2";
 import { base64UrlToBytes } from "./base64";
 
-/** A runtime without `DecompressionStream`, such as React Native, asks for no compressed body. */
+let inflates: boolean | null = null;
+
+/**
+ * A runtime without raw DEFLATE in `DecompressionStream`, such as React Native or a Chromium before
+ * 103, asks for no compressed body.
+ */
 export function canInflateResponses(): boolean {
-  return typeof DecompressionStream === "function" && typeof Blob === "function";
+  if (inflates !== null) return inflates;
+  try {
+    inflates = typeof Blob === "function" && new DecompressionStream("deflate-raw") instanceof DecompressionStream;
+  } catch {
+    inflates = false;
+  }
+  return inflates;
 }
 
 /** The key of the capability list that a request of `protocol` sends. Undefined is the bootstrap list. */

@@ -597,6 +597,15 @@ function sameCapabilities(left: readonly string[], right: readonly string[]): bo
   return known.size === new Set(right).size && right.every((capability) => known.has(capability));
 }
 
+/** A saving that only speeds up the next page must not fail a connection, such as when storage is full. */
+function saveHint(save: () => void): void {
+  try {
+    save();
+  } catch {
+    // The next page reads the host again.
+  }
+}
+
 function compactRpcKey(accountId: string, hostId: string): string {
   return `openbot.web.host-compact-rpc:${accountId}:${hostId}`;
 }
@@ -719,13 +728,15 @@ export function createWebWorkspaceRuntime(
     get: (id: string) => savedHostProtocol(accountId, id),
     set: (id: string, protocol: number) => localStorage.setItem(hostProtocolKey(accountId, id), String(protocol)),
     compactRpc: (id) => savedCompactRpc(accountId, id),
-    setCompactRpc: (id, value) => {
-      if (value) localStorage.setItem(compactRpcKey(accountId, id), "1");
-      else localStorage.removeItem(compactRpcKey(accountId, id));
-    },
+    setCompactRpc: (id, value) =>
+      saveHint(() => {
+        if (value) localStorage.setItem(compactRpcKey(accountId, id), "1");
+        else localStorage.removeItem(compactRpcKey(accountId, id));
+      }),
     // The next page opens Signal while it asks the account service for a ticket.
     signalRoute: (id) => savedSignalRoute(accountId, id),
-    setSignalRoute: (id, route) => localStorage.setItem(signalRouteKey(accountId, id), JSON.stringify(route)),
+    setSignalRoute: (id, route) =>
+      saveHint(() => localStorage.setItem(signalRouteKey(accountId, id), JSON.stringify(route))),
   };
   function createOpenedPeer() {
     const actions = { current: openedActions };
@@ -1230,7 +1241,9 @@ export function createWebWorkspaceRuntime(
       if (knownCapabilities) capabilities = knownCapabilities;
       if (knownProtocol !== undefined) early?.start();
       const support = decodeTeamProtocolSupportV9(await request("GET", TEAM_API_ROUTES.compatibility));
-      localStorage.setItem(hostCapabilitiesKey(accountId, host.hostId), JSON.stringify(support.capabilities));
+      saveHint(() =>
+        localStorage.setItem(hostCapabilitiesKey(accountId, host.hostId), JSON.stringify(support.capabilities)),
+      );
       if (
         knownProtocol !== undefined &&
         (support.protocol.maximum !== knownProtocol ||
