@@ -140,6 +140,28 @@ export const Incompatible: Story = {
   args: { accountEmail: "you@example.com", createRuntime: incompatibleRuntime },
 };
 
+/**
+ * The host was still starting its agent when the browser connected, and the browser missed the
+ * status event that said ready, as an iPad web app in the background can. Only a new status read
+ * shows that the agent is ready.
+ */
+const missedReadyRuntime: WebRuntimeFactory = (...args) => {
+  const base = createMockWebRuntime(...args);
+  let reads = 0;
+  return {
+    ...base,
+    status: async () => {
+      const status = await base.status();
+      reads += 1;
+      return reads === 1 ? { ...status, phase: "starting" } : status;
+    },
+  };
+};
+
+export const MissedReadyStatus: Story = {
+  args: { createRuntime: missedReadyRuntime },
+};
+
 const NEW_SERVER_ID = "cloud-server";
 
 /**
