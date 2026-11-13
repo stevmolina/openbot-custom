@@ -22,9 +22,10 @@ interface WebBench {
   idle: () => Promise<void>;
   /**
    * One turn: start, `tokens` stream chunks in separate tasks, final page, completion. The turn is
-   * in the open conversation, or with `other` in the conversation of another agent.
+   * in the open conversation, or with `other` in the conversation of another agent. With `gapMs`, the
+   * chunks arrive that many milliseconds apart, as from a model, not in a burst.
    */
-  stream: (tokens: number, marker: string, other?: boolean) => Promise<void>;
+  stream: (tokens: number, marker: string, other?: boolean, gapMs?: number) => Promise<void>;
   /**
    * Adds `count` messages, `<prefix> <index>: ...`, to the conversation of another agent on the host
    * only, with no event, as when they arrive while that conversation is not open.
@@ -147,7 +148,7 @@ export const createBenchWebRuntime: WebRuntimeFactory = (_accountId, events) => 
     }
   }
 
-  async function stream(tokens: number, marker: string, other = false): Promise<void> {
+  async function stream(tokens: number, marker: string, other = false, gapMs = 0): Promise<void> {
     const target = other ? otherAgentId : agentId;
     const threadId = mock.readConversationSnapshot(target).threadId ?? `thread-${target}`;
     const turnId = `bench-stream-${Date.now()}`;
@@ -160,7 +161,7 @@ export const createBenchWebRuntime: WebRuntimeFactory = (_accountId, events) => 
       const delta = index === tokens - 1 ? marker : token(index);
       text += delta;
       mock.emitConversationDelta({ agentId: target, threadId, turnId, messageId, delta, createdAt });
-      await nextTask();
+      await (gapMs > 0 ? new Promise<void>((done) => setTimeout(done, gapMs)) : nextTask());
     }
     mock.updateConversationSnapshot(target, (snapshot) => {
       snapshot.activeTurnId = null;

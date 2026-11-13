@@ -172,7 +172,7 @@ async function tablet(browser: Browser): Promise<LayoutReport> {
 
 declare global {
   // The driver that `src/renderer/src/preview/bench-web-runtime.ts` installs in the story.
-  var openbotWebBench: { stream(tokens: number, marker: string, other?: boolean): Promise<void> };
+  var openbotWebBench: { stream(tokens: number, marker: string, other?: boolean, gapMs?: number): Promise<void> };
 }
 
 mkdirSync(OUT, { recursive: true });
