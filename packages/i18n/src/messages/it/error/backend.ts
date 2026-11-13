@@ -66,6 +66,8 @@ export const messages = {
     "La compattazione non riduce questa chat: dopo due compattazioni usa ancora il {percent}% della finestra di contesto del modello, quindi OpenBot smette di compattarla. Strumenti e istruzioni usano la maggior parte della finestra. Disattiva i server MCP o l'uso del computer che questo agente non usa, oppure scegli un modello con una finestra più grande. Poi avvia una nuova chat.",
   "error.backend.contextCompactionStopped":
     "Due compattazioni di fila di questa chat non sono riuscite, quindi OpenBot smette di compattarla automaticamente. Ogni tentativo invia l'intera chat al modello e consuma il limite del tuo piano. Seleziona «Compatta ora» per riprovare, oppure avvia una nuova chat.",
+  "error.backend.providerModelAtCapacity":
+    "Il modello è al limite della capacità. Il provider riproverà tra qualche minuto. Per continuare ora, interrompi il turno e scegli un altro modello.",
   "error.backend.providerRetrying":
     "Il provider non è riuscito a completare questa richiesta {attempts} volte e riprova. Se l'agente non continua, interrompi il turno.",
   "error.backend.providerRetryingLargeContext":
@@ -169,6 +171,10 @@ export const messages = {
   "error.backend.attachBetween": "Allega da 1 a {limit} file.",
   "error.backend.attachmentNotFile": "L'allegato non è un file: {path}",
   "error.backend.generatedImageTooLarge": "L'immagine generata supera il limite di 100 MB.",
+  "error.backend.generatedVideoTooLarge": "Il video generato supera il limite di 100 MB.",
+  "error.backend.videoGenerationFailed": "La generazione del video non è riuscita.",
+  "error.backend.videoGenerationNoVideo": "La generazione del video non ha restituito alcun video.",
+  "error.backend.videoGenerationInterrupted": "La generazione del video è stata interrotta.",
   "error.backend.attachmentNotRegularFile": "Si possono allegare solo file normali: {name}",
   "error.backend.attachmentCopyFailed": "OpenBot non è riuscito a copiare {name}.",
   "error.backend.routineNameRequired": "Il nome della routine è obbligatorio.",
@@ -362,6 +368,8 @@ export const messages = {
     "Il proxy {name} ha rifiutato l’accesso, quindi la pagina non si è aperta.",
   "error.backend.browserProxyComputerUnreachable":
     "Il computer di questo profilo non risponde, quindi la pagina non si è aperta.",
+  "error.backend.browserProxyComputerLocalAddress":
+    "Il computer usato da questo profilo apre solo siti pubblici. Non apre indirizzi di una rete locale, quindi la pagina non si è aperta.",
   "error.backend.browserCertificateUntrusted":
     "Il certificato di sicurezza di questo sito non è attendibile, quindi la pagina non si è aperta.",
   "error.backend.browserLowMemory":

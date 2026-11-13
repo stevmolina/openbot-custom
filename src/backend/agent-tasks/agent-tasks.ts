@@ -15,7 +15,6 @@ import {
   type BranchAgentTaskInput,
   type ConversationMessage,
   type ConversationSnapshot,
-  reportedAgentTaskLimit,
 } from "@openbot/contracts/ipc";
 import { sourceText } from "@openbot/i18n/source";
 import { createOpenBotLogger } from "@openbot/logging";
@@ -62,6 +61,8 @@ export interface AgentTasksHooks {
   emit(event: AgentEvent): void;
   /** The agent, for its provider and its task limit. */
   agent(agentId: string): AgentSummary | undefined;
+  /** The task limit of an agent that has no limit of its own on this host. */
+  defaultTaskLimit(): number;
   /** Why the drain holds the next message of this task, as the drain names it, or null. Read late. */
   hold(agentId: string, taskId: string): string | null;
   /** A message is queued in a task: the queue and the drain take it. */
@@ -148,10 +149,9 @@ export class AgentTasks implements TaskLanes {
     });
   }
 
-  /** Null: the agent has no task limit. */
-  limit(agentId: string): number | null {
+  limit(agentId: string): number {
     const agent = this.#hooks.agent(agentId);
-    return agent ? agentTaskLimit(agent) : 1;
+    return agent ? agentTaskLimit(agent, this.#hooks.defaultTaskLimit()) : 1;
   }
 
   /** Whether the agent's provider runs one turn at a time, across its own chat and its tasks. */
@@ -172,7 +172,7 @@ export class AgentTasks implements TaskLanes {
     return {
       agentId,
       tasks: this.#store.list(agentId).map((task) => this.#publicTask(task)),
-      limit: reportedAgentTaskLimit(this.limit(agentId)),
+      limit: this.limit(agentId),
     };
   }
 

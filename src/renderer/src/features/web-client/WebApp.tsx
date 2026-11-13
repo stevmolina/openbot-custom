@@ -41,6 +41,7 @@ import { StaticI18nProvider } from "../../i18n-context";
 import { AnalyticsConsentRow, ConsentNotice } from "../onboarding/AnalyticsConsent";
 import { createOnboardingTeam, onboardingSessionSeed } from "../onboarding/onboarding-avatars";
 import { deleteRemoteWorkspaceFrames } from "../servers/remote-workspace-frame-keys";
+import { WebLanguageStep } from "./WebLanguageStep";
 import { WebServiceWorkerUpdates } from "./WebServiceWorkerUpdates";
 import type { WebWorkspace } from "./WebWorkspace";
 import { createWebAccountCalls } from "./web-account";
@@ -615,6 +616,8 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
   const consentAgents = createOnboardingTeam(onboardingSessionSeed(), 3);
   const languagePreference = createWebLanguagePreference();
   const appearancePreference = createWebAppearancePreference();
+  // The sign-in starts in the browser language; its language button opens the wheel to change it.
+  const [languageWheelOpen, setLanguageWheelOpen] = createSignal(false);
   return (
     <StaticI18nProvider
       locale={resolveLocale(languagePreference.language(), navigator.language)}
@@ -634,45 +637,59 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
               keyed
               when={state.account?.id}
               fallback={
-                <AccountLogin
-                  variant={variant}
-                  state={state.login}
-                  onRetry={checkSession}
-                  onRequestEmailCode={start}
-                  onVerifyEmailCode={verify}
-                  onOpenCompanySignIn={() =>
-                    state.login.status === "company_sign_in"
-                      ? openCompanySignIn(state.login.email, state.login.provider ?? "company")
-                      : state.login.status === "signed_out" && state.login.provider === "workos"
-                        ? openCompanySignIn("", "workos")
-                        : Promise.resolve()
-                  }
-                  onReset={async () => {
-                    clearSession();
-                    setState((draft) => {
-                      draft.resendAt = 0;
-                    });
-                  }}
-                  consent={
-                    <Show when={!analyticsAgreed()}>
-                      <AnalyticsConsentRow
-                        class="web-consent-row"
-                        checked={analyticsChoice()}
-                        agents={consentAgents}
-                        onChange={(checked) => {
-                          analyticsTouched = true;
-                          setAnalyticsChoice(checked);
-                        }}
-                      />
-                    </Show>
-                  }
-                  notice={
-                    <ConsentNotice
-                      onOpenTerms={() => window.open("/terms", "_blank", "noopener")}
-                      onOpenPrivacy={() => window.open("/privacy", "_blank", "noopener")}
+                <Show
+                  when={!languageWheelOpen()}
+                  fallback={
+                    <WebLanguageStep
+                      variant={variant}
+                      language={languagePreference.language()}
+                      onChangeLanguage={languagePreference.setLanguage}
+                      onDone={() => setLanguageWheelOpen(false)}
                     />
                   }
-                />
+                >
+                  <AccountLogin
+                    variant={variant}
+                    language={resolveLocale(languagePreference.language(), navigator.language)}
+                    onChangeLanguage={() => setLanguageWheelOpen(true)}
+                    state={state.login}
+                    onRetry={checkSession}
+                    onRequestEmailCode={start}
+                    onVerifyEmailCode={verify}
+                    onOpenCompanySignIn={() =>
+                      state.login.status === "company_sign_in"
+                        ? openCompanySignIn(state.login.email, state.login.provider ?? "company")
+                        : state.login.status === "signed_out" && state.login.provider === "workos"
+                          ? openCompanySignIn("", "workos")
+                          : Promise.resolve()
+                    }
+                    onReset={async () => {
+                      clearSession();
+                      setState((draft) => {
+                        draft.resendAt = 0;
+                      });
+                    }}
+                    consent={
+                      <Show when={!analyticsAgreed()}>
+                        <AnalyticsConsentRow
+                          class="web-consent-row"
+                          checked={analyticsChoice()}
+                          agents={consentAgents}
+                          onChange={(checked) => {
+                            analyticsTouched = true;
+                            setAnalyticsChoice(checked);
+                          }}
+                        />
+                      </Show>
+                    }
+                    notice={
+                      <ConsentNotice
+                        onOpenTerms={() => window.open("/terms", "_blank", "noopener")}
+                        onOpenPrivacy={() => window.open("/privacy", "_blank", "noopener")}
+                      />
+                    }
+                  />
+                </Show>
               }
             >
               {(accountId) => (

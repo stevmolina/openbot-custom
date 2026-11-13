@@ -64,7 +64,7 @@ export function useWorkspaceSidebarPages(): () => SidebarPages {
   const current = (): SidebarPage | null => {
     const page = windowPage.page();
     if (page === "agents") return layout.sidebarView() === "routines" ? "routines" : "chats";
-    return page === "server-settings" ? null : page;
+    return page === "server-settings" || page === "pricing" ? null : page;
   };
   const help = createHelpMenu({
     version: () => whatsNew.state.version,
@@ -88,7 +88,10 @@ export function useWorkspaceSidebarPages(): () => SidebarPages {
     // An older joined server has no storage routes, so it has no Library.
     onLibrary: serverHasStorage(activeServer()) ? windowPage.openLibrary : undefined,
     onMachines: windowPage.openMachines,
-    onMarketplace: () => setSkillsMarketplaceOpen(true),
+    onMarketplace: () => {
+      windowPage.leavePricing();
+      setSkillsMarketplaceOpen(true);
+    },
     onSettings: (button) => (updateNotice() ? openAppSettings(button, "updates") : windowPage.openSettings(button)),
     settingsNotice: updateNotice(),
     help,

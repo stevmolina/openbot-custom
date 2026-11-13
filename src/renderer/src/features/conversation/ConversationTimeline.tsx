@@ -43,7 +43,7 @@ import { UnreadMessagesBanner, UnreadMessagesDivider } from "@openbot/ui/feature
 import { VoicePlayer } from "@openbot/ui/features/conversation/VoicePlayer";
 import { teamMemberName } from "@openbot/ui/features/team/TeamPersonAvatar";
 import { useText } from "@openbot/ui/text";
-import { createEffect, createMemo, createSignal, For, Loading, lazy, onCleanup, Show, untrack } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Loading, onCleanup, onSettled, Show, untrack } from "solid-js";
 import { useShowAgentSteps } from "../../agent-steps-preference";
 import { planItems, planTitle } from "../../app-message-projection";
 import { writeClipboardText } from "../../clipboard";
@@ -69,6 +69,7 @@ import { continuesSenderRun } from "./chat-grouping";
 import { chatSearchCanOpen, chatSearchOpensMessage } from "./chat-search";
 import { isChatVisualAppShortcut } from "./chat-visual-shortcuts";
 import { chatVisualPageUrl } from "./chat-visual-url";
+import { ApprovalCard, preloadConversationCards, QuestionPromptBubble, UiBlockPrompt } from "./conversation-cards";
 import { isIncomingAgentMessage } from "./conversation-read-state";
 import { conversationRuntime } from "./conversation-runtime";
 import { useConversationViewScope } from "./conversation-scope";
@@ -804,6 +805,9 @@ export function ConversationTimeline() {
       ? props.agent
       : undefined,
   );
+  // The cards of an agent's requests draw from lazy chunks. Loaded after the first chat opens, the card
+  // of the next chat is in its first frame, and the chat does not jump.
+  onSettled(preloadConversationCards);
   const sampleRoutinePrompt = () =>
     props.routines?.find((routine) => routine.active && routine.instruction.trim())?.instruction ??
     props.routines?.find((routine) => routine.instruction.trim())?.instruction;
@@ -1219,8 +1223,9 @@ export function ConversationTimeline() {
                                           suggestion(),
                                           Boolean(props.activeTurnId),
                                         )}
-                                        onSave={sendCardMessage}
-                                        onSaveSkill={() => saveSkillSuggestion(message()?.id ?? initialMessage.id)}
+                                        onSave={(reply) =>
+                                          saveSkillSuggestion(message()?.id ?? initialMessage.id, reply)
+                                        }
                                         onOpenSkill={skillOpener()}
                                       />
                                     )}
@@ -1889,11 +1894,3 @@ export function ConversationTimeline() {
     </>
   );
 }
-
-const ApprovalCard = lazy(() =>
-  import("@openbot/ui/features/conversation/ConversationPrompts").then((module) => ({ default: module.ApprovalCard })),
-);
-const QuestionPromptBubble = lazy(() =>
-  import("@openbot/ui/components/QuestionPromptBubble").then((module) => ({ default: module.QuestionPromptBubble })),
-);
-const UiBlockPrompt = lazy(() => import("./UiBlockPrompt").then((module) => ({ default: module.UiBlockPrompt })));

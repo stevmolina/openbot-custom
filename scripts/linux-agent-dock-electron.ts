@@ -60,7 +60,7 @@ const PRESENTATION: AgentDockPresentation = {
   peekOnAttention: false,
   sizePercent: 100,
   offsets: [],
-  seats: AGENTS.map((item) => ({ kind: "agent", agent: item, mood: "idle", state: null })),
+  seats: AGENTS.map((item) => ({ kind: "agent", agent: item, mood: "idle", state: null, temporary: false })),
   available: [],
   availableChannels: [],
   agents: AGENTS,
