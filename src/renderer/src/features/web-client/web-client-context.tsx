@@ -127,6 +127,18 @@ const LATEST_PAGE_SIZE = 50;
  */
 const PRELOADED_AGENTS = 6;
 
+type ConversationDeltaEvent = Extract<AgentEvent, { type: "conversation-delta" }>;
+
+/** Runs `run` at the next frame. A hidden page gets no frames, so there a timer runs it. */
+function onNextFrame(run: () => void): () => void {
+  if (document.visibilityState === "hidden") {
+    const timer = setTimeout(run);
+    return () => clearTimeout(timer);
+  }
+  const frame = requestAnimationFrame(run);
+  return () => cancelAnimationFrame(frame);
+}
+
 /**
  * Releases the older pages of a conversation that is not open. Only the open conversation gets new
  * messages, so the next latest read replaces the kept messages with the host page, and the older pages
@@ -355,7 +367,10 @@ export function createWebWorkspace(
   let prefetching: string | null = null;
   /** The newest read around a message for each agent. A newer jump or a return to the latest messages wins. */
   const aroundReads = new Map<string, number>();
-  const heldDeltas = new Map<string, Array<Extract<AgentEvent, { type: "conversation-delta" }>>>();
+  const heldDeltas = new Map<string, ConversationDeltaEvent[]>();
+  /** The deltas that wait for the next frame, with the generation that they came in. See `applyDelta`. */
+  let queuedDeltas: Array<{ event: ConversationDeltaEvent; generation: number }> = [];
+  let cancelDeltaFrame: (() => void) | undefined;
   const hostEventListeners = new Set<(event: AgentEvent | TeamRealtimeEvent) => void>();
   let connectionPromise: { hostId: string; opened: boolean; promise: Promise<void> } | null = null;
   let recoveryBlocked = false;
@@ -1669,52 +1684,75 @@ export function createWebWorkspace(
         conversationReads.delete(id);
         const held = heldDeltas.get(id) ?? [];
         heldDeltas.delete(id);
-        for (const event of held) applyDelta(event);
+        // The held deltas came before the queued ones, so they apply first.
+        if (held.length > 0) {
+          queuedDeltas = [...held.map((event) => ({ event, generation })), ...queuedDeltas];
+          cancelDeltaFrame ??= onNextFrame(flushDeltas);
+        }
       }
     }
   }
   /**
-   * Appends streamed text to the selected conversation without a read. A delta that arrives during
+   * Queues streamed text for the selected conversation. Each frame applies the queued text in one
+   * write, so a fast stream draws once per frame and not once per chunk, as on the desktop.
+   */
+  function applyDelta(event: ConversationDeltaEvent) {
+    if (disposed || event.agentId !== selectedId) return;
+    queuedDeltas.push({ event, generation });
+    cancelDeltaFrame ??= onNextFrame(flushDeltas);
+  }
+  /**
+   * Appends the queued text to the selected conversation without a read. A delta that arrives during
    * a read waits for it: the page read may already hold the text, and its revision tells which
    * deltas are newer. A delta for another thread asks for a read.
    */
-  function applyDelta(event: Extract<AgentEvent, { type: "conversation-delta" }>) {
-    if (disposed || event.agentId !== selectedId) return;
-    if (conversationReads.has(event.agentId)) {
-      const held = heldDeltas.get(event.agentId);
-      if (held) held.push(event);
-      else heldDeltas.set(event.agentId, [event]);
-      return;
+  function flushDeltas() {
+    cancelDeltaFrame?.();
+    cancelDeltaFrame = undefined;
+    const queued = queuedDeltas;
+    queuedDeltas = [];
+    const ready: ConversationDeltaEvent[] = [];
+    for (const { event, generation: queuedGeneration } of queued) {
+      // A new connection or a closed chat reads its conversation again.
+      if (disposed || queuedGeneration !== generation || event.agentId !== selectedId) continue;
+      if (conversationReads.has(event.agentId)) {
+        const held = heldDeltas.get(event.agentId);
+        if (held) held.push(event);
+        else heldDeltas.set(event.agentId, [event]);
+      } else ready.push(event);
     }
+    if (ready.length === 0) return;
     let otherThread = false;
     // The checks read the draft: a page that a read just wrote is not visible outside it until a flush.
     setState((draft) => {
-      const item = draft.conversations[event.agentId];
-      const value = item?.page;
-      if (!value) return;
-      if (value.threadId !== event.threadId) {
-        otherThread = true;
-        return;
+      for (const event of ready) {
+        const item = draft.conversations[event.agentId];
+        const value = item?.page;
+        if (!value) continue;
+        if (value.threadId !== event.threadId) {
+          otherThread = true;
+          continue;
+        }
+        if (event.revision <= value.revision) continue;
+        // The streamed message is at the end of the page.
+        const message = value.messages.findLast((entry) => entry.id === event.messageId);
+        if (message) {
+          message.text += event.delta;
+          message.status = "streaming";
+        } else if (item.around) continue;
+        else
+          value.messages.push({
+            id: event.messageId,
+            turnId: event.turnId,
+            author: "assistant",
+            source: "assistant",
+            text: event.delta,
+            createdAt: event.createdAt,
+            status: "streaming",
+          });
+        value.revision = event.revision;
+        value.activeTurnId = event.turnId;
       }
-      if (event.revision <= value.revision) return;
-      // The streamed message is at the end of the page.
-      const message = value.messages.findLast((entry) => entry.id === event.messageId);
-      if (message) {
-        message.text += event.delta;
-        message.status = "streaming";
-      } else if (item.around) return;
-      else
-        value.messages.push({
-          id: event.messageId,
-          turnId: event.turnId,
-          author: "assistant",
-          source: "assistant",
-          text: event.delta,
-          createdAt: event.createdAt,
-          status: "streaming",
-        });
-      value.revision = event.revision;
-      value.activeTurnId = event.turnId;
     });
     if (otherThread) void refresh();
   }
@@ -2100,6 +2138,9 @@ export function createWebWorkspace(
     return () => {
       disposed = true;
       generation += 1;
+      cancelDeltaFrame?.();
+      cancelDeltaFrame = undefined;
+      queuedDeltas = [];
       recovery.dispose();
       hostLifecycle.dispose();
       focusUse.dispose();
