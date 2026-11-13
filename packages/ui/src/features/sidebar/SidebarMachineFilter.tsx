@@ -17,7 +17,7 @@ import type { JSX } from "@solidjs/web";
 import { createEffect, createMemo, For, Show } from "solid-js";
 import { useText } from "../../text";
 import { MACHINE_STATE_LABEL, type Machine } from "../servers/MachinesPage";
-import { AllMachinesMonogram } from "../servers/ServerMonogram";
+import { AllMachinesMark } from "../servers/ServerMascot";
 import { ServerMark } from "../servers/ServerRail";
 import { useSidebarScope } from "./sidebar-scope";
 import type { SidebarAllMachines, SidebarMachineChipsProps } from "./sidebar-types";
@@ -153,7 +153,7 @@ export function SidebarMachineChips(chipsProps: { chips: SidebarMachineChipsProp
         name={t("server.allMachines.all")}
         onChoose={() => choose(null)}
       >
-        <AllMachinesMonogram />
+        <AllMachinesMark />
       </MachineChip>
       <For each={chips().machines} keyed={(machine) => machine.id}>
         {(machine) => (

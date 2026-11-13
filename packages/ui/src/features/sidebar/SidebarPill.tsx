@@ -224,7 +224,6 @@ export function SidebarPill(props: { pages: SidebarPages; vertical: boolean }) {
           )}
         </For>
         <Show when={!props.vertical}>
-          <span class="sidebar-pill-spacer" />
           <SidebarProviderStack
             usageRows={props.pages.usageRows}
             customAgentUsage={props.pages.customAgentUsage}

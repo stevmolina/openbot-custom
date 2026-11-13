@@ -41,7 +41,6 @@ export const messages = defineMessages("sidebar", {
   "sidebar.pill.providers": "Provider usage: {names}",
   "sidebar.pill.providersTitle": "Providers",
   "sidebar.pill.openUsage": "Usage",
-  "sidebar.pill.moreProviders": "+{number}",
   "sidebar.more.customize": "Customize pill",
   "sidebar.empty.noAgents": "No agents yet",
   "sidebar.empty.firstAgent": "Create your first agent",
