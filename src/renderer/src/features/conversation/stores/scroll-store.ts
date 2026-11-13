@@ -328,7 +328,12 @@ export function createScrollStore(deps: ScrollStoreDeps) {
 
   /* One writer for the boundary: the row the virtualizer renders first, read where the reader is. */
   function updateHistoryBoundary(element = deps.elements.scrollElement()): void {
-    setAtHistoryBoundary(chatHistoryBoundaryReached(element, firstRenderedIndex));
+    const following = deps.sticky.getStickToLatest();
+    // A chat that opens has its first page before it draws the rows, and its empty scroll content
+    // reads as the top. A reader who follows the latest message is at the top only when the drawn
+    // rows fit the view.
+    const drawn = (deps.elements.virtualRoot()?.childElementCount ?? 0) > 0;
+    setAtHistoryBoundary((drawn || !following) && chatHistoryBoundaryReached(element, firstRenderedIndex, following));
   }
 
   function updateScrollFade(element = deps.elements.scrollElement()) {
