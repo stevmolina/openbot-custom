@@ -5,10 +5,11 @@ For a worked example and the sign-in on a joined server, read
 
 One developer bundle per directory: `plugins/<slug>/plugin.json`.
 `catalog.json` sets the order and the featured flags.
-`scripts/build-plugin-catalog.ts` validates the source and writes three
+`scripts/build-plugin-catalog.ts` validates the source and writes these
 generated outputs; never edit those by hand:
 
 - `src/renderer/src/features/settings/marketplace-plugin-catalog.ts` (Apps tab)
+- `src/renderer/src/features/settings/marketplace-plugin-slugs.ts` (analytics filter)
 - `apps/auth-api/src/lib/plugin-catalog.generated.ts` (Worker JSON routes)
 - `resources/plugin-catalog/` (offline snapshot shipped with the app)
 

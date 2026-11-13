@@ -269,7 +269,6 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
   /** Sets the account when the workspace code is ready to show it. */
   async function showAccount(account: CentralAuthUser) {
     const view = await loadWorkspace();
-    writeSignedInHint(true);
     setWorkspace(() => view);
     return account;
   }
@@ -419,6 +418,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
         setState((draft) => {
           draft.account = account;
         });
+        writeSignedInHint(true);
         void followAccountAnalytics(account.analyticsEnabled).catch(() => undefined);
       }
     } catch (error) {
@@ -557,6 +557,7 @@ export function WebApp(props: { createRuntime?: WebRuntimeFactory } = {}) {
     setState((draft) => {
       draft.account = account;
     });
+    writeSignedInHint(true);
     void followAccountAnalytics(account.analyticsEnabled).catch(() => undefined);
   }
   async function logout() {
