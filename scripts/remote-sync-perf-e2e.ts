@@ -6,7 +6,7 @@
 // candidates only. Then run
 // `bun run perf:remote [--runs=5] [--label=<name>] [--clients=web,desktop,desktop-start] [--api=<url>]
 //  [--compare=<old report.json>] [--browser-executable=<path>] [--host-id=<id>] [--allow-mutations]
-//  [--latency=<ms>] [--bandwidth=<KB/s>]`.
+//  [--latency=<ms>] [--bandwidth=<KB/s>] [--video]`.
 // Add `OPENBOT_DEV_CLIENT_TRANSPORT=webrtc` to the stack to make the test client reach the host over
 // Signal and WebRTC, as a user does, and `OPENBOT_DEV_RTT_MS=<ms>`, equal to `--latency`, to add the
 // round trip to its data channel and account service reads.
@@ -21,6 +21,7 @@
 //   the data channels of the page share one link of that many kilobytes per second in each direction:
 //   a message waits until the bytes sent before it have passed, as on a far path whose congestion
 //   window is still small. Without it, a large answer does not delay the small answers behind it.
+//   `--video` records each cold `web` run to `web-<n>.webm` in the output folder.
 // - desktop: reads the test-client app that is running. The first sample is its cold start: the
 //   connect spans of `logs/trace.ndjson`, the request file that main writes with
 //   `OPENBOT_DEV_SYNC_PROFILE=1`, and the renderer marks. With `--allow-mutations`, each further run
@@ -36,7 +37,7 @@
 // comparison.md. Records hold route templates, never ids; the script stops when a route holds a UUID.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { isDynamicRecord, isNumber, isString } from "@openbot/contracts/runtime-values";
 import { translateFor } from "@openbot/i18n";
@@ -75,6 +76,8 @@ const hostId = argument("host-id");
 const allowMutations = process.argv.includes("--allow-mutations");
 const latencyMs = Number(argument("latency") ?? "0");
 assert.ok(Number.isInteger(latencyMs) && latencyMs >= 0, "--latency takes a whole number of milliseconds.");
+const recordVideo = process.argv.includes("--video");
+let videos = 0;
 const bandwidthKBps = Number(argument("bandwidth") ?? "0");
 assert.ok(Number.isInteger(bandwidthKBps) && bandwidthKBps >= 0, "--bandwidth takes a whole number of KB/s.");
 const FRAME_KEY_PREFIX = "openbot:remote-frame:";
@@ -589,10 +592,18 @@ function hasFrame(state: StorageState): boolean {
 }
 
 async function webRun(browser: Browser, client: "web" | "web-warm", storageState: StorageState, capture = false) {
-  const context = await browser.newContext({ storageState, viewport: { width: 1280, height: 900 } });
+  const viewport = { width: 1280, height: 900 };
+  const video = recordVideo && client === "web";
+  const context = await browser.newContext({
+    storageState,
+    viewport,
+    ...(video ? { recordVideo: { dir: resolve(OUT, "video"), size: viewport } } : {}),
+  });
+  let recording: Page | null = null;
   try {
     await instrument(context);
     const page = await context.newPage();
+    recording = page;
     if (latencyMs > 0) await addLatency(context);
     await page.goto(`${api}/app`);
     if (capture) await captureFrame(page, "web-warm-frame");
@@ -616,6 +627,11 @@ async function webRun(browser: Browser, client: "web" | "web-warm", storageState
     return run;
   } finally {
     await context.close();
+    const recorded = video ? await recording?.video()?.path() : undefined;
+    if (recorded) {
+      videos += 1;
+      renameSync(recorded, resolve(OUT, `web-${videos}.webm`));
+    }
   }
 }
 

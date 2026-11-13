@@ -7,6 +7,7 @@ import { AGENT_FAST_MODE_ROUTES } from "@openbot/contracts/team-protocol/agent-f
 import { AGENT_HIDDEN_ROUTES } from "@openbot/contracts/team-protocol/agent-hidden-v1";
 import { BROWSER_PAGE_STATE_ROUTES } from "@openbot/contracts/team-protocol/browser-page-state-v1";
 import { BROWSER_USER_CONTROL_ROUTES } from "@openbot/contracts/team-protocol/browser-user-control-v1";
+import { CHANNEL_PICTURE_ROUTES } from "@openbot/contracts/team-protocol/channel-picture-v1";
 import { CHANNEL_ROUTES } from "@openbot/contracts/team-protocol/channels-v1";
 import { CHAT_COLORS_ROUTES } from "@openbot/contracts/team-protocol/chat-colors-v1";
 import { MODEL_VISIBILITY_ROUTES } from "@openbot/contracts/team-protocol/model-visibility-v1";
@@ -41,12 +42,18 @@ const FIRST_SCREEN_PATHS: ReadonlySet<string> = new Set([
   TEAM_API_ROUTES.browser.tabs,
   BROWSER_USER_CONTROL_ROUTES.state,
   BROWSER_PAGE_STATE_ROUTES.state,
-  // The open chat: the names of its people and the page of an open channel.
+  // The open chat: the names of its people, and the page and picture of an open channel. The channel
+  // list waits for that page and picture before the sidebar shows.
   TEAM_API_ROUTES.team.presence,
   CHANNEL_ROUTES.read,
+  CHANNEL_PICTURE_ROUTES.image,
+  // What the user does: a message, a stop, an answer. These never wait.
+  CHANNEL_ROUTES.command,
+  TEAM_API_ROUTES.respond.prompt,
+  TEAM_API_ROUTES.respond.approval,
 ]);
-/** The page and the queue of an agent chat. */
-const AGENT_CHAT_PATH = /^\/v1\/agents\/[^/]+\/(?:conversation|conversation-page|queue)$/u;
+/** The page and the queue of an agent chat, and a message or a stop that the user sends there. */
+const AGENT_CHAT_PATH = /^\/v1\/agents\/[^/]+\/(?:conversation|conversation-page|queue|messages|interrupt)$/u;
 /** A file that a message of the open chat shows. */
 const ATTACHMENT_PATH = /^\/v1\/attachments\/[^/]+$/u;
 
