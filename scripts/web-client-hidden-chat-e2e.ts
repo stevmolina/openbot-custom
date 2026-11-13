@@ -102,6 +102,24 @@ async function openStory(browser: Browser, device: string): Promise<Page> {
   await page.evaluate("globalThis.openbotWebBench.ready");
   await page.locator(".conversation-scroll").waitFor({ state: "attached", timeout: 60_000 });
   await page.evaluate("globalThis.openbotWebBench.idle()");
+  // The page has a long frame of start-up work soon after it opens, with no reply. The reading starts
+  // when the frames are steady, so that frame is not counted as the reply's.
+  await page.evaluate(
+    () =>
+      new Promise<void>((done, fail) => {
+        const deadline = performance.now() + 30_000;
+        let last = performance.now();
+        let steady = 0;
+        const frame = (time: number) => {
+          steady = time - last < 50 ? steady + 1 : 0;
+          last = time;
+          if (steady >= 60) done();
+          else if (time > deadline) fail(new Error("The frames did not settle."));
+          else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }),
+  );
   return page;
 }
 
