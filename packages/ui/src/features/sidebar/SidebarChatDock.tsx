@@ -543,8 +543,9 @@ export function SidebarUnreadJump(jumpProps: { list: () => HTMLElement | undefin
       outer.removeEventListener("transitionend", onEnd);
       reveal();
     };
+    // The fade ends before the height does, so only the end of the height says that the row has its place.
     const onEnd = (event: TransitionEvent) => {
-      if (event.target === outer) finish();
+      if (event.target === outer && event.propertyName === "grid-template-rows") finish();
     };
     outer.addEventListener("transitionend", onEnd);
     // A motion that does not run sends no event.
