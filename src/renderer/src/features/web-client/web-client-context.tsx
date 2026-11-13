@@ -343,7 +343,9 @@ export function createWebWorkspace(
   /** The conversation reads in flight by agent, and the deltas that wait for them to finish. */
   const conversationReads = new Map<string, number>();
   /** The latest-page reads in flight, by agent. See `loadLatest`. */
-  const latestReads = new Map<string, { generation: number; promise: Promise<void> }>();
+  const latestReads = new Map<string, { generation: number; selected: boolean; promise: Promise<void> }>();
+  /** The agent of the one `prefetch` read in flight, or null. */
+  let prefetching: string | null = null;
   /** The newest read around a message for each agent. A newer jump or a return to the latest messages wins. */
   const aroundReads = new Map<string, number>();
   const heldDeltas = new Map<string, Array<Extract<AgentEvent, { type: "conversation-delta" }>>>();
@@ -1756,14 +1758,17 @@ export function createWebWorkspace(
     }
   }
   /**
-   * Reads the latest page of an agent. A read that is already running for the agent is shared, so a
-   * `prefetch` and the open that follows it make one request.
+   * Reads the latest page of an agent. A read that is already running for the agent is shared, but an
+   * open does not share a read that started before the agent was selected: deltas of a conversation that
+   * is not open are dropped, so that page can miss text that streamed before the open. The open starts
+   * its own read, and the early page still shows first.
    */
   function loadLatest(id: string): Promise<void> {
     const running = latestReads.get(id);
-    if (running?.generation === generation) return running.promise;
-    const read: { generation: number; promise: Promise<void> } = {
+    if (running?.generation === generation && (running.selected || selectedId !== id)) return running.promise;
+    const read: { generation: number; selected: boolean; promise: Promise<void> } = {
       generation,
+      selected: selectedId === id,
       promise: load(id).finally(() => {
         if (latestReads.get(id) === read) latestReads.delete(id);
       }),
@@ -1778,11 +1783,19 @@ export function createWebWorkspace(
    */
   function prefetch(id: string): void {
     if (disposed || state.status !== "online" || id === selectedId || state.conversations[id]?.page) return;
+    // A finger that starts a scroll also puts the pointer down on rows. One early read at a time keeps a
+    // scroll from sending a read for every row that it touches.
+    if (prefetching !== null) return;
     setState((draft) => {
       draft.conversations[id] ??= { page: null, draft: "", attachments: [], loading: false, trimmed: true };
     });
+    prefetching = id;
     // A failed early read only costs the early page. The agent loads when it opens.
-    loadLatest(id).catch(() => undefined);
+    loadLatest(id)
+      .catch(() => undefined)
+      .finally(() => {
+        if (prefetching === id) prefetching = null;
+      });
   }
   /**
    * Reads the latest page of recently opened agents, one at a time, so that the first switch to one
