@@ -38,7 +38,7 @@ import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { isDynamicRecord, isNumber } from "@openbot/contracts/runtime-values";
 import { createOpenBotLogger } from "@openbot/logging";
-import { type Browser, type BrowserContext, chromium, devices, type Page, webkit } from "playwright-core";
+import { type Browser, type BrowserContext, chromium, devices, type Page, type Route, webkit } from "playwright-core";
 import { type Spread, spread } from "./dev-automation/bench-stats";
 import { startRenderRecording } from "./dev-automation/render-metrics";
 
@@ -626,18 +626,23 @@ async function measureLook(browser: Browser, samples: Samples): Promise<void> {
           const context = await browser.newContext({
             ...options,
             reducedMotion: screen.freezeMs === undefined ? "reduce" : "no-preference",
+            // The web client's service worker fetches assets too, and a page route does not see those.
+            serviceWorkers: screen.signInStylesOnly ? "block" : "allow",
           });
           try {
             await context.addInitScript(`localStorage.setItem("openbot.web.appearance", ${JSON.stringify(theme)})`);
             const page = await context.newPage();
-            // Main has no `web-client-*.css`: there, this stops nothing and the full stylesheet shows.
-            if (screen.signInStylesOnly) await page.route("**/assets/web-client-*.css", (route) => route.abort());
+            // The full stylesheet waits until the reading is done. A failed one would reload the page.
+            // Main has no `web-client-*.css`: there, nothing waits and the full stylesheet shows.
+            const held: Route[] = [];
+            if (screen.signInStylesOnly) await page.route("**/assets/web-client-*.css", (route) => held.push(route));
             await page.goto(`${proxy.url}/app`);
             await screen.open(page).catch(async (error: unknown) => {
               await page.screenshot({ path: resolve(lookDir, `${name}-failed.png`) });
               throw error;
             });
-            await page.waitForLoadState("networkidle");
+            // A held request keeps the network busy, so then the open screen is the signal.
+            if (held.length === 0) await page.waitForLoadState("networkidle");
             await page.waitForFunction("!document.querySelector('.app-loading')", undefined, { timeout: 30_000 });
             const nodes = await page.evaluate<LookNodes>(readLook(screen.freezeMs));
             await page.screenshot({ path: resolve(lookDir, `${name}.png`) });
@@ -645,6 +650,7 @@ async function measureLook(browser: Browser, samples: Samples): Promise<void> {
             record(samples, `look.${name}.nodes`, Object.keys(nodes).length);
             // The sign-in stylesheet is on until the workspace code and the full stylesheet load.
             record(samples, `look.${name}.signInSheetsOn`, await page.evaluate<number>(SIGN_IN_SHEETS_ON));
+            for (const route of held) await route.abort().catch(() => undefined);
             if (!compareDir) continue;
             const before: LookNodes = JSON.parse(readFileSync(resolve(compareDir, `${name}.json`), "utf8"));
             for (const node of new Set([...Object.keys(before), ...Object.keys(nodes)])) {
