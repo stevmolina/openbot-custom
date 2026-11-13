@@ -113,9 +113,9 @@ export const toast = Object.assign(
 );
 
 /** Toast lifetime; exported so manual timers settle on the same count. */
-export const TOAST_DURATION = 10_000;
-/** The longest time a toast shows. A toast that waits for an answer gets this time. */
-export const TOAST_MAX_DURATION = 30_000;
+export const TOAST_DURATION = 3_000;
+/** The longest time a toast shows, for every toast, an important one too. */
+export const TOAST_MAX_DURATION = 3_000;
 
 const [hasVisibleToasts, setHasVisibleToasts] = createSignal(false);
 
