@@ -5,7 +5,7 @@ import { currentText } from "../../text";
 import { AgentAvatar } from "./AgentAvatar";
 
 /** How long a deleted agent can be restored. */
-export const AGENT_DELETE_UNDO_MS = 6_000;
+export const AGENT_DELETE_UNDO_MS = 3_000;
 const TICK_MS = 100;
 
 /** The time to undo. It stops while the pointer or the keyboard focus is on the toast, and while the window is hidden. */
