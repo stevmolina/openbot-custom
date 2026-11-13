@@ -1,0 +1,41 @@
+/*
+ * The styles of the screens that `/app` shows before the workspace: the loading screen and sign-in.
+ * They are a part of `web-client.css`, in its order. `web-client.css` loads with the workspace code
+ * and repeats each rule here later in the cascade, so the workspace looks as it did with one
+ * stylesheet. Add a file here only when a sign-in screen needs it, at its place in `styles.css`.
+ * `bun run perf:web --phases=look` compares the computed styles of these screens between two builds.
+ *
+ * When `web-client.css` has loaded, `retireSignInStyles` turns this stylesheet off: the page then has
+ * each rule once, and a style change tests no rule twice.
+ */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/inter/wght-italic.css";
+@import "tailwindcss";
+@import "@openbot/brand/tokens.css";
+@import "@openbot/brand/tokens-light.css";
+@import "@openbot/brand/logo.css";
+@import "@openbot/ui/styles.css";
+@import "@openbot/ui/styles/reduced-motion.css";
+@import "@openbot/ui/features/account/otp-input.css";
+@import "../../styles/transitions.css";
+@import "../../styles/theme-sweep.css";
+@import "../../styles/base.css";
+@import "@openbot/ui/styles/sr-only.css";
+@import "@openbot/ui/features/account/auth.css";
+@import "@openbot/ui/features/account/app-loading-screen.css";
+@import "@openbot/ui/features/account/language-wheel.css";
+@import "../onboarding/onboarding.css";
+/* Whole, as `styles.css` imports it: the consent avatars use its `.agent-avatar` rules. */
+@import "../../styles/app-shell.css";
+@import "@openbot/ui/features/channels/channel-avatar.css";
+@import "../../styles/chat-background.css";
+@import "../../styles/app-root.css";
+@import "./web-phone.css";
+@import "./web-app.css";
+@source "../../../../../packages/ui/src";
+@source "../../";
+
+/* The mark that `web-sign-in-styles.ts` finds. It must stay the last style rule. No element has the class. */
+.openbot-web-sign-in-sheet {
+  --openbot-stylesheet: sign-in;
+}

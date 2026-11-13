@@ -1,4 +1,6 @@
-import { lazy } from "solid-js";
+import { lazy, merge } from "solid-js";
+import type { MarketplaceAppConnectProps } from "./features/settings/MarketplaceAppConnect";
+import type { MarketplaceModalProps } from "./features/settings/MarketplaceModal";
 
 /**
  * The views that are their own bundle chunk, wrapped once each.
@@ -75,11 +77,19 @@ export const ServerSettingsModal = lazy(() =>
 export const SettingsModal = lazy(() =>
   import("./features/settings/SettingsModal").then((module) => ({ default: module.SettingsModal })),
 );
+// The plugin catalog is about 400 KB of code. It loads with the Marketplace, not with the workspace.
+const loadPluginCatalog = () =>
+  import("./features/settings/marketplace-plugin-catalog").then((module) => module.MARKETPLACE_PLUGINS);
 export const MarketplaceModal = lazy(() =>
-  import("./features/settings/MarketplaceModal").then((module) => ({ default: module.MarketplaceModal })),
+  Promise.all([import("./features/settings/MarketplaceModal"), loadPluginCatalog()]).then(([module, plugins]) => ({
+    default: (props: Omit<MarketplaceModalProps, "plugins">) => module.MarketplaceModal(merge(props, { plugins })),
+  })),
 );
 export const MarketplaceAppConnect = lazy(() =>
-  import("./features/settings/MarketplaceAppConnect").then((module) => ({ default: module.MarketplaceAppConnect })),
+  Promise.all([import("./features/settings/MarketplaceAppConnect"), loadPluginCatalog()]).then(([module, plugins]) => ({
+    default: (props: Omit<MarketplaceAppConnectProps, "plugins">) =>
+      module.MarketplaceAppConnect(merge(props, { plugins })),
+  })),
 );
 export const WorkflowsPage = lazy(() =>
   import("./features/workflows/WorkflowsPage").then((module) => ({ default: module.WorkflowsPage })),

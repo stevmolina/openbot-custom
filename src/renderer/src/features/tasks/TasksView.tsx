@@ -22,7 +22,8 @@ import type { AttachmentDownloads, AttachmentMediaSource } from "@openbot/ui/fea
 import type { ComposerPasteResult, ComposerSelection } from "@openbot/ui/features/conversation/ComposerEditor";
 import type { SendShortcut } from "@openbot/ui/features/conversation/send-shortcut";
 import { AgentThreadView, type AgentThreadVoice } from "@openbot/ui/features/conversation/threads/AgentThreadView";
-import { TaskAnswerCard, TaskPanel } from "@openbot/ui/features/tasks/TaskPanel";
+import { TaskAnswerCard } from "@openbot/ui/features/tasks/TaskAnswerCard";
+import { TaskPanel } from "@openbot/ui/features/tasks/TaskPanel";
 import { TASKS_SIDE_DEFAULT, TASKS_SIDE_MIN, TasksPage, type TasksVoice } from "@openbot/ui/features/tasks/TasksPage";
 import { currentText } from "@openbot/ui/text";
 import {

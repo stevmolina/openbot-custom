@@ -5,6 +5,7 @@
 @import "@openbot/brand/tokens-light.css";
 @import "@openbot/brand/logo.css";
 @import "@openbot/ui/styles.css";
+@import "@openbot/ui/styles/reduced-motion.css";
 @import "@openbot/ui/features/account/otp-input.css";
 @import "./styles/transitions.css";
 @import "./styles/theme-sweep.css";
@@ -100,66 +101,7 @@
 @import "./styles/window-glass.css";
 /* After the transparent window: the chat background replaces its canvas in conversations. */
 @import "./styles/chat-background.css";
+/* Last: the root tokens and the app font. `web-sign-in.css` imports this file too. */
+@import "./styles/app-root.css";
 
 @source "../../../packages/ui/src";
-
-:root {
-  color-scheme: dark;
-  --background: var(--openbot-bg-canvas);
-  --surface: var(--openbot-bg-surface);
-  --border: var(--openbot-border);
-  --text-primary: var(--openbot-text-primary);
-  --text-secondary: var(--openbot-text-secondary);
-  --text-muted: var(--openbot-text-muted);
-  --accent: var(--openbot-accent);
-  --danger: var(--openbot-danger);
-  --digit-dur: 500ms;
-  --digit-distance: 8px;
-  --digit-stagger: 70ms;
-  --digit-blur: 2px;
-  --digit-ease: cubic-bezier(0.34, 1.45, 0.64, 1);
-  --digit-dir-x: 0;
-  --digit-dir-y: 1;
-  --stream-gap: 40ms;
-  --stream-fade: 300ms;
-  --stream-catch-up: 400ms;
-  --stream-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --text-swap-dur: 150ms;
-  --text-swap-translate-y: 4px;
-  --text-swap-blur: 2px;
-  --text-swap-ease: ease-in-out;
-  --modal-open-dur: 250ms;
-  --modal-close-dur: 150ms;
-  --modal-scale: 0.96;
-  --modal-scale-close: 0.96;
-  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --page-slide-dur: 250ms;
-  --page-fade-dur: 250ms;
-  --page-slide-distance: 8px;
-  --page-blur: 3px;
-  --page-stagger: 0ms;
-  --page-exit-enabled: 1;
-  --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --panel-open-dur: 400ms;
-  --panel-close-dur: 350ms;
-  --panel-translate-x: 0px;
-  --panel-translate-y: 100px;
-  --panel-blur: 2px;
-  --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --resize-dur: 300ms;
-  --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --shake-distance: 6px;
-  --shake-overshoot: 4px;
-  --shake-dur-a: 80ms;
-  --shake-dur-b: 60ms;
-  --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --revert-hold: 3000ms;
-  --revert-dur: 280ms;
-  --acc-expand: 250ms;
-  --acc-collapse: 250ms;
-  --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  font-family: var(--openbot-font-sans);
-  font-synthesis: none;
-  text-rendering: geometricPrecision;
-}

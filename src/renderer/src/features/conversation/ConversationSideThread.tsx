@@ -6,7 +6,7 @@ import type { AgentMessage } from "@openbot/ui/data";
 import { contextUsageView } from "@openbot/ui/features/conversation/ContextUsage";
 import { AgentThreadView } from "@openbot/ui/features/conversation/threads/AgentThreadView";
 import type { AgentThreadBranchSource } from "@openbot/ui/features/conversation/threads/BranchDivider";
-import { TaskAnswerCard } from "@openbot/ui/features/tasks/TaskPanel";
+import { TaskAnswerCard } from "@openbot/ui/features/tasks/TaskAnswerCard";
 import { useText } from "@openbot/ui/text";
 import { createEffect, createProjection, Show } from "solid-js";
 import { actionToast } from "../../action-toast";

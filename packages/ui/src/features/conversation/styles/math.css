@@ -6,8 +6,9 @@
   overflow-y: hidden;
 }
 
-/* KaTeX gives display math a vertical margin; the message already spaces its blocks. */
-.message-math-display > * {
+/* KaTeX gives display math a vertical margin; the message already spaces its blocks. `katex.min.css`
+   loads with the first formula, after this file, so this rule must win on specificity. */
+.message-math-display > .katex-display {
   margin: 0;
   padding: var(--openbot-space-1) 0;
 }
