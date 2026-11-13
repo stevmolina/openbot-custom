@@ -672,6 +672,9 @@ export class BrowserHost {
   readonly #memoryLow: () => boolean;
   readonly #idleTabSweep: NodeJS.Timeout;
   readonly #awakeTabGraceMs: number;
+  readonly #idleTabSleepMs: number;
+  /** Whether the agent runs a turn now. Its active tab then stays loaded. */
+  readonly #agentWorking: (agentId: string) => boolean;
   readonly #webPreferences: ReturnType<typeof browserWebPreferences>;
 
   constructor(
@@ -704,7 +707,13 @@ export class BrowserHost {
       /** The tab preload, which makes the page values that bot checks read agree with Chrome. */
       pagePreload?: string;
       /** Shorter sleep timing for `scripts/browser-steps-e2e.ts`. */
-      tabSleep?: { sweepMs: number; awakeGraceMs: number };
+      tabSleep?: { sweepMs: number; awakeGraceMs: number; idleMs?: number };
+      /**
+       * Whether the agent runs a turn now. The active tab of an agent that does not work sleeps as
+       * any other idle tab, unless the panel shows it. Omitted, every agent works, so the active tab
+       * stays loaded.
+       */
+      agentWorking?: (agentId: string) => boolean;
       /** The memories of an agent about the site of a page host, which its snapshots show. */
       siteMemories?: (agentId: string, hostname: string) => BrowserSiteMemory[];
       /**
@@ -727,6 +736,8 @@ export class BrowserHost {
     }
     this.#memoryLow = options.memoryLow ?? (() => false);
     this.#awakeTabGraceMs = options.tabSleep?.awakeGraceMs ?? AWAKE_TAB_GRACE_MS;
+    this.#idleTabSleepMs = options.tabSleep?.idleMs ?? IDLE_TAB_SLEEP_MS;
+    this.#agentWorking = options.agentWorking ?? (() => true);
     this.#browserProfile = options.browserProfile ?? (() => ({ kind: "shared" }));
     this.#profileExists = options.profileExists ?? (() => false);
     this.#profileProxy = options.profileProxy ?? (() => null);
@@ -837,13 +848,14 @@ export class BrowserHost {
 
   readonly #sleepIdleTabs = Effect.fn("BrowserHost.sleepIdleTabs")(function* (this: BrowserHost) {
     const now = Date.now();
-    const idleMs = this.#memoryLow() ? LOW_MEMORY_TAB_SLEEP_MS : IDLE_TAB_SLEEP_MS;
+    const idleMs = this.#memoryLow() ? Math.min(LOW_MEMORY_TAB_SLEEP_MS, this.#idleTabSleepMs) : this.#idleTabSleepMs;
     const awake: BrowserHostTab[] = [];
     for (const tab of this.#tabs.values()) {
       if (tab.pendingRestore || !this.#maySleep(tab)) continue;
       if (this.#tabInUse(tab)) tab.lastUsedAt = now;
       else if (now - tab.lastUsedAt >= idleMs) yield* this.#sleep(tab);
-      else awake.push(tab);
+      // The active tab sleeps only after the idle time, not as one more tab past the cap.
+      else if (tab.id !== this.#activeTabId) awake.push(tab);
     }
     awake.sort((left, right) => right.lastUsedAt - left.lastUsedAt);
     for (const tab of awake.slice(MAX_IDLE_AWAKE_TABS)) {
@@ -870,7 +882,7 @@ export class BrowserHost {
   /** A reload loses what the page holds, so a tab that a person or a task still has open stays loaded. */
   #tabInUse(tab: BrowserHostTab): boolean {
     return (
-      this.#activeTabId === tab.id ||
+      this.#activeTabInUse(tab) ||
       // A preview capture is not a use. An unload that starts during one waits behind it on the queue.
       tab.pendingOperations > (tab.previewCapture ? 1 : 0) ||
       tab.viewInvalidations.size > 0 ||
@@ -882,6 +894,19 @@ export class BrowserHost {
       this.#userControlTabIds.has(tab.id) ||
       tab.contents.isCurrentlyAudible()
     );
+  }
+
+  /**
+   * The active tab is in use while the panel shows it, or while its agent runs a turn. An agent's only
+   * tab is always its active tab, so without this rule it never slept: on a server, where nobody opens
+   * the panel, one idle tab grew from 187 MB to 331 MB in 9.5 hours. A live view of the tab
+   * (`viewInvalidations`) and each tool call keep it loaded on their own, and the next use wakes it.
+   */
+  #activeTabInUse(tab: BrowserHostTab): boolean {
+    if (this.#activeTabId !== tab.id) return false;
+    // A tab of a thread with no agent keeps the earlier rule.
+    const working = tab.ownerAgentId === null || this.#agentWorking(tab.ownerAgentId);
+    return working || this.#visible;
   }
 
   /**

@@ -732,6 +732,90 @@ async function main(): Promise<void> {
     );
     recordCases("slept-tab-wakes-on-next-call");
 
+    // The active tab of an agent that runs no turn sleeps when the panel does not show it, and the
+    // next call loads it again. While the agent works, the same tab stays loaded.
+    phase("active-tab-sleep");
+    await runCauseEffect(sleepy.destroy());
+    let agentWorks = true;
+    // The sweep asks whether the agent works each time it finds the active tab idle long enough to sleep.
+    let workingChecks = 0;
+    let onWorkingCheck = () => {};
+    const idleHost = new BrowserHost(window, join(fixtureRoot, "downloads"), join(fixtureRoot, "idle-tabs.json"), {
+      tabSleep: { sweepMs: 50, awakeGraceMs: 0, idleMs: 200 },
+      agentWorking: (agentId) => {
+        workingChecks += 1;
+        onWorkingCheck();
+        return agentId === "fixture-agent" && agentWorks;
+      },
+    });
+    browser = idleHost;
+    const idleUrl = `${origin}/form?tab=idle`;
+    const idleTab = await runCauseEffect(idleHost.open(idleUrl, "fixture-thread", "fixture-agent"));
+    assert.equal(idleHost.activeTabId, idleTab.id, "The only tab is not the active tab.");
+    const idleContents = webContents
+      .getAllWebContents()
+      .find((item) => !item.isDestroyed() && item.getURL() === idleUrl);
+    assert(idleContents, "Missing the contents of the active tab.");
+    // Resolves after 8 sweeps that found the active tab, and at least twice the idle time.
+    const afterSweeps = () => {
+      const since = Date.now();
+      const checksBefore = workingChecks;
+      return new Promise<void>((resolve) => {
+        onWorkingCheck = () => {
+          if (workingChecks - checksBefore < 8 || Date.now() - since < 400) return;
+          onWorkingCheck = () => {};
+          resolve();
+        };
+      });
+    };
+    // A working agent keeps its active tab through many sweeps past the idle time.
+    const workingSince = Date.now();
+    await afterSweeps();
+    assert(!idleContents.isDestroyed(), "The active tab of a working agent slept.");
+    measurements.activeTabAwakeWhileWorkingMs = Date.now() - workingSince;
+    recordCases("active-tab-of-working-agent-stays");
+    agentWorks = false;
+    await unloaded(idleContents);
+    assert(
+      idleHost.listTabs().find((tab) => tab.id === idleTab.id),
+      "The slept active tab was closed.",
+    );
+    recordCases("idle-active-tab-sleeps");
+    // The agent works again, so the woken tab stays loaded until the panel check below.
+    agentWorks = true;
+    const idleWoken = snapshotSchema.parse(
+      parseBrowserToolText(
+        text(
+          await runCauseEffect(idleHost.handleDynamicTool(params("snapshot", { tabId: idleTab.id, image: "never" }))),
+        ),
+      ),
+    );
+    assert.equal(idleWoken.url, idleUrl, "The slept active tab did not load its page again.");
+    recordCases("slept-active-tab-wakes-on-next-call");
+
+    // The panel that shows the tab keeps it loaded while its agent runs no turn, and showing the panel
+    // loads a slept tab again.
+    const loadedContents = async () => {
+      for (;;) {
+        const found = webContents
+          .getAllWebContents()
+          .find((item) => !item.isDestroyed() && item.getURL() === idleUrl && !item.isLoading());
+        if (found) return found;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    };
+    const shownContents = await loadedContents();
+    await runCauseEffect(idleHost.setVisible({ visible: true, bounds: { x: 0, y: 0, width: 800, height: 600 } }));
+    agentWorks = false;
+    await afterSweeps();
+    assert(!shownContents.isDestroyed(), "The active tab that the panel shows slept.");
+    recordCases("active-tab-in-panel-stays");
+    await runCauseEffect(idleHost.setVisible({ visible: false }));
+    await unloaded(shownContents);
+    await runCauseEffect(idleHost.setVisible({ visible: true }));
+    await loadedContents();
+    recordCases("showing-panel-wakes-slept-active-tab");
+
     const report = {
       status: "passed",
       runId,

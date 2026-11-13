@@ -144,6 +144,7 @@ plugin({
           readonly webContents = {
             isDestroyed: () => false,
             isLoadingMainFrame: () => false,
+            getURL: () => "http://localhost/",
             mainFrame: { isDestroyed: () => false, detached: false },
             send: (channel: string, payload: unknown) => {
               if (channel !== IPC_ENDPOINTS.notifications.opened.channel) return;

@@ -1455,6 +1455,14 @@ A self-hosted server uses the same Linux build, scripts and units on the owner's
 a Unix socket in the 0700 runtime directory of the service user. Main publishes the host after each
 sign-in. See [self-hosted servers](../self-hosted-server.md).
 
+A self-hosted or hosted server keeps its main window, because the agent browser and the services
+attach to it, but the window loads no app page, and the server starts no Dynamic Island or agent
+dock (`rendererlessServer` in `src/main/index.ts`). A server on this computer already worked this way.
+`sendToRenderer` drops events for a window that never loaded a page. The WebRTC bridge window still
+loads. `scripts/headless-server-e2e.ts` starts a dev stack with `OPENBOT_DEV_HEADLESS_SERVER=1`, which
+gives the dev host the same start, joins it from the test client, runs one agent turn that opens a page
+in the host's agent browser, and records the memory of each host process.
+
 ### Remote release checks
 
 `host-release-v1` adds release status and check routes for all signed-in server members. It does not change
