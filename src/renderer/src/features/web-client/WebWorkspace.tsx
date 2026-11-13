@@ -3280,6 +3280,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                       setMobilePane("conversation");
                       void select(id);
                     }}
+                    onPrefetchAgent={workspace.prefetch}
                     onSelectPerson={() => {}}
                     onCreateAgent={startCreate}
                     createSupported={createSupported()}

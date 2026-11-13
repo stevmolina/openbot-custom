@@ -82,7 +82,7 @@ interface ServerGeneralSection {
 /** The General section: server identity, agent settings, and leaving a joined server. */
 export function createServerGeneralSection(host: ServerSettingsSectionHost): ServerGeneralSection {
   const { t, errorMessage, format } = useText();
-  const { props, local, published, actionsAvailable, busy, run } = host;
+  const { props, local, published, actionsAvailable, busy, blocked, isBusy, run } = host;
   const [panels, setPanels] = createStore<GeneralPanels>({
     confirmLeave: false,
     confirmRotateKey: false,
@@ -410,7 +410,7 @@ export function createServerGeneralSection(host: ServerSettingsSectionHost): Ser
                   <ServerTimezoneSetting
                     {...options()}
                     serverId={props.server.id}
-                    disabled={Boolean(busy())}
+                    disabled={isBusy("timezone")}
                     menuMount={host.menuMount()}
                     run={run}
                   />
@@ -421,7 +421,7 @@ export function createServerGeneralSection(host: ServerSettingsSectionHost): Ser
                   <ServerMemoryLimitSetting
                     {...options()}
                     serverId={props.server.id}
-                    disabled={Boolean(busy())}
+                    disabled={isBusy("memoryLimit")}
                     menuMount={host.menuMount()}
                     run={run}
                   />
@@ -432,7 +432,7 @@ export function createServerGeneralSection(host: ServerSettingsSectionHost): Ser
                   <ServerMemoryReviewSetting
                     {...options()}
                     serverId={props.server.id}
-                    disabled={Boolean(busy())}
+                    disabled={isBusy("memoryReview")}
                     menuMount={host.menuMount()}
                     run={run}
                   />
@@ -443,7 +443,7 @@ export function createServerGeneralSection(host: ServerSettingsSectionHost): Ser
                   <ServerSkillLearningSetting
                     {...options()}
                     serverId={props.server.id}
-                    disabled={Boolean(busy())}
+                    disabled={isBusy("skillLearning")}
                     menuMount={host.menuMount()}
                     run={run}
                   />
@@ -454,7 +454,7 @@ export function createServerGeneralSection(host: ServerSettingsSectionHost): Ser
                   <ServerBrowsingMemorySetting
                     {...options()}
                     serverId={props.server.id}
-                    disabled={Boolean(busy())}
+                    disabled={blocked()}
                     run={run}
                   />
                 )}

@@ -46,6 +46,8 @@ interface ChatView {
   mark: () => JSX.Element;
   menu: () => JSX.Element;
   open: () => void;
+  /** Called when the pointer goes down on the row, before the click. Undefined: nothing to start early. */
+  prefetch?: (() => void) | undefined;
   /** The server of the chat, as a small mark at the end of the row. Undefined: no mark. */
   server: (ServerMarkServer & { name: string }) | undefined;
 }
@@ -134,6 +136,10 @@ function useAgentView(agent: () => AgentProfile, pinned: () => boolean): ChatVie
       const lanes = props.threadLanes;
       if (current && lanes && current.threadId !== MAIN_THREAD_ID) lanes.onOpenThread(agent().id, current.threadId);
       else props.onSelectAgent(agent().id);
+    },
+    prefetch: () => {
+      // A chat of a server that is not open has no conversation to read here.
+      if (!elsewhere()) props.onPrefetchAgent?.(agent().id);
     },
   };
 }
@@ -226,6 +232,9 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
         data-cuelume-navigate=""
         data-sidebar-chat={view.id}
         data-unread={view.unread ? "" : undefined}
+        onPointerDown={(event: PointerEvent) => {
+          if (event.button === 0) view.prefetch?.();
+        }}
         onClick={() => view.open()}
       >
         <span class="sidebar-chat-avatar">

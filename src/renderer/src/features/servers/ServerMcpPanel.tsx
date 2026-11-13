@@ -35,7 +35,7 @@ import {
 } from "@openbot/ui/features/settings/McpSignInPage";
 import { useText } from "@openbot/ui/text";
 import type { JSX } from "@solidjs/web";
-import { createEffect, createMemo, createStore, For, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, createStore, For, onCleanup, Show } from "solid-js";
 import { type McpPanelSignInApp, McpSignInAppSection } from "./McpSignInAppSection";
 import {
   emptyMcpConfig,
@@ -232,14 +232,45 @@ export function ServerMcpPanel(props: ServerMcpPanelProps) {
   };
   const visible = (key: "name" | "command" | "url") => (state.touched ? errors()[key] : undefined);
   const removeTarget = createMemo(() => props.servers.find((config) => config.id === state.removeId) ?? null);
-  const disabled = () => !props.canManage || state.busy !== null;
+  /** Servers whose enable write is in flight. These do not take the panel latch, so their switches stay live. */
+  const [enabling, setEnabling] = createSignal<ReadonlySet<string>>(new Set());
+  const disabled = () => !props.canManage || state.busy !== null || enabling().size > 0;
+  /** The enable switch waits for a save or a removal, not for another switch. */
+  const switchDisabled = () => !props.canManage || state.busy !== null;
   // The dialog holds the form's breadcrumb and save bar, and it outlives this panel: the capability
   // gate that shows the panel drops it while the section stays on MCP. Without this the header would
   // name a form that is gone, and its save bar would call back into a panel that no longer exists.
   onCleanup(() => props.onDetailChange?.(null));
 
+  /** Starts the write, or returns nothing while this server's switch has one in flight or the panel is busy. */
+  function setServerEnabled(id: string, enabled: boolean): Promise<boolean> | undefined {
+    if (state.busy !== null || enabling().has(id)) return undefined;
+    setEnabling((current) => new Set(current).add(id));
+    setState((current) => {
+      current.error = "";
+    });
+    return props
+      .onSetEnabled(id, enabled)
+      .then(
+        () => true,
+        (error: unknown) => {
+          setState((current) => {
+            current.error = errorMessage(error, t("mcp.panel.saveFailed"));
+          });
+          return false;
+        },
+      )
+      .finally(() => {
+        setEnabling((current) => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
+      });
+  }
+
   async function run(key: string, action: () => Promise<void>): Promise<boolean> {
-    if (state.busy !== null) return false;
+    if (state.busy !== null || enabling().size > 0) return false;
     setState((current) => {
       current.busy = key;
       current.error = "";
@@ -753,10 +784,8 @@ export function ServerMcpPanel(props: ServerMcpPanelProps) {
                       <Switch
                         aria-label={t("mcp.panel.enable", { name: config().name })}
                         checked={config().enabled}
-                        disabled={disabled()}
-                        onChange={(enabled) =>
-                          void run(`enable:${config().id}`, () => props.onSetEnabled(config().id, enabled))
-                        }
+                        disabled={switchDisabled()}
+                        onChange={(enabled) => setServerEnabled(config().id, enabled)}
                       />
                       <McpRowMenu
                         name={config().name}

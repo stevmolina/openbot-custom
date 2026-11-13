@@ -742,12 +742,13 @@ function AccountsSection(props: SectionProps) {
   /** How the last usage reset ended, when it did not fail. */
   const [notice, setNotice] = createSignal<string | null>(null);
   const [usageResets, setUsageResets] = createSignal<readonly ProviderUsageResets[]>([]);
-  const run = (name: string, action: () => Promise<void> | undefined) => {
+  /** Runs an account action and shows its failure. The returned promise never rejects, so a switch can wait on it. */
+  const run = (name: string, action: () => Promise<void> | undefined): Promise<void> => {
     setError(null);
     setNotice(null);
-    void Promise.resolve(action()).catch((failure: unknown) =>
-      setError(errorMessage(failure, t("provider.account.actionFailed", { name }))),
-    );
+    return Promise.resolve(action()).catch((failure: unknown) => {
+      setError(errorMessage(failure, t("provider.account.actionFailed", { name })));
+    });
   };
   /** The credits are read again when an account connects or goes, and after each reset. Only the last read counts. */
   let resetsRead = 0;
@@ -866,7 +867,7 @@ function AccountsSection(props: SectionProps) {
                 const current = pool();
                 if (!current) return;
                 const id = account().id;
-                setPool(
+                void setPool(
                   true,
                   current.leftOut.includes(id)
                     ? current.leftOut.filter((left) => left !== id)
@@ -918,7 +919,7 @@ function AccountsSection(props: SectionProps) {
           const target = removing();
           setRemoving(null);
           if (target) {
-            run(providerAccountName(t, accounts(), target.id), () =>
+            void run(providerAccountName(t, accounts(), target.id), () =>
               props.accountActions?.remove(props.option.id, target.id),
             );
           }
@@ -947,7 +948,9 @@ function AccountsSection(props: SectionProps) {
           const target = disconnecting();
           setDisconnecting(null);
           if (target) {
-            run(providerAccountName(t, accounts(), target.id), () => props.accountActions?.signOut?.(props.option.id));
+            void run(providerAccountName(t, accounts(), target.id), () =>
+              props.accountActions?.signOut?.(props.option.id),
+            );
           }
         }}
       />
@@ -2059,11 +2062,17 @@ function UseSection(props: SectionProps) {
     const name = defaultName();
     return name ? t("provider.settings.startsWith", { name }) : null;
   };
-  async function setOn(on: boolean) {
+  /** Returns the save, so the switch shows the new value at once and goes back to the old one if it fails. */
+  function changeOn(on: boolean): Promise<void> | undefined {
     if (!on && usedBy().length > 0) {
       showProviderInUse(t, usedBy(), props.option.name);
-      return;
+      return undefined;
     }
+    // A second tap waits for the first save, so the switch keeps the value it shows.
+    if (change.pending) return undefined;
+    return setOn(on);
+  }
+  async function setOn(on: boolean) {
     setChange((state) => {
       state.pending = true;
       state.error = null;
@@ -2123,10 +2132,10 @@ function UseSection(props: SectionProps) {
               <ItemActions>
                 <Switch
                   checked={!props.row.off()}
-                  disabled={Boolean(props.disabled || change.pending)}
+                  disabled={props.disabled === true}
                   aria-busy={change.pending ? "true" : "false"}
                   aria-label={t("provider.aria.use", { name: props.option.name })}
-                  onChange={(on: boolean) => void setOn(on)}
+                  onChange={changeOn}
                 />
               </ItemActions>
             </Item>

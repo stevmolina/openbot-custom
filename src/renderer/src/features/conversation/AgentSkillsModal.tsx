@@ -250,31 +250,43 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
     setConfirm({ kind: "replace", skill });
   }
 
+  /** Skills whose enable write is in flight. The switch of such a skill stays live and ignores a second tap. */
+  const togglingSkills = new Set<string>();
+
+  /** Starts the write, or returns nothing when this skill already has one in flight, so the switch keeps its value. */
+  function toggleEnabled(skill: InstalledSkill, enabled: boolean): Promise<boolean> | undefined {
+    if (togglingSkills.has(skill.skillId) || savingId() === skill.skillId) return undefined;
+    return setEnabled(skill, enabled);
+  }
+
   async function setEnabled(skill: InstalledSkill, enabled: boolean): Promise<boolean> {
+    if (togglingSkills.has(skill.skillId) || savingId() === skill.skillId) return false;
     const analytics = desktopAnalytics.scope();
     const action = enabled ? "enable" : "disable";
-    let operationSucceeded = false;
-    setSavingId(skill.skillId);
+    const agentId = props.agentId;
+    togglingSkills.add(skill.skillId);
     setError(null);
     try {
-      await calls().setEnabled({ agentId: props.agentId, skillId: skill.skillId, enabled });
+      await calls().setEnabled({ agentId, skillId: skill.skillId, enabled });
       analytics.track("marketplace_action", { entity: "skill", action, result: "succeeded" });
-      operationSucceeded = true;
-      await loadSkills(false);
+      // Show the saved value now, so the switch does not fall back to the old one while the list reloads.
+      if (agentId === props.agentId) {
+        setSkills((current) => current.map((item) => (item.skillId === skill.skillId ? { ...item, enabled } : item)));
+      }
+      // The list reloads in the background; it reports its own error.
+      void loadSkills(false);
       return true;
     } catch (caught) {
-      if (!operationSucceeded) {
-        analytics.track("marketplace_action", {
-          entity: "skill",
-          action,
-          result: "failed",
-          failure_code: `${action}_failed`,
-        });
-      }
+      analytics.track("marketplace_action", {
+        entity: "skill",
+        action,
+        result: "failed",
+        failure_code: `${action}_failed`,
+      });
       setError(errorMessage(caught, enabled ? t("skill.enableFailed") : t("skill.disableFailed")));
       return false;
     } finally {
-      setSavingId(null);
+      togglingSkills.delete(skill.skillId);
     }
   }
 
@@ -405,7 +417,7 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
                         aria-label={t("skill.enableName", { name: skill().name })}
                         checked={isSkillEnabled(skill())}
                         disabled={savingId() === skill().skillId}
-                        onChange={(enabled) => void setEnabled(skill(), enabled)}
+                        onChange={(enabled) => toggleEnabled(skill(), enabled)}
                       />
                     </Show>
                   )}
@@ -575,7 +587,7 @@ export function AgentSkillsModal(props: AgentSkillsModalProps) {
                                               aria-label={t("skill.enableName", { name: skill().name })}
                                               checked={isSkillEnabled(skill())}
                                               disabled={savingId() === skill().skillId}
-                                              onChange={(enabled) => void setEnabled(skill(), enabled)}
+                                              onChange={(enabled) => toggleEnabled(skill(), enabled)}
                                             />
                                           </Show>
                                         </div>

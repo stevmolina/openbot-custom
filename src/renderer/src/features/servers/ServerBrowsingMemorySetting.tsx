@@ -61,16 +61,25 @@ export function ServerBrowsingMemorySetting(
     },
   );
 
-  function change(enabled: boolean): void {
+  /** True while this switch's own save runs. A second tap waits, so the switch keeps the value it shows. */
+  let saving = false;
+
+  /** Returns the save, so the switch shows the new value at once and goes back to the old one if it fails. */
+  function change(enabled: boolean): Promise<boolean> | undefined {
     const current = settings();
-    if (!current || enabled === current.enabled) return;
+    if (saving || !current || enabled === current.enabled) return undefined;
     const serverId = props.serverId;
     const request = ++generation;
-    void props.run("browsingMemory", async () => {
-      const next = await calls().setBrowsingMemory(enabled, serverId);
-      lastSettings.set(serverId, next);
-      if (request === generation) setSettings(next);
-    });
+    saving = true;
+    return props
+      .run("browsingMemory", async () => {
+        const next = await calls().setBrowsingMemory(enabled, serverId);
+        lastSettings.set(serverId, next);
+        if (request === generation) setSettings(next);
+      })
+      .finally(() => {
+        saving = false;
+      });
   }
 
   return (
