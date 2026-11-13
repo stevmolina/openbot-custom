@@ -66,6 +66,8 @@ export const messages = {
     "Сжатие не уменьшает этот чат: после двух сжатий он всё ещё занимает {percent}% окна контекста модели, поэтому OpenBot перестаёт его сжимать. Большую часть окна занимают инструменты и инструкции. Отключите MCP-серверы или управление компьютером, которые не нужны этому агенту, или выберите модель с большим окном. Затем начните новый чат.",
   "error.backend.contextCompactionStopped":
     "Два сжатия этого чата подряд не удались, поэтому OpenBot больше не сжимает его автоматически. Каждая попытка отправляет весь чат модели и расходует лимит тарифа. Выберите «Сжать сейчас», чтобы попробовать снова, или начните новый чат.",
+  "error.backend.providerModelAtCapacity":
+    "Модель перегружена. Провайдер повторит попытку через несколько минут. Чтобы продолжить сейчас, остановите ход и выберите другую модель.",
   "error.backend.providerRetrying":
     "Провайдер не выполнил этот запрос {attempts} раза и пробует снова. Если агент не продолжит, остановите ход.",
   "error.backend.providerRetryingLargeContext":
@@ -164,6 +166,10 @@ export const messages = {
   "error.backend.attachBetween": "Прикрепите от 1 до {limit} файлов.",
   "error.backend.attachmentNotFile": "Вложение не является файлом: {path}",
   "error.backend.generatedImageTooLarge": "Созданное изображение превышает лимит 100 МБ.",
+  "error.backend.generatedVideoTooLarge": "Созданное видео превышает лимит 100 МБ.",
+  "error.backend.videoGenerationFailed": "Не удалось создать видео.",
+  "error.backend.videoGenerationNoVideo": "Создание видео не вернуло видео.",
+  "error.backend.videoGenerationInterrupted": "Создание видео прервано.",
   "error.backend.attachmentNotRegularFile": "Прикреплять можно только обычные файлы: {name}",
   "error.backend.attachmentCopyFailed": "OpenBot не смог скопировать {name}.",
   "error.backend.routineNameRequired": "Нужно название регулярной задачи.",
@@ -354,6 +360,8 @@ export const messages = {
   "error.backend.browserProxySignInRefused": "Прокси {name} отклонил вход, поэтому страница не открылась.",
   "error.backend.browserProxyComputerUnreachable":
     "Компьютер этого профиля не отвечает, поэтому страница не открылась.",
+  "error.backend.browserProxyComputerLocalAddress":
+    "Компьютер, который использует этот профиль, открывает только общедоступные сайты. Он не открывает адреса в локальной сети, поэтому страница не открылась.",
   "error.backend.browserCertificateUntrusted":
     "Сертификат безопасности этого сайта не является доверенным, поэтому страница не открылась.",
   "error.backend.browserLowMemory":

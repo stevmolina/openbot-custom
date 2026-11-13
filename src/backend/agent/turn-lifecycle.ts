@@ -55,7 +55,7 @@ import type { DeltaBuffer } from "./delta-buffer";
 import type { FailureContext, FailureSignal } from "./failure-signal";
 import { readCapturedSteps } from "./handoff-tool-steps";
 import type { ImageGenRuntime } from "./image-gen-runtime";
-import { markIncompleteImageGeneration } from "./image-generation";
+import { markIncompleteMediaGeneration } from "./image-generation";
 import { type InstructionsChanges, instructionsChangeMessage } from "./instructions-changes";
 import type { MailboxSync } from "./mailbox-sync";
 import { memoryChangesMessage } from "./memory-changes-message";
@@ -103,6 +103,17 @@ import { USAGE_LIMIT_METHOD, type UsageLimitGate } from "./usage-limit-gate";
 const logger = createOpenBotLogger("turn-lifecycle");
 /** The retry of one turn after which the user gets a notice. A single retry is a normal network error. */
 const RETRY_NOTICE_ATTEMPTS = 3;
+const CAPACITY_CAUSE: CauseCode = "provider_unavailable";
+/**
+ * Codex's text for a model at capacity (`ServerOverloaded`). A retry notice of Codex carries
+ * `responseStreamDisconnected` as its info and keeps this text only in `additionalDetails`.
+ */
+const MODEL_AT_CAPACITY = /\bmodel is at capacity\b/iu;
+
+/** Whether a provider retries because its model is at capacity. */
+function modelAtCapacity(error: DynamicRecord | null, details: string | null): boolean {
+  return error?.codexErrorInfo === "serverOverloaded" || (details !== null && MODEL_AT_CAPACITY.test(details));
+}
 const ENDED_TURN_LIMIT = 256;
 /** How long before a turn's start its usage records can be, as in host analytics. */
 const TURN_USAGE_MARGIN_MS = 60 * 60 * 1_000;
@@ -346,6 +357,8 @@ export class TurnLifecycle {
   readonly #turnErrors = new Map<string, string>();
   /** How many times the provider retried a request of each running turn. */
   readonly #turnRetries = new Map<string, number>();
+  /** The running turns that showed the model-at-capacity notice. A turn shows it one time. */
+  readonly #capacityNotices = new Set<string>();
   /**
    * The client, provider thread and start time of each running turn, from its `turn/started`.
    * `produced` is set by the first item or delta: a refused turn is run again only without one.
@@ -535,6 +548,7 @@ export class TurnLifecycle {
     this.#turnAssociations.clear();
     this.#turnErrors.clear();
     this.#turnRetries.clear();
+    this.#capacityNotices.clear();
     this.#limitedTurns.clear();
     this.#failoverTurns.clear();
     this.#failoverRetries.clear();
@@ -574,6 +588,8 @@ export class TurnLifecycle {
     for (const [turnId, turn] of this.#runningTurns) {
       if (turn.client !== client) continue;
       this.#runningTurns.delete(turnId);
+      this.#turnRetries.delete(turnId);
+      this.#capacityNotices.delete(turnId);
       const compactionFailure = this.#compactionFailures.get(turnId);
       this.#compactionFailures.delete(turnId);
       // A routine run's own session saves no history, so its turn ends now and closes the session.
@@ -1173,7 +1189,13 @@ export class TurnLifecycle {
         }
         // Codex retries on its own and reports the final failure again without `willRetry`.
         if (isRecord(params) && params.willRetry === true) {
-          this.#providerRetried(agentId, threadId, getString(params, "turnId"), source.provider);
+          this.#providerRetried(
+            agentId,
+            threadId,
+            getString(params, "turnId"),
+            source.provider,
+            modelAtCapacity(error, getString(error, "additionalDetails")),
+          );
           return;
         }
         // A usage limit shows no banner, but the failed delivery still keeps it as the reason.
@@ -1334,13 +1356,19 @@ export class TurnLifecycle {
   /**
    * Codex sent a request of a running turn again. A turn that retries again and again looked like
    * work: Codex sent the same large request for 11 minutes, and the agent showed as working (#4374).
-   * The user gets one notice per turn. A large session also compacts before its next turn.
+   * The user gets a notice at the third retry. A large session also compacts before its next turn.
+   *
+   * A model at capacity gets its own notice, one time per turn, at the first capacity retry that
+   * OpenBot sees. Codex then waits about 5 minutes between tries and hides its first retry, so the
+   * agent showed as working with no output for more than 15 minutes before the general notice. A
+   * capacity retry does not count toward a compaction: the request size is not its cause.
    */
   #providerRetried(
     agentId: string | null | undefined,
     threadId: string | null | undefined,
     turnId: string | null,
     provider: AgentClient["provider"],
+    atCapacity: boolean,
   ): void {
     if (!agentId || !threadId || !turnId || !this.#runningTurns.has(turnId)) return;
     const attempts = (this.#turnRetries.get(turnId) ?? 0) + 1;
@@ -1348,25 +1376,33 @@ export class TurnLifecycle {
     logger.info("A provider retries a request.", {
       provider,
       attempts,
+      atCapacity,
       usedPercent: this.#compaction.usedPercent(threadId),
     });
-    if (attempts !== RETRY_NOTICE_ATTEMPTS) return;
-    const compacts = this.#compaction.retrying(threadId);
+    if (atCapacity) {
+      if (this.#capacityNotices.has(turnId)) return;
+      this.#capacityNotices.add(turnId);
+    } else if (attempts !== RETRY_NOTICE_ATTEMPTS) return;
+    // Only a retry for another cause can come from a large request, so only it can start a compaction.
+    const compacts = !atCapacity && this.#compaction.retrying(threadId);
     const percent = this.#compaction.usedPercent(threadId);
     this.#hooks.emitError(
       "agent_warning",
-      compacts && percent !== null
-        ? sourceText("error.backend.providerRetryingLargeContext", {
-            attempts: String(attempts),
-            percent: String(percent),
-          })
-        : sourceText("error.backend.providerRetrying", { attempts: String(attempts) }),
+      atCapacity
+        ? sourceText("error.backend.providerModelAtCapacity")
+        : compacts && percent !== null
+          ? sourceText("error.backend.providerRetryingLargeContext", {
+              attempts: String(attempts),
+              percent: String(percent),
+            })
+          : sourceText("error.backend.providerRetrying", { attempts: String(attempts) }),
       agentId,
       {
         provider,
         model: this.#hooks.turnModel(agentId, turnId),
         turnId,
         severity: "warning",
+        ...(atCapacity ? { causeCode: CAPACITY_CAUSE } : {}),
       },
     );
   }
@@ -1464,6 +1500,7 @@ export class TurnLifecycle {
       const reportedError = this.#turnErrors.get(turnId);
       this.#turnErrors.delete(turnId);
       this.#turnRetries.delete(turnId);
+      this.#capacityNotices.delete(turnId);
       // The error is kept only while the turn runs, so a refused turn always has its entry.
       const refusedFailure =
         running !== undefined && status === "failed" && reportedError !== undefined
@@ -1647,7 +1684,7 @@ export class TurnLifecycle {
         message.status = normalizeCompletionStatus(
           repeatable || failedOver || runsAgainHere || compactionContinuation ? "interrupted" : status,
         );
-        markIncompleteImageGeneration(message, message.status);
+        markIncompleteMediaGeneration(message, message.status);
       }
       // Only this loop reads the map, so the finished turn's items go, or it holds every item ever seen.
       for (const [itemId, itemTurnId] of this.#itemTurns) if (itemTurnId === turnId) this.#itemTurns.delete(itemId);
@@ -1921,6 +1958,8 @@ export class TurnLifecycle {
     const runningThreadId = running?.threadId ?? threadId;
     if (running) this.#keepTurnTiming(turnId, running);
     this.#runningTurns.delete(turnId);
+    this.#turnRetries.delete(turnId);
+    this.#capacityNotices.delete(turnId);
     this.#reportedFailures.delete(turnId);
     this.#quietEmptyAnswers.delete(turnId);
     this.#markEnded(turnId);
@@ -1961,7 +2000,7 @@ export class TurnLifecycle {
         if (message.subagents && this.#trackSubagents(agentId, turnId, message.subagents))
           this.#hooks.emitRuntimeSnapshot();
         message.status = status;
-        markIncompleteImageGeneration(message, status);
+        markIncompleteMediaGeneration(message, status);
         changedIds.add(message.id);
       }
       for (const { delivery } of deliveries) {
@@ -2354,7 +2393,11 @@ export class TurnLifecycle {
     let message = snapshot.messages.find((candidate) => candidate.id === id);
     if (!message && !this.#runningTurns.has(turnId)) {
       message = this.#store.database.readConversationMessages(agentId, snapshot.threadId, [id])[0];
-      if (!message) return;
+      // A quiet routine run removes the list, but the update still ends the agent's work (#8156).
+      if (!message) {
+        if (this.#trackSubagents(agentId, turnId, subagents)) this.#hooks.emitRuntimeSnapshot();
+        return;
+      }
       snapshot.messages.push(message);
     }
     if (!message) {
@@ -2536,7 +2579,7 @@ function dropPlaceholderAnswers(snapshot: ConversationSnapshot, turnId: string):
       message.itemType === CONVERSATION_SUBAGENTS_ITEM_TYPE
     )
       continue;
-    if (message.attachments?.length || message.imageGeneration) continue;
+    if (message.attachments?.length || message.imageGeneration || message.videoGeneration) continue;
     if (!message.text.trim() || /[\p{L}\p{N}]/u.test(message.text)) continue;
     snapshot.messages.splice(index, 1);
   }
@@ -2550,7 +2593,8 @@ function isEmptyAttemptText(message: ConversationMessage | undefined, turnId: st
     (message.itemType === "agentMessage" || message.itemType === "commentary") &&
     !message.text.trim() &&
     !message.attachments?.length &&
-    !message.imageGeneration
+    !message.imageGeneration &&
+    !message.videoGeneration
   );
 }
 

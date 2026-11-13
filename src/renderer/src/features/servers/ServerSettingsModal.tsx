@@ -20,6 +20,7 @@ import {
   AppWindow,
   ArrowLeftRight,
   Blocks,
+  Bot,
   Button,
   CalendarClock,
   Cloud,
@@ -70,6 +71,7 @@ import type { HostModelVisibilityOptions, ProviderModelVisibilitySource } from "
 import type { HostPromptCacheTtlOptions, ProviderPromptCacheSource } from "../settings/provider-prompt-cache";
 import { type ServerVaultOptions, ServerVaultPanel } from "../vault/ServerVaultPanel";
 import type { McpServerConfig, McpTestResult } from "./mcp-servers";
+import { createServerAgentsSection, type ServerAgentDefaultsOptions } from "./ServerAgentsSection";
 import { createServerAuditSection, type ServerAuditOptions } from "./ServerAuditSection";
 import type { ServerBrowsingMemoryOptions } from "./ServerBrowsingMemorySetting";
 import { type ServerCloudComputersOptions, ServerCloudComputersPanel } from "./ServerCloudComputersPanel";
@@ -92,6 +94,7 @@ import { type ServerRoutineFeedOptions, ServerRoutineFeedPanel } from "./ServerR
 import type { ServerSkillLearningOptions } from "./ServerSkillLearningSetting";
 import type { ServerTimezoneOptions } from "./ServerTimezoneSetting";
 import { type ServerTransferOptions, ServerTransferPanel } from "./ServerTransferPanel";
+import type { ServerTurnLimitsOptions } from "./ServerTurnLimitsSetting";
 import { type ServerUpdateOptions, ServerUpdatePanel } from "./ServerUpdatePanel";
 import { serverCanAdminister, serverCanManageMcp, serverRoleCanAdminister } from "./server-capabilities";
 import { CONCURRENT_ACTION_KEYS, type ServerSettingsSectionHost } from "./server-settings-section";
@@ -220,6 +223,11 @@ export interface ServerSettingsModalProps {
    */
   hostTimezone?: ServerTimezoneOptions | undefined;
   /**
+   * General shows the thread limits only when a caller supplies this, and only for the local server
+   * or a remote host with `host-turn-limits-v1` that this member administers.
+   */
+  hostTurnLimits?: ServerTurnLimitsOptions | undefined;
+  /**
    * The Personality section shows only when a caller supplies this, and only for the local server or
    * a remote host with `host-personality-v1` that this member administers.
    */
@@ -291,6 +299,11 @@ export interface ServerSettingsModalProps {
    */
   serverAudit?: ServerAuditOptions | undefined;
   /**
+   * The Agents section appears only when a caller supplies this: for this computer, and for an online
+   * remote host with `agent-defaults-v1` that this member administers.
+   */
+  agentDefaults?: ServerAgentDefaultsOptions | undefined;
+  /**
    * The Routines section appears only when a caller supplies this: the feed listens on this
    * computer, so a remote server passes nothing.
    */
@@ -332,6 +345,7 @@ export interface ServerHostedSitesOptions {
 export type ServerSettingsSection =
   | "general"
   | "personality"
+  | "agents"
   | "vault"
   | "cloud-computers"
   | "members"
@@ -352,6 +366,7 @@ type Section = ServerSettingsSection;
 const sections = {
   general: { title: "server.settings.generalTitle", description: "server.settings.generalDescription" },
   personality: { title: "server.settings.personalityTitle", description: "server.settings.personalityDescription" },
+  agents: { title: "server.settings.agents", description: "server.settings.agentsDescription" },
   vault: { title: "server.settings.vaultTitle", description: "server.settings.vaultDescription" },
   "cloud-computers": {
     title: "server.settings.cloudComputersTitle",
@@ -376,6 +391,7 @@ const sections = {
 const NAV_SECTIONS: ReadonlyArray<{ value: Section; icon: typeof Settings }> = [
   { value: "general", icon: Settings },
   { value: "personality", icon: Smile },
+  { value: "agents", icon: Bot },
   { value: "vault", icon: KeyRound },
   { value: "cloud-computers", icon: Cloud },
   { value: "members", icon: UsersRound },
@@ -406,6 +422,7 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
     if (section() === "mcp") return mcpDetail();
     if (section() === "import") return importDetail();
     if (section() === "roles") return roles.crumb();
+    if (section() === "agents") return agents.crumb();
     return section() === "providers" ? providerDetail() : null;
   };
   /** The keys of the actions in flight. Only the exclusive ones gate every panel at once. */
@@ -529,6 +546,7 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
   const general = createServerGeneralSection(host);
   const roles = createServerRolesSection(host, () => section() === "roles" || section() === "members");
   const audit = createServerAuditSection(host, () => section() === "audit");
+  const agents = createServerAgentsSection(host, () => section() === "agents");
 
   /** Whether this server and the caller support the section. */
   const sectionSupported = (value: Section): boolean => {
@@ -538,6 +556,8 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
         return true;
       case "personality":
         return Boolean(personalityOptions());
+      case "agents":
+        return agents.available();
       case "vault":
         return Boolean(props.vault);
       case "cloud-computers":
@@ -679,6 +699,7 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
         companySignIn.resetForServer();
         roles.resetForServer();
         audit.resetForServer();
+        agents.resetForServer();
       }
       if (!editing) general.syncFromServer(name, logoUrl);
     },
@@ -697,6 +718,14 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
     () => section() === "audit" && !audit.available(),
     (gone) => {
       if (gone) setSection("members");
+    },
+  );
+
+  /** The agent defaults leave with the access that gives them, as Roles does. */
+  createEffect(
+    () => section() === "agents" && !agents.available(),
+    (gone) => {
+      if (gone) setSection("general");
     },
   );
 
@@ -745,6 +774,7 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
       if (
         value === "general" ||
         value === "personality" ||
+        value === "agents" ||
         value === "vault" ||
         value === "cloud-computers" ||
         value === "members" ||
@@ -939,6 +969,11 @@ export function ServerSettingsModal(props: ServerSettingsModalProps) {
               </SettingsSection>
             </Tabs.Content>
           )}
+        </Show>
+        <Show when={agents.available()}>
+          <Tabs.Content value="agents" class="settings-modal-tab-panel server-settings-panel" data-tab="agents">
+            <agents.Panel />
+          </Tabs.Content>
         </Show>
         <Show when={props.vault}>
           {(vault) => (

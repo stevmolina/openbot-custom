@@ -125,8 +125,8 @@ export interface TaskLanes {
   threadId(taskId: string): string | null;
   /** The open tasks of this agent. */
   openTaskIds(agentId: string): readonly string[];
-  /** How many tasks of this agent may run a turn at the same time. Null: no limit. */
-  limit(agentId: string): number | null;
+  /** How many tasks of this agent may run a turn at the same time. */
+  limit(agentId: string): number;
   /** Whether the agent's provider runs one turn at a time, across its own chat and its tasks. */
   oneTurnAtATime(agentId: string): boolean;
   /** Whether this task is the side thread of a routine, whose runs each get their own session. */
@@ -385,15 +385,10 @@ export class DrainScheduler {
       return "channel-turn";
     if (taskId !== null && channelId === null) {
       if (this.#tasks.threadId(taskId) === null) return "task-closed";
-      // An agent with no task limit runs each task at once; the memory of the computer still bounds its turns.
-      const limit = this.#tasks.limit(agentId);
-      if (
-        limit !== null &&
-        this.#tasks
-          .openTaskIds(agentId)
-          .filter((other) => other !== taskId && this.#laneRunning({ agentId, taskId: other })).length >= limit
-      )
-        return "task-limit";
+      const running = this.#tasks
+        .openTaskIds(agentId)
+        .filter((other) => other !== taskId && this.#laneRunning({ agentId, taskId: other })).length;
+      if (running >= this.#tasks.limit(agentId)) return "task-limit";
     }
     // The agent's own process restarts when its access or account changed. A turn of another lane
     // runs on it, so this lane waits for that turn to end.
@@ -1331,8 +1326,10 @@ export class DrainScheduler {
    * provider's own sign-in text when the start failed with it, such as a request for an API key, and an
    * expired sign-in otherwise, also when the provider refused the account before its check marked it.
    * Only catalog text goes to the channel: every reader of it sees it, in the reader's language.
+   * Another Codex app that holds the thread is the same: Resume fails until the reader closes it there.
    */
   #channelStartReason(recipient: AgentSummary | undefined, error: unknown): string {
+    if (isCodexThreadInUse(error)) return sourceText("error.provider.codexThreadInUse");
     if (!recipient || !(error instanceof Error)) return CHANNEL_START_FAILED;
     const provider = providerForAgent(recipient);
     const signInText =

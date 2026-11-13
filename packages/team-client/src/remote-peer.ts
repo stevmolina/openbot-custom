@@ -96,6 +96,7 @@ import {
   type ProbeSample,
   unmeasuredProbeMs,
 } from "./remote-path-check";
+import { startRemoteRequestDeadline } from "./remote-recovery";
 import { createTeamRequestId } from "./request-id";
 import { encodeTeamWebRtcPayload, TeamWebRtcPayloadDecoder } from "./webrtc-framing";
 
@@ -406,6 +407,8 @@ interface PeerState {
   signalReady: boolean;
   /** The host answered a request on this peer, so its channels worked after authentication. */
   answeredRequest: boolean;
+  /** When the host last answered a request on this peer, as `performance.now()`. A request deadline counts from it. */
+  lastAnswerAt: number;
   /** The close code of the last Signal socket, so a connection timeout can name it. */
   lastSignalClose: number | null;
   /** For the support log: when the current socket opened, and when and why the last offer went out. */
@@ -1168,6 +1171,7 @@ export function createRemoteTeamPeer(
         ticketRequest: false,
         signalReady: false,
         answeredRequest: false,
+        lastAnswerAt: 0,
         lastSignalClose: null,
         signalOpenedAt: 0,
         offerSentAt: null,
@@ -1805,6 +1809,7 @@ export function createRemoteTeamPeer(
                 channelIsolation: true,
                 channelPicture: true,
                 channelBrowser: true,
+                channelSeenSubtasks: true,
                 mcpManyServers: true,
               }),
             )
@@ -1848,6 +1853,7 @@ export function createRemoteTeamPeer(
         state.answeredRequest = true;
         // A key that the host does not keep: the next requests send their lists again.
         if ("error" in frame && frame.error.code === COMPACT_RPC_UNKNOWN_KEY_CODE) state.sentCapabilityKeys.clear();
+        state.lastAnswerAt = performance.now();
         const pending = pendingRequests.get(frame.requestId);
         if (!pending) return;
         pending.profile?.responded(data);
@@ -2151,12 +2157,19 @@ export function createRemoteTeamPeer(
               resolve,
               reject,
               profile: startRemoteRequest(method, path, payload),
-              timer: setTimeout(
-                checksConnection ? checkPath : expire,
-                checksConnection
-                  ? Math.min(arm ? PATH_CHECK_INTERVAL_MS : unmeasuredProbeMs(!state.answeredRequest), timeoutMs)
-                  : timeoutMs,
-              ),
+              timer: checksConnection
+                ? setTimeout(
+                    checkPath,
+                    Math.min(arm ? PATH_CHECK_INTERVAL_MS : unmeasuredProbeMs(!state.answeredRequest), timeoutMs),
+                  )
+                : startRemoteRequestDeadline(
+                    timeoutMs,
+                    () => state.lastAnswerAt,
+                    expire,
+                    (timer) => {
+                      pending.timer = timer;
+                    },
+                  ),
             };
             pendingRequests.set(requestId, pending);
             return pending;
