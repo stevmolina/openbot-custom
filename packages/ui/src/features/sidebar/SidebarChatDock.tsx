@@ -1,21 +1,23 @@
 /**
- * The open chat list in two zones.
+ * The groups of the open chat list.
  *
- * The top zone scrolls and takes the free space: "Needs you" holds the chats that wait for the user,
- * an agent whose wait is only in a side thread too. The dock sits at the bottom of the list, over the
- * pill, and holds groups that each open and close by itself: "Working", each folder at the top of the layout in the layout
+ * The list is one scroll: the pinned chats and "Needs you" come first, then the groups, each with a
+ * quiet heading in line with the rows: "Working", each folder at the top of the layout in the layout
  * order, then "Settled", the chats in no folder. Each chat is in one group: a chat that waits is in
- * "Needs you", one that works (or a channel with a running task) is in "Working", and the others are in their folder or in "Settled".
- * People, the hidden agents and the deleted channels follow the chats of "Settled".
+ * "Needs you" (an agent whose wait is only in a side thread too), one that works (or a channel with a
+ * running task) is in "Working", and the others are in their folder or in "Settled". People, the hidden
+ * agents and the deleted channels follow the chats of "Settled".
  *
- * The open groups are saved with the collapsed sections (`dockOpenGroups` in the scope), so they stay
- * open after a restart. A folder group keeps the menu, the drag and the drop of its section.
+ * Each group opens and closes by itself. The open groups are saved with the collapsed sections
+ * (`dockOpenGroups` in the scope), so they stay open after a restart. A folder group keeps the menu,
+ * the drag and the drop of its section. A floating "unread" button under the list shows how many
+ * unread chats are out of view, below the list or in a closed group, and goes to the next one.
  */
 
 import { SIDEBAR_PEOPLE_SECTION_ID, SIDEBAR_UNASSIGNED_SECTION_ID } from "@openbot/contracts/ipc";
-import { Button } from "@openbot/ui";
+import { Button, ChevronDown } from "@openbot/ui";
 import type { JSX } from "@solidjs/web";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import { useText } from "../../text";
 import { SidebarChannelRow } from "./SidebarChannelRow";
 import { SidebarChatRow } from "./SidebarChatRow";
@@ -137,7 +139,7 @@ function useChatUnread() {
       : chat.channel.unreadCount > 0;
 }
 
-/** The body of a dock group. It is in the DOM while closed, so it opens and closes with the section motion. */
+/** The body of a group. It is in the DOM while closed, so it opens and closes with the section motion. */
 function SidebarDockBody(bodyProps: { id: string; open: boolean; children: JSX.Element }) {
   return (
     <div
@@ -217,7 +219,7 @@ function folderChatsDeep(
   ];
 }
 
-/** A folder at the top of the layout, as a dock group. The folders in it show inside, as in the list. */
+/** A folder at the top of the layout, as a group of the list. The folders in it show inside. */
 function SidebarDockFolder(folderProps: {
   sectionId: string;
   groups: SidebarChatDockGroups;
@@ -253,18 +255,24 @@ function SidebarDockFolder(folderProps: {
   );
 }
 
-/** A folder in a dock folder: its chats, then the folders in it, with the heading and collapse of the section list. */
+/** A folder in a folder: its chats, then the folders in it, with the same quiet heading as a top folder. */
 function SidebarChatFolder(folderProps: { sectionId: string; depth: number; groups: SidebarChatDockGroups }) {
-  const { customSectionById, dragOffset, sectionChildren, sectionDragClasses, sectionIsCollapsed, sectionLabel } =
-    useSidebarScope();
+  const {
+    customSectionById,
+    dragOffset,
+    sectionChildren,
+    sectionDragClasses,
+    sectionIsCollapsed,
+    sectionLabel,
+    toggleSection,
+  } = useSidebarScope();
+  const unread = useChatUnread();
   const sectionId = () => folderProps.sectionId;
   const collapsed = () => sectionIsCollapsed(sectionId());
+  const deep = createMemo(() => folderChatsDeep(sectionId(), folderProps.groups, sectionChildren));
   return (
     <section
-      class={[
-        "sidebar-chat-group sidebar-section sidebar-chat-folder-group sidebar-folder",
-        sectionDragClasses(sectionId()),
-      ]}
+      class={["sidebar-chat-group sidebar-section sidebar-chat-folder-group", sectionDragClasses(sectionId())]}
       style={`--sidebar-drag-y: ${dragOffset(sectionId()).y}px;`}
       aria-label={sectionLabel(sectionId())}
       data-section-id={sectionId()}
@@ -274,6 +282,12 @@ function SidebarChatFolder(folderProps: { sectionId: string; depth: number; grou
         sectionId={sectionId()}
         name={customSectionById().get(sectionId())?.name ?? ""}
         depth={folderProps.depth}
+        dock={{
+          count: deep().length,
+          unread: deep().some(unread),
+          open: !collapsed(),
+          onToggle: () => toggleSection(sectionId()),
+        }}
       />
       <div
         class="sidebar-section-collapse"
@@ -282,40 +296,52 @@ function SidebarChatFolder(folderProps: { sectionId: string; depth: number; grou
         inert={collapsed() ? true : undefined}
       >
         <div id={`sidebar-section-body-${sectionId()}`} class="sidebar-section-body">
-          <SidebarChatRows chats={folderProps.groups.bySection.get(sectionId()) ?? []} />
-          <For each={sectionChildren(sectionId())}>
-            {(childId) => (
-              <SidebarChatFolder sectionId={childId} depth={folderProps.depth + 1} groups={folderProps.groups} />
-            )}
-          </For>
-          <SidebarSectionDraft parentId={sectionId()} />
+          <div class="sidebar-dock-body">
+            <SidebarChatRows chats={folderProps.groups.bySection.get(sectionId()) ?? []} />
+            <For each={sectionChildren(sectionId())}>
+              {(childId) => (
+                <SidebarChatFolder sectionId={childId} depth={folderProps.depth + 1} groups={folderProps.groups} />
+              )}
+            </For>
+            <SidebarSectionDraft parentId={sectionId()} />
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-/** The dock at the bottom of the list. It hides while it has no group. */
-export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
+/** Which groups the list shows, and which of them are open. */
+export interface SidebarDockOpenState {
+  /** The folders at the top of the layout, in its order. */
+  folderIds: () => readonly string[];
+  /** The chats in no folder. */
+  settled: () => readonly SidebarChatItem[];
+  /** Whether "Settled" shows: it has chats, People, hidden agents or deleted channels. */
+  settledShown: () => boolean;
+  isOpen: (groupId: string) => boolean;
+  /** Opens or closes one group. The other groups keep their state. */
+  toggle: (groupId: string) => void;
+}
+
+/** The groups on screen and their open state. The list and its unread button share it. */
+export function useSidebarDockOpenState(groups: () => SidebarChatDockGroups): SidebarDockOpenState {
   const {
     customSectionById,
     dockOpenGroups,
     orderedPeople,
-    pending,
     props,
     sectionParent,
     setDockOpenGroups,
     userHiddenAgentList,
   } = useSidebarScope();
-  const { t } = useText();
-  /** The folders at the top of the layout, in its order. */
   const folderIds = createMemo(() =>
     props.layout.order.filter((sectionId) => customSectionById().has(sectionId) && sectionParent(sectionId) === null),
   );
-  /** The chats in no folder. A chat whose folder is not in the layout any more counts as in none. */
+  /** A chat whose folder is not in the layout any more counts as in none. */
   const settled = createMemo(() => [
-    ...(dockProps.groups.bySection.get(SIDEBAR_UNASSIGNED_SECTION_ID) ?? []),
-    ...[...dockProps.groups.bySection].flatMap(([sectionId, chats]) =>
+    ...(groups().bySection.get(SIDEBAR_UNASSIGNED_SECTION_ID) ?? []),
+    ...[...groups().bySection].flatMap(([sectionId, chats]) =>
       sectionId !== SIDEBAR_UNASSIGNED_SECTION_ID && !customSectionById().has(sectionId) ? chats : [],
     ),
   ]);
@@ -324,13 +350,13 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
     settled().length > 0 || people() || userHiddenAgentList().length > 0 || props.showingArchivedChannels === true;
   /** The groups on screen, in their order. */
   const shownIds = createMemo(() => [
-    ...(dockProps.groups.working.length > 0 ? [SIDEBAR_DOCK_WORKING_ID] : []),
+    ...(groups().working.length > 0 ? [SIDEBAR_DOCK_WORKING_ID] : []),
     ...folderIds(),
     ...(settledShown() ? [SIDEBAR_UNASSIGNED_SECTION_ID] : []),
   ]);
   /**
    * The open groups on screen. When the user left groups open but none of them is on screen, such as
-   * "Working" while no chat works, the dock opens "Settled", or else its first group.
+   * "Working" while no chat works, the list opens "Settled", or else its first group.
    */
   const openIds = createMemo<readonly string[]>(() => {
     const saved = dockOpenGroups();
@@ -340,43 +366,54 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
     return fallback === undefined ? [] : [fallback];
   });
   const isOpen = (groupId: string) => openIds().includes(groupId);
-  /** A click opens or closes one group. The other groups keep their state. */
   const toggle = (groupId: string) =>
     setDockOpenGroups(isOpen(groupId) ? openIds().filter((id) => id !== groupId) : [...openIds(), groupId]);
+  return { folderIds, settled, settledShown, isOpen, toggle };
+}
+
+/** The groups of the list, under "Needs you". They scroll with the rows. It hides while it has no group. */
+export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups; open: SidebarDockOpenState }) {
+  const { pending, props } = useSidebarScope();
+  const { t } = useText();
+  const open = () => dockProps.open;
   const draftShown = () => {
     const target = pending.sectionEditor?.target;
     return target?.kind === "create" && (target.parentId ?? null) === null;
   };
   return (
-    <Show when={dockProps.groups.working.length > 0 || folderIds().length > 0 || settledShown() || draftShown()}>
+    <Show
+      when={
+        dockProps.groups.working.length > 0 || open().folderIds().length > 0 || open().settledShown() || draftShown()
+      }
+    >
       <div class="sidebar-dock">
         <Show when={dockProps.groups.working.length > 0}>
           <SidebarDockGroup
             id={SIDEBAR_DOCK_WORKING_ID}
             name={t("sidebar.lanes.working")}
             chats={dockProps.groups.working}
-            open={isOpen(SIDEBAR_DOCK_WORKING_ID)}
-            onToggle={() => toggle(SIDEBAR_DOCK_WORKING_ID)}
+            open={open().isOpen(SIDEBAR_DOCK_WORKING_ID)}
+            onToggle={() => open().toggle(SIDEBAR_DOCK_WORKING_ID)}
           />
         </Show>
-        <For each={folderIds()}>
+        <For each={open().folderIds()}>
           {(sectionId) => (
             <SidebarDockFolder
               sectionId={sectionId}
               groups={dockProps.groups}
-              open={isOpen(sectionId)}
-              onToggle={() => toggle(sectionId)}
+              open={open().isOpen(sectionId)}
+              onToggle={() => open().toggle(sectionId)}
             />
           )}
         </For>
         <SidebarSectionDraft parentId={null} />
-        <Show when={settledShown()}>
+        <Show when={open().settledShown()}>
           <SidebarDockGroup
             id={SIDEBAR_UNASSIGNED_SECTION_ID}
             name={t("sidebar.dock.settled")}
-            chats={settled()}
-            open={isOpen(SIDEBAR_UNASSIGNED_SECTION_ID)}
-            onToggle={() => toggle(SIDEBAR_UNASSIGNED_SECTION_ID)}
+            chats={open().settled()}
+            open={open().isOpen(SIDEBAR_UNASSIGNED_SECTION_ID)}
+            onToggle={() => open().toggle(SIDEBAR_UNASSIGNED_SECTION_ID)}
           >
             <SidebarPeopleSection sectionId={SIDEBAR_PEOPLE_SECTION_ID} />
             <SidebarHiddenGroup />
@@ -390,6 +427,136 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups }) {
             </Show>
           </SidebarDockGroup>
         </Show>
+      </div>
+    </Show>
+  );
+}
+
+const BODY_PREFIX = "sidebar-section-body-";
+
+/** The unread rows of the groups that the user cannot see: in a closed group, or under the visible list. */
+function hiddenUnreadRows(list: HTMLElement): HTMLElement[] {
+  const dock = list.querySelector(".sidebar-dock");
+  if (!dock) return [];
+  const scroller = list.querySelector(".sidebar-chat-scroll");
+  // On a phone the whole list scrolls; on a larger screen only the scroll zone in it does.
+  const bottom = Math.min(
+    list.getBoundingClientRect().bottom,
+    scroller?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY,
+    window.innerHeight,
+  );
+  return [...dock.querySelectorAll<HTMLElement>(".sidebar-chat-row[data-unread]")].filter((row) => {
+    if (row.closest("[data-collapsed]")) return true;
+    const rect = row.getBoundingClientRect();
+    return rect.top + rect.height / 2 > bottom;
+  });
+}
+
+/** The groups that hold a row and are closed, outermost first. */
+function closedGroupsOf(row: HTMLElement): string[] {
+  const ids: string[] = [];
+  for (
+    let node = row.closest("[data-collapsed]");
+    node;
+    node = node.parentElement?.closest("[data-collapsed]") ?? null
+  ) {
+    const body = node.querySelector(`:scope > [id^="${BODY_PREFIX}"]`);
+    if (body) ids.unshift(body.id.slice(BODY_PREFIX.length));
+  }
+  return ids;
+}
+
+/**
+ * The floating "3 unread" button under the list. It counts the unread chats of the groups that are
+ * out of view, and a click opens the group of the next one and scrolls to it. It hides while every
+ * unread chat is in view.
+ */
+export function SidebarUnreadJump(jumpProps: { list: () => HTMLElement | undefined; open: SidebarDockOpenState }) {
+  const { sectionIsCollapsed, toggleSection } = useSidebarScope();
+  const { t } = useText();
+  const [count, setCount] = createSignal(0);
+  let frame: number | null = null;
+  const measure = () => {
+    frame = null;
+    const list = jumpProps.list();
+    setCount(list ? hiddenUnreadRows(list).length : 0);
+  };
+  const schedule = () => {
+    if (frame === null) frame = requestAnimationFrame(measure);
+  };
+  onSettled(() => {
+    const list = jumpProps.list();
+    if (!list) return;
+    const mutations = new MutationObserver(schedule);
+    mutations.observe(list, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["data-unread", "data-collapsed"],
+    });
+    const sizes = new ResizeObserver(schedule);
+    sizes.observe(list);
+    const content = list.querySelector(".sidebar-chat-scroll > .agent-list-content");
+    if (content) sizes.observe(content);
+    list.addEventListener("scroll", schedule, { capture: true, passive: true });
+    list.addEventListener("transitionend", schedule);
+    schedule();
+    return () => {
+      mutations.disconnect();
+      sizes.disconnect();
+      list.removeEventListener("scroll", schedule, { capture: true });
+      list.removeEventListener("transitionend", schedule);
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  });
+  const jump = () => {
+    const list = jumpProps.list();
+    const row = list ? hiddenUnreadRows(list)[0] : undefined;
+    if (!row) return;
+    const opened = closedGroupsOf(row);
+    for (const groupId of opened) {
+      if (
+        jumpProps.open.folderIds().includes(groupId) ||
+        groupId === SIDEBAR_DOCK_WORKING_ID ||
+        groupId === SIDEBAR_UNASSIGNED_SECTION_ID
+      ) {
+        if (!jumpProps.open.isOpen(groupId)) jumpProps.open.toggle(groupId);
+      } else if (sectionIsCollapsed(groupId)) {
+        toggleSection(groupId);
+      }
+    }
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reveal = () => {
+      row.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+      row.focus({ preventScroll: true });
+    };
+    // An opened group grows with the section motion, so the row has its place when the motion ends.
+    const outer = opened[0] ? document.getElementById(`${BODY_PREFIX}${opened[0]}`)?.parentElement : null;
+    if (!outer || reduced) {
+      requestAnimationFrame(reveal);
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      outer.removeEventListener("transitionend", onEnd);
+      reveal();
+    };
+    const onEnd = (event: TransitionEvent) => {
+      if (event.target === outer) finish();
+    };
+    outer.addEventListener("transitionend", onEnd);
+    // A motion that does not run sends no event.
+    setTimeout(finish, 400);
+  };
+  return (
+    <Show when={count() > 0}>
+      <div class="sidebar-unread-jump-wrap">
+        <Button type="button" class="sidebar-unread-jump" onClick={jump}>
+          <span>{t("sidebar.folder.unread", { count: count() })}</span>
+          <ChevronDown aria-hidden="true" />
+        </Button>
       </div>
     </Show>
   );

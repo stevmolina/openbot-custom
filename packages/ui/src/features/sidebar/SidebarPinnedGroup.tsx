@@ -136,6 +136,9 @@ export function SidebarPinnedGroup() {
                       title={stateLabel() || undefined}
                       aria-pressed={active() ? "true" : "false"}
                       data-cuelume-navigate=""
+                      onPointerDown={(event: PointerEvent) => {
+                        if (event.button === 0 && item.chat.kind === "agent") props.onPrefetchAgent?.(item.chat.id);
+                      }}
                       onClick={() => selectChat(item.chat)}
                     >
                       <Switch>

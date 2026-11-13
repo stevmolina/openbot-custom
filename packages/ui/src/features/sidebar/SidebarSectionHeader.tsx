@@ -6,8 +6,8 @@
  * A folder in a folder names its parent before its own name, in muted text, because folders do not
  * indent. A folder header ends with a folder icon, and with the unread count while it is closed.
  *
- * In the dock of the chat sidebar, a folder header has the look of the other dock groups (`dock`):
- * a chevron, the folder icon, the name and the count. Its menu and its drag stay the same.
+ * In the chat sidebar, a folder header has the look of the other list groups (`dock`): a quiet name,
+ * then the count while it is closed and a small chevron. Its menu and its drag stay the same.
  */
 
 import { SIDEBAR_FOLDER_LEVELS } from "@openbot/contracts/ipc";
@@ -173,7 +173,6 @@ export function SidebarSectionHeader(headerProps: {
                   count={dock().count}
                   unread={dock().unread}
                   open={!collapsed()}
-                  folder={custom()}
                   server={marks.section(headerProps.sectionId)}
                 />
               )}

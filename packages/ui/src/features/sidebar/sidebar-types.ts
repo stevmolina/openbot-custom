@@ -224,6 +224,11 @@ export interface SidebarProps {
   onReorderPinned: (items: SidebarPinnedItem[]) => void;
   onReorderPeople: (memberIds: string[]) => void;
   onSelectAgent: (agentId: string) => void;
+  /**
+   * Called when the pointer goes down on an agent row, a moment before the click that opens it. A client
+   * whose host is far away can start reading the conversation here. It must not change the selection.
+   */
+  onPrefetchAgent?: ((agentId: string) => void) | undefined;
   onSelectPerson: (memberId: string) => void;
   onPreloadDirectConversation?: (() => void) | undefined;
   /** Whether this server currently accepts new agents. Desktop keeps the default enabled. */

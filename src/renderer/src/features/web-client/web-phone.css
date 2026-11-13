@@ -233,7 +233,7 @@
 
   /*
    * One list: the title, the search field and every folder scroll together, so an open folder shows
-   * all of its chats. A larger screen keeps the folders in a dock over the pill instead.
+   * all of its chats. The whole list scrolls here, not only its scroll zone, so the large title can go.
    */
   .web-app-frame > .sidebar-chat .sidebar-chat-list {
     overflow-y: auto;
@@ -245,8 +245,10 @@
     overflow: visible;
   }
 
-  .web-app-frame > .sidebar-chat .sidebar-dock {
-    border-top: 0;
+  /* The unread button stays over the tab bar while the list scrolls under it. */
+  .web-app-frame > .sidebar-chat .sidebar-unread-jump-wrap {
+    position: fixed;
+    bottom: calc(var(--web-phone-tab-bar-space) + var(--openbot-space-2));
   }
 
   /* The end of the list leaves room for the tab bar, whatever group comes last. */
@@ -292,13 +294,8 @@
     font-weight: var(--openbot-weight-semibold);
   }
 
-  .web-app-frame > .sidebar-chat .sidebar-dock-head :is(.sidebar-dock-folder, .sidebar-dock-chevron) {
+  .web-app-frame > .sidebar-chat .sidebar-dock-head .sidebar-dock-chevron {
     color: var(--openbot-text-muted);
-  }
-
-  .web-app-frame > .sidebar-chat .sidebar-dock-head .sidebar-dock-folder {
-    width: 20px;
-    height: 20px;
   }
 
   .web-app-frame > .sidebar-chat .sidebar-dock-head .sidebar-dock-chevron {
