@@ -11,7 +11,6 @@ import {
   detectedModelServerKey,
   type ProviderDetectionSettings,
 } from "@openbot/contracts/ipc";
-import { checkResult } from "@openbot/ui/features/custom-providers/CustomAgentSettings";
 import {
   customAgentCheckInput,
   customAgentInput,
@@ -322,7 +321,15 @@ export function createProviderDetectionStore(options: ProviderDetectionStoreOpti
   function agentCheck(): DetectedProviderApi["checkAgent"] {
     const check = options.agents.checkCustomAgent;
     if (!check) return undefined;
-    return async (value, savedAgentId) => checkResult(await check(customAgentCheckInput(value, savedAgentId)));
+    // The custom agent settings that run the check load their module, so this import does not wait. A
+    // static import would bring those settings into the first chunk of the web client.
+    return async (value, savedAgentId) => {
+      const [{ checkResult }, result] = await Promise.all([
+        import("@openbot/ui/features/custom-providers/CustomAgentSettings"),
+        check(customAgentCheckInput(value, savedAgentId)),
+      ]);
+      return checkResult(result);
+    };
   }
 
   /** First run scans once, so it has no scan-again control. */

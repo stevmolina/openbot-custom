@@ -9,10 +9,11 @@ import { SettingsPanel, SettingsPanelContent, SettingsPanelHeader } from "@openb
 import { ChannelAvatar } from "@openbot/ui/features/channels/ChannelAvatar";
 import { ChannelStoppedTasks } from "@openbot/ui/features/channels/ChannelStoppedTasks";
 import { useText } from "@openbot/ui/text";
-import { createEffect, createMemo, createStore, Show } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import { createEffect, createMemo, createStore, Loading, lazy, Show } from "solid-js";
 import { createSettingsPanelWidth, saveSettingsPanelWidth } from "../../components/settings-panel-width";
 import { AgentMemoriesSettings } from "../conversation/AgentMemoriesSettings";
-import { AgentRoutinesSettings } from "../conversation/AgentRoutinesSettings";
+import type { AgentRoutinesSettings as AgentRoutinesSettingsView } from "../conversation/AgentRoutinesSettings";
 import type { ConversationChannelSettingsPaneProps } from "../conversation/conversation-types";
 import { channelMemoriesPort } from "../conversation/memories-port";
 import { desktopEventRoutinesApi } from "../conversation/routine-webhooks-api";
@@ -20,6 +21,18 @@ import { channelRoutinesPort, eventRoutinesPort } from "../conversation/routines
 import { ChannelEditor } from "./ChannelEditor";
 import { stoppedChannelTasks } from "./channel-conversation-rows";
 import { useChannels } from "./channels-context";
+
+// The routines of a channel open from its settings, so their code loads then, as the agent settings do.
+const LazyAgentRoutinesSettings = lazy(() =>
+  import("../conversation/AgentRoutinesSettings").then((module) => ({ default: module.AgentRoutinesSettings })),
+);
+function AgentRoutinesSettings(props: ComponentProps<typeof AgentRoutinesSettingsView>) {
+  return (
+    <Loading>
+      <LazyAgentRoutinesSettings {...props} />
+    </Loading>
+  );
+}
 
 /** Where the routines of a channel are kept, as for an agent. */
 export interface ChannelRoutineHost {

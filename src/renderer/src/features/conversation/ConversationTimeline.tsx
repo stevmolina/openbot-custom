@@ -69,13 +69,19 @@ import { continuesSenderRun } from "./chat-grouping";
 import { chatSearchCanOpen, chatSearchOpensMessage } from "./chat-search";
 import { isChatVisualAppShortcut } from "./chat-visual-shortcuts";
 import { chatVisualPageUrl } from "./chat-visual-url";
-import { ApprovalCard, preloadConversationCards, QuestionPromptBubble, UiBlockPrompt } from "./conversation-cards";
+import {
+  ApprovalCard,
+  MarketplaceSuggestionChatCard,
+  preloadConversationCards,
+  QuestionPromptBubble,
+  UiBlockPrompt,
+} from "./conversation-cards";
 import { isIncomingAgentMessage } from "./conversation-read-state";
 import { conversationRuntime } from "./conversation-runtime";
 import { useConversationViewScope } from "./conversation-scope";
 import { agentSkillsMode } from "./installed-skills-source";
-import { MarketplaceSuggestionChatCard, marketplaceSuggestionKnown } from "./MarketplaceSuggestionChatCard";
 import { McpSignInChatCard, mcpSignInRepliedIds } from "./McpSignInChatCard";
+import { marketplaceSuggestionKnown } from "./marketplace-suggestion-known";
 import { createMessageImageFiles } from "./message-image-files";
 import { RoutineChatCard } from "./RoutineChatCard";
 import { createChatWebhookRoutines, RoutineWebhookChatCard } from "./RoutineWebhookChatCard";
@@ -1202,13 +1208,15 @@ export function ConversationTimeline() {
                                         }
                                       >
                                         {(suggestion) => (
-                                          <MarketplaceSuggestionChatCard
-                                            messageId={message()?.id ?? initialMessage.id}
-                                            appId={suggestion().appId}
-                                            connectors={props.connectors}
-                                            mcpServers={mcpServers()}
-                                            onOpenMarketplaceApp={props.onOpenMarketplaceApp}
-                                          />
+                                          <Loading>
+                                            <MarketplaceSuggestionChatCard
+                                              messageId={message()?.id ?? initialMessage.id}
+                                              appId={suggestion().appId}
+                                              connectors={props.connectors}
+                                              mcpServers={mcpServers()}
+                                              onOpenMarketplaceApp={props.onOpenMarketplaceApp}
+                                            />
+                                          </Loading>
                                         )}
                                       </Show>
                                     }
