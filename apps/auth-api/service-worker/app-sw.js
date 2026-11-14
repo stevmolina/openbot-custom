@@ -1,9 +1,10 @@
-// The service worker of the web client at /app. `service-worker-plugin.ts` fills in the two
+// The service worker of the web client at /app. `service-worker-plugin.ts` fills in the three
 // placeholders below and serves this file at /app-sw.js, with the scope /app.
 //
 // It keeps the app shell only, so that the web client starts when the network is down:
 // - /assets/* files have a content hash in their name, so a cached copy is always the right one.
-//   They are cache-first.
+//   They are cache-first. Their cache stays across deploys: a new worker removes only the files that
+//   its build does not use, so a deploy downloads only the files that changed.
 // - The /app page is network-first. The cached copy answers only when the network fails.
 // It never keeps chats, host data or any API answer. Only the two kinds of request above get an
 // answer from this file, so every other request, including /v1, /v2, /api and other origins,
@@ -14,8 +15,13 @@
 const BUILD_ID = "__OPENBOT_BUILD_ID__";
 const APP_NAME = "__OPENBOT_APP_NAME__";
 
+/** The `/assets/` paths of this build. */
+const ASSET_PATHS = new Set(["__OPENBOT_ASSET_PATHS__"]);
+
 const SHELL_CACHE = `openbot-web-shell-${BUILD_ID}`;
-const ASSET_CACHE = `openbot-web-assets-${BUILD_ID}`;
+const ASSET_CACHE = "openbot-web-assets";
+/** Workers before the shared asset cache kept one asset cache per build. */
+const BUILD_ASSET_CACHE_PREFIX = "openbot-web-assets-";
 const CACHE_PREFIX = "openbot-web-";
 const SHELL_KEY = "/app";
 const APP_PATH = "/app";
@@ -36,6 +42,7 @@ self.addEventListener("install", () => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      await keepUsedAssets();
       const keep = new Set([SHELL_CACHE, ASSET_CACHE]);
       const names = await caches.keys();
       await Promise.all(
@@ -45,6 +52,30 @@ self.addEventListener("activate", (event) => {
     })(),
   );
 });
+
+/**
+ * Moves the files of this build from the per-build caches of older workers into the shared cache, and
+ * removes the files that this build does not use. A failure leaves files that the next fetch replaces.
+ */
+async function keepUsedAssets() {
+  try {
+    const cache = await caches.open(ASSET_CACHE);
+    for (const name of await caches.keys()) {
+      if (!name.startsWith(BUILD_ASSET_CACHE_PREFIX)) continue;
+      const old = await caches.open(name);
+      for (const request of await old.keys()) {
+        if (!ASSET_PATHS.has(new URL(request.url).pathname) || (await cache.match(request))) continue;
+        const response = await old.match(request);
+        if (response) await cache.put(request, response);
+      }
+    }
+    for (const request of await cache.keys()) {
+      if (!ASSET_PATHS.has(new URL(request.url).pathname)) await cache.delete(request);
+    }
+  } catch {
+    // The asset cache is an optimization. Activation must not fail because of it.
+  }
+}
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") void self.skipWaiting();
