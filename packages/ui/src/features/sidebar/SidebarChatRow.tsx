@@ -6,10 +6,14 @@
  * A chat that waits for the user shows the wait in place of the last message, in the warning color.
  * The face shows that the agent works or waits through its mood. A dot marks a reply that the user
  * did not read.
+ *
+ * An agent that finished recently shows in "Working" as a quiet row: a gray name, a check mark, and
+ * "done 4 min ago" in place of the last message.
  */
 
 import type { ChannelSummary } from "@openbot/contracts/ipc";
-import { buttonVariants, ContextMenu, MotionTooltip } from "@openbot/ui";
+import type { AppFormat, AppTranslate } from "@openbot/i18n";
+import { buttonVariants, Check, ContextMenu, MotionTooltip } from "@openbot/ui";
 import type { JSX } from "@solidjs/web";
 import { createSignal, Match, Show, Switch } from "solid-js";
 import type { AgentProfile } from "../../data";
@@ -30,6 +34,20 @@ import type { SidebarChannelWait, SidebarChatItem } from "./sidebar-types";
 /** How a chat shows: a row of the open list, or a face of the collapsed dock. */
 export type SidebarChatLook = "row" | "face";
 
+/** When an agent of "Working" finished, and the time that the list measured it at, in milliseconds. */
+export interface SidebarChatDone {
+  at: number;
+  now: number;
+}
+
+/** "done just now", "done 4 min ago", "done 2 h ago". */
+function doneText(done: SidebarChatDone, t: AppTranslate, format: AppFormat): string {
+  const minutes = Math.floor((done.now - done.at) / 60_000);
+  if (minutes < 1) return t("sidebar.dock.doneNow");
+  if (minutes < 60) return t("sidebar.dock.doneMinutes", { value: format.number(minutes) });
+  return t("sidebar.dock.doneHours", { value: format.number(Math.floor(minutes / 60)) });
+}
+
 /** What one chat shows, the same for its row and its face. */
 interface ChatView {
   /** The chat's id, unique across agents and channels. */
@@ -37,6 +55,8 @@ interface ChatView {
   name: string;
   preview: string;
   waiting: boolean;
+  /** Set for a finished agent of "Working": the row is quiet and its preview says when it finished. */
+  done: boolean;
   unread: boolean;
   active: boolean;
   /** The words a screen reader reads after the name and the preview, such as the state. */
@@ -70,7 +90,11 @@ function useWaitText() {
       : t(SIDEBAR_WAIT_TITLE[wait.reason]);
 }
 
-function useAgentView(agent: () => AgentProfile, pinned: () => boolean): ChatView {
+function useAgentView(
+  agent: () => AgentProfile,
+  pinned: () => boolean,
+  done: () => SidebarChatDone | undefined,
+): ChatView {
   const { props } = useSidebarScope();
   const { t, format } = useText();
   const waitText = useWaitText();
@@ -106,10 +130,15 @@ function useAgentView(agent: () => AgentProfile, pinned: () => boolean): ChatVie
     },
     get preview() {
       const current = wait();
-      return current ? waitText(current.state) : agent().preview;
+      if (current) return waitText(current.state);
+      const finished = done();
+      return finished ? doneText(finished, t, format) : agent().preview;
     },
     get waiting() {
       return wait() !== undefined;
+    },
+    get done() {
+      return wait() === undefined && done() !== undefined;
     },
     get unread() {
       return state()?.kind === "unread" || (props.threadLanes?.unreadAgentIds.has(agent().id) ?? false);
@@ -168,6 +197,7 @@ function useChannelView(channel: () => ChannelSummary, pinned: () => boolean): C
     get waiting() {
       return wait() !== undefined;
     },
+    done: false,
     get unread() {
       return channel().unreadCount > 0;
     },
@@ -187,14 +217,21 @@ function useChannelView(channel: () => ChannelSummary, pinned: () => boolean): C
   };
 }
 
-export function SidebarChatRow(rowProps: { chat: SidebarChatItem; look: SidebarChatLook; pinned?: boolean }) {
+export function SidebarChatRow(rowProps: {
+  chat: SidebarChatItem;
+  look: SidebarChatLook;
+  pinned?: boolean;
+  /** Set for an agent that finished recently, in "Working". */
+  done?: SidebarChatDone | undefined;
+}) {
   const pinned = () => rowProps.pinned === true;
+  const done = () => rowProps.done;
   const agent = () => (rowProps.chat.kind === "agent" ? rowProps.chat.agent : undefined);
   const channel = () => (rowProps.chat.kind === "channel" ? rowProps.chat.channel : undefined);
   return (
     <Switch>
       <Match when={agent()}>
-        {(profile) => <SidebarChatView view={useAgentView(profile, pinned)} look={rowProps.look} />}
+        {(profile) => <SidebarChatView view={useAgentView(profile, pinned, done)} look={rowProps.look} />}
       </Match>
       <Match when={channel()}>
         {(summary) => <SidebarChatView view={useChannelView(summary, pinned)} look={rowProps.look} />}
@@ -225,7 +262,7 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
         class={[
           buttonVariants({ variant: "ghost" }),
           viewProps.look === "row" ? "sidebar-chat-row" : "sidebar-chat-face",
-          { "sidebar-chat-active": view.active },
+          { "sidebar-chat-active": view.active, "sidebar-chat-done": view.done },
         ]}
         aria-label={label()}
         aria-current={view.active ? "page" : undefined}
@@ -244,7 +281,12 @@ function SidebarChatView(viewProps: { view: ChatView; look: SidebarChatLook }) {
         <Show when={viewProps.look === "row"}>
           <span class="sidebar-chat-copy" aria-hidden="true">
             <strong class="sidebar-chat-name">{view.name}</strong>
-            <span class={["sidebar-chat-preview", { "sidebar-chat-preview-wait": view.waiting }]}>{view.preview}</span>
+            <span class={["sidebar-chat-preview", { "sidebar-chat-preview-wait": view.waiting }]}>
+              <Show when={view.done}>
+                <Check class="sidebar-chat-done-check" aria-hidden="true" />
+              </Show>
+              {view.preview}
+            </span>
           </span>
         </Show>
         <Show when={view.unread}>

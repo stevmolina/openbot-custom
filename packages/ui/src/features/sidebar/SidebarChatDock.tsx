@@ -8,6 +8,10 @@
  * running task) is in "Working", and the others are in their folder or in "Settled". People, the hidden
  * agents and the deleted channels follow the chats of "Settled".
  *
+ * An agent that finished stays in "Working" under the agents that work, as a quiet "done" row, so the
+ * user finds it where it was. It goes back to its folder 6 hours after its last activity, or when 5
+ * newer agents finished. Opening it does not move it.
+ *
  * Each group opens and closes by itself. The open groups are saved with the collapsed sections
  * (`dockOpenGroups` in the scope), so they stay open after a restart. A folder group keeps the menu,
  * the drag and the drop of its section. A floating "unread" button under the list shows how many
@@ -27,7 +31,7 @@ import { SidebarPeopleSection } from "./SidebarPeopleSection";
 import { SidebarSectionDraft } from "./SidebarSectionEditor";
 import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { sidebarSectionResolver } from "./sidebar-agent-order";
-import { sidebarAgentWait } from "./sidebar-recent-chats";
+import { type SidebarDoneChat, sidebarAgentWait, sidebarRecentlyDone } from "./sidebar-recent-chats";
 import { useSidebarScope } from "./sidebar-scope";
 import { SIDEBAR_DOCK_WORKING_ID, type SidebarChatItem } from "./sidebar-types";
 
@@ -43,12 +47,31 @@ export function SidebarChatRows(rowsProps: { chats: readonly SidebarChatItem[] }
   );
 }
 
-/** The chats that wait, the chats that work, and the other chats by the folder that the layout puts them in. */
+/** The quiet "done" rows of "Working", newest first. */
+function SidebarDoneRows(rowsProps: { done: readonly SidebarDoneChat[]; now: number }) {
+  return (
+    <div class="sidebar-chat-rows">
+      <For each={rowsProps.done} keyed={(entry) => `${entry.chat.kind}:${entry.chat.id}`}>
+        {(entry) => <SidebarChatRow chat={entry().chat} look="row" done={{ at: entry().doneAt, now: rowsProps.now }} />}
+      </For>
+    </div>
+  );
+}
+
+/**
+ * The chats that wait, the chats that work, the agents that finished recently, and the other chats by
+ * the folder that the layout puts them in. `now` is the time that "done" was measured at.
+ */
 interface SidebarChatDockGroups {
   waiting: SidebarChatItem[];
   working: SidebarChatItem[];
+  done: SidebarDoneChat[];
+  now: number;
   bySection: ReadonlyMap<string, SidebarChatItem[]>;
 }
+
+/** The "done" rows age once a minute: the time on each row moves on, and a row leaves after 6 hours. */
+const DONE_TICK_MS = 60_000;
 
 /**
  * The agents whose wait is only in a side thread, and the agents with a running side thread. Each set
@@ -75,6 +98,14 @@ function useThreadStates() {
 export function useSidebarChatDockGroups(chats: () => readonly SidebarChatItem[]) {
   const { draggingKind, props, waitingChats } = useSidebarScope();
   const threadStates = useThreadStates();
+  const [now, setNow] = createSignal(Date.now());
+  onSettled(() => {
+    // The clock holds still during a drag, so no row leaves "Working" under the pointer.
+    const timer = setInterval(() => {
+      if (!draggingKind()) setNow(Date.now());
+    }, DONE_TICK_MS);
+    return () => clearInterval(timer);
+  });
   let heldWorking = new Set<string>();
   /** The agents that work and the channels with a running task, as `kind:id` keys. */
   const workingIds = createMemo(() => {
@@ -93,7 +124,7 @@ export function useSidebarChatDockGroups(chats: () => readonly SidebarChatItem[]
     const states = threadStates();
     const waiting: SidebarChatItem[] = [];
     const working: SidebarChatItem[] = [];
-    const bySection = new Map<string, SidebarChatItem[]>();
+    const settled: SidebarChatItem[] = [];
     for (const chat of chats()) {
       const agent = chat.kind === "agent";
       if (waitingIds.has(chat.id) || (agent && states.waits.has(chat.id))) {
@@ -101,11 +132,19 @@ export function useSidebarChatDockGroups(chats: () => readonly SidebarChatItem[]
       } else if (workingIds().has(`${chat.kind}:${chat.id}`) || (agent && states.works.has(chat.id))) {
         working.push(chat);
       } else {
-        const sectionId = sectionOf(chat.id);
-        bySection.set(sectionId, [...(bySection.get(sectionId) ?? []), chat]);
+        settled.push(chat);
       }
     }
-    return { waiting, working, bySection };
+    const at = now();
+    const done = sidebarRecentlyDone(settled, props.threadLanes?.threads ?? [], at);
+    const doneKeys = new Set(done.map((entry) => `${entry.chat.kind}:${entry.chat.id}`));
+    const bySection = new Map<string, SidebarChatItem[]>();
+    for (const chat of settled) {
+      if (doneKeys.has(`${chat.kind}:${chat.id}`)) continue;
+      const sectionId = sectionOf(chat.id);
+      bySection.set(sectionId, [...(bySection.get(sectionId) ?? []), chat]);
+    }
+    return { waiting, working, done, now: at, bySection };
   });
 }
 
@@ -155,11 +194,16 @@ function SidebarDockBody(bodyProps: { id: string; open: boolean; children: JSX.E
   );
 }
 
-/** "Working" and "Settled": a group with a plain heading. "Settled" is the unassigned section, so a chat dropped on it leaves its folder. */
+/**
+ * "Working" and "Settled": a group with a plain heading. "Settled" is the unassigned section, so a chat
+ * dropped on it leaves its folder. "Working" also lists the agents that finished recently, under the
+ * agents that work. Its count is the agents that work.
+ */
 function SidebarDockGroup(groupProps: {
   id: string;
   name: string;
   chats: readonly SidebarChatItem[];
+  done?: { chats: readonly SidebarDoneChat[]; now: number } | undefined;
   open: boolean;
   onToggle: () => void;
   children?: JSX.Element;
@@ -195,12 +239,15 @@ function SidebarDockGroup(groupProps: {
             name={groupProps.name}
             count={groupProps.chats.length}
             open={open()}
-            unread={groupProps.chats.some(unread)}
+            unread={
+              groupProps.chats.some(unread) || (groupProps.done?.chats.some((entry) => unread(entry.chat)) ?? false)
+            }
           />
         </Button>
       </header>
       <SidebarDockBody id={groupProps.id} open={open()}>
         <SidebarChatRows chats={groupProps.chats} />
+        <Show when={groupProps.done}>{(done) => <SidebarDoneRows done={done().chats} now={done().now} />}</Show>
         {groupProps.children}
       </SidebarDockBody>
     </section>
@@ -350,7 +397,7 @@ export function useSidebarDockOpenState(groups: () => SidebarChatDockGroups): Si
     settled().length > 0 || people() || userHiddenAgentList().length > 0 || props.showingArchivedChannels === true;
   /** The groups on screen, in their order. */
   const shownIds = createMemo(() => [
-    ...(groups().working.length > 0 ? [SIDEBAR_DOCK_WORKING_ID] : []),
+    ...(groups().working.length > 0 || groups().done.length > 0 ? [SIDEBAR_DOCK_WORKING_ID] : []),
     ...folderIds(),
     ...(settledShown() ? [SIDEBAR_UNASSIGNED_SECTION_ID] : []),
   ]);
@@ -376,22 +423,21 @@ export function SidebarChatDock(dockProps: { groups: SidebarChatDockGroups; open
   const { pending, props } = useSidebarScope();
   const { t } = useText();
   const open = () => dockProps.open;
+  /** "Working" shows while an agent works or finished recently. */
+  const workingShown = () => dockProps.groups.working.length > 0 || dockProps.groups.done.length > 0;
   const draftShown = () => {
     const target = pending.sectionEditor?.target;
     return target?.kind === "create" && (target.parentId ?? null) === null;
   };
   return (
-    <Show
-      when={
-        dockProps.groups.working.length > 0 || open().folderIds().length > 0 || open().settledShown() || draftShown()
-      }
-    >
+    <Show when={workingShown() || open().folderIds().length > 0 || open().settledShown() || draftShown()}>
       <div class="sidebar-dock">
-        <Show when={dockProps.groups.working.length > 0}>
+        <Show when={workingShown()}>
           <SidebarDockGroup
             id={SIDEBAR_DOCK_WORKING_ID}
             name={t("sidebar.lanes.working")}
             chats={dockProps.groups.working}
+            done={{ chats: dockProps.groups.done, now: dockProps.groups.now }}
             open={open().isOpen(SIDEBAR_DOCK_WORKING_ID)}
             onToggle={() => open().toggle(SIDEBAR_DOCK_WORKING_ID)}
           />

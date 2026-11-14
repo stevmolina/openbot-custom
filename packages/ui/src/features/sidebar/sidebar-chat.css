@@ -357,6 +357,20 @@
   font-weight: var(--openbot-weight-medium);
 }
 
+/* A finished agent in "Working": a quieter name, and a check mark before "done 4 min ago". The preview
+   keeps the secondary color, as the muted one fails contrast here. */
+.sidebar-chat-done .sidebar-chat-name {
+  color: var(--openbot-text-secondary);
+  font-weight: var(--openbot-weight-medium);
+}
+
+.sidebar-chat-done-check {
+  width: var(--openbot-icon-xs);
+  height: var(--openbot-icon-xs);
+  margin-inline-end: 4px;
+  vertical-align: -2px;
+}
+
 .sidebar-chat-unread {
   width: 8px;
   height: 8px;
