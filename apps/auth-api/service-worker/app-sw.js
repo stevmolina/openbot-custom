@@ -63,15 +63,19 @@ async function keepUsedAssets() {
     for (const name of await caches.keys()) {
       if (!name.startsWith(BUILD_ASSET_CACHE_PREFIX)) continue;
       const old = await caches.open(name);
-      for (const request of await old.keys()) {
-        if (!ASSET_PATHS.has(new URL(request.url).pathname) || (await cache.match(request))) continue;
-        const response = await old.match(request);
-        if (response) await cache.put(request, response);
-      }
+      await Promise.all(
+        (await old.keys()).map(async (request) => {
+          if (!ASSET_PATHS.has(new URL(request.url).pathname) || (await cache.match(request))) return;
+          const response = await old.match(request);
+          if (response) await cache.put(request, response);
+        }),
+      );
     }
-    for (const request of await cache.keys()) {
-      if (!ASSET_PATHS.has(new URL(request.url).pathname)) await cache.delete(request);
-    }
+    await Promise.all(
+      (await cache.keys()).map((request) =>
+        ASSET_PATHS.has(new URL(request.url).pathname) ? undefined : cache.delete(request),
+      ),
+    );
   } catch {
     // The asset cache is an optimization. Activation must not fail because of it.
   }

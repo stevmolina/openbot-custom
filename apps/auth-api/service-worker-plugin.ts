@@ -28,10 +28,11 @@ export function webServiceWorker(env: Readonly<Record<string, string | undefined
   const brand = readBrandSettings(env);
   const appName = brand?.name ?? "OpenBot";
   const workerSource = (template: string, buildId: string, assetPaths: readonly string[]) =>
+    // Function replacers, so that a `$` in a value is not read as a replacement pattern.
     template
-      .replace("__OPENBOT_BUILD_ID__", buildId)
-      .replace("__OPENBOT_APP_NAME__", appName)
-      .replace('["__OPENBOT_ASSET_PATHS__"]', JSON.stringify(assetPaths));
+      .replace("__OPENBOT_BUILD_ID__", () => buildId)
+      .replace("__OPENBOT_APP_NAME__", () => appName)
+      .replace('["__OPENBOT_ASSET_PATHS__"]', () => JSON.stringify(assetPaths));
   return {
     name: "openbot-web-service-worker",
     configureServer(server) {
@@ -52,7 +53,8 @@ export function webServiceWorker(env: Readonly<Record<string, string | undefined
       const names = Object.keys(bundle).sort();
       const hash = createHash("sha256").update(template).update(appName);
       for (const name of names) hash.update(name).update("\n");
-      const assetPaths = names.filter((name) => name.startsWith("assets/")).map((name) => `/${name}`);
+      // The worker compares them with `URL.pathname`, which is percent-encoded.
+      const assetPaths = names.filter((name) => name.startsWith("assets/")).map((name) => encodeURI(`/${name}`));
       const source = workerSource(template, hash.digest("hex").slice(0, 16), assetPaths);
       this.emitFile({ type: "asset", fileName: WEB_SERVICE_WORKER_FILE, source });
     },
