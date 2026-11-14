@@ -1,12 +1,6 @@
-import {
-  COLOR_BY_ID,
-  type ColorId,
-  EXPRESSIONS,
-  type ExpressionId,
-  SHAPES,
-  type ShapeId,
-} from "@norbert_bodziony/bloub";
+import { EXPRESSIONS, type ExpressionId, SHAPES, type ShapeId } from "@norbert_bodziony/bloub";
 import { type AvatarColor, type AvatarHue, nearestAvatarHue } from "@openbot/contracts/ipc-agent-identity";
+import { POKEBOTS_HUE_COLORS, pokebotsAutomaticColor } from "./pokebots-avatar";
 
 export type SupportedAvatarSilhouetteId = Exclude<ShapeId, "goutte">;
 
@@ -23,19 +17,8 @@ export const SUPPORTED_AVATAR_SILHOUETTES = SHAPES.map((option) => option.id).fi
   (silhouette): silhouette is SupportedAvatarSilhouetteId => silhouette !== UNSUPPORTED_AVATAR_SILHOUETTE,
 );
 
-// Bloub has no lime or indigo. They have the OKLCH lightness and chroma of its other colours.
-const HUE_COLORS: Readonly<Record<AvatarHue, string>> = {
-  0: colorHex("rouge"),
-  30: colorHex("orange"),
-  55: colorHex("ambre"),
-  100: "#8ece34",
-  150: colorHex("vert"),
-  185: colorHex("turquoise"),
-  215: colorHex("bleu"),
-  245: "#5d67ee",
-  280: colorHex("violet"),
-  320: colorHex("rose"),
-};
+// Pokebots: the hues take the pokebots.xyz palette (`pokebots-avatar.ts`).
+const HUE_COLORS: Readonly<Record<AvatarHue, string>> = POKEBOTS_HUE_COLORS;
 
 /** The eyes a person can pick, in the order Bloub lists them. */
 export const AVATAR_EXPRESSIONS: readonly ExpressionId[] = EXPRESSIONS.map((option) => option.id);
@@ -132,7 +115,7 @@ export function bloubAvatarProfile(
   return {
     shape: silhouette,
     expression,
-    color: color ?? (hue === null ? colorHex(automaticColor(seed)) : HUE_COLORS[hue]),
+    color: color ?? (hue === null ? pokebotsAutomaticColor(seed) : HUE_COLORS[hue]),
   };
 }
 
@@ -251,12 +234,6 @@ function stableIndex(value: string, length: number): number {
     hash = Math.imul(hash, 0x01000193);
   }
   return (hash >>> 0) % length;
-}
-
-function colorHex(color: ColorId): string {
-  const value = COLOR_BY_ID.get(color)?.hex;
-  if (!value) throw new Error(`Bloub did not return a color for ${color}.`);
-  return value;
 }
 
 function requiredItem<T>(items: readonly T[], index: number): T {

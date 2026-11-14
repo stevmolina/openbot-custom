@@ -15,6 +15,7 @@ import {
 import type { AgentProfile } from "../../data";
 import { documentFocused } from "../../document-focus";
 import { documentSoftwareRendering } from "../../document-rendering";
+import { PokebotsAccessory } from "./PokebotsAccessory";
 
 // Cap avatar animation at 30fps: uncapped bloub clocks measured 30% renderer / 24% GPU
 // for two visible avatars. The shape is 24-40px, so the eye cannot see the difference.
@@ -104,7 +105,7 @@ const PHOTO_BREATHE = "0.03";
 
 /** The plush body has the same radius as the flat body, but its soft, dark fur edge makes it look
  * smaller. This scale makes it look the same size. Each surface still sizes the box. */
-const PLUSH_BODY_STYLE = { transform: "scale(1.15)" } as const;
+const PLUSH_BODY_STYLE = { transform: "scale(1.15)", "grid-area": "1 / 1" } as const;
 
 /** The pose that a still plush shows. The plush plays `thinking`, `asleep` and `failed` on the
  * engine's `idle`. */
@@ -495,6 +496,10 @@ function GeneratedAvatar(props: {
         >
           {flatAvatar()}
         </Show>
+      </Show>
+      {/* Pokebots: the plush wears its felt accessory (`PokebotsAccessory`). */}
+      <Show when={!flat()}>
+        <PokebotsAccessory seed={props.seed} shape={appearance().shape} color={appearance().color} />
       </Show>
     </span>
   );

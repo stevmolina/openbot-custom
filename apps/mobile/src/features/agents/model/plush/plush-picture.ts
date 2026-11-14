@@ -7,12 +7,13 @@ import { drawFlat, flatGeometryKey, flatRestFrame } from "./flat-draw";
 import { loadPlushArt } from "./plush-assets";
 import { drawPlush } from "./plush-draw";
 import { plushGeometry, plushRestFrame } from "./plush-frames";
+import { plushAccessoryKey, plushAccessoryParts } from "./plush-pokebots";
 
 /**
  * The style of the drawn pictures. Change it when the drawing changes, so that saved pictures are
  * drawn again: the file names and the Live Activity pictures carry it.
  */
-export const PLUSH_STYLE = "plush-2";
+export const PLUSH_STYLE = "plush-2-pokebots-1";
 /**
  * Still plush pictures, kept between launches, so a list shows its avatars without drawing them
  * again. `Paths.cache` is `Library/Caches` on iOS, and the system can delete it.
@@ -49,7 +50,7 @@ export function plushPictureName(spec: PlushPictureSpec): string {
   const key =
     avatarStyleForSeed(spec.seed) === "flat"
       ? flatGeometryKey(spec.seed, spec.mood)
-      : plushGeometry(spec.seed, spec.mood).key;
+      : `${plushGeometry(spec.seed, spec.mood).key}:${plushAccessoryKey(spec.seed)}`;
   const color = avatarHeadColor(spec.seed, spec.hue, spec.color);
   return `${nameHash(`${PLUSH_STYLE}|${key}|${color}|${spec.pixels}|${spec.saturation}`)}.png`;
 }
@@ -64,7 +65,8 @@ export async function renderPlushPicture(spec: PlushPictureSpec): Promise<string
   } else {
     const geometry = plushGeometry(spec.seed, spec.mood);
     const art = await loadPlushArt(geometry.shape, color, spec.pixels);
-    drawPlush(surface.getCanvas(), plushRestFrame(geometry), art, spec.pixels, spec.saturation);
+    const accessory = plushAccessoryParts(spec.seed, spec.hue, spec.color);
+    drawPlush(surface.getCanvas(), plushRestFrame(geometry), art, spec.pixels, spec.saturation, accessory);
   }
   surface.flush();
   return surface.makeImageSnapshot().encodeToBase64(ImageFormat.PNG);

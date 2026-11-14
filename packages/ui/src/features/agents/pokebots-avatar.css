@@ -1,0 +1,13 @@
+/* Pokebots: the brand look of a generated agent face (`PokebotsAccessory`, `@openbot/brand/pokebots-avatar`). */
+
+/* The faces of a channel cluster are a few pixels wide and overlap: an accessory there is noise. */
+.channel-avatar-cluster .pokebots-accessory-svg {
+  display: none;
+}
+
+/* The Pokebots mascots have dark eyes. The plush draws its felt eye pads light, in slices that it adds
+   together in an isolated group; darkening the whole group keeps the slices seamless and keeps every
+   mood and motion of the eyes. */
+.agent-avatar-bloub .bloub-avatar-svg g[style*="isolation"] {
+  filter: brightness(0.14) contrast(1.3);
+}
