@@ -1,5 +1,7 @@
 /* The web client's full stylesheet: the app stylesheet, then the web layout. It loads with the
-   workspace code (`WebApp.tsx`). Until then, `web-sign-in.css` styles the sign-in screens. */
+   workspace code (`WebApp.tsx`). Until then, `web-sign-in.css` styles the sign-in screens.
+   The account service build puts the imports of `styles.css` here without the desktop-only files
+   (`DESKTOP_ONLY_STYLES` in `scripts/web-stylesheet.ts`). */
 @import "../../styles.css";
 @import "./web-phone.css";
 @import "./web-app.css";
