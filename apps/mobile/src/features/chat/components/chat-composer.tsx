@@ -454,6 +454,7 @@ export const ChatComposer = memo(function ChatComposer({
   const insets = useSafeAreaInsets();
   // The bar keeps clear of the side insets: the rail of iPhone Duo and the edges in landscape.
   const barWidth = useColumnWidth() - insets.left - insets.right;
+  const fieldFontSize = 16 * fontScale;
   const lineHeight = 22 * fontScale;
   // Without the plus, the text starts at the card's own inset.
   const leadingInset = attachments ? ROW_CONTROL_INSET : FIELD_INSET;
@@ -1077,9 +1078,18 @@ export const ChatComposer = memo(function ChatComposer({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           pointerEvents="none"
+          allowFontScaling={false}
           numberOfLines={1}
+          ellipsizeMode="tail"
           className="font-sans"
-          style={{ position: "absolute", left: 0, top: 0, opacity: 0, fontSize: 16, lineHeight: 22 }}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            opacity: 0,
+            fontSize: fieldFontSize,
+            lineHeight,
+          }}
           onLayout={({ nativeEvent }) =>
             setPlaceholderWidth((current) =>
               Math.abs(current - nativeEvent.layout.width) < 1 ? current : nativeEvent.layout.width,
@@ -1204,6 +1214,7 @@ export const ChatComposer = memo(function ChatComposer({
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
               pointerEvents="none"
+              allowFontScaling={false}
               className="font-sans"
               style={{
                 position: "absolute",
@@ -1211,8 +1222,8 @@ export const ChatComposer = memo(function ChatComposer({
                 right: FIELD_INSET,
                 top: 0,
                 opacity: 0,
-                fontSize: 16,
-                lineHeight: 22,
+                fontSize: fieldFontSize,
+                lineHeight,
               }}
               onTextLayout={({ nativeEvent }) => {
                 const lines = Math.max(1, nativeEvent.lines.length);
@@ -1322,11 +1333,12 @@ export const ChatComposer = memo(function ChatComposer({
                       returnKeyType="default"
                       submitBehavior="newline"
                       {...selectionColorProps(foreground)}
+                      allowFontScaling={false}
                       style={{
                         flex: 1,
                         minWidth: 0,
-                        fontSize: 16,
-                        lineHeight: 22,
+                        fontSize: fieldFontSize,
+                        lineHeight,
                         paddingVertical: FIELD_VERTICAL_PADDING / 2,
                         textAlignVertical: "top",
                         // An Android field finds the direction of each paragraph from its text. An
@@ -1429,7 +1441,8 @@ export const ChatComposer = memo(function ChatComposer({
                         top: 0,
                         bottom: 0,
                         justifyContent: "center",
-                        alignItems: "flex-start",
+                        alignItems: "stretch",
+                        overflow: "hidden",
                       },
                       placeholderStyle,
                     ]}
@@ -1437,11 +1450,23 @@ export const ChatComposer = memo(function ChatComposer({
                     {/* Keyed by its words, so a new placeholder crossfades. The words that show
                         when the draft empties or the chat opens appear at once, as before. */}
                     <LayoutAnimationConfig skipEntering skipExiting>
-                      <Animated.View key={placeholderText} entering={PLACEHOLDER_IN} exiting={PLACEHOLDER_OUT}>
+                      <Animated.View
+                        key={placeholderText}
+                        entering={PLACEHOLDER_IN}
+                        exiting={PLACEHOLDER_OUT}
+                        style={{ width: "100%", maxWidth: "100%" }}
+                      >
                         <NativeText
+                          allowFontScaling={false}
+                          ellipsizeMode="tail"
                           numberOfLines={1}
                           className="font-sans"
-                          style={{ color: String(muted), fontSize: 16, lineHeight: 22 }}
+                          style={{
+                            color: String(muted),
+                            fontSize: fieldFontSize,
+                            lineHeight,
+                            width: "100%",
+                          }}
                         >
                           {placeholderText}
                         </NativeText>
