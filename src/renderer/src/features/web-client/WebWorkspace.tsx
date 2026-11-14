@@ -2683,10 +2683,17 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
       return current.open ? (current.conversation ?? null) : null;
     },
   });
+  // A request that fails while the server link is down fails because of that link. The reconnect
+  // notice already covers it, and the workspace loads again after the reconnect. A server that is
+  // gone (no host) still reports its error. The link state is read with the error, but only a new
+  // error shows a notice.
   createEffect(
-    () => workspace.state.error,
-    (error) => {
-      if (error)
+    () => ({
+      error: workspace.state.error,
+      linkDown: workspace.state.host !== null && workspace.state.status !== "online",
+    }),
+    ({ error, linkDown }, previous) => {
+      if (error && error !== previous?.error && !linkDown)
         toast.error(sourceText(error.message), {
           // The toast shows the code of the failure that `report` kept.
           error,
