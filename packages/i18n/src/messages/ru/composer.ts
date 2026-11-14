@@ -80,6 +80,7 @@ export const messages = {
   "composer.placeholder.answer": "Введите ответ",
   "composer.add.label": "Добавить в запрос",
   "composer.add.files": "Прикрепить файлы",
+  "composer.add.photos": "Фото",
   "composer.add.teach": "Научить задаче",
   "composer.add.skill": "Использовать навык",
   "composer.upload.cancel": "Отменить загрузку",

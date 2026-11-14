@@ -8,6 +8,7 @@ export const messages = {
   "error.attachment.totalTooLarge": "Les pièces jointes dépassent la limite totale de 250 Mo.",
   "error.attachment.unavailable": "Ce fichier n’est plus disponible.",
   "error.attachment.tooMany": "Choisissez au maximum {limit} fichiers.",
+  "error.attachment.photoPickerFailed": "Impossible d'ajouter les photos.",
   "error.attachment.mediaUnsupported":
     "Ce serveur ne prend pas en charge les pièces jointes MP3 ou MOV. Mettez à jour OpenBot sur l’hôte, puis réessayez.",
   "error.attachment.emlUnsupported":

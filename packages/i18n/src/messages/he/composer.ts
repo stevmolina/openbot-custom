@@ -78,6 +78,7 @@ export const messages = {
   "composer.placeholder.answer": "הקלדת התשובה",
   "composer.add.label": "הוספה להנחיה",
   "composer.add.files": "צירוף קבצים",
+  "composer.add.photos": "תמונות",
   "composer.add.teach": "לימוד משימה",
   "composer.add.skill": "שימוש במיומנות",
   "composer.upload.cancel": "ביטול ההעלאה",

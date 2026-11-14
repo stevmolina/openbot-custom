@@ -7,6 +7,7 @@ export const messages = {
   "error.attachment.totalTooLarge": "تتجاوز المرفقات الحد الإجمالي البالغ 250 MB.",
   "error.attachment.unavailable": "لم يعد هذا الملف متاحًا.",
   "error.attachment.tooMany": "اختر {limit} ملفات على الأكثر.",
+  "error.attachment.photoPickerFailed": "تعذّرت إضافة الصور.",
   "error.attachment.mediaUnsupported": "لا يدعم هذا الخادم مرفقات MP3 أو MOV. حدّث OpenBot على المضيف وأعد المحاولة.",
   "error.attachment.emlUnsupported": "لا يدعم هذا الخادم مرفقات EML. حدّث OpenBot على المضيف وأعد المحاولة.",
   "error.attachment.zipUnsupported": "لا يدعم هذا الخادم مرفقات ZIP. حدّث OpenBot على المضيف وأعد المحاولة.",

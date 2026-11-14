@@ -7,6 +7,7 @@ export const messages = {
   "error.attachment.totalTooLarge": "Вложения превышают общий лимит 250 МБ.",
   "error.attachment.unavailable": "Этот файл больше недоступен.",
   "error.attachment.tooMany": "Выберите не более {limit} файлов.",
+  "error.attachment.photoPickerFailed": "Не удалось добавить фото.",
   "error.attachment.mediaUnsupported":
     "Этот сервер не поддерживает вложения MP3 и MOV. Обновите OpenBot на хосте и повторите попытку.",
   "error.attachment.emlUnsupported":

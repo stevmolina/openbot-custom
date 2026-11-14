@@ -541,6 +541,7 @@ export function WorkspaceConversation(props: { account: () => CentralAuthUser })
       <Conversation
         contextState={contextStates()[activeAgent()?.id ?? ""]}
         platform={platform.appInfo()?.platform}
+        photoPicker={platform.appInfo()?.photoPicker === true}
         onOpenMarketplace={() => setSkillsMarketplaceOpen(true)}
         connectors={connectors.active}
         // Connect on a catalog plugin runs over the chat, so the person stays in it. A connector's

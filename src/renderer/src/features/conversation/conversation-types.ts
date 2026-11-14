@@ -172,6 +172,11 @@ export interface ConversationProps {
    */
   serverInstall?: ServerInstallWatch | undefined;
   platform?: import("@openbot/contracts/ipc").AppInfo["platform"] | undefined;
+  /**
+   * The desktop app has the macOS photo picker (`AppInfo.photoPicker`), so the "+" menu offers Photos.
+   * The web client never sets it: the browser's own file picker already offers the photo library.
+   */
+  photoPicker?: boolean | undefined;
 
   agentStatus: AgentStatus;
   /** A joined server's agents are still on their way, so the composer says that it connects. */

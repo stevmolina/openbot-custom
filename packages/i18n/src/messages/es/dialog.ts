@@ -8,6 +8,7 @@ export const messages = {
   "dialog.chooseSkill": "Elige una carpeta de habilidad o un ZIP",
   "dialog.filter.skillPackages": "Paquetes de habilidades",
   "dialog.filter.images": "Imágenes",
+  "dialog.photoPicker.title": "Elegir fotos",
   "dialog.filter.supportedFiles": "Archivos compatibles",
   "dialog.filter.attachment": "Archivo adjunto",
   "dialog.filter.zipArchive": "Archivo ZIP",

@@ -48,7 +48,9 @@ export interface ConversationRuntime {
     // The progress and stop of an attachment download from a joined server. Absent, a card shows no progress.
     Partial<Pick<OpenBotDesktopApi["agent"], "stopAttachmentDownload" | "onAttachmentDownload">> &
     // Retry and remove of a failed file import. Absent, a failed upload chip has only its remove button.
-    Partial<Pick<OpenBotDesktopApi["agent"], "retryAttachmentImport" | "discardAttachmentImport">>;
+    Partial<Pick<OpenBotDesktopApi["agent"], "retryAttachmentImport" | "discardAttachmentImport">> &
+    // The Photos grid of macOS. Absent, the "+" menu has no Photos item.
+    Partial<Pick<OpenBotDesktopApi["agent"], "chooseAttachments">>;
   browser: Pick<
     OpenBotDesktopApi["browser"],
     | "capturePreview"

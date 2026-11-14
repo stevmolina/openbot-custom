@@ -94,6 +94,7 @@ export function ConversationComposer() {
     editingDeliveryId,
     editingPendingSave,
     openAttachmentPicker,
+    choosePhotos,
     pasteFiles,
     presentedQueueDeliveries,
     previewAttachment,
@@ -858,6 +859,8 @@ export function ConversationComposer() {
                   : undefined
               }
               onAttach={openAttachmentPicker}
+              // The Photos grid needs this Mac's OS picker, so only the desktop app on macOS 13+ has it.
+              onChoosePhotos={props.photoPicker && !props.runtime ? () => void choosePhotos() : undefined}
               onPickSkill={pickSkill()}
               onTeach={teachTask()}
               onSideQuestion={askSideQuestion()}

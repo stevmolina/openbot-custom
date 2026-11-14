@@ -38,6 +38,7 @@ import type { LanguageService } from "../language-service";
 import { aboveAppsScreenSupport } from "../linux-wayland-output";
 import type { LogoColorService } from "../logo-color-service";
 import { MAC_PERMISSION_URLS } from "../mac-permission-urls";
+import { photoPickerExecutable } from "../macos-photo-picker";
 import { exportDiagnostics, exportOpenBotData } from "../maintenance-service";
 import { isTailscaleConnected } from "../private-network-detection";
 import type { RemoteNetworkRoutePreferenceStore } from "../remote-network-route-preference-store";
@@ -214,6 +215,8 @@ export function appIpcHandlers({
         const softwareRendering = !app.getGPUFeatureStatus().gpu_compositing.startsWith("enabled");
         const hourCycle = systemHourCycle();
         const aboveAppsSupport = aboveAppsScreenSupport();
+        const photoPicker =
+          photoPickerExecutable({ packaged: app.isPackaged, resourcesPath: process.resourcesPath }) !== null;
         return {
           name: app.getName(),
           version,
@@ -224,6 +227,7 @@ export function appIpcHandlers({
           ...(softwareRendering ? { softwareRendering } : {}),
           ...(hourCycle ? { hourCycle } : {}),
           ...(aboveAppsSupport ? { aboveAppsSupport } : {}),
+          ...(photoPicker ? { photoPicker } : {}),
         };
       }),
       getSetupState: handler(() => runCauseEffect(readSetupState(setupFile))),
