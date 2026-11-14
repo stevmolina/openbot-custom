@@ -6,7 +6,7 @@
 // It needs this computer: its Photos library and its OS picker. A joined server gets the files, not
 // the picker, so the remote path is the upload that the file dialog uses too.
 
-import { execFile } from "node:child_process";
+import { type ChildProcess, execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { release, tmpdir } from "node:os";
@@ -46,8 +46,8 @@ export function photoPickerExecutable(location: PhotoPickerLocation): string | n
 
 export interface PhotoPickerRequest {
   executable: string;
-  /** Offer videos too. Only for a host that takes them. */
-  videos: boolean;
+  /** The video types that the host takes, such as `mov` and `mp4`. Empty offers photos only. */
+  videoTypes: readonly string[];
   /** How many items the grid lets the user select. */
   limit: number;
   title: string;
@@ -64,13 +64,18 @@ function failure(cause: unknown): PhotoPickerFailed {
   return new PhotoPickerFailed({ cause: new Error(sourceText("error.attachment.photoPickerFailed"), { cause }) });
 }
 
+/** The helper while its picker is open. A second request brings it to the front instead. */
+let openHelper: ChildProcess | null = null;
+
 function runHelper(executable: string, args: string[]): Promise<string> {
   return new Promise((resolvePromise, reject) => {
-    execFile(executable, args, { maxBuffer: OUTPUT_LIMIT_BYTES, encoding: "utf8" }, (error, stdout) => {
+    const child = execFile(executable, args, { maxBuffer: OUTPUT_LIMIT_BYTES, encoding: "utf8" }, (error, stdout) => {
+      if (openHelper === child) openHelper = null;
       // The helper prints its own error as JSON and exits non-zero; that line is the answer.
       if (error && !stdout.trim()) reject(error);
       else resolvePromise(stdout);
     });
+    openHelper = child;
   });
 }
 
@@ -108,17 +113,21 @@ function decodeHelperOutput(output: string, directory: string): string[] | null 
 let pickerOpen = false;
 
 /**
- * Shows the picker and waits for the user. A cancel, or a second request while one picker is open,
- * answers null. The folder is removed on every path but success.
+ * Shows the picker and waits for the user. A cancel answers null. A second request while one picker is
+ * open brings that picker to the front and answers null; the first request gets the photos. The folder
+ * is removed on every path but success.
  */
 export const pickPhotos = Effect.fn("PhotoPicker.pick")(function* (request: PhotoPickerRequest) {
-  if (pickerOpen) return null;
+  if (pickerOpen) {
+    openHelper?.kill("SIGUSR1");
+    return null;
+  }
   pickerOpen = true;
   return yield* Effect.gen(function* () {
     const directory = yield* io(() => mkdtemp(join(tmpdir(), "openbot-photos-")));
     const removeFolder = io(() => rm(directory, { recursive: true, force: true })).pipe(Effect.ignore);
     const args = ["--out", directory, "--limit", String(request.limit), "--title", request.title];
-    if (request.videos) args.push("--videos");
+    if (request.videoTypes.length > 0) args.push("--videos", "--video-types", request.videoTypes.join(","));
     const paths = yield* Effect.tryPromise({
       try: async () => decodeHelperOutput(await runHelper(request.executable, args), directory),
       catch: failure,

@@ -1,8 +1,9 @@
 // Compiles the macOS photo picker (`scripts/macos-photo-picker.swift`) into
 // `.openbot-build/macos-photo-picker/macos-photo-picker`, one universal file for Apple silicon and
 // Intel Macs. Both electron-builder configs copy that folder into the app's resources. On another
-// system, or without the Xcode command line tools, it prints why and exits 0: the app then has no
-// Photos item, and every other attach path still works.
+// system, without the Xcode command line tools, or when the compile fails (a tools update that does
+// not match the SDK), it prints why and exits 0: the app then has no Photos item, every other attach
+// path still works, and the app build goes on.
 //
 //   bun scripts/build-macos-photo-picker.ts           build, skip when the source did not change
 //   bun scripts/build-macos-photo-picker.ts --force   build again
@@ -38,8 +39,24 @@ export function buildMacosPhotoPicker(force = false): string | null {
     return PHOTO_PICKER_EXECUTABLE;
   }
   rmSync(PHOTO_PICKER_DIRECTORY, { recursive: true, force: true });
-  mkdirSync(PHOTO_PICKER_DIRECTORY, { recursive: true });
+  rmSync(stamp, { force: true });
   const work = join(root, ".openbot-build", "macos-photo-picker-work");
+  try {
+    compile(work);
+  } catch (error) {
+    rmSync(PHOTO_PICKER_DIRECTORY, { recursive: true, force: true });
+    process.stdout.write(`The macOS photo picker did not build, so the app has no Photos item: ${String(error)}\n`);
+    return null;
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+  writeFileSync(stamp, hash);
+  process.stdout.write(`Built the macOS photo picker: ${PHOTO_PICKER_EXECUTABLE}\n`);
+  return PHOTO_PICKER_EXECUTABLE;
+}
+
+function compile(work: string): void {
+  mkdirSync(PHOTO_PICKER_DIRECTORY, { recursive: true });
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
   const slices: string[] = [];
@@ -61,10 +78,6 @@ export function buildMacosPhotoPicker(force = false): string | null {
   run("xcrun", ["lipo", "-create", ...slices, "-output", PHOTO_PICKER_EXECUTABLE]);
   // Apple silicon runs only signed code. A release build signs the app's nested code again.
   run("codesign", ["--force", "--sign", "-", PHOTO_PICKER_EXECUTABLE]);
-  rmSync(work, { recursive: true, force: true });
-  writeFileSync(stamp, hash);
-  process.stdout.write(`Built the macOS photo picker: ${PHOTO_PICKER_EXECUTABLE}\n`);
-  return PHOTO_PICKER_EXECUTABLE;
 }
 
 if (import.meta.main) buildMacosPhotoPicker(process.argv.includes("--force"));

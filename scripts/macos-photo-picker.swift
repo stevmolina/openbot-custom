@@ -14,8 +14,9 @@
 // still has another format is written again as a JPEG, because the chat takes only the image types
 // in `IMAGE_ATTACHMENT_EXTENSIONS`.
 //
-// Arguments: --out <folder> [--videos] [--limit <1-100>] [--title <window title>]
+// Arguments: --out <folder> [--videos] [--video-types mov,mp4] [--limit <1-100>] [--title <window title>]
 //            [--self-test <file>]   exports one file with no window, for `scripts/macos-photo-picker-e2e.ts`
+// SIGUSR1 brings the open picker to the front: the app sends it when the user chooses Photos again.
 //
 // `scripts/build-macos-photo-picker.ts` compiles it for macOS 13 and later.
 import AppKit
@@ -25,11 +26,12 @@ import PhotosUI
 import UniformTypeIdentifiers
 
 let supportedImageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "avif"]
-let supportedVideoExtensions: Set<String> = ["mov", "mp4"]
 
 struct Options {
     var output: URL?
     var videos = false
+    /** The video types that the host takes. Another video is left out and counted as failed. */
+    var videoTypes: Set<String> = ["mov", "mp4"]
     var limit = 10
     var title = "Photos"
     var selfTest: URL?
@@ -48,6 +50,10 @@ func parseOptions(_ arguments: [String]) -> Options? {
             index += 1
         case "--videos":
             options.videos = true
+        case "--video-types":
+            guard let value else { return nil }
+            options.videoTypes = Set(value.split(separator: ",").map { $0.lowercased() })
+            index += 1
         case "--limit":
             guard let value, let limit = Int(value), (1...100).contains(limit) else { return nil }
             options.limit = limit
@@ -104,6 +110,7 @@ func export(
     _ provider: NSItemProvider,
     index: Int,
     videos: Bool,
+    videoTypes: Set<String>,
     into root: URL,
     completion: @escaping (URL?) -> Void
 ) {
@@ -137,7 +144,7 @@ func export(
             completion(writeJPEG(from: delivered, to: destination) ? destination : nil)
             return
         }
-        if isVideo && !supportedVideoExtensions.contains(fileExtension) {
+        if isVideo && !videoTypes.contains(fileExtension) {
             completion(nil)
             return
         }
@@ -158,7 +165,7 @@ func exportAll(_ providers: [NSItemProvider], options: Options) -> Never {
     let lock = NSLock()
     for (index, provider) in providers.enumerated() {
         group.enter()
-        export(provider, index: index, videos: options.videos, into: options.output!) { url in
+        export(provider, index: index, videos: options.videos, videoTypes: options.videoTypes, into: options.output!) { url in
             lock.lock()
             exported[index] = url
             lock.unlock()
@@ -261,4 +268,13 @@ let application = NSApplication.shared
 application.setActivationPolicy(.accessory)
 let controller = PickerController(options: options)
 DispatchQueue.main.async { controller.show() }
+// The app asks for the picker again while it is open, perhaps behind another window: show it.
+signal(SIGUSR1, SIG_IGN)
+let frontRequest = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
+frontRequest.setEventHandler {
+    guard !controller.finished, let window = controller.window else { return }
+    window.makeKeyAndOrderFront(nil)
+    window.orderFrontRegardless()
+}
+frontRequest.resume()
 application.run()
