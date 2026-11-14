@@ -17,6 +17,8 @@ interface ChatVirtualizerOptions<TScrollElement extends Element, TItemElement ex
   scrollMargin: () => number;
   /** Whether the reader is following new messages instead of reading older ones. */
   stickToLatest?: () => boolean;
+  /** True while an older page is in flight. */
+  loadingOlder?: () => boolean;
   /**
    * Moves a following reader to the end, for a chat that animates the move. With it the virtualizer
    * does not jump to the end itself when a row is added or grows.
@@ -50,6 +52,8 @@ const STATIC_CHAT_LIMIT = 100;
  */
 const STATIC_CHAT_RETURN = 10;
 const SCROLL_END_THRESHOLD = 80;
+/** How long the chat keeps the reader's row in place after an older page, for its rows and images to settle. */
+const OLDER_PAGE_SETTLE_MS = 2000;
 
 export function createChatVirtualizer<TScrollElement extends Element, TItemElement extends Element>(
   options: ChatVirtualizerOptions<TScrollElement, TItemElement>,
@@ -67,6 +71,97 @@ export function createChatVirtualizer<TScrollElement extends Element, TItemEleme
   // follows the latest message counts. It is set before each measurement and each change of rows.
   const syncScrollEndThreshold = (instance: Virtualizer<TScrollElement, TItemElement>): void => {
     instance.options.scrollEndThreshold = options.stickToLatest?.() === false ? -1 : SCROLL_END_THRESHOLD;
+  };
+  /* Keep the visible message in place while an older page and its measurements arrive. The
+   * date marker can move to the new page, so anchor the message itself rather than its row.
+   * A new scroll input selects a new anchor while the request is still running.
+   */
+  let releaseOlderPage: (() => void) | undefined;
+  let reanchorFrame: number | undefined;
+  let endPointerGesture: (() => void) | undefined;
+  /* The key of the first row: an older page puts other rows before it. */
+  let firstRowKey: VirtualItem["key"] | undefined;
+  const holdReaderOnOlderPage = (scrollElement: TScrollElement): void => {
+    const anchor = visibleRowAnchor(scrollElement, virtualizer.elementsCache.entries());
+    if (!anchor) return;
+    const keep = (): void => {
+      const remaining = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+      if (options.stickToLatest?.() || remaining <= SCROLL_END_THRESHOLD) {
+        release();
+        return;
+      }
+      const row = virtualizer.elementsCache.get(anchor.key);
+      if (!row?.isConnected) return;
+      const content = row.querySelector(".message-entry") ?? row;
+      const top = content.getBoundingClientRect().top - scrollElement.getBoundingClientRect().top;
+      const shift = top - anchor.top;
+      if (Math.abs(shift) >= 0.5) scrollElement.scrollTop += shift;
+    };
+    const resizeObserver = new ResizeObserver(keep);
+    resizeObserver.observe(scrollElement);
+    const root = anchor.element.parentElement;
+    if (root) resizeObserver.observe(root);
+    let frame = requestAnimationFrame(function tick() {
+      keep();
+      if (releaseOlderPage === release) frame = requestAnimationFrame(tick);
+    });
+    let timeout: ReturnType<typeof setTimeout>;
+    const checkSettled = (): void => {
+      if (options.loadingOlder?.()) timeout = setTimeout(checkSettled, OLDER_PAGE_SETTLE_MS);
+      else release();
+    };
+    timeout = setTimeout(checkSettled, OLDER_PAGE_SETTLE_MS);
+    const stopForInput = (): void => {
+      release();
+      if (reanchorFrame !== undefined) cancelAnimationFrame(reanchorFrame);
+      reanchorFrame = requestAnimationFrame(() => {
+        reanchorFrame = undefined;
+        if (options.loadingOlder?.() && !releaseOlderPage && scrollElement.isConnected) {
+          holdReaderOnOlderPage(scrollElement);
+        }
+      });
+    };
+    scrollElement.addEventListener("wheel", stopForInput, { passive: true });
+    scrollElement.addEventListener("touchstart", stopForInput, { passive: true });
+    scrollElement.addEventListener("touchmove", stopForInput, { passive: true });
+    const stopForPointer = (): void => {
+      release();
+      if (reanchorFrame !== undefined) cancelAnimationFrame(reanchorFrame);
+      endPointerGesture?.();
+      const finish = (): void => {
+        endPointerGesture?.();
+        if (options.loadingOlder?.() && !releaseOlderPage && scrollElement.isConnected) {
+          reanchorFrame = requestAnimationFrame(() => {
+            reanchorFrame = undefined;
+            if (options.loadingOlder?.() && !releaseOlderPage && scrollElement.isConnected) {
+              holdReaderOnOlderPage(scrollElement);
+            }
+          });
+        }
+      };
+      endPointerGesture = () => {
+        window.removeEventListener("pointerup", finish);
+        window.removeEventListener("pointercancel", finish);
+        endPointerGesture = undefined;
+      };
+      window.addEventListener("pointerup", finish, { once: true });
+      window.addEventListener("pointercancel", finish, { once: true });
+    };
+    scrollElement.addEventListener("pointerdown", stopForPointer, { passive: true });
+    scrollElement.addEventListener("keydown", stopForInput);
+    function release(): void {
+      if (releaseOlderPage !== release) return;
+      releaseOlderPage = undefined;
+      resizeObserver.disconnect();
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+      scrollElement.removeEventListener("wheel", stopForInput);
+      scrollElement.removeEventListener("touchstart", stopForInput);
+      scrollElement.removeEventListener("touchmove", stopForInput);
+      scrollElement.removeEventListener("pointerdown", stopForPointer);
+      scrollElement.removeEventListener("keydown", stopForInput);
+    }
+    releaseOlderPage = release;
   };
   const virtualizer = new Virtualizer<TScrollElement, TItemElement>({
     count: 0,
@@ -95,6 +190,10 @@ export function createChatVirtualizer<TScrollElement extends Element, TItemEleme
     },
     scrollToFn: (offset, scroll, instance) => {
       const element = instance.scrollElement;
+      if (releaseOlderPage) {
+        if (options.stickToLatest?.()) releaseOlderPage();
+        else if (!untrack(virtualized)) return;
+      }
       if (element && scroll.adjustments !== undefined && options.stickToLatest?.()) {
         // Rows end above the activity line. An estimate correction that follows the last row
         // leaves that line below the view, then the chat's own follow pulls back to the real
@@ -165,11 +264,32 @@ export function createChatVirtualizer<TScrollElement extends Element, TItemEleme
         count,
         keyVersion: options.keyVersion(),
         scrollMargin: options.scrollMargin(),
+        loadingOlder: options.loadingOlder?.() === true,
       };
     },
-    ({ count, scrollMargin }) => {
+    ({ count, scrollMargin, loadingOlder }) => {
       // The virtualizer calls `getItemKey` here; `keyVersion` above is what tracks the keys.
       untrack(() => {
+        const firstKey = count > 0 ? options.getItemKey(0) : undefined;
+        const olderPage =
+          firstRowKey !== undefined &&
+          firstKey !== firstRowKey &&
+          rowKeyFollows(firstRowKey, count, options.getItemKey);
+        firstRowKey = firstKey;
+        const scrollElement = options.getScrollElement();
+        const awayFromLatest =
+          scrollElement !== null &&
+          scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight > SCROLL_END_THRESHOLD;
+        if (
+          (loadingOlder || olderPage) &&
+          !releaseOlderPage &&
+          !endPointerGesture &&
+          scrollElement &&
+          awayFromLatest &&
+          !options.stickToLatest?.()
+        ) {
+          holdReaderOnOlderPage(scrollElement);
+        }
         syncScrollEndThreshold(virtualizer);
         virtualizer.setOptions({
           ...virtualizer.options,
@@ -197,7 +317,12 @@ export function createChatVirtualizer<TScrollElement extends Element, TItemEleme
     const cleanup = virtualizer._didMount();
     virtualizer._willUpdate();
     scheduleRefresh();
-    return cleanup;
+    return () => {
+      releaseOlderPage?.();
+      if (reanchorFrame !== undefined) cancelAnimationFrame(reanchorFrame);
+      endPointerGesture?.();
+      cleanup();
+    };
   });
 
   return {
@@ -218,9 +343,14 @@ export function createChatVirtualizer<TScrollElement extends Element, TItemEleme
     },
     scrollMargin: options.scrollMargin,
     itemStart: (index) => virtualizer.measurementsCache[index]?.start,
-    scrollToIndex: (index, scroll) =>
-      virtualizer.scrollToIndex(index, { align: "start", behavior: scroll?.smooth ? "smooth" : "auto" }),
-    scrollToOffset: (offset) => virtualizer.scrollToOffset(offset, { align: "start", behavior: "auto" }),
+    scrollToIndex: (index, scroll) => {
+      releaseOlderPage?.();
+      virtualizer.scrollToIndex(index, { align: "start", behavior: scroll?.smooth ? "smooth" : "auto" });
+    },
+    scrollToOffset: (offset) => {
+      releaseOlderPage?.();
+      virtualizer.scrollToOffset(offset, { align: "start", behavior: "auto" });
+    },
   };
 }
 
@@ -264,6 +394,38 @@ export function calculateChatScrollMargin(
     0,
     virtualRoot.getBoundingClientRect().top - scrollElement.getBoundingClientRect().top + scrollElement.scrollTop,
   );
+}
+
+interface RowAnchor {
+  key: VirtualItem["key"];
+  element: Element;
+  top: number;
+}
+
+function visibleRowAnchor(
+  scrollElement: Element,
+  rows: Iterable<[VirtualItem["key"], Element]>,
+): RowAnchor | undefined {
+  const view = scrollElement.getBoundingClientRect();
+  let top: RowAnchor | undefined;
+  for (const [key, element] of rows) {
+    if (!element.isConnected) continue;
+    const box = element.getBoundingClientRect();
+    if (box.height === 0 || box.bottom <= view.top || box.top >= view.bottom) continue;
+    const content = element.querySelector(".message-entry") ?? element;
+    const contentTop = content.getBoundingClientRect().top - view.top;
+    if (!top || contentTop < top.top) top = { key, element, top: contentTop };
+  }
+  return top;
+}
+
+function rowKeyFollows(
+  key: VirtualItem["key"],
+  count: number,
+  getItemKey: (index: number) => VirtualItem["key"],
+): boolean {
+  for (let index = 1; index < count; index++) if (getItemKey(index) === key) return true;
+  return false;
 }
 
 function virtualItemsEqual(left: VirtualItem, right: VirtualItem): boolean {

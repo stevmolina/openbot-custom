@@ -74,10 +74,10 @@ async function scrollToTop(
 }
 
 async function openAgent(page: Page, name: string): Promise<void> {
-  // The chat list names each agent button "<name>, <role>. <preview>".
+  // The chat list names each agent button "<name>. <preview>" or "<name>, <role>. <preview>".
   await page
     .getByRole("navigation", { name: "Chat list" })
-    .getByRole("button", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")},`) })
+    .getByRole("button", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[,.]`) })
     .first()
     .click();
   await idle(page);
