@@ -505,6 +505,8 @@ async function recordOpening(browser: Browser, url: string, folder: string): Pro
       timeout: UI_WAIT_MS,
     });
     await firstChatRow(page).waitFor({ state: "visible", timeout: UI_WAIT_MS });
+    // Leave the finished screen visible in the recording for the viewer.
+    await page.waitForTimeout(1_000);
   } finally {
     await context.close();
   }
