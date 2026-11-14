@@ -5,7 +5,6 @@ import type {
   WhatsAppOverview,
 } from "@openbot/contracts/ipc";
 import { sourceText } from "@openbot/i18n/source";
-import { WHATSAPP_LINK_IDLE } from "@openbot/ui/features/settings/WhatsAppIntegrationPanel";
 import { currentText } from "@openbot/ui/text";
 import { createSignal, onCleanup, untrack } from "solid-js";
 import {
@@ -14,6 +13,12 @@ import {
   createConnectorActions,
 } from "./connector-controller";
 import type { MessagingConnectorOptions } from "./messaging-connector";
+
+/**
+ * No link runs. The same value as `WHATSAPP_LINK_IDLE` of the panel, which is not imported: the panel
+ * module would bring the settings panels into the first chunk of the web client.
+ */
+const WHATSAPP_LINK_IDLE: WhatsAppLinkState = { status: "idle", qr: null, code: null, workspaceId: null, error: null };
 
 /** The WhatsApp requests of one server: this computer's, or a joined server's (`whatsapp-connector-v1`). */
 export type WhatsAppPort = Pick<

@@ -10,7 +10,6 @@ import { isPluginAppConfig, type MarketplacePluginDetail } from "@openbot/ui/fea
 import { useText } from "@openbot/ui/text";
 import { createMemo, createSignal, Show } from "solid-js";
 import type { ConnectorRegistry } from "../connectors/connector-registry";
-import { MARKETPLACE_PLUGIN_SLUGS } from "../settings/marketplace-plugin-slugs";
 import { localizedPlugin } from "../settings/marketplace-plugin-text";
 import { dismissMarketplaceSuggestion, marketplaceSuggestionDismissed } from "./marketplace-suggestion-dismissals";
 
@@ -37,11 +36,6 @@ function loadPluginCatalog(): void {
       pluginCatalogLoading = false;
     },
   );
-}
-
-/** True when this client can draw a card for the app: a catalog plugin, or a connector. */
-export function marketplaceSuggestionKnown(appId: string): boolean {
-  return isConnectorId(appId) || MARKETPLACE_PLUGIN_SLUGS.includes(appId);
 }
 
 /**

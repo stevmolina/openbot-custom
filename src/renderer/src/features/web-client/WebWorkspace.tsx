@@ -157,9 +157,8 @@ import type { AgentMessage } from "@openbot/ui/data";
 import { accountUsageProviderRows } from "@openbot/ui/features/account/account-usage-view";
 import { computeAgentAvatarMoods } from "@openbot/ui/features/agents/agent-avatar-mood";
 import { createFirstAgentDraft, type FirstAgentDraft } from "@openbot/ui/features/agents/FirstAgentSetup";
-import { BillingDialog } from "@openbot/ui/features/billing/BillingDialog";
+import type { BillingDialogProps } from "@openbot/ui/features/billing/BillingDialog";
 import { createBillingStore } from "@openbot/ui/features/billing/billing-store";
-import { LicenseSection } from "@openbot/ui/features/billing/LicenseSection";
 import { createLicenseStore } from "@openbot/ui/features/billing/license-store";
 import { isConnectorId } from "@openbot/ui/features/connectors/connectors";
 import { unloadedHistory } from "@openbot/ui/features/conversation/ChatScrollRail";
@@ -188,6 +187,7 @@ import {
 import type { SidebarPage, SidebarPages } from "@openbot/ui/features/sidebar/sidebar-pages";
 import type { SidebarView } from "@openbot/ui/features/sidebar/sidebar-types";
 import { useText } from "@openbot/ui/text";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import { Effect } from "effect";
 import {
   createEffect,
@@ -275,7 +275,7 @@ import type { FilesPort } from "../files/files-port";
 import { hostSetupProviderProps } from "../onboarding/host-setup-provider-props";
 import { createRoutineTimezonePrompt } from "../schedule/routine-timezone-prompt";
 import type { ScheduleRoutine } from "../schedule/SchedulePanel";
-import { AddServerOverlay, type AddServerResume } from "../servers/AddServerOverlay";
+import type { AddServerOverlay as AddServerOverlayView, AddServerResume } from "../servers/AddServerOverlay";
 import { createHostedUpsellOffline, HostedServerUpsell } from "../servers/hosted-server-upsell-controller";
 import { saveRemoteFrameChannels } from "../servers/remote-workspace-frame";
 import type { HostAgentDefaultsCalls } from "../servers/ServerAgentsSection";
@@ -330,7 +330,6 @@ import {
   SettingsSearchField,
 } from "../window/SettingsPageFrame";
 import type { SettingsKind, WindowPage } from "../window/window-page-context";
-import { WebAgentSettings } from "./WebAgentSettings";
 import { WebConnectComputer } from "./WebConnectComputer";
 import { WebMobileNavigation, type WebMobilePane, WebPhoneBack, type WebPhoneTab } from "./WebMobileNavigation";
 import { WebServerOtherTab } from "./WebServerOtherTab";
@@ -498,6 +497,71 @@ type WebWorkspaceProps = {
 };
 
 const WebAccountSettings = lazy(() => import("./WebAccountSettings"));
+// The views below are not part of the first chat. Their code loads when they first open, or while the
+// browser is idle after the first screen (`preloadLaterViews`).
+const loadBilling = () =>
+  Promise.all([
+    import("@openbot/ui/features/billing/BillingDialog"),
+    import("@openbot/ui/features/billing/LicenseSection"),
+  ]);
+const loadAddServerOverlay = () => import("../servers/AddServerOverlay");
+const loadWebAgentSettings = () => import("./WebAgentSettings");
+const BillingDialog = lazyWhenOpen(
+  lazy(() => loadBilling().then(([module]) => ({ default: module.BillingDialog }))),
+  (props: BillingDialogProps) => props.open,
+);
+// It shows only in the Billing dialog, which waits for both modules.
+const LicenseSection = lazy(() => loadBilling().then(([, module]) => ({ default: module.LicenseSection })));
+const AddServerOverlay = lazyWhenOpen(
+  lazy(() => loadAddServerOverlay().then((module) => ({ default: module.AddServerOverlay }))),
+  (props: ComponentProps<typeof AddServerOverlayView>) => props.open,
+);
+const WebAgentSettings = lazyWhenOpen(
+  lazy(() => loadWebAgentSettings().then((module) => ({ default: module.WebAgentSettings }))),
+  () => true,
+);
+
+/**
+ * A lazy view whose code loads the first time `open` is true. It stays mounted after that, so it closes
+ * with its animation and keeps its state, as a view of the first chunk does.
+ */
+function lazyWhenOpen<Props extends object>(
+  View: (props: Props) => JSX.Element,
+  open: (props: Props) => boolean,
+): (props: Props) => JSX.Element {
+  return (props) => {
+    const [opened, setOpened] = createSignal(false);
+    createEffect(
+      () => open(props),
+      (value) => {
+        if (value) setOpened(true);
+      },
+    );
+    return (
+      <Show when={opened()}>
+        <Loading>
+          <View {...props} />
+        </Loading>
+      </Show>
+    );
+  };
+}
+
+/** Loads the code of the views above while the browser is idle, so they open without a wait later. */
+function preloadLaterViews(): void {
+  const load = () => {
+    void loadBilling().catch(() => undefined);
+    void loadAddServerOverlay().catch(() => undefined);
+    void loadWebAgentSettings().catch(() => undefined);
+    void import("./WebAccountSettings").catch(() => undefined);
+  };
+  // Safari has no `requestIdleCallback`. The delay keeps the first chat's reads ahead of this code.
+  setTimeout(() => {
+    if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(load);
+    else load();
+  }, PRELOAD_DELAY_MS);
+}
+const PRELOAD_DELAY_MS = 3_000;
 
 export function WebWorkspace(props: WebWorkspaceProps) {
   return (
@@ -774,7 +838,10 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     ({ loading, first, online }) => {
       if (loading) return;
       // The cover goes and the host's sidebar and open chat show for the first time.
-      if (first && online) markRemoteSync("first-screen");
+      if (first && online) {
+        markRemoteSync("first-screen");
+        preloadLaterViews();
+      }
       setPageLoad(false);
     },
   );

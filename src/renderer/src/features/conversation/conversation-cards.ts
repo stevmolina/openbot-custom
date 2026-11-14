@@ -14,10 +14,15 @@ export const QuestionPromptBubble = lazy(() =>
 export const UiBlockPrompt = lazy(() =>
   import("./UiBlockPrompt").then((module) => ({ default: module.UiBlockPrompt })),
 );
+/** The Marketplace app that an agent suggested. It brings the connector panels and the plugin text. */
+export const MarketplaceSuggestionChatCard = lazy(() =>
+  import("./MarketplaceSuggestionChatCard").then((module) => ({ default: module.MarketplaceSuggestionChatCard })),
+);
 
 /** Loads the cards after the first chat opens, so a chat that opens later draws its card in its first frame. */
 export function preloadConversationCards() {
   void ApprovalCard.preload();
   void QuestionPromptBubble.preload();
   void UiBlockPrompt.preload();
+  void MarketplaceSuggestionChatCard.preload();
 }
