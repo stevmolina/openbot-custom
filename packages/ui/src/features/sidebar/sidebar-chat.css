@@ -365,6 +365,7 @@
 }
 
 .sidebar-chat-done-check {
+  display: inline-block;
   width: var(--openbot-icon-xs);
   height: var(--openbot-icon-xs);
   margin-inline-end: 4px;

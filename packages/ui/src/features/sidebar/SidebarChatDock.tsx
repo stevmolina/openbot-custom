@@ -197,7 +197,7 @@ function SidebarDockBody(bodyProps: { id: string; open: boolean; children: JSX.E
 /**
  * "Working" and "Settled": a group with a plain heading. "Settled" is the unassigned section, so a chat
  * dropped on it leaves its folder. "Working" also lists the agents that finished recently, under the
- * agents that work. Its count is the agents that work.
+ * agents that work. Its count is all of its rows.
  */
 function SidebarDockGroup(groupProps: {
   id: string;
@@ -237,7 +237,7 @@ function SidebarDockGroup(groupProps: {
         >
           <SidebarDockHeadContent
             name={groupProps.name}
-            count={groupProps.chats.length}
+            count={groupProps.chats.length + (groupProps.done?.chats.length ?? 0)}
             open={open()}
             unread={
               groupProps.chats.some(unread) || (groupProps.done?.chats.some((entry) => unread(entry.chat)) ?? false)
