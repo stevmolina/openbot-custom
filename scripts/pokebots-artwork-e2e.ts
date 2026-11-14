@@ -42,6 +42,10 @@ const identity = (agent: ClientAgentSummary) => {
 };
 
 try {
+  // Load the current module graph before checking live events. A shared-module HMR update can
+  // leave Solid's old context owners halted until the dev page is reloaded.
+  await page.reload();
+  await page.getByRole("navigation", { name: "Chat list", exact: true }).waitFor();
   const before = await page.evaluate(() => window.openbot.agent.listAgents());
   assert.ok(before.length > 0, "The worktree needs seeded agents.");
   for (const portrait of POKEBOTS_PORTRAITS) {
