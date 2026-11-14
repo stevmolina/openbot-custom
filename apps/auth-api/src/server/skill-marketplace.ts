@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
+import { isAgentTemplateCardPng } from "@openbot/contracts/ipc-agent-templates";
 import {
-  isAgentTemplateCardPng,
   isSkillCategory,
   type MarketplaceSkillSort,
   SKILL_DESCRIPTION_MAX_LENGTH,
   type SkillCategory,
-} from "@openbot/contracts/ipc";
+} from "@openbot/contracts/ipc-skills";
 import { isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { Effect, Result, Schema } from "effect";
 import { unzipSync } from "fflate";

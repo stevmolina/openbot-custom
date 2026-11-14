@@ -18,7 +18,7 @@ async function loadAgentTemplate(templateId: string): Promise<AgentTemplateDetai
  * head runs, because `head` stays in the bundle of every page (see routes/compare/$slug.tsx).
  */
 async function agentTemplateHead(template: AgentTemplateDetail, siteUrl: string) {
-  const { AGENT_TEMPLATE_CARD } = await import("@openbot/contracts/ipc");
+  const { AGENT_TEMPLATE_CARD } = await import("@openbot/contracts/ipc-agent-templates");
   const { markdownPreviewText } = await import("@openbot/contracts/markdown-preview-text");
   const url = new URL(agentTemplatePath(template.id), siteUrl).toString();
   const title = `${template.name} — OpenBot agent`;

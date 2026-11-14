@@ -1,9 +1,5 @@
-import {
-  isSkillCategory,
-  type MarketplaceAgentSummary,
-  type MarketplaceSkillSummary,
-  type SkillCategory,
-} from "@openbot/contracts/ipc";
+import type { MarketplaceAgentSummary } from "@openbot/contracts/ipc-marketplace-agents";
+import { isSkillCategory, type MarketplaceSkillSummary, type SkillCategory } from "@openbot/contracts/ipc-skills";
 import { runApiEffect } from "./effect-runtime";
 
 /*

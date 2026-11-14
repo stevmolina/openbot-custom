@@ -1,20 +1,18 @@
 import { isValidAvatarImage } from "@openbot/contracts/avatar-images";
 import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
-import {
-  type AgentPublicationPreview,
-  type AgentSubmission,
-  isAgentTemplateCardPng,
-  isAvatarHue,
-  isAvatarSeed,
-  isReleasedRoutineSchedule,
-  isSkillCategory,
-  type MarketplaceAgentDetail,
-  type MarketplaceAgentQuery,
-  type MarketplaceAgentRoutine,
-  type MarketplaceAgentSkill,
-  type MarketplaceAgentSummary,
-  type SkillCategory,
-} from "@openbot/contracts/ipc";
+import { isAvatarHue, isAvatarSeed } from "@openbot/contracts/ipc-agent-identity";
+import { isAgentTemplateCardPng } from "@openbot/contracts/ipc-agent-templates";
+import type {
+  AgentPublicationPreview,
+  AgentSubmission,
+  MarketplaceAgentDetail,
+  MarketplaceAgentQuery,
+  MarketplaceAgentRoutine,
+  MarketplaceAgentSkill,
+  MarketplaceAgentSummary,
+} from "@openbot/contracts/ipc-marketplace-agents";
+import { isReleasedRoutineSchedule } from "@openbot/contracts/ipc-routines";
+import { isSkillCategory, type SkillCategory } from "@openbot/contracts/ipc-skills";
 import { isBoolean, isDynamicRecord, isNumber, isOneOf, isString } from "@openbot/contracts/runtime-values";
 import { Effect, Result, Schema } from "effect";
 import {

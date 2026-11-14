@@ -67,7 +67,7 @@ export interface MarketplaceListingHeadInput {
  */
 export async function marketplaceListingHead(input: MarketplaceListingHeadInput, siteUrl: string) {
   const url = new URL(input.path, siteUrl).toString();
-  const { AGENT_TEMPLATE_CARD } = await import("@openbot/contracts/ipc");
+  const { AGENT_TEMPLATE_CARD } = await import("@openbot/contracts/ipc-agent-templates");
   const cardUrl = input.cardUrl ? new URL(input.cardUrl, siteUrl).toString() : null;
   const card = cardUrl
     ? [
