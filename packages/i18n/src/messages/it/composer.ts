@@ -79,6 +79,7 @@ export const messages = {
   "composer.placeholder.answer": "Scrivi la tua risposta",
   "composer.add.label": "Aggiungi al prompt",
   "composer.add.files": "Allega file",
+  "composer.add.photos": "Foto",
   "composer.add.teach": "Insegna un’attività",
   "composer.add.skill": "Usa una skill",
   "composer.upload.cancel": "Annulla caricamento",

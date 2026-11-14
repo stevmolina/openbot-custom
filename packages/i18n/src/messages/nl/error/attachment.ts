@@ -7,6 +7,7 @@ export const messages = {
   "error.attachment.totalTooLarge": "De bijlagen zijn samen groter dan de limiet van 250 MB.",
   "error.attachment.unavailable": "Dit bestand is niet meer beschikbaar.",
   "error.attachment.tooMany": "Kies maximaal {limit} bestanden.",
+  "error.attachment.photoPickerFailed": "De foto's konden niet worden toegevoegd.",
   "error.attachment.mediaUnsupported":
     "Deze server ondersteunt geen MP3- of MOV-bijlagen. Werk OpenBot bij op de host en probeer het opnieuw.",
   "error.attachment.emlUnsupported":

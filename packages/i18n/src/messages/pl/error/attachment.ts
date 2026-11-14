@@ -7,6 +7,7 @@ export const messages = {
   "error.attachment.totalTooLarge": "Załączniki przekraczają łączny limit 250 MB.",
   "error.attachment.unavailable": "Ten plik nie jest już dostępny.",
   "error.attachment.tooMany": "Maksymalna liczba plików: {limit}.",
+  "error.attachment.photoPickerFailed": "Nie udało się dodać zdjęć.",
   "error.attachment.mediaUnsupported":
     "Ten serwer nie obsługuje załączników MP3 ani MOV. Zaktualizuj OpenBot na hoście i spróbuj ponownie.",
   "error.attachment.emlUnsupported":

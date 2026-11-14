@@ -911,10 +911,19 @@ export function parseAttachmentData(value: unknown): ImportAttachmentsInput["dat
 }
 
 export function parseChooseAttachments(value: unknown): ChooseAttachmentsInput {
-  if (!isObject(value) || (value.filter !== "all" && value.filter !== "images")) {
+  if (!isObject(value) || (value.filter !== "all" && value.filter !== "images" && value.filter !== "photos")) {
     throw new Error("Invalid attachment picker filter.");
   }
-  return { filter: value.filter };
+  if (value.limit === undefined) return { filter: value.filter };
+  if (
+    typeof value.limit !== "number" ||
+    !Number.isInteger(value.limit) ||
+    value.limit < 1 ||
+    value.limit > INPUT_LIMITS.attachments
+  ) {
+    throw new Error("Invalid attachment picker limit.");
+  }
+  return { filter: value.filter, limit: value.limit };
 }
 
 export function parseDownloadAttachments(value: unknown): DownloadAttachmentsInput {

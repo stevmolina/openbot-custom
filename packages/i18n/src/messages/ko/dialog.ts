@@ -9,6 +9,7 @@ export const messages = {
   "dialog.chooseSkill": "스킬 폴더 또는 ZIP 선택",
   "dialog.filter.skillPackages": "스킬 패키지",
   "dialog.filter.images": "이미지",
+  "dialog.photoPicker.title": "사진 선택",
   "dialog.filter.supportedFiles": "지원되는 파일",
   "dialog.filter.attachment": "첨부 파일",
   "dialog.filter.zipArchive": "ZIP 압축 파일",

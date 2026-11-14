@@ -444,6 +444,38 @@ export function createComposerActions(deps: ComposerActionsDeps) {
     picker.click();
   }
 
+  /**
+   * Opens the Photos grid of macOS in place of the file picker. The chosen photos and videos land in
+   * the draft like picked files, and a cancel changes nothing. Only the desktop app on a Mac with the
+   * photo picker offers it (`ConversationProps.photoPicker`).
+   */
+  async function choosePhotos() {
+    deps.setShowComposerActions(false);
+    const target = deps.currentTarget();
+    const choose = conversationRuntime(deps.props).agent.chooseAttachments;
+    if (!target || !choose) return;
+    deps.setComposerError(null, target);
+    const draft = deps.drafts()[composerDraftKey(target)] ?? EMPTY_DRAFT;
+    const limit = INPUT_LIMITS.attachments - draft.attachments.length;
+    if (limit < 1) {
+      deps.setConversationError(target, t("error.attachment.tooMany", { limit: INPUT_LIMITS.attachments }));
+      return;
+    }
+    // Pending like a pasted file, so a send waits for the photos instead of leaving them for the next draft.
+    const requestId = crypto.randomUUID();
+    deps.attachmentImports.set(requestId, target);
+    deps.syncAttachmentImports();
+    try {
+      const attachments = await choose({ filter: "photos", limit }, target.serverId);
+      if (attachments.length) await addAttachments(attachments, target);
+    } catch (error) {
+      deps.setConversationError(target, errorMessage(error, t("error.attachment.photoPickerFailed")));
+    } finally {
+      deps.attachmentImports.delete(requestId);
+      deps.syncAttachmentImports();
+    }
+  }
+
   async function editQueuedMessage(delivery: QueueDelivery) {
     const agentId = deps.props.agent?.id;
     const serverId = deps.props.server?.id ?? "local";
@@ -1046,6 +1078,7 @@ export function createComposerActions(deps: ComposerActionsDeps) {
     pasteFiles,
     releaseCutAttachments,
     openAttachmentPicker,
+    choosePhotos,
     editQueuedMessage,
     cancelQueuedMessageEdit,
     saveQueuedMessageEdit,

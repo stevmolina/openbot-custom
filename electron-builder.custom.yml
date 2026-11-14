@@ -2,7 +2,7 @@
 # official OpenBot. `scripts/custom-build-install.sh` builds and installs it. By hand, like
 # `bun run package` (package.json), with this config and the brand settings:
 #   bun run voice:prepare-runtime && bun run prepare:remote-desktop-runtime &&
-#   bun run verify:remote-desktop-runtime && bun run prepare:cua-driver &&
+#   bun run verify:remote-desktop-runtime && bun run prepare:cua-driver && bun run prepare:macos-photo-picker &&
 #   OPENBOT_BRAND_NAME=Pokebots OPENBOT_BRAND_AUTH_API_URL=https://api.pokebots.xyz \
 #   OPENBOT_BRAND_SIGNAL_URL=wss://signal.pokebots.xyz/v1/signal bun run build &&
 #   bunx electron-builder --dir --mac --arm64 --config electron-builder.custom.yml
@@ -125,6 +125,8 @@ mac:
       to: remote-desktop-runtime
     - from: build/cua-driver/darwin/${arch}
       to: cua-driver/darwin/${arch}
+    - from: .openbot-build/macos-photo-picker
+      to: macos-photo-picker
   signIgnore:
     - Contents/Resources/cua-driver/
   entitlements: build/custom/entitlements.custom.plist

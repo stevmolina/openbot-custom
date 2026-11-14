@@ -7,6 +7,7 @@ export const messages = {
   "error.attachment.totalTooLarge": "첨부 파일이 전체 250 MB 제한을 넘어요.",
   "error.attachment.unavailable": "이 파일은 더 이상 사용할 수 없어요.",
   "error.attachment.tooMany": "파일은 최대 {limit}개까지 선택할 수 있어요.",
+  "error.attachment.photoPickerFailed": "사진을 추가할 수 없습니다.",
   "error.attachment.mediaUnsupported":
     "이 서버는 MP3 또는 MOV 첨부 파일을 지원하지 않아요. 호스트에서 OpenBot을 업데이트한 후 다시 시도해 주세요.",
   "error.attachment.emlUnsupported":
