@@ -1,6 +1,7 @@
 import { BloubBot, type ExpressionId, POSES } from "@norbert_bodziony/bloub";
 import { PlushBot, type PlushState, type PlushTransition } from "@norbert_bodziony/bloub/plush";
 import { type AvatarMood, avatarMoodPresentation, type ShapeSafeStateId } from "@openbot/brand/bloub-avatar-motion";
+import { POKEBOTS_LANDING_ARTWORK, pokebotsDefaultPortrait } from "@openbot/brand/pokebots-avatar";
 import type { AgentStepActivity, AvatarColor, AvatarHue } from "@openbot/contracts/ipc";
 import { prefersReducedMotion } from "@openbot/ui/utils";
 import { createEffect, createMemo, createSignal, onSettled, Show } from "solid-js";
@@ -16,6 +17,7 @@ import type { AgentProfile } from "../../data";
 import { documentFocused } from "../../document-focus";
 import { documentSoftwareRendering } from "../../document-rendering";
 import { PokebotsAccessory } from "./PokebotsAccessory";
+import { PokebotsPortrait } from "./PokebotsPortrait";
 
 // Cap avatar animation at 30fps: uncapped bloub clocks measured 30% renderer / 24% GPU
 // for two visible avatars. The shape is 24-40px, so the eye cannot see the difference.
@@ -271,6 +273,10 @@ function GeneratedAvatar(props: {
     return activityMood() ?? PLUSH_MOODS[props.mood];
   });
   const profile = createMemo(() => bloubAvatarProfile(props.seed, props.hue, props.color));
+  const portrait = () =>
+    POKEBOTS_LANDING_ARTWORK && props.shape === undefined && props.expression === undefined
+      ? pokebotsDefaultPortrait(props.seed, profile().color)
+      : null;
   const restingExpression = () => props.expression ?? profile().expression;
   // A preview of a chosen shape or eyes keeps the face it shows, so the choice stays visible on hover.
   const hovered = () =>
@@ -331,7 +337,7 @@ function GeneratedAvatar(props: {
 
   // Reduced motion keeps one face: it is a frozen plush, and a frozen plush cannot morph between faces.
   createEffect(
-    () => cyclesFaces() && !reducedMotion() && ambientMotion(),
+    () => !portrait() && cyclesFaces() && !reducedMotion() && ambientMotion(),
     (cycling) => {
       if (!cycling) return;
       let timer = 0;
@@ -474,32 +480,43 @@ function GeneratedAvatar(props: {
       data-breathe={flatBreathe()}
       aria-hidden="true"
     >
-      <Show when={flat()} fallback={plushAvatar()}>
-        <Show
-          when={!reducedMotion()}
-          fallback={
-            <Show when={flatAppearance()} keyed>
-              {(frozen) => (
-                <BloubBot
-                  size={100}
-                  shape={frozen.shape}
-                  color={frozen.color}
-                  expression={frozen.expression}
-                  state={frozen.state}
-                  frozenAt={POSES[frozen.state]}
-                  ariaLabel=""
-                  class="bloub-avatar-svg"
-                />
-              )}
+      <Show
+        when={portrait()}
+        fallback={
+          <>
+            <Show when={flat()} fallback={plushAvatar()}>
+              <Show
+                when={!reducedMotion()}
+                fallback={
+                  <Show when={flatAppearance()} keyed>
+                    {(frozen) => (
+                      <BloubBot
+                        size={100}
+                        shape={frozen.shape}
+                        color={frozen.color}
+                        expression={frozen.expression}
+                        state={frozen.state}
+                        frozenAt={POSES[frozen.state]}
+                        ariaLabel=""
+                        class="bloub-avatar-svg"
+                      />
+                    )}
+                  </Show>
+                }
+              >
+                {flatAvatar()}
+              </Show>
             </Show>
-          }
-        >
-          {flatAvatar()}
-        </Show>
-      </Show>
-      {/* Pokebots: the plush wears its felt accessory (`PokebotsAccessory`). */}
-      <Show when={!flat()}>
-        <PokebotsAccessory seed={props.seed} shape={appearance().shape} color={appearance().color} />
+            {/* Pokebots: the plush wears its felt accessory (`PokebotsAccessory`). */}
+            <Show when={!flat()}>
+              <PokebotsAccessory seed={props.seed} shape={appearance().shape} color={appearance().color} />
+            </Show>
+          </>
+        }
+      >
+        {(selected) => (
+          <PokebotsPortrait portrait={selected()} mood={props.mood} animate={animated() && !reducedMotion()} />
+        )}
       </Show>
     </span>
   );

@@ -1,9 +1,11 @@
 import { avatarHeadColor, avatarStyleForSeed } from "@openbot/brand/bloub-avatar";
 import { type AvatarMood, avatarMoodIsBusy, avatarMoodPresentation } from "@openbot/brand/bloub-avatar-motion";
+import { type PokebotsPortrait, pokebotsDefaultPortrait } from "@openbot/brand/pokebots-avatar";
 import type { AvatarColor, AvatarHue } from "@openbot/contracts/ipc";
 import { Canvas, createPicture, Picture } from "@shopify/react-native-skia";
 import { Image } from "expo-image";
-import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useThemeColor } from "heroui-native/hooks";
+import { memo, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { PixelRatio, View } from "react-native";
 import Animated, {
   convertToRGBA,
@@ -18,6 +20,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import Svg, { Circle, Defs, FeColorMatrix, Filter, G, Path, Image as SvgImage } from "react-native-svg";
 import { scheduleOnRN } from "react-native-worklets";
 import { usePlushFrame } from "@/features/agents/components/use-plush-frame";
 import { loadedPlushArt, loadPlushArt, plushPixels } from "@/features/agents/model/plush/plush-assets";
@@ -178,6 +181,20 @@ const PlushAvatar = memo(function PlushAvatar({
   // The fur and the felt decor reach past the avatar box, as on the desktop.
   const drawn = size * PLUSH_BODY_SCALE;
   const pixels = plushPixels(drawn, PixelRatio.get());
+  // This fork's native artwork uses the same selection as the Vite brand layer. Custom photos
+  // are handled by AgentPhoto, and saved face choices keep the original renderer below.
+  const portrait = pokebotsDefaultPortrait(shown.seed, avatarHeadColor(shown.seed, shown.hue, shown.color));
+  if (portrait) {
+    return (
+      <Animated.View pointerEvents="none" style={[{ width: size, height: size }, appearanceStyle]}>
+        <Animated.View style={popStyle}>
+          <FlatBreath amount={animate ? 0.02 : 0} size={size}>
+            <LandingPortrait portrait={portrait} size={size} mood={mood} disconnected={disconnected} />
+          </FlatBreath>
+        </Animated.View>
+      </Animated.View>
+    );
+  }
   const picture = (
     <PlushPicture
       seed={shown.seed}
@@ -422,6 +439,14 @@ export const AvatarThumbnail = memo(function AvatarThumbnail({
   /** Fades to a new colour, for a picker where the colour changes in place. */
   animateColor?: boolean;
 }) {
+  const portrait = pokebotsDefaultPortrait(seed, avatarHeadColor(seed, hue, color));
+  if (portrait) {
+    return (
+      <View pointerEvents="none" style={{ opacity: disconnected ? DISCONNECTED_APPEARANCE.opacity : 1 }}>
+        <LandingPortrait portrait={portrait} size={size} mood="idle" disconnected={disconnected} />
+      </View>
+    );
+  }
   const drawn = size * PLUSH_BODY_SCALE;
   return (
     <View
@@ -454,4 +479,57 @@ function saturateColor(color: string, saturation: number) {
 
 export function thumbnailColor(color: string, disconnected: boolean) {
   return disconnected ? saturateColor(color, DISCONNECTED_APPEARANCE.saturation) : color;
+}
+
+const LANDING_PORTRAITS: Readonly<Record<PokebotsPortrait, number>> = {
+  blue: require("@openbot/brand/assets/pokebots/blue.webp"),
+  mint: require("@openbot/brand/assets/pokebots/mint.webp"),
+  orange: require("@openbot/brand/assets/pokebots/orange.webp"),
+  purple: require("@openbot/brand/assets/pokebots/purple.webp"),
+};
+
+/** SVG keeps offline saturation and state marks consistent with desktop artwork. */
+function LandingPortrait({
+  portrait,
+  size,
+  mood,
+  disconnected,
+}: {
+  portrait: PokebotsPortrait;
+  size: number;
+  mood: AvatarMood;
+  disconnected: boolean;
+}) {
+  const ink = String(useThemeColor("foreground"));
+  const accent = String(useThemeColor("accent"));
+  const filterId = `landing-offline-${useId().replaceAll(":", "")}`;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 100 100" accessible={false} accessibilityElementsHidden>
+      <Defs>
+        <Filter id={filterId}>
+          <FeColorMatrix type="saturate" values={[DISCONNECTED_APPEARANCE.saturation]} />
+        </Filter>
+      </Defs>
+      <SvgImage
+        href={LANDING_PORTRAITS[portrait]}
+        width="100"
+        height="100"
+        opacity={mood === "asleep" && !disconnected ? 0.6 : 1}
+        filter={disconnected ? `url(#${filterId})` : undefined}
+      />
+      {mood === "working" || mood === "connecting" ? (
+        <G fill={ink}>
+          <Circle cx="75" cy="24" r="3" />
+          <Circle cx="84" cy="24" r="3" />
+          <Circle cx="93" cy="24" r="3" />
+        </G>
+      ) : null}
+      {mood === "waiting" ? <Circle cx="87" cy="24" r="5" fill={accent} /> : null}
+      <G fill="none" stroke={ink} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        {mood === "failed" ? <Path d="M83 18l10 10m0-10L83 28" /> : null}
+        {mood === "asleep" ? <Path d="M79 20h9l-9 9h9m1-23h7l-7 7h7" /> : null}
+        {mood === "responded" ? <Path d="M80 23l5 5 10-12" /> : null}
+      </G>
+    </Svg>
+  );
 }

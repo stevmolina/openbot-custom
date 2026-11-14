@@ -1,8 +1,8 @@
+import mascotBlue from "@openbot/brand/assets/pokebots/blue.webp";
 import type { AppTextKey } from "@openbot/i18n";
 import { createEffect, createSignal, For, onCleanup, onSettled, untrack } from "solid-js";
 import { useText } from "../../text";
 import { prefersReducedMotion } from "../../utils";
-import mascotBlue from "../agents/assets/pokebots/blue.webp";
 import { type CrewHop, CrewPileStage } from "./CrewPileStage";
 import { CrewPile, randomCrewSeed } from "./crew-pile";
 
