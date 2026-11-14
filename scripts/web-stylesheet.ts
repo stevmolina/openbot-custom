@@ -26,6 +26,33 @@ export const DESKTOP_ONLY_STYLES: readonly string[] = [
   "./styles/window-glass.css",
 ];
 
+/**
+ * Styles of screens that open after the first chat. `web-deferred-styles.ts` loads them with that
+ * screen. A name that `styles.css` no longer imports stops the build.
+ *
+ * `@openbot/ui/features/settings/settings-modal.css` stays in the first sheet. The marketplace
+ * navigation reuses `.settings-modal-nav-item`, and that rule must stay before the marketplace rule.
+ */
+export const DEFERRED_WEB_STYLES: readonly string[] = [
+  "@openbot/ui/features/billing/billing.css",
+  "@openbot/ui/features/tasks/tasks.css",
+  "@openbot/ui/features/servers/add-server-dialog.css",
+  "@openbot/ui/features/servers/hosted-pricing-page.css",
+  "@openbot/ui/features/servers/install-server-dialog.css",
+  "@openbot/ui/features/servers/create-local-server-dialog.css",
+  "@openbot/ui/features/servers/server-roles.css",
+  "@openbot/ui/features/servers/server-audit-log.css",
+  "@openbot/ui/features/settings/profile.css",
+  "@openbot/ui/features/settings/integration-layout.css",
+  "@openbot/ui/features/settings/provider-settings-page.css",
+  "@openbot/ui/features/settings/mcp-connect-dialog.css",
+  "@openbot/ui/features/settings/notification-matrix.css",
+  "@openbot/ui/features/settings/plan-start.css",
+  "./features/settings/settings-modal.css",
+  "./features/servers/server-settings-modal.css",
+  "./features/servers/server-mcp.css",
+];
+
 const IMPORT_LINE = /^@import\s+"([^"]+)"\s*;\s*$/;
 const SOURCE_LINE = /^@source\s+"([^"]+)"\s*;\s*$/;
 
@@ -38,13 +65,15 @@ export function webAppStyles(appStylesheet: string, webStylesheet: string): stri
     const rebased = relative(toDirectory, resolve(fromDirectory, path));
     return rebased.startsWith(".") ? rebased : `./${rebased}`;
   };
-  const left = new Set(DESKTOP_ONLY_STYLES);
+  const desktopOnly = new Set(DESKTOP_ONLY_STYLES);
+  const deferred = new Set(DEFERRED_WEB_STYLES);
   const lines = readFileSync(appStylesheet, "utf8")
     .split("\n")
     .map((line) => {
       const imported = IMPORT_LINE.exec(line.trim())?.[1];
       if (imported !== undefined) {
-        if (left.delete(imported)) return `/* Desktop only: ${imported} */`;
+        if (desktopOnly.delete(imported)) return `/* Desktop only: ${imported} */`;
+        if (deferred.delete(imported)) return `/* Loads with the screen: ${imported} */`;
         if (imported === "tailwindcss") return '@import "tailwindcss" source(none);';
         return `@import "${rebase(imported)}";`;
       }
@@ -52,10 +81,9 @@ export function webAppStyles(appStylesheet: string, webStylesheet: string): stri
       if (source !== undefined) return `@source "${rebase(source)}";`;
       return line;
     });
-  if (left.size > 0) {
-    throw new Error(
-      `styles.css no longer imports ${[...left].join(", ")}. Update DESKTOP_ONLY_STYLES in scripts/web-stylesheet.ts.`,
-    );
+  const missing = [...desktopOnly, ...deferred];
+  if (missing.length > 0) {
+    throw new Error(`styles.css no longer imports ${missing.join(", ")}. Update scripts/web-stylesheet.ts.`);
   }
   return lines.join("\n");
 }

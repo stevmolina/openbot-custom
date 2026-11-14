@@ -2102,6 +2102,23 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   const firstAgent = () => workspace.state.agentsLoaded && workspace.profiles().length === 0 && createSupported();
   /** An open channel still takes the pane, as a channel closes the desktop form. */
   const agentFormOpen = () => creating() || (firstAgent() && !channelOpen());
+  // Tasks, billing, settings pages and server setup styles are not in the first stylesheet.
+  // The marketplace stays on the first stylesheet: its navigation reuses a settings class.
+  const [screenStylesReady, setScreenStylesReady] = createSignal(false);
+  const screenStylesNeeded = () =>
+    accountSettingsOpen() ||
+    billingOpen() ||
+    tasksOpen() ||
+    agentFormOpen() ||
+    serverSettings.state.open ||
+    hostedServers.addServer() !== null;
+  createEffect(
+    () => screenStylesNeeded(),
+    (needed) => {
+      if (!needed || screenStylesReady()) return;
+      void import("./web-deferred-styles").then(() => setScreenStylesReady(true));
+    },
+  );
   const agentChatOpen = () =>
     !tasksOpen() && !agentFormOpen() && !channelOpen() && !noHost() && !hostOffline() && !routinesView();
   /**
@@ -3503,7 +3520,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     }
                   />
                   <AddServerOverlay
-                    open={hostedServers.addServer() !== null}
+                    open={hostedServers.addServer() !== null && screenStylesReady()}
                     entryPoint={hostedServers.addServer()?.entryPoint}
                     order={hostedServers.addServer()?.order}
                     calls={hostedServers.calls}
@@ -3540,7 +3557,9 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   <Show when={accountSettingsLoaded()}>
                     <Loading>
                       <WebAccountSettings
-                        open={accountSettingsOpen() && settingsPlacement("personal") !== undefined}
+                        open={
+                          accountSettingsOpen() && settingsPlacement("personal") !== undefined && screenStylesReady()
+                        }
                         page={settingsPlacement("personal")}
                         onOpenChange={setAccountSettingsOpen}
                         account={account()}
@@ -3568,7 +3587,9 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   <Show when={serverSettingsLoaded() && server()}>
                     {(target) => (
                       <ServerSettingsOverlay
-                        open={serverSettings.state.open && settingsPlacement("server") !== undefined}
+                        open={
+                          serverSettings.state.open && settingsPlacement("server") !== undefined && screenStylesReady()
+                        }
                         page={settingsPlacement("server")}
                         sectionQuery={serverSettingsQuery()}
                         openFirstSectionRequest={openFirstServerSectionRequest()}
@@ -3744,7 +3765,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     restoreFocusTarget={restartRequest()?.trigger}
                   />
                   <BillingDialog
-                    open={billingOpen()}
+                    open={billingOpen() && screenStylesReady()}
                     onOpenChange={(open) => {
                       setBillingOpen(open);
                       if (!open) setLicenseStart(null);
@@ -3783,7 +3804,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                 </>
               }
             >
-              <Show when={tasksOpen() ? server() : undefined}>
+              <Show when={tasksOpen() && screenStylesReady() ? server() : undefined}>
                 {(target) => (
                   <Loading>
                     <TasksView
@@ -3860,7 +3881,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   </Loading>
                 )}
               </Show>
-              <Show when={!tasksOpen() && agentFormOpen() && !serverOnboarding()}>
+              <Show when={!tasksOpen() && agentFormOpen() && !serverOnboarding() && screenStylesReady()}>
                 <WebAgentSettings
                   runtime={workspace.runtime}
                   capabilities={workspace.state.capabilities}

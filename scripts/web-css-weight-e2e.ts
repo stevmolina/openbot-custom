@@ -82,6 +82,8 @@ interface BuildStyles {
   /** The sign-in stylesheet of `/app`, which turns off when the web client's stylesheet has loaded. */
   signIn: string[];
   webClient: string;
+  /** Styles of tasks, billing, settings pages and server setup. They load when that screen opens. */
+  deferred: string[];
   screens: string[];
 }
 
@@ -122,10 +124,12 @@ function buildStyles(dir: string): BuildStyles {
   const signIn = cssClosure(manifest, APP_ROUTE_KEY).filter((file) => !entry.includes(file));
   const webClient = manifest[WEB_CLIENT_CSS_KEY]?.file;
   assert.ok(webClient, `${dir}: the manifest has no web client stylesheet.`);
+  const deferredKey = Object.keys(manifest).find((key) => key.endsWith("web-deferred-styles.ts"));
+  const deferred = deferredKey ? cssClosure(manifest, deferredKey) : [];
   const screens = [...new Set(Object.values(manifest).flatMap((chunk) => [chunk.file, ...(chunk.css ?? [])]))].filter(
     (file) => SCREEN_CSS.test(file),
   );
-  return { entry, signIn, webClient, screens };
+  return { entry, signIn, webClient, deferred, screens };
 }
 
 const styles = { before: buildStyles(builds.before), after: buildStyles(builds.after) };
@@ -201,6 +205,8 @@ interface BuildSize {
   /** With the sign-in stylesheet downloaded but off, once the web client's stylesheet has loaded. */
   workspace: SizeTotals;
   webClient: SizeTotals;
+  /** Styles that load when tasks, billing, settings or server setup opens. Empty on the base build. */
+  deferred: SizeTotals;
 }
 
 interface SizeReport {
@@ -215,6 +221,7 @@ function buildSize(build: BuildName): BuildSize {
     signIn: sizeOf(build, [...entry, ...signIn]),
     workspace: sizeOf(build, [...entry, ...signIn, webClient], signIn),
     webClient: sizeOf(build, [webClient]),
+    deferred: sizeOf(build, styles[build].deferred),
   };
 }
 
@@ -224,7 +231,9 @@ function measureSize(): SizeReport {
     const source = readFileSync(resolve(rendererSource, file), "utf8");
     return { file, sourceKB: Math.round((source.length / 1024) * 10) / 10, rules: (source.match(/\{/g) ?? []).length };
   });
-  return { before: buildSize("before"), after: buildSize("after"), desktopOnly };
+  const report = { before: buildSize("before"), after: buildSize("after"), desktopOnly };
+  assert.ok(report.after.deferred.files.length > 0, "The web build has no deferred screen stylesheet.");
+  return report;
 }
 
 // ---------------------------------------------------------------- a page with production stylesheets
@@ -612,10 +621,23 @@ async function measureLook(browser: Browser): Promise<LookResult[]> {
   const results: LookResult[] = [];
   const diffContext = await browser.newContext();
   const diffPage = await diffContext.newPage();
-  const workspace = {
+  const firstScreen = new Set([
+    "chat-list",
+    "chat-tool-cards",
+    "chat-markdown-code",
+    "routines",
+    "usage",
+    "server-menu",
+  ]);
+  const textsFor = (name: string) => ({
     before: cssText("before", [...styles.before.entry, styles.before.webClient, ...styles.before.screens]),
-    after: cssText("after", [...styles.after.entry, styles.after.webClient, ...styles.after.screens]),
-  };
+    after: cssText(
+      "after",
+      firstScreen.has(name)
+        ? [...styles.after.entry, styles.after.webClient, ...styles.after.screens]
+        : [...styles.after.entry, styles.after.webClient, ...styles.after.screens, ...styles.after.deferred],
+    ),
+  });
   const signIn = {
     before: cssText("before", [...styles.before.entry, ...styles.before.signIn]),
     after: cssText("after", [...styles.after.entry, ...styles.after.signIn]),
@@ -634,7 +656,7 @@ async function measureLook(browser: Browser): Promise<LookResult[]> {
               await page.waitForTimeout(1_500);
             }
             const name = `${screen.name}.${layout}.${scheme}`;
-            const counts = await compareCaptures(diffPage, page, name, workspace);
+            const counts = await compareCaptures(diffPage, page, name, textsFor(screen.name));
             results.push({
               screen: screen.name,
               layout,
