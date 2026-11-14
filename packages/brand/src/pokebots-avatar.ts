@@ -354,7 +354,7 @@ export const POKEBOTS_LANDING_ARTWORK = false;
 export const POKEBOTS_PORTRAITS = ["blue", "mint", "orange", "purple"] as const;
 export type PokebotsPortrait = (typeof POKEBOTS_PORTRAITS)[number];
 
-const PORTRAIT_COLORS: Readonly<Record<PokebotsPortrait, string>> = {
+export const POKEBOTS_PORTRAIT_COLORS: Readonly<Record<PokebotsPortrait, string>> = {
   blue: POKEBOTS_HUE_COLORS[215],
   mint: POKEBOTS_HUE_COLORS[150],
   orange: POKEBOTS_HUE_COLORS[30],
@@ -372,7 +372,7 @@ export function pokebotsDefaultPortrait(seed: string, color: string): PokebotsPo
   let nearest: PokebotsPortrait = "blue";
   let distance = Number.POSITIVE_INFINITY;
   for (const portrait of POKEBOTS_PORTRAITS) {
-    const rgb = channels(PORTRAIT_COLORS[portrait]);
+    const rgb = channels(POKEBOTS_PORTRAIT_COLORS[portrait]);
     const difference = rgb.reduce((sum, channel, index) => sum + (channel - (target[index] ?? 0)) ** 2, 0);
     if (difference < distance) {
       distance = difference;

@@ -44,6 +44,7 @@ import { agentActivityMood, type MobileAgentActivity } from "@/features/workspac
 import { showsOnline } from "@/features/workspace/model/server-status";
 import { useMotionPreference } from "@/shared/lib/motion";
 import { useScreenFocusedWhile } from "@/shared/lib/use-screen-focused-while";
+import { LANDING_PORTRAITS } from "../model/landing-portraits";
 import { AgentPhoto, type AgentPhotoProps } from "./agent-photo";
 
 interface BloubAvatarProps extends AgentPhotoProps {
@@ -480,13 +481,6 @@ function saturateColor(color: string, saturation: number) {
 export function thumbnailColor(color: string, disconnected: boolean) {
   return disconnected ? saturateColor(color, DISCONNECTED_APPEARANCE.saturation) : color;
 }
-
-const LANDING_PORTRAITS: Readonly<Record<PokebotsPortrait, number>> = {
-  blue: require("@openbot/brand/assets/pokebots/blue.webp"),
-  mint: require("@openbot/brand/assets/pokebots/mint.webp"),
-  orange: require("@openbot/brand/assets/pokebots/orange.webp"),
-  purple: require("@openbot/brand/assets/pokebots/purple.webp"),
-};
 
 /** SVG keeps offline saturation and state marks consistent with desktop artwork. */
 function LandingPortrait({

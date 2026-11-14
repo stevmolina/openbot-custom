@@ -4,7 +4,6 @@ import {
   type AvatarStyle,
   avatarCandidateSeeds,
   avatarSeedForFace,
-  bloubAvatarProfile,
   SUPPORTED_AVATAR_SILHOUETTES,
   type SupportedAvatarSilhouetteId,
 } from "@openbot/brand/bloub-avatar";
@@ -24,14 +23,9 @@ export function createAvatarCandidates(seed: string, previous?: AvatarCandidates
 export type AvatarFace = { shape: SupportedAvatarSilhouetteId; expression: ExpressionId };
 
 /**
- * The seed that draws `face` in `style`, made as the desktop makes it. The agent's own plush face is
- * `faceKey` itself, so Plush after Flat gives back the seed that the agent had.
+ * The explicit seed that draws the chosen face, including when it matches the default geometry.
  */
 export function avatarSeedForStyledFace(faceKey: string, face: AvatarFace, style: AvatarStyle): string {
-  if (style === "plush") {
-    const own = bloubAvatarProfile(faceKey, null);
-    if (own.shape === face.shape && own.expression === face.expression) return faceKey;
-  }
   return avatarSeedForFace(faceKey, face, style);
 }
 

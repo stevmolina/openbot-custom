@@ -35,8 +35,8 @@ export function agentAvatarFile(agent: AvatarFileAgent, pixels: number): AvatarF
     };
   }
   return {
-    // An agent without a colour keeps the name of an older build.
-    name: `${nameHash(`${PLUSH_STYLE}|${agent.avatarSeed}|${agent.avatarHue}${agent.avatarColor ? `|${agent.avatarColor}` : ""}`)}.png`,
+    // Style and size invalidate native extension files when their rendered artwork changes.
+    name: `${nameHash(`${PLUSH_STYLE}|${pixels}|${agent.avatarSeed}|${agent.avatarHue}${agent.avatarColor ? `|${agent.avatarColor}` : ""}`)}.png`,
     write: async (file, wanted) => {
       const data = await renderPlushPicture({
         seed: agent.avatarSeed,

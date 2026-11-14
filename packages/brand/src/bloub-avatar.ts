@@ -1,6 +1,12 @@
 import { EXPRESSIONS, type ExpressionId, SHAPES, type ShapeId } from "@norbert_bodziony/bloub";
 import { type AvatarColor, type AvatarHue, nearestAvatarHue } from "@openbot/contracts/ipc-agent-identity";
-import { POKEBOTS_HUE_COLORS, pokebotsAutomaticColor } from "./pokebots-avatar";
+import {
+  POKEBOTS_HUE_COLORS,
+  POKEBOTS_LANDING_ARTWORK,
+  POKEBOTS_PORTRAIT_COLORS,
+  pokebotsAutomaticColor,
+  pokebotsDefaultPortrait,
+} from "./pokebots-avatar";
 
 export type SupportedAvatarSilhouetteId = Exclude<ShapeId, "goutte">;
 
@@ -83,6 +89,41 @@ export const AVATAR_COLOR_CHOICES: readonly AvatarColorChoice[] = [
   presetChoice("sand"),
   presetChoice("grey"),
 ];
+
+/** The painted color, for controls that preview automatic artwork. Stored identity is unchanged. */
+export function avatarArtworkColor(
+  seed: string,
+  hue: AvatarHue | null,
+  color: AvatarColor | null = null,
+  landingArtwork = POKEBOTS_LANDING_ARTWORK,
+): string {
+  const headColor = avatarHeadColor(seed, hue, color);
+  const portrait = landingArtwork ? pokebotsDefaultPortrait(seed, headColor) : null;
+  return portrait ? POKEBOTS_PORTRAIT_COLORS[portrait] : headColor;
+}
+
+/** Portraits have four painted colors. Explicit face choices keep the full palette. */
+export function avatarColorChoices(
+  seed: string,
+  landingArtwork = POKEBOTS_LANDING_ARTWORK,
+): readonly AvatarColorChoice[] {
+  return landingArtwork && pokebotsDefaultPortrait(seed, avatarHeadColor(seed, null))
+    ? AVATAR_COLOR_CHOICES.filter((choice) => choice.kind === "hue" && [215, 150, 30, 280].includes(choice.hue))
+    : AVATAR_COLOR_CHOICES;
+}
+
+/** Match the visible portrait without rewriting a saved hue or exact color. */
+export function isAvatarArtworkColorChoice(
+  seed: string,
+  choice: AvatarColorChoice,
+  hue: AvatarHue | null,
+  color: AvatarColor | null | undefined,
+  landingArtwork = POKEBOTS_LANDING_ARTWORK,
+): boolean {
+  if (hue === null && !color) return false;
+  const portrait = landingArtwork ? pokebotsDefaultPortrait(seed, avatarHeadColor(seed, hue, color ?? null)) : null;
+  return portrait ? portrait === pokebotsDefaultPortrait(seed, choice.swatch) : isAvatarColorChoice(choice, hue, color);
+}
 
 /** True when an agent with this hue and colour shows the choice as selected. */
 export function isAvatarColorChoice(
