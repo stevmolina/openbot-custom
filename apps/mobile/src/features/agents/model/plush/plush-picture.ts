@@ -7,7 +7,7 @@ import { drawFlat, flatGeometryKey, flatRestFrame } from "./flat-draw";
 import { loadPlushArt } from "./plush-assets";
 import { drawPlush } from "./plush-draw";
 import { plushGeometry, plushRestFrame } from "./plush-frames";
-import { plushAccessoryKey, plushAccessoryParts } from "./plush-pokebots";
+import { plushAccessoryKey, plushAccessoryLayers } from "./plush-pokebots";
 
 /**
  * The style of the drawn pictures. Change it when the drawing changes, so that saved pictures are
@@ -65,7 +65,7 @@ export async function renderPlushPicture(spec: PlushPictureSpec): Promise<string
   } else {
     const geometry = plushGeometry(spec.seed, spec.mood);
     const art = await loadPlushArt(geometry.shape, color, spec.pixels);
-    const accessory = plushAccessoryParts(spec.seed, spec.hue, spec.color);
+    const accessory = plushAccessoryLayers(spec.seed, spec.hue, spec.color);
     drawPlush(surface.getCanvas(), plushRestFrame(geometry), art, spec.pixels, spec.saturation, accessory);
   }
   surface.flush();

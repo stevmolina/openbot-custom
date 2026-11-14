@@ -1,4 +1,3 @@
-import type { PokebotsAccessoryPart } from "@openbot/brand/pokebots-avatar";
 import {
   BlendMode,
   FilterMode,
@@ -22,7 +21,7 @@ import {
   VIEW_BOX,
 } from "./plush-felt";
 import type { PlushFrame } from "./plush-frames";
-import { drawPokebotsAccessory, POKEBOTS_EYE_DARKEN } from "./plush-pokebots";
+import { drawPokebotsAccessory, type PlushAccessoryLayer, POKEBOTS_EYE_DARKEN } from "./plush-pokebots";
 
 /** The pictures of one plush: its tinted body and felt balls, and the shared eye pads. */
 export interface PlushArt {
@@ -191,7 +190,7 @@ export function drawPlush(
   art: PlushArt,
   size: number,
   saturation: number,
-  accessory: readonly PokebotsAccessoryPart[],
+  accessory: readonly PlushAccessoryLayer[],
 ) {
   "worklet";
   const scale = size / VIEW_BOX;

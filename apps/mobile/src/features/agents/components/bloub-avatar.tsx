@@ -30,7 +30,7 @@ import {
   plushPictureName,
   savedPlushPicture,
 } from "@/features/agents/model/plush/plush-picture";
-import { plushAccessoryParts } from "@/features/agents/model/plush/plush-pokebots";
+import { plushAccessoryLayers } from "@/features/agents/model/plush/plush-pokebots";
 import { useAgentActivity, useAgentListActivity } from "@/features/workspace/components/use-agent-activity";
 import {
   DISCONNECTED_APPEARANCE,
@@ -327,7 +327,7 @@ function PlushCanvas({
 }) {
   const geometry = useMemo(() => plushGeometry(seed, mood), [seed, mood]);
   const art = usePlushArt(seed, hue, color, pixels);
-  const accessory = useMemo(() => plushAccessoryParts(seed, hue, color), [seed, hue, color]);
+  const accessory = useMemo(() => plushAccessoryLayers(seed, hue, color), [seed, hue, color]);
   // The frames are sampled only when there is a plush to draw them on.
   const frame = usePlushFrame(geometry, animate && art !== null);
   const picture = useDerivedValue(

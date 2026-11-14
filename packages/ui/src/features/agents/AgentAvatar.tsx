@@ -105,7 +105,7 @@ const PHOTO_BREATHE = "0.03";
 
 /** The plush body has the same radius as the flat body, but its soft, dark fur edge makes it look
  * smaller. This scale makes it look the same size. Each surface still sizes the box. */
-const PLUSH_BODY_STYLE = { transform: "scale(1.15)", "grid-area": "1 / 1" } as const;
+const PLUSH_BODY_STYLE = { transform: "scale(1.15)" } as const;
 
 /** The pose that a still plush shows. The plush plays `thinking`, `asleep` and `failed` on the
  * engine's `idle`. */
