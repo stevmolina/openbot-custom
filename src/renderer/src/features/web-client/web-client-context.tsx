@@ -112,6 +112,7 @@ interface WebConversation {
   trimmed?: boolean;
   /** The last older page did not load. The chat shows it above its messages, and a scroll up tries again. */
   olderError?: string | null;
+  olderLoading?: boolean;
   /**
    * The page shows a part around an older message, not the newest messages. A latest read changes only
    * the messages that it shows, and new messages wait until the user goes to the latest ones.
@@ -359,6 +360,7 @@ export function createWebWorkspace(
   const readWrites = new Map<string, Promise<void>>();
   /** The conversation reads in flight by agent, and the deltas that wait for them to finish. */
   const conversationReads = new Map<string, number>();
+  const olderConversationReads = new Map<string, number>();
   /** The latest-page reads in flight, by agent. See `loadLatest`. */
   const latestReads = new Map<string, { generation: number; opened: number | null; promise: Promise<void> }>();
   /** Counts the opens of an agent, so that a read knows which open it belongs to. See `loadLatest`. */
@@ -1615,8 +1617,15 @@ export function createWebWorkspace(
       return;
     }
     const before = older ? (previous?.page?.pageInfo.olderCursor ?? undefined) : undefined;
-    if (older && !before) return;
+    if (older && (!before || olderConversationReads.get(id) === current)) return;
+    if (older) olderConversationReads.set(id, current);
     conversationReads.set(id, (conversationReads.get(id) ?? 0) + 1);
+    if (older) {
+      setState((draft) => {
+        const item = draft.conversations[id];
+        if (item) item.olderLoading = true;
+      });
+    }
     try {
       const page = await runtime.conversation(id, before);
       if (disposed || current !== generation) return;
@@ -1679,6 +1688,15 @@ export function createWebWorkspace(
         });
       throw error;
     } finally {
+      if (older && olderConversationReads.get(id) === current) {
+        olderConversationReads.delete(id);
+        if (!disposed) {
+          setState((draft) => {
+            const item = draft.conversations[id];
+            if (item) item.olderLoading = false;
+          });
+        }
+      }
       const reads = (conversationReads.get(id) ?? 1) - 1;
       if (reads > 0) conversationReads.set(id, reads);
       else {

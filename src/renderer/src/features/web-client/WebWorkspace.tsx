@@ -4104,7 +4104,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   loaded={Boolean(workspace.conversation()?.page)}
                   hasOlder={workspace.conversation()?.page?.pageInfo.hasOlder}
                   unloadedHistory={unloadedHistory(workspace.conversation()?.page?.pageInfo)}
-                  loadingOlder={workspace.conversation()?.loading}
+                  loadingOlder={workspace.conversation()?.olderLoading}
                   olderError={workspace.conversation()?.olderError ?? null}
                   activeTurnId={workspace.conversation()?.page?.activeTurnId}
                   activityDetail={

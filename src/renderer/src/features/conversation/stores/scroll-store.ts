@@ -318,6 +318,7 @@ export function createScrollStore(deps: ScrollStoreDeps) {
       return `${first ? rowKey(first) : ""}:${last ? rowKey(last) : ""}`;
     },
     scrollMargin: virtualScrollMargin,
+    loadingOlder: () => deps.props.loadingOlder === true,
     stickToLatest: deps.sticky.getStickToLatest,
     followLatest: deps.sticky.followLatest,
     onChange: (instance) => {
