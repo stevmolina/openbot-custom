@@ -109,8 +109,8 @@ html:has(.web-app-frame) body {
 
   /*
    * A phone has no room beside the chat. An open pane takes the full width under the chat header,
-   * which keeps its panel button, and the tab row is a second row. A maximized pane covers the chat
-   * header, as on desktop.
+   * and the tab row is a second row. The thread menu opens the pane. A maximized pane covers the
+   * chat header, as on desktop.
    */
   .web-app-frame[data-web-mobile-pane="conversation"]
     .side-panel-docked:not(.side-panel-maximized)

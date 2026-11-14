@@ -172,7 +172,12 @@ function ThreadRow(props: ThreadHeaderProps) {
  * threads shows, and the side threads with a tab show as tabs.
  */
 export function ThreadHeader(props: ThreadHeaderProps) {
-  const single = () => props.tabs.length === 0 && props.threads.length === 0 && props.archived.length === 0;
+  // A phone always has the menu, so New thread stays available after the button leaves the bar.
+  const single = () =>
+    props.phoneActions === undefined &&
+    props.tabs.length === 0 &&
+    props.threads.length === 0 &&
+    props.archived.length === 0;
   return (
     <Show when={!single()} fallback={<NewThreadButton disabled={!props.canStartNew} onNew={props.onNew} />}>
       <ThreadRow {...props} />

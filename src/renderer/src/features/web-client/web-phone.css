@@ -501,6 +501,34 @@
     touch-action: none;
   }
 
+  /*
+   * A phone chat keeps Back, the title, and the thread menu. New thread, the pin, and the side
+   * panel leave the bar. The menu opens them. The pin button stays as the anchor of its list.
+   */
+  .conversation-header[data-phone-menu]
+    .agent-threads-header
+    > .agent-threads-icon-button:not(.agent-threads-menu-button),
+  .conversation-header[data-phone-menu] .side-panel-toggle {
+    display: none;
+  }
+
+  .conversation-header[data-phone-menu] {
+    position: relative;
+  }
+
+  .conversation-header[data-phone-menu] .pinned-messages-button {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 12px;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
   /* The header rows of a pushed chat start after the Back button. */
   .web-app-frame[data-web-mobile-pane="conversation"]
   :is(

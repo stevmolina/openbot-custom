@@ -36,6 +36,11 @@ export interface ConversationHeaderProps {
   titleSelected?: boolean | undefined;
   /** The thread tabs are the tabs of all agents, which show each agent's face, so the name does not show. */
   tabbed?: boolean | undefined;
+  /**
+   * A phone chat. The header keeps the thread menu and hides New thread, the pin, and the side
+   * panel button. Those actions are in the menu.
+   */
+  phoneMenu?: boolean | undefined;
 }
 
 export interface ConversationHeaderPendingModel {
@@ -123,7 +128,7 @@ export function ConversationHeader(props: ConversationHeaderProps) {
   const titleTab = () => (props.titleSelected === undefined ? undefined : "");
   const titleSelected = () => (props.titleSelected ? "" : undefined);
   return (
-    <header class="window-drag conversation-header">
+    <header class="window-drag conversation-header" data-phone-menu={props.phoneMenu ? "" : undefined}>
       <div class="conversation-heading-group">
         <Show when={!props.tabbed && props.agent} fallback={props.tabbed ? undefined : props.title}>
           {(agent) => (
