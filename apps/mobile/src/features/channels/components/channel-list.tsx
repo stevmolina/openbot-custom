@@ -16,6 +16,7 @@ import { ChatLinkPressable } from "@/features/agents/components/chat-link-pressa
 import { useChatRowBackground } from "@/features/agents/components/chat-list-pane-context";
 import { PinnedChatItem } from "@/features/agents/components/pinned-agents-grid";
 import { useChatSectionMenu } from "@/features/agents/components/use-chat-section-menu";
+import { useListRowChrome } from "@/features/agents/components/use-list-row-chrome";
 import { showFailureAlert } from "@/features/analytics/failure-reports";
 import {
   useMobileWorkspaceReader,
@@ -240,6 +241,8 @@ export const ChannelListRow = memo(function ChannelListRow({
   pinned = false,
   leftInset = 20,
   rightInset = 20,
+  scrolling = false,
+  index = 0,
 }: {
   channel: ChannelSummary;
   serverId: string;
@@ -247,6 +250,10 @@ export const ChannelListRow = memo(function ChannelListRow({
   pinned?: boolean;
   leftInset?: number;
   rightInset?: number;
+  /** The list is moving. A row that mounts then waits to add its swipe and its menu. */
+  scrolling?: boolean;
+  /** The row's place in the list. Rows that mount together add their menus a few at a time. */
+  index?: number;
 }) {
   const { t, format } = useText();
   const [background, accent] = useThemeColor(["background", "accent"]);
@@ -283,6 +290,10 @@ export const ChannelListRow = memo(function ChannelListRow({
   const title = channel.title.trim();
   const unread = channel.unreadCount > 0;
   const togglePin = (withHaptic = true) => toggleChannelPinAnimated(channel, serverId, { haptic: withHaptic });
+  // A pinned chat sits in the header, so it keeps its swipe and its menu. A list row draws the
+  // picture first. The swipe and the menu mount when the list stops.
+  const rowChrome = useListRowChrome(!pinned, scrolling, index);
+  const chrome = pinned || rowChrome;
   const openLabel = title
     ? t("mobile.channel.list.openWithTitle", { name: channel.name, title })
     : t("mobile.channel.list.open", { name: channel.name });
@@ -317,8 +328,8 @@ export const ChannelListRow = memo(function ChannelListRow({
       }}
       className={pinned ? "w-full items-center gap-2 px-1" : "w-full"}
       delayLongPress={longPressDelay}
-      onLongPress={holdMenu.onLongPress}
-      onPressOut={holdMenu.onPressOut}
+      onLongPress={chrome ? holdMenu.onLongPress : undefined}
+      onPressOut={chrome ? holdMenu.onPressOut : undefined}
       style={pinned ? ({ pressed }) => ({ opacity: pressed ? 0.58 : 1 }) : undefined}
     >
       {pinned ? (
@@ -385,7 +396,11 @@ export const ChannelListRow = memo(function ChannelListRow({
       )}
     </ChatLinkPressable>
   );
-  const content = isAndroid ? (
+  const content = !chrome ? (
+    <Link href={{ pathname: "/channel/[channelId]", params: { channelId: channel.id, serverId } }} asChild>
+      <Link.Trigger>{trigger}</Link.Trigger>
+    </Link>
+  ) : isAndroid ? (
     <View className={pinned ? "w-full" : undefined}>
       <Link href={{ pathname: "/channel/[channelId]", params: { channelId: channel.id, serverId } }} asChild>
         <Link.Trigger>{trigger}</Link.Trigger>
@@ -399,6 +414,7 @@ export const ChannelListRow = memo(function ChannelListRow({
       {trigger}
     </ChannelContextMenuLink>
   );
+  if (!chrome) return content;
   return pinned ? (
     <PinnedChatItem>
       <ChatDragArea drag={drag} fill>

@@ -107,9 +107,12 @@ const ONBOARDING_EXIT = FadeOut.duration(220).easing(EASE_OUT);
 const ROW_ENTER = FadeIn.duration(180).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
 const LIST_REFLOW = LinearTransition.duration(240).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
 // A row is about 80 pt high. The list keeps a few screens of rows mounted instead of the default 21,
-// so a server with many agents mounts fewer avatars, swipe handlers and menus.
+// so a server with many agents does not keep a swipe handler and a menu for each one. While the
+// finger moves, a new row is only a picture and text, and the list fills about two screens per batch.
 const LIST_WINDOW_SIZE = 7;
 const LIST_BATCH = 10;
+const LIST_SCROLL_BATCH = 24;
+const LIST_SCROLL_IDLE = 180;
 
 /** A chat row: an agent, or a channel with its server and the agents of that server. */
 interface ChatRowTarget {
@@ -210,10 +213,15 @@ const TransitioningChatRow = memo(function TransitioningChatRow({
   index,
   reveal,
   collapsed,
+  scrolling,
+  holdOpen,
 }: ChatRowTarget & {
   index: number;
   reveal: AgentListRevealState;
   collapsed: boolean;
+  scrolling: boolean;
+  /** The opening fade stays off after the first scroll, so a stop does not hide the rows again. */
+  holdOpen: boolean;
 }) {
   const { transition } = useAgentPinTransition();
   const chatId = agent?.id ?? channel?.id;
@@ -221,9 +229,9 @@ const TransitioningChatRow = memo(function TransitioningChatRow({
   return (
     <CollapsingRow collapsed={collapsed}>
       <Animated.View collapsable={false} entering={isTarget ? ROW_ENTER : undefined}>
-        <AgentListRowReveal index={index} reveal={reveal} skip={isTarget}>
+        <AgentListRowReveal index={index} reveal={reveal} skip={isTarget || holdOpen}>
           {agent ? (
-            <AgentListRow agent={agent} leftInset={15} rightInset={24} />
+            <AgentListRow agent={agent} leftInset={15} rightInset={24} scrolling={scrolling} index={index} />
           ) : channel && serverId && channelAgents ? (
             <ChannelListRow
               channel={channel}
@@ -231,6 +239,8 @@ const TransitioningChatRow = memo(function TransitioningChatRow({
               agents={channelAgents}
               leftInset={15}
               rightInset={24}
+              scrolling={scrolling}
+              index={index}
             />
           ) : null}
         </AgentListRowReveal>
@@ -656,19 +666,47 @@ export function ConnectedScreen({ variant = "screen" }: { variant?: "screen" | "
   );
   // Rows are memoized, so a new message for one agent renders only that agent's row.
   const rowOffset = hasPins ? 1 : 0;
+  // A moving list draws plain rows. The flag stays on through the coast after the finger lifts, then
+  // drops so those rows can add their swipe and their menu. After the first scroll, the opening fade
+  // stays off: turning it back on would hide rows that the scroll already showed.
+  const [scrolling, setScrolling] = useState(false);
+  const [openedByScroll, setOpenedByScroll] = useState(false);
+  const scrollingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setListMoving = useCallback((moving: boolean) => {
+    if (scrollingTimer.current) {
+      clearTimeout(scrollingTimer.current);
+      scrollingTimer.current = null;
+    }
+    if (moving) {
+      setScrolling(true);
+      setOpenedByScroll(true);
+      return;
+    }
+    scrollingTimer.current = setTimeout(() => {
+      scrollingTimer.current = null;
+      setScrolling(false);
+    }, LIST_SCROLL_IDLE);
+  }, []);
+  useEffect(
+    () => () => {
+      if (scrollingTimer.current) clearTimeout(scrollingTimer.current);
+    },
+    [],
+  );
+  const holdOpen = scrolling || openedByScroll;
   const renderItem = useCallback(
     ({ item, index }: { item: MobileSidebarItem; index: number }) =>
       item.kind === "waiting" ? (
-        <AgentListRowReveal index={index + rowOffset} reveal={listReveal}>
+        <AgentListRowReveal index={index + rowOffset} reveal={listReveal} skip={holdOpen}>
           <AgentWaitingGroupHeader count={item.count} />
         </AgentListRowReveal>
       ) : item.kind === "unread" ? (
-        <AgentListRowReveal index={index + rowOffset} reveal={listReveal}>
+        <AgentListRowReveal index={index + rowOffset} reveal={listReveal} skip={holdOpen}>
           <AgentUnreadGroupHeader count={item.count} />
         </AgentListRowReveal>
       ) : item.kind === "section" ? (
         <CollapsingRow collapsed={collapsedRowIds.has(item.id)}>
-          <AgentListRowReveal index={index + rowOffset} reveal={listReveal}>
+          <AgentListRowReveal index={index + rowOffset} reveal={listReveal} skip={holdOpen}>
             <SectionDropTarget sectionId={item.id}>
               <SidebarSectionHeader
                 key={`${activeServer.id}:${item.id}`}
@@ -694,6 +732,8 @@ export function ConnectedScreen({ variant = "screen" }: { variant?: "screen" | "
           index={index + rowOffset}
           reveal={listReveal}
           collapsed={collapsedRowIds.has(item.id)}
+          scrolling={scrolling}
+          holdOpen={holdOpen}
         />
       ) : (
         <TransitioningChatRow
@@ -701,6 +741,8 @@ export function ConnectedScreen({ variant = "screen" }: { variant?: "screen" | "
           index={index + rowOffset}
           reveal={listReveal}
           collapsed={collapsedRowIds.has(item.id)}
+          scrolling={scrolling}
+          holdOpen={holdOpen}
         />
       ),
     [
@@ -709,8 +751,10 @@ export function ConnectedScreen({ variant = "screen" }: { variant?: "screen" | "
       collapsedRowIds,
       collapsedSectionIds,
       folderUnread,
+      holdOpen,
       listReveal,
       rowOffset,
+      scrolling,
       toggleSection,
       visibleSectionIds,
     ],
@@ -961,9 +1005,14 @@ export function ConnectedScreen({ variant = "screen" }: { variant?: "screen" | "
                 keyExtractor={listItemKey}
                 renderItem={renderItem}
                 initialNumToRender={LIST_BATCH}
-                maxToRenderPerBatch={LIST_BATCH}
+                maxToRenderPerBatch={scrolling ? LIST_SCROLL_BATCH : LIST_BATCH}
+                updateCellsBatchingPeriod={scrolling ? 16 : 50}
                 // A drag scrolls the list, and the dragged row must stay mounted for its gesture to go on.
                 windowSize={dragging ? LIST_WINDOW_SIZE * 3 : LIST_WINDOW_SIZE}
+                onScrollBeginDrag={() => setListMoving(true)}
+                onMomentumScrollBegin={() => setListMoving(true)}
+                onScrollEndDrag={() => setListMoving(false)}
+                onMomentumScrollEnd={() => setListMoving(false)}
                 ListHeaderComponent={
                   <AgentListRowReveal index={0} reveal={listReveal}>
                     {hasSelectedServer ? (

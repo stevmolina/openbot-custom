@@ -3,7 +3,7 @@ import MaskedView from "@react-native-masked-view/masked-view";
 import { BlurView } from "expo-blur";
 import { Link } from "expo-router";
 import { Typography } from "heroui-native";
-import { memo, type PropsWithChildren, useEffect, useId, useMemo, useState } from "react";
+import { memo, type PropsWithChildren, type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
@@ -27,6 +27,7 @@ import { BloubAvatar } from "@/features/agents/components/bloub-avatar";
 import { AgentDragPreview, useChatDrag, useHoldMenu } from "@/features/agents/components/chat-drag";
 import { ChatLinkPressable } from "@/features/agents/components/chat-link-pressable";
 import { useChatRowBackground } from "@/features/agents/components/chat-list-pane-context";
+import { useListRowChrome } from "@/features/agents/components/use-list-row-chrome";
 import { useWaitingChannel } from "@/features/channels/components/use-waiting-channel";
 import {
   useAgentListUnreadCount,
@@ -102,19 +103,40 @@ interface AgentListRowProps {
   agent: MobileAgent;
   leftInset?: number;
   rightInset?: number;
+  /** The list is moving. A row that mounts then waits to add its swipe and its menu. */
+  scrolling?: boolean;
+  /** The row's place in the list. Rows that mount together add their menus a few at a time. */
+  index?: number;
 }
 
 /**
  * A chat of the home list. It renders again only when its agent, its own live state or a pin
  * transition changes, so a long list stays quiet while other agents work.
+ *
+ * A row that appears while the list is moving draws its picture and its text first. The swipe and
+ * the menu mount when the list stops. Building both for every chat a fast scroll passed left the
+ * screen empty until that work finished.
  */
-export const AgentListRow = memo(function AgentListRow({ agent, leftInset = 20, rightInset = 20 }: AgentListRowProps) {
-  const { t } = useText();
-  const background = useChatRowBackground(agent.id);
+export const AgentListRow = memo(function AgentListRow({ scrolling = false, index = 0, ...props }: AgentListRowProps) {
+  const chrome = useListRowChrome(true, scrolling, index);
+  return chrome ? <InteractiveAgentListRow {...props} /> : <PlainAgentListRow {...props} />;
+});
+
+function PlainAgentListRow({ agent, leftInset = 20, rightInset = 20 }: AgentListRowProps) {
+  return (
+    <Link href={{ pathname: "/chat/[agentId]", params: { agentId: agent.id } }} asChild>
+      <Link.Trigger>
+        <AgentRowBody agent={agent} leftInset={leftInset} rightInset={rightInset} />
+      </Link.Trigger>
+    </Link>
+  );
+}
+
+function InteractiveAgentListRow({ agent, leftInset = 20, rightInset = 20 }: AgentListRowProps) {
   const pinBlocked = useMobileWorkspaceSelector(
     ({ pinnedAgentIds, pinnedChannelIds }) => !canToggleAgentPin([...pinnedAgentIds, ...pinnedChannelIds], agent.id),
   );
-  const { toggleAgentPinAnimated, transition } = useAgentPinTransition();
+  const { toggleAgentPinAnimated } = useAgentPinTransition();
   // Each long press mounts the Android menu again, so it opens even if an earlier one did not close.
   const [menuKey, setMenuKey] = useState(0);
   const drag = useChatDrag("row", () => ({
@@ -125,6 +147,58 @@ export const AgentListRow = memo(function AgentListRow({ agent, leftInset = 20, 
   }));
   const holdMenu = useHoldMenu(drag, () => setMenuKey((key) => key + 1));
   const agentChatPreview = useAgentChatPreview(agent);
+  const row = (
+    <AgentRowBody
+      agent={agent}
+      leftInset={leftInset}
+      rightInset={rightInset}
+      onPressIn={agentChatPreview.onPressIn}
+      onLongPress={holdMenu.onLongPress}
+      onPressOut={holdMenu.onPressOut}
+      measurer={agentChatPreview.measurer}
+    />
+  );
+  const linked = isAndroid ? (
+    <View>
+      <Link href={{ pathname: "/chat/[agentId]", params: { agentId: agent.id } }} asChild>
+        <Link.Trigger>{row}</Link.Trigger>
+      </Link>
+      {menuKey > 0 ? <AgentAndroidMenu key={menuKey} agent={agent} onClose={() => setMenuKey(0)} /> : null}
+    </View>
+  ) : (
+    <AgentContextMenuLink agent={agent} preview={agentChatPreview.preview}>
+      {row}
+    </AgentContextMenuLink>
+  );
+  return (
+    <AgentPinSwipeRow
+      agentName={agent.name}
+      pinBlocked={pinBlocked}
+      onPin={(withHaptic) => toggleAgentPinAnimated(agent.id, { haptic: withHaptic })}
+      drag={drag}
+    >
+      {linked}
+    </AgentPinSwipeRow>
+  );
+}
+
+function AgentRowBody({
+  agent,
+  leftInset,
+  rightInset,
+  onPressIn,
+  onLongPress,
+  onPressOut,
+  measurer,
+}: AgentListRowProps & {
+  onPressIn?: () => void;
+  onLongPress?: () => void;
+  onPressOut?: () => void;
+  measurer?: ReactNode;
+}) {
+  const { t } = useText();
+  const background = useChatRowBackground(agent.id);
+  const { toggleAgentPinAnimated, transition } = useAgentPinTransition();
   // An agent that waits in a channel says so, as its last message in its own chat is not the wait.
   const waitingChannel = useWaitingChannel(agent.id, agent.serverId);
   const lastMessage = useMemo(() => markdownPreviewText(agent.preview), [agent.preview]);
@@ -164,7 +238,7 @@ export const AgentListRow = memo(function AgentListRow({ agent, leftInset = 20, 
     ? t("mobile.agent.list.openWithTitle", { name: agent.name, title: agent.title.trim() })
     : t("mobile.agent.list.open", { name: agent.name });
 
-  const row = (
+  return (
     <ChatLinkPressable
       chatId={agent.id}
       accessibilityLabel={
@@ -186,10 +260,10 @@ export const AgentListRow = memo(function AgentListRow({ agent, leftInset = 20, 
         if (event.nativeEvent.actionName === "pin") toggleAgentPinAnimated(agent.id);
       }}
       className="w-full"
-      onPressIn={agentChatPreview.onPressIn}
+      onPressIn={onPressIn}
       delayLongPress={longPressDelay}
-      onLongPress={holdMenu.onLongPress}
-      onPressOut={holdMenu.onPressOut}
+      onLongPress={onLongPress}
+      onPressOut={onPressOut}
     >
       {({ pressed }) => (
         <View
@@ -234,30 +308,9 @@ export const AgentListRow = memo(function AgentListRow({ agent, leftInset = 20, 
               </Typography.Paragraph>
             </View>
           </AgentRowTextReveal>
-          {agentChatPreview.measurer}
+          {measurer}
         </View>
       )}
     </ChatLinkPressable>
   );
-  return (
-    <AgentPinSwipeRow
-      agentName={agent.name}
-      pinBlocked={pinBlocked}
-      onPin={(withHaptic) => toggleAgentPinAnimated(agent.id, { haptic: withHaptic })}
-      drag={drag}
-    >
-      {isAndroid ? (
-        <View>
-          <Link href={{ pathname: "/chat/[agentId]", params: { agentId: agent.id } }} asChild>
-            <Link.Trigger>{row}</Link.Trigger>
-          </Link>
-          {menuKey > 0 ? <AgentAndroidMenu key={menuKey} agent={agent} onClose={() => setMenuKey(0)} /> : null}
-        </View>
-      ) : (
-        <AgentContextMenuLink agent={agent} preview={agentChatPreview.preview}>
-          {row}
-        </AgentContextMenuLink>
-      )}
-    </AgentPinSwipeRow>
-  );
-});
+}
