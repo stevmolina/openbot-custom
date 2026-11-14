@@ -24,5 +24,4 @@ export function preloadConversationCards() {
   void ApprovalCard.preload();
   void QuestionPromptBubble.preload();
   void UiBlockPrompt.preload();
-  void MarketplaceSuggestionChatCard.preload();
 }

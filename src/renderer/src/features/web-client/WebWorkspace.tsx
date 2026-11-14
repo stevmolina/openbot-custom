@@ -221,7 +221,6 @@ import {
   ScheduleView,
   ServerLibrary,
   ServerOnboarding,
-  ServerSettingsModal,
   TasksView,
   WorkflowsCanvas,
 } from "../../lazy-views";
@@ -497,8 +496,7 @@ type WebWorkspaceProps = {
 };
 
 const WebAccountSettings = lazy(() => import("./WebAccountSettings"));
-// The views below are not part of the first chat. Their code loads when they first open, or while the
-// browser is idle after the first screen (`preloadLaterViews`).
+// These views load when they first open.
 const loadBilling = () =>
   Promise.all([
     import("@openbot/ui/features/billing/BillingDialog"),
@@ -546,22 +544,6 @@ function lazyWhenOpen<Props extends object>(
     );
   };
 }
-
-/** Loads the code of the views above while the browser is idle, so they open without a wait later. */
-function preloadLaterViews(): void {
-  const load = () => {
-    void loadBilling().catch(() => undefined);
-    void loadAddServerOverlay().catch(() => undefined);
-    void loadWebAgentSettings().catch(() => undefined);
-    void import("./WebAccountSettings").catch(() => undefined);
-  };
-  // Safari has no `requestIdleCallback`. The delay keeps the first chat's reads ahead of this code.
-  setTimeout(() => {
-    if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(load);
-    else load();
-  }, PRELOAD_DELAY_MS);
-}
-const PRELOAD_DELAY_MS = 3_000;
 
 export function WebWorkspace(props: WebWorkspaceProps) {
   return (
@@ -838,10 +820,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     ({ loading, first, online }) => {
       if (loading) return;
       // The cover goes and the host's sidebar and open chat show for the first time.
-      if (first && online) {
-        markRemoteSync("first-screen");
-        preloadLaterViews();
-      }
+      if (first && online) markRemoteSync("first-screen");
       setPageLoad(false);
     },
   );
@@ -1398,16 +1377,6 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     setAccountSettingsLoaded(true);
     setAccountSettingsOpen(true);
   }
-  // The code of both settings pages loads after the server shows, so their first open does not show
-  // an empty page for a moment.
-  createEffect(
-    () => workspace.state.status === "online",
-    (online) => {
-      if (!online) return;
-      void WebAccountSettings.preload();
-      void ServerSettingsModal.preload();
-    },
-  );
   /** The elements of the settings page that the settings panel shows in. The page sets them. */
   const [settingsMounts, setSettingsMounts] = createSignal<SettingsPagePlacement | undefined>();
   /** The search of the server settings page, which filters its section list. It clears when the page closes. */

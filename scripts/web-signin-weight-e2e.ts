@@ -17,7 +17,8 @@
 // - `workspaceJs`: the JS files that loaded before the workspace showed (`openbot:remote-first-screen`),
 // - `firstChatJs`: the JS files that loaded before the first chat showed, with its composer on screen.
 //   A phone shows the chat list first, so the script taps the first chat in the list,
-// - `idleJs`: the JS files that loaded until the network was quiet for 2 s after that,
+// - `idleJs`: the JS files that loaded once the first screen is 5 s old and the network is quiet.
+//   The wait covers a download that used to start 3 s after the first screen, so the count includes it.
 // - the times of the `openbot:remote-*` marks and of the visible chat, from the start of navigation.
 // Byte counts are of the gzipped files, as a phone downloads them. Medians are over the runs.
 //
@@ -62,6 +63,7 @@ const OUT_ROOT = resolve(ROOT, ".openbot-build", "web-signin-weight");
 const OUT = resolve(OUT_ROOT, label);
 const BUILD = resolve(OUT, "build");
 const STORAGE = resolve(OUT_ROOT, "session.json");
+const SESSION_META = resolve(OUT_ROOT, "session-meta.json");
 
 const DEVICES = {
   iphone: devices["iPhone 15 Pro"],
@@ -391,6 +393,13 @@ function newContext(browser: Browser, device: DeviceName, storage: boolean, vide
   });
 }
 
+/** A saved session is reused only for the same account service and the same email. */
+function sessionMatches(): boolean {
+  if (!existsSync(STORAGE) || !existsSync(SESSION_META)) return false;
+  const meta = JSON.parse(readFileSync(SESSION_META, "utf8"));
+  return isDynamicRecord(meta) && meta.api === api && meta.email === email;
+}
+
 /** Signs in once with the development code that the local account service shows, and saves the session. */
 async function signIn(browser: Browser, url: string): Promise<void> {
   const context = await newContext(browser, "iphone", false);
@@ -408,6 +417,7 @@ async function signIn(browser: Browser, url: string): Promise<void> {
       timeout: UI_WAIT_MS,
     });
     await context.storageState({ path: STORAGE });
+    writeFileSync(SESSION_META, `${JSON.stringify({ api, email })}\n`);
   } catch (error) {
     await page.screenshot({ path: resolve(OUT, "sign-in-failure.png") }).catch(() => undefined);
     throw error;
@@ -450,8 +460,12 @@ async function measureOnce(browser: Browser, url: string, device: DeviceName, vi
       await firstChatRow(page).click({ timeout: UI_WAIT_MS });
     }
     await page.waitForFunction("window.__openbotWeight.chatVisibleMs !== null", undefined, { timeout: UI_WAIT_MS });
-    await quiet(page);
-    await page.waitForTimeout(2_000);
+    // Stay past the old 3 s preload, then record the files that actually downloaded.
+    await page.waitForFunction(
+      "performance.now() >= performance.getEntriesByName('openbot:remote-first-screen')[0].startTime + 5000",
+      undefined,
+      { timeout: UI_WAIT_MS },
+    );
     await quiet(page);
     reading = await readPage(page);
     const chatVisibleMs = reading.chatVisibleMs ?? 0;
@@ -599,7 +613,7 @@ function compareTable(before: unknown, after: unknown): string {
     rows.push(
       `| ${device} | JS to first chat (gzip KB, files) | ${old.firstChatJsKB}, ${old.firstChatJsFiles} | ${now.firstChatJsKB}, ${now.firstChatJsFiles} |`,
     );
-    rows.push(`| ${device} | JS after 2 s idle (gzip KB) | ${old.idleJsKB} | ${now.idleJsKB} |`);
+    rows.push(`| ${device} | JS after the first screen settles (gzip KB) | ${old.idleJsKB} | ${now.idleJsKB} |`);
     rows.push(`| ${device} | Time to first chat (ms) | ${old.chatVisibleMs} | ${now.chatVisibleMs} |`);
   }
   return rows.join("\n");
@@ -682,7 +696,7 @@ async function main(): Promise<void> {
   const proxy = await startProxy(api);
   const browser = await webkit.launch();
   try {
-    if (!existsSync(STORAGE)) await signIn(browser, proxy.url);
+    if (!sessionMatches()) await signIn(browser, proxy.url);
     const report: Report = {
       label,
       commit: readFileSync(resolve(BUILD, "commit.txt"), "utf8"),
@@ -711,11 +725,14 @@ async function main(): Promise<void> {
       if (webm) renameSync(join(folder, webm), join(folder, "iphone-first-chat.webm"));
     }
     const shots = flag("screens") ? await captureScreens(browser, proxy.url) : [];
-    writeFileSync(resolve(OUT, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    const reportPath = resolve(OUT, "report.json");
+    const compareFile = comparePath ? resolve(comparePath) : undefined;
+    assert.ok(compareFile !== reportPath, "--compare must name a different report than the one this run writes.");
+    const before = compareFile ? JSON.parse(readFileSync(compareFile, "utf8")) : undefined;
+    writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
     for (const device of deviceNames) logger.info(`${device}: ${JSON.stringify(report.devices[device]?.median)}`);
     if (shots.length) logger.info(`Screenshots: ${shots.join(", ")}`);
-    if (comparePath) {
-      const before = JSON.parse(readFileSync(resolve(comparePath), "utf8"));
+    if (before) {
       assert.ok(mediansOf(before, deviceNames[0] ?? "iphone"), "--compare takes a report.json of this script.");
       const table = compareTable(before, report);
       writeFileSync(resolve(OUT, "compare.md"), `${table}\n`);
