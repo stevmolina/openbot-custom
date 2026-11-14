@@ -8,7 +8,8 @@
 // - style: the `Web/Workspace/LongConversation` story of a running Storybook in WebKit, with the iPad
 //   and iPhone layouts of Safari. The story's development styles are turned off, and the production
 //   stylesheets of one build go in their place, so both builds style the same page. `rootVarMs` is the
-//   style time of one custom property change on `.web-app`. `keyboard.*` plays a keyboard that opens over
+//   style time of one custom property change on `.web-app`; `keyboardToggleMs` is the style time of
+//   `data-web-keyboard-open` on it, which changes when the keyboard opens or closes. `keyboard.*` plays a keyboard that opens over
 //   20 frames and pans for 10, as iOS reports it through `visualViewport`, into the real
 //   `web-visual-viewport.ts`. Storybook runs development code, so compare these times only with each
 //   other.
@@ -302,6 +303,24 @@ async function openStory(
 
 const STORY = "web-workspace--long-conversation";
 
+// In the story: the median time of the keyboard's attribute change on `.web-app` (the stylesheet
+// selects it, so the whole app is styled again), until the last element has its style again.
+const KEYBOARD_TOGGLE = `(() => {
+  const app = document.querySelector(".web-app");
+  const all = app.querySelectorAll("*");
+  const leaf = all[all.length - 1];
+  const times = [];
+  for (let index = 0; index < 21; index++) {
+    const start = performance.now();
+    app.toggleAttribute("data-web-keyboard-open");
+    void getComputedStyle(leaf).color;
+    times.push(performance.now() - start);
+  }
+  app.removeAttribute("data-web-keyboard-open");
+  times.sort((a, b) => a - b);
+  return times[10];
+})()`;
+
 // In the story: the median time of a custom property change on `.web-app`, until the last element has
 // its style again.
 const ROOT_RESTYLE = `(() => {
@@ -395,6 +414,7 @@ async function measureStyle(browser: Browser): Promise<Record<string, Spread>> {
         for (const build of order) {
           await useStyles(page, texts[build]);
           record(samples, `${layout}.${build}.rootVarMs`, await page.evaluate<number>(ROOT_RESTYLE));
+          record(samples, `${layout}.${build}.keyboardToggleMs`, await page.evaluate<number>(KEYBOARD_TOGGLE));
           const keyboard = await page.evaluate(KEYBOARD);
           assert.ok(isDynamicRecord(keyboard), "The keyboard reading is not an object.");
           for (const [key, value] of Object.entries(keyboard))
