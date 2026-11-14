@@ -461,11 +461,18 @@ export function createComposerActions(deps: ComposerActionsDeps) {
       deps.setConversationError(target, t("error.attachment.tooMany", { limit: INPUT_LIMITS.attachments }));
       return;
     }
+    // Pending like a pasted file, so a send waits for the photos instead of leaving them for the next draft.
+    const requestId = crypto.randomUUID();
+    deps.attachmentImports.set(requestId, target);
+    deps.syncAttachmentImports();
     try {
       const attachments = await choose({ filter: "photos", limit }, target.serverId);
       if (attachments.length) await addAttachments(attachments, target);
     } catch (error) {
       deps.setConversationError(target, errorMessage(error, t("error.attachment.photoPickerFailed")));
+    } finally {
+      deps.attachmentImports.delete(requestId);
+      deps.syncAttachmentImports();
     }
   }
 
