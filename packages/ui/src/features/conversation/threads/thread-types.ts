@@ -53,6 +53,17 @@ export interface ThreadStem {
 /** The thread row as tabs, as one button with the open thread, or as a chevron only. */
 export type ThreadRowMode = "tabs" | "compact" | "minimal";
 
+/**
+ * The header actions a phone keeps in the thread menu. Each one is missing when that action does
+ * not apply, such as pins on a host that has none, or the side panel of a read-only channel.
+ */
+export interface ThreadPhoneActions {
+  onOpenPins?: (() => void) | undefined;
+  onToggleSidePanel?: (() => void) | undefined;
+  /** The side panel is open, so the menu item closes it. */
+  sidePanelOpen?: boolean | undefined;
+}
+
 /** A turn runs in the thread. The user stops it before an archive or a delete. */
 export function threadBusy(status: ThreadStatus): boolean {
   return status.kind === "working" || status.kind === "waiting";
@@ -89,6 +100,11 @@ export interface ThreadHeaderProps {
   onDelete?: ((id: string) => void) | undefined;
   /** Opens a side thread in the side panel. Missing when the chat has no side panel. */
   onMoveToSide?: ((id: string) => void) | undefined;
+  /**
+   * Set on a phone. The header then keeps this menu and hides New thread, the pin, and the side
+   * panel button. The menu opens those actions. Missing on a wide window, which keeps the buttons.
+   */
+  phoneActions?: ThreadPhoneActions | undefined;
   /**
    * The tabs are the tabs of all agents: each one names its agent, the agent's own chat has a tab, and
    * the agent's name does not show before them.

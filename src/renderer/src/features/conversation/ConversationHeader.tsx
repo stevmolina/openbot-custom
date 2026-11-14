@@ -15,11 +15,13 @@ import {
   MAIN_THREAD_ID,
   parseThreadTabKey,
 } from "@openbot/ui/features/conversation/threads/thread-types";
-import { Show } from "solid-js";
+import { createSignal, onSettled, Show } from "solid-js";
 import { actionToast } from "../../action-toast";
 import { useConversationViewScope } from "./conversation-scope";
 
 const loadAgentSettingsPanel = () => import("./AgentSettingsPanel");
+/** The web client phone width. The same query as `PHONE_QUERY` in the web workspace. */
+const PHONE_WEB_QUERY = "(max-width: 720px)";
 
 /** The runtime of the running turn, or of the next one, as the "After this turn" badge names it. */
 interface BadgeRuntime {
@@ -52,6 +54,18 @@ export function ConversationHeader() {
     toggleSidePanel,
     moveThreadToPanel,
   } = useConversationViewScope();
+  // The web client on a phone. A desktop window, including a narrow one, keeps the header buttons.
+  const [phoneWeb, setPhoneWeb] = createSignal(false);
+  const [pinsRequest, setPinsRequest] = createSignal(0);
+  onSettled(() => {
+    if (!document.querySelector(".web-app-frame")) return;
+    const query = window.matchMedia(PHONE_WEB_QUERY);
+    const update = () => setPhoneWeb(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  });
+  const phoneMenu = () => phoneWeb() && props.threads !== undefined;
   const runningThreads = () => props.threads?.running ?? 0;
   /** While a side thread is open, the agent's name goes back to the agent's own chat. */
   const openMainChat = () => {
@@ -102,6 +116,8 @@ export function ConversationHeader() {
         const pin = messagePins.pin(key);
         if (pin) messagePins.set(pin.taskId ?? undefined, pin.messageId, false);
       },
+      openRequest: pinsRequest(),
+      quiet: phoneMenu(),
     };
   };
   const working = () => agentActivity() === "Working";
@@ -167,9 +183,24 @@ export function ConversationHeader() {
             }
           : undefined
       }
+      phoneMenu={phoneMenu()}
       threads={
         <Show when={props.threads}>
-          {(threads) => <ThreadHeader {...threads().header} onMoveToSide={moveTabToPanel} />}
+          {(threads) => (
+            <ThreadHeader
+              {...threads().header}
+              onMoveToSide={moveTabToPanel}
+              phoneActions={
+                phoneMenu()
+                  ? {
+                      onOpenPins: messagePins.available() ? () => setPinsRequest((value) => value + 1) : undefined,
+                      onToggleSidePanel: channel?.readOnly() ? undefined : toggleSidePanel,
+                      sidePanelOpen: sidePanelOpen(),
+                    }
+                  : undefined
+              }
+            />
+          )}
         </Show>
       }
       pinnedMessages={pinnedMessages()}

@@ -1,4 +1,13 @@
-import { Archive, buttonVariants, ChevronDown, ChevronRight, DropdownMenu, MessageCirclePlus } from "@openbot/ui";
+import {
+  Archive,
+  buttonVariants,
+  ChevronDown,
+  ChevronRight,
+  DropdownMenu,
+  MessageCirclePlus,
+  PanelRight,
+  Pin,
+} from "@openbot/ui";
 import { createScrollFades } from "@openbot/ui/components/createScrollFades";
 import { sidebarMessageTime } from "@openbot/ui/features/sidebar/sidebar-filtering";
 import { useText } from "@openbot/ui/text";
@@ -99,6 +108,22 @@ export function ThreadMenu(props: ThreadHeaderProps & { mode: ThreadRowMode }) {
             <MessageCirclePlus aria-hidden="true" />
             {t("conversation.threads.new")}
           </DropdownMenu.Item>
+          <Show when={props.phoneActions?.onOpenPins}>
+            {(openPins) => (
+              <DropdownMenu.Item onSelectAfterClose={openPins()}>
+                <Pin aria-hidden="true" />
+                {t("chat.pins.title")}
+              </DropdownMenu.Item>
+            )}
+          </Show>
+          <Show when={props.phoneActions?.onToggleSidePanel}>
+            {(togglePanel) => (
+              <DropdownMenu.Item onSelectAfterClose={togglePanel()}>
+                <PanelRight aria-hidden="true" />
+                {t(props.phoneActions?.sidePanelOpen ? "conversation.sidePanel.close" : "conversation.sidePanel.open")}
+              </DropdownMenu.Item>
+            )}
+          </Show>
           <Show when={props.threads.length > 0}>
             <DropdownMenu.Separator />
             <ThreadMenuList {...props} />

@@ -2,7 +2,7 @@ import { Button, buttonVariants, Pin, PinOff, Popover } from "@openbot/ui";
 import type { AgentProfile } from "@openbot/ui/data";
 import { ReplyQuote } from "@openbot/ui/features/conversation/ReplyQuote";
 import { useText } from "@openbot/ui/text";
-import { createSignal, createUniqueId, For, Show } from "solid-js";
+import { createEffect, createSignal, createUniqueId, For, Show } from "solid-js";
 
 /** One pinned message as the list shows it. The caller resolves the names and the time. */
 export interface PinnedMessageItem {
@@ -27,6 +27,13 @@ export interface PinnedMessagesProps {
   /** Shows the pinned message in its chat. The list closes first. */
   onJump: (id: string) => void;
   onUnpin: (id: string) => void;
+  /**
+   * A larger value opens the list. The phone thread menu uses it, because that header has no pin
+   * button. Zero and a missing value leave the list closed.
+   */
+  openRequest?: number | undefined;
+  /** The pin button stays in the header only as the anchor of the list. A screen reader skips it. */
+  quiet?: boolean | undefined;
 }
 
 /**
@@ -51,6 +58,14 @@ export function PinnedMessages(props: PinnedMessagesProps) {
     props.onUnpin(id);
   };
   const listId = createUniqueId();
+  // The phone menu asks for the list. The first value does not open it.
+  createEffect(
+    () => props.openRequest ?? 0,
+    (token) => {
+      if (token > 0) change(true);
+    },
+    { defer: true },
+  );
   /** The line under the quote: the chat of a pin in another chat, and who pinned it when another did. */
   const meta = (pin: PinnedMessageItem) =>
     [pin.thread, pin.pinnedBy === null ? null : t("chat.pins.pinnedBy", { name: pin.pinnedBy })]
@@ -62,9 +77,11 @@ export function PinnedMessages(props: PinnedMessagesProps) {
   return (
     <Popover.Root open={open()} onOpenChange={change} placement="bottom-end" gutter={6}>
       <Popover.Trigger
-        class={`${buttonVariants({ variant: "ghost" })} header-panel-toggle no-drag`}
+        class={`${buttonVariants({ variant: "ghost" })} header-panel-toggle pinned-messages-button no-drag`}
         aria-label={t("chat.pins.title")}
         title={t("chat.pins.title")}
+        aria-hidden={props.quiet ? "true" : undefined}
+        tabindex={props.quiet ? -1 : undefined}
       >
         <Pin aria-hidden="true" class="size-[14px]" />
       </Popover.Trigger>
