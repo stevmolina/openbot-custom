@@ -407,3 +407,37 @@ const otherTabServersRuntime: WebRuntimeFactory = (...args) => {
 export const OpenInAnotherTabWithServers: Story = {
   args: { accountEmail: "you@example.com", createRuntime: otherTabServersRuntime },
 };
+
+/**
+ * The link to the server drops, as it does each time a phone pauses the installed web app. A
+ * `preview-connection-drop` window event with `{ ms, done }` drops it for `ms` milliseconds: connect
+ * attempts wait until then, and `done` runs when the link is back. `bun scripts/web-reconnect-notice-e2e.ts`
+ * uses it to check that a short drop shows no notice.
+ */
+const connectionDropRuntime: WebRuntimeFactory = (accountId, events, fetch) => {
+  const base = createMockWebRuntime(accountId, events, fetch);
+  let restored: Promise<void> = Promise.resolve();
+  let onReconnect: (() => void) | null = null;
+  window.addEventListener("preview-connection-drop", (event) => {
+    if (!(event instanceof CustomEvent)) return;
+    const { ms, done }: { ms: unknown; done: unknown } = event.detail;
+    if (typeof ms !== "number" || typeof done !== "function") return;
+    restored = new Promise((resolve) => setTimeout(resolve, ms));
+    onReconnect = () => done();
+    events.connection({ hostId: "preview-host", state: "offline", message: null });
+  });
+  return {
+    ...base,
+    connect: async (...args) => {
+      await restored;
+      const capabilities = await base.connect(...args);
+      onReconnect?.();
+      onReconnect = null;
+      return capabilities;
+    },
+  };
+};
+
+export const ConnectionDrop: Story = {
+  args: { createRuntime: connectionDropRuntime },
+};

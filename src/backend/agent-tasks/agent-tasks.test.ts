@@ -58,6 +58,7 @@ async function fixture() {
       agent: () => agent,
       hold: () => "task-limit",
       turnActive: () => false,
+      defaultTaskLimit: () => 4,
       archived: () => Effect.void,
       queued,
     },

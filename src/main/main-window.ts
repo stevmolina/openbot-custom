@@ -171,6 +171,11 @@ export interface MainWindowContext {
   workingAgents: () => AgentSummary[];
   /** A function, not a value: the user can change the choice while the window is open. */
   quitGuard: () => QuitGuard;
+  /**
+   * True when the user kept OpenBot running at a close while agents worked, so the tray icon must
+   * show; false when the main window shows again.
+   */
+  onHiddenWhileWorking: (hidden: boolean) => void;
 }
 
 export interface MainWindowController {
@@ -211,6 +216,7 @@ export function createMainWindowController({
   quitFromShortcut,
   workingAgents,
   quitGuard,
+  onHiddenWhileWorking,
 }: MainWindowContext): MainWindowController {
   const quitShortcut =
     process.platform === "darwin"
@@ -230,6 +236,49 @@ export function createMainWindowController({
       reportError,
     });
   let rendererReloadTimes: number[] = [];
+  /**
+   * The windows that were asked to load the app page. The window of a server never is: its empty page
+   * that stops is not replaced with the app page.
+   */
+  const appPageWindows = new WeakSet<BrowserWindow>();
+  let closeConfirmationOpen = false;
+  /** The user chose to quit in the question, so the next close goes through. */
+  let closeConfirmed = false;
+
+  /**
+   * The user can keep OpenBot running for this close, with the tray icon as the way back, quit,
+   * or keep the window. Keeping it running does not change the saved choice in Settings.
+   */
+  function confirmCloseWhileWorking(window: BrowserWindow): void {
+    const translate = getTranslate();
+    closeConfirmationOpen = true;
+    void dialog
+      .showMessageBox(window, {
+        type: "question",
+        message: translate("menu.closeWorkingTitle", { count: workingAgents().length }),
+        detail: translate("menu.closeWorkingBody"),
+        buttons: [translate("menu.closeKeepRunning"), translate("menu.quitConfirm"), translate("common.cancel")],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true,
+      })
+      .then(({ response }) => {
+        if (window.isDestroyed()) return;
+        if (response === 0) {
+          rememberMainWindowBounds(window.getNormalBounds());
+          getServices()?.browser.releaseUserControlHeldBy({ kind: "local" });
+          onHiddenWhileWorking(true);
+          window.hide();
+        } else if (response === 1) {
+          closeConfirmed = true;
+          window.close();
+        }
+      })
+      .catch((error: unknown) => reportError("Unable to ask before the main window closes:", error))
+      .finally(() => {
+        closeConfirmationOpen = false;
+      });
+  }
 
   function createWindow(): BrowserWindow {
     const cursor = screen.getCursorScreenPoint();
@@ -285,6 +334,19 @@ export function createMainWindowController({
       }
     });
     window.on("close", (event) => {
+      // On Windows and Linux the close quits OpenBot and stops the agents that work (#6391). Ask
+      // first, while the agents are still known: after the close it is too late.
+      if (
+        process.platform !== "darwin" &&
+        !keepRunningInBackground() &&
+        !isQuitting() &&
+        !closeConfirmed &&
+        workingAgents().length > 0
+      ) {
+        event.preventDefault();
+        if (!closeConfirmationOpen) confirmCloseWhileWorking(window);
+        return;
+      }
       rememberMainWindowBounds(window.getNormalBounds());
       // Nobody can use a tab without the window, so the agents waiting on it continue.
       getServices()?.browser.releaseUserControlHeldBy({ kind: "local" });
@@ -297,6 +359,7 @@ export function createMainWindowController({
         window.hide();
       }
     });
+    window.on("show", () => onHiddenWhileWorking(false));
     onMainWindowCreated(window);
     window.on("closed", () => {
       if (holder.current === window) holder.current = null;
@@ -325,6 +388,7 @@ export function createMainWindowController({
       if (
         isQuitting() ||
         window.isDestroyed() ||
+        !appPageWindows.has(window) ||
         !RELOADABLE_RENDERER_EXITS.has(details.reason) ||
         rendererReloadTimes.length >= RENDERER_RELOAD_MAX
       ) {
@@ -451,6 +515,7 @@ export function createMainWindowController({
   }
 
   function loadRenderer(window: BrowserWindow): Promise<void> {
+    appPageWindows.add(window);
     onRendererLoadStarted();
     return window.loadURL(appRendererUrl(process.env.ELECTRON_RENDERER_URL).toString());
   }

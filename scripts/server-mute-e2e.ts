@@ -75,6 +75,7 @@ plugin({
           readonly webContents = {
             isDestroyed: () => false,
             isLoadingMainFrame: () => false,
+            getURL: () => "http://localhost/",
             mainFrame: { isDestroyed: () => false, detached: false },
             send: () => undefined,
           };
