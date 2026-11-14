@@ -1,8 +1,10 @@
 import { BloubBot } from "@norbert_bodziony/bloub";
 import { bloubAvatarProfile } from "@openbot/brand/bloub-avatar";
+import { POKEBOTS_LANDING_ARTWORK, pokebotsDefaultPortrait } from "@openbot/brand/pokebots-avatar";
 import type { AvatarColor, AvatarHue } from "@openbot/contracts/ipc";
 import { render } from "@solidjs/web";
 import { flush } from "solid-js";
+import { POKEBOTS_PORTRAIT_IMAGES } from "./features/agents/pokebots-portraits";
 
 /**
  * When an avatar animates, which is a performance decision and not a state one: `hover` and `idle`
@@ -17,6 +19,8 @@ export {
   AVATAR_STYLES,
   type AvatarColorChoice,
   type AvatarStyle,
+  avatarArtworkColor,
+  avatarColorChoices,
   avatarDefaultSeed,
   avatarHeadColor,
   avatarHueForColor,
@@ -25,6 +29,7 @@ export {
   avatarStyleForSeed,
   type BloubAvatarProfile,
   bloubAvatarProfile,
+  isAvatarArtworkColorChoice,
   isAvatarColorChoice,
   SUPPORTED_AVATAR_SILHOUETTES,
   type SupportedAvatarSilhouetteId,
@@ -42,6 +47,21 @@ export function createStaticAvatarSvg(
   hue: AvatarHue | null,
   color: AvatarColor | null = null,
 ): SVGSVGElement {
+  const portrait = POKEBOTS_LANDING_ARTWORK
+    ? pokebotsDefaultPortrait(seed, bloubAvatarProfile(seed, hue, color).color)
+    : null;
+  if (portrait) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+    image.setAttribute("href", POKEBOTS_PORTRAIT_IMAGES[portrait]);
+    image.setAttribute("width", "100");
+    image.setAttribute("height", "100");
+    svg.appendChild(image);
+    return svg;
+  }
   const host = document.createElement("span");
   const dispose = mountStaticAvatar(host, seed, hue, color);
   const svg = host.querySelector("svg");

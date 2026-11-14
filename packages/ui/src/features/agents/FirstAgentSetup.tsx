@@ -1,4 +1,5 @@
 import type { ExpressionId } from "@norbert_bodziony/bloub";
+import { POKEBOTS_LANDING_ARTWORK } from "@openbot/brand/pokebots-avatar";
 import { agentProviderDescriptor } from "@openbot/contracts/agent-providers";
 import { INPUT_LIMITS } from "@openbot/contracts/input-limits";
 import type {
@@ -18,10 +19,10 @@ import type { AppTextKey, AppTranslate } from "@openbot/i18n";
 import { Button, Field, Input, Textarea } from "@openbot/ui";
 import { createSignal, For, onSettled, Show } from "solid-js";
 import {
-  AVATAR_COLOR_CHOICES,
-  avatarHeadColor,
+  avatarArtworkColor,
+  avatarColorChoices,
   avatarSeedForFace,
-  isAvatarColorChoice,
+  isAvatarArtworkColorChoice,
   type SupportedAvatarSilhouetteId,
 } from "../../bloub-avatar";
 import { ProviderModelPicker } from "../../components/ProviderModelPicker";
@@ -128,7 +129,9 @@ export function createFirstAgentDraft(random: () => number = Math.random): First
   return {
     name: currentText().t("agent.setup.nameFallback"),
     purpose: "",
-    avatarSeed: FIRST_AGENT_AVATAR_SEEDS[index] ?? "first-bot",
+    avatarSeed: POKEBOTS_LANDING_ARTWORK
+      ? `first-bot:default:${index}`
+      : (FIRST_AGENT_AVATAR_SEEDS[index] ?? "first-bot"),
     avatarHue: null,
     suggestionId: null,
     provider: "codex",
@@ -142,7 +145,7 @@ export const FIRST_AGENT_SUGGESTIONS: FirstAgentSuggestion[] = [
     nameKey: "agent.setup.suggestion.inboxHelper.name",
     descriptionKey: "agent.setup.suggestion.inboxHelper.description",
     purposeKey: "agent.setup.suggestion.inboxHelper.purpose",
-    avatarSeed: FIRST_AGENT_AVATAR_SEEDS[1] ?? "first-bot:inbox",
+    avatarSeed: POKEBOTS_LANDING_ARTWORK ? "first-bot:inbox" : (FIRST_AGENT_AVATAR_SEEDS[1] ?? "first-bot:inbox"),
     avatarHue: 320,
     animationOffset: 0.15,
   },
@@ -151,7 +154,7 @@ export const FIRST_AGENT_SUGGESTIONS: FirstAgentSuggestion[] = [
     nameKey: "agent.setup.suggestion.tripPlanner.name",
     descriptionKey: "agent.setup.suggestion.tripPlanner.description",
     purposeKey: "agent.setup.suggestion.tripPlanner.purpose",
-    avatarSeed: FIRST_AGENT_AVATAR_SEEDS[2] ?? "first-bot:travel",
+    avatarSeed: POKEBOTS_LANDING_ARTWORK ? "first-bot:travel" : (FIRST_AGENT_AVATAR_SEEDS[2] ?? "first-bot:travel"),
     avatarHue: 215,
     animationOffset: 0.65,
   },
@@ -160,7 +163,9 @@ export const FIRST_AGENT_SUGGESTIONS: FirstAgentSuggestion[] = [
     nameKey: "agent.setup.suggestion.personalOrganizer.name",
     descriptionKey: "agent.setup.suggestion.personalOrganizer.description",
     purposeKey: "agent.setup.suggestion.personalOrganizer.purpose",
-    avatarSeed: FIRST_AGENT_AVATAR_SEEDS[3] ?? "first-bot:organizer",
+    avatarSeed: POKEBOTS_LANDING_ARTWORK
+      ? "first-bot:organizer"
+      : (FIRST_AGENT_AVATAR_SEEDS[3] ?? "first-bot:organizer"),
     avatarHue: 55,
     animationOffset: 1.2,
   },
@@ -169,7 +174,7 @@ export const FIRST_AGENT_SUGGESTIONS: FirstAgentSuggestion[] = [
     nameKey: "agent.setup.suggestion.shoppingScout.name",
     descriptionKey: "agent.setup.suggestion.shoppingScout.description",
     purposeKey: "agent.setup.suggestion.shoppingScout.purpose",
-    avatarSeed: FIRST_AGENT_AVATAR_SEEDS[4] ?? "first-bot:shopping",
+    avatarSeed: POKEBOTS_LANDING_ARTWORK ? "first-bot:shopping" : (FIRST_AGENT_AVATAR_SEEDS[4] ?? "first-bot:shopping"),
     avatarHue: 150,
     animationOffset: 1.8,
   },
@@ -178,7 +183,7 @@ export const FIRST_AGENT_SUGGESTIONS: FirstAgentSuggestion[] = [
     nameKey: "agent.setup.suggestion.writingPartner.name",
     descriptionKey: "agent.setup.suggestion.writingPartner.description",
     purposeKey: "agent.setup.suggestion.writingPartner.purpose",
-    avatarSeed: FIRST_AGENT_AVATAR_SEEDS[5] ?? "first-bot:writing",
+    avatarSeed: POKEBOTS_LANDING_ARTWORK ? "first-bot:writing" : (FIRST_AGENT_AVATAR_SEEDS[5] ?? "first-bot:writing"),
     avatarHue: 30,
     animationOffset: 2.45,
   },
@@ -187,7 +192,7 @@ export const FIRST_AGENT_SUGGESTIONS: FirstAgentSuggestion[] = [
     nameKey: "agent.setup.suggestion.learningCoach.name",
     descriptionKey: "agent.setup.suggestion.learningCoach.description",
     purposeKey: "agent.setup.suggestion.learningCoach.purpose",
-    avatarSeed: FIRST_AGENT_AVATAR_SEEDS[6] ?? "first-bot:learning",
+    avatarSeed: POKEBOTS_LANDING_ARTWORK ? "first-bot:learning" : (FIRST_AGENT_AVATAR_SEEDS[6] ?? "first-bot:learning"),
     avatarHue: 245,
     animationOffset: 3.15,
   },
@@ -469,10 +474,10 @@ export function FirstAgentSetup(props: FirstAgentSetupProps) {
               >
                 <span
                   class="first-agent-color-swatch"
-                  style={{ background: avatarHeadColor(props.value.avatarSeed, null) }}
+                  style={{ background: avatarArtworkColor(props.value.avatarSeed, null) }}
                 />
               </Button>
-              <For each={AVATAR_COLOR_CHOICES}>
+              <For each={avatarColorChoices(props.value.avatarSeed)}>
                 {(option) => (
                   <Button
                     variant="ghost"
@@ -481,7 +486,14 @@ export function FirstAgentSetup(props: FirstAgentSetupProps) {
                     class="first-agent-color-choice"
                     aria-label={t("agent.setup.colorOption", { color: t(avatarColorChoiceLabel(option)) })}
                     aria-pressed={
-                      isAvatarColorChoice(option, props.value.avatarHue, props.value.avatarColor) ? "true" : "false"
+                      isAvatarArtworkColorChoice(
+                        props.value.avatarSeed,
+                        option,
+                        props.value.avatarHue,
+                        props.value.avatarColor,
+                      )
+                        ? "true"
+                        : "false"
                     }
                     data-cuelume-tap="select"
                     onClick={() => updateDraft({ avatarHue: option.hue, avatarColor: option.color })}

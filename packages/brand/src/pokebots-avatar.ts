@@ -347,3 +347,37 @@ function stableIndex(value: string, length: number): number {
   }
   return (hash >>> 0) % length;
 }
+
+/** The Vite brand layer enables landing artwork for Pokebots desktop and web builds. */
+export const POKEBOTS_LANDING_ARTWORK = false;
+
+export const POKEBOTS_PORTRAITS = ["blue", "mint", "orange", "purple"] as const;
+export type PokebotsPortrait = (typeof POKEBOTS_PORTRAITS)[number];
+
+export const POKEBOTS_PORTRAIT_COLORS: Readonly<Record<PokebotsPortrait, string>> = {
+  blue: POKEBOTS_HUE_COLORS[215],
+  mint: POKEBOTS_HUE_COLORS[150],
+  orange: POKEBOTS_HUE_COLORS[30],
+  purple: POKEBOTS_HUE_COLORS[280],
+};
+
+/**
+ * A saved face choice keeps its original renderer. Default seeds use the landing portrait nearest
+ * their saved colour. This only selects bundled artwork; it never changes the seed or stored colour.
+ */
+export function pokebotsDefaultPortrait(seed: string, color: string): PokebotsPortrait | null {
+  if (/:(?:face|flat|avatar):\d+(?::\d+)?$/.test(seed)) return null;
+  const channels = (hex: string) => [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+  const target = channels(color);
+  let nearest: PokebotsPortrait = "blue";
+  let distance = Number.POSITIVE_INFINITY;
+  for (const portrait of POKEBOTS_PORTRAITS) {
+    const rgb = channels(POKEBOTS_PORTRAIT_COLORS[portrait]);
+    const difference = rgb.reduce((sum, channel, index) => sum + (channel - (target[index] ?? 0)) ** 2, 0);
+    if (difference < distance) {
+      distance = difference;
+      nearest = portrait;
+    }
+  }
+  return nearest;
+}

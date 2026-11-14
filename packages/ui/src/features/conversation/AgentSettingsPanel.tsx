@@ -63,17 +63,17 @@ import {
 } from "@openbot/ui";
 import { normalizeAvatarFile } from "@openbot/ui/avatar-image";
 import {
-  AVATAR_COLOR_CHOICES,
   AVATAR_EXPRESSIONS,
   AVATAR_STYLES,
   type AvatarColorChoice,
   type AvatarStyle,
+  avatarColorChoices,
   avatarDefaultSeed,
   avatarHueForColor,
   avatarSeedForFace,
   avatarStyleForSeed,
   bloubAvatarProfile,
-  isAvatarColorChoice,
+  isAvatarArtworkColorChoice,
   SUPPORTED_AVATAR_SILHOUETTES,
   type SupportedAvatarSilhouetteId,
 } from "@openbot/ui/bloub-avatar";
@@ -459,7 +459,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
   const avatarStyle = createMemo(() => avatarStyleForSeed(draft.avatar.seed));
   const avatarResetSeed = createMemo(() => avatarDefaultSeed(props.agent.id, avatarStyle()));
   const avatarColorSelected = (choice: AvatarColorChoice) =>
-    isAvatarColorChoice(choice, draft.avatar.hue, draft.avatar.color);
+    isAvatarArtworkColorChoice(draft.avatar.seed, choice, draft.avatar.hue, draft.avatar.color);
   const automaticColorSelected = () => draft.avatar.hue === null && draft.avatar.color === null;
   let avatarPickerRoot: HTMLDivElement | undefined;
   let avatarFileInput: HTMLInputElement | undefined;
@@ -806,12 +806,8 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
     const current = avatarFace();
     const face = { shape: change.shape ?? current.shape, expression: change.expression ?? current.expression };
     const style = change.style ?? avatarStyle();
-    // The agent's own plush face is its ID, so Plush after Flat saves the seed that the agent had.
-    const own = bloubAvatarProfile(props.agent.id, null);
-    const seed =
-      style === "plush" && own.shape === face.shape && own.expression === face.expression
-        ? props.agent.id
-        : avatarSeedForFace(props.agent.id, face, style);
+    // A face control must save the explicit face that its preview shows.
+    const seed = avatarSeedForFace(props.agent.id, face, style);
     await selectGeneratedAvatar(seed, current.color);
   }
 
@@ -1315,7 +1311,7 @@ export default function AgentSettingsPanel(props: AgentSettingsPanelProps) {
                           {t("agentSettings.avatar.autoInitial")}
                         </span>
                       </Button>
-                      <For each={AVATAR_COLOR_CHOICES}>
+                      <For each={avatarColorChoices(draft.avatar.seed)}>
                         {(option) => (
                           <Button
                             variant="ghost"

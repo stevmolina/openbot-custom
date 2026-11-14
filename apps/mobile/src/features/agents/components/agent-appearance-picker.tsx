@@ -1,16 +1,16 @@
 import type { ExpressionId } from "@norbert_bodziony/bloub";
 import {
-  AVATAR_COLOR_CHOICES,
   AVATAR_EXPRESSIONS,
   type AvatarColorChoice,
   type AvatarColorPresetId,
   type AvatarStyle,
+  avatarColorChoices,
   avatarDefaultSeed,
   avatarHeadColor,
   avatarHueForColor,
   avatarStyleForSeed,
   bloubAvatarProfile,
-  isAvatarColorChoice,
+  isAvatarArtworkColorChoice,
   SUPPORTED_AVATAR_SILHOUETTES,
   type SupportedAvatarSilhouetteId,
 } from "@openbot/brand/bloub-avatar";
@@ -208,7 +208,7 @@ export function AgentAppearancePicker({
             disabled={disabled}
             onSelect={selectFace}
           />
-          <AvatarColorOptions hue={hue} color={color} disabled={disabled} onColorChange={onColorChange} />
+          <AvatarColorOptions seed={seed} hue={hue} color={color} disabled={disabled} onColorChange={onColorChange} />
         </>
       ) : null}
     </View>
@@ -483,11 +483,13 @@ const AvatarEyesOptions = memo(function AvatarEyesOptions({
 });
 
 const AvatarColorOptions = memo(function AvatarColorOptions({
+  seed,
   hue,
   color,
   disabled,
   onColorChange,
 }: {
+  seed: string;
   hue: AvatarHue | null;
   color: AvatarColor | null;
   disabled: boolean;
@@ -502,8 +504,8 @@ const AvatarColorOptions = memo(function AvatarColorOptions({
         accessibilityRole="radiogroup"
         accessibilityLabel={t("mobile.agent.appearance.color")}
       >
-        {AVATAR_COLOR_CHOICES.map((choice) => {
-          const checked = isAvatarColorChoice(choice, hue, color);
+        {avatarColorChoices(seed, true).map((choice) => {
+          const checked = isAvatarArtworkColorChoice(seed, choice, hue, color, true);
           return (
             <ChoiceCell
               key={choice.swatch}

@@ -1,11 +1,14 @@
 import { avatarHeadColor, avatarStyleForSeed } from "@openbot/brand/bloub-avatar";
 import type { AvatarMood } from "@openbot/brand/bloub-avatar-motion";
+import { pokebotsDefaultPortrait } from "@openbot/brand/pokebots-avatar";
 import type { AvatarColor, AvatarHue } from "@openbot/contracts/ipc";
-import { ImageFormat, Skia } from "@shopify/react-native-skia";
+import { FilterMode, ImageFormat, MipmapMode, Skia } from "@shopify/react-native-skia";
 import { Directory, File, Paths } from "expo-file-system";
+import { Image } from "react-native";
+import { LANDING_PORTRAITS } from "../landing-portraits";
 import { drawFlat, flatGeometryKey, flatRestFrame } from "./flat-draw";
 import { loadPlushArt } from "./plush-assets";
-import { drawPlush } from "./plush-draw";
+import { drawPlush, saturationMatrix } from "./plush-draw";
 import { plushGeometry, plushRestFrame } from "./plush-frames";
 import { plushAccessoryKey, plushAccessoryLayers } from "./plush-pokebots";
 
@@ -13,7 +16,7 @@ import { plushAccessoryKey, plushAccessoryLayers } from "./plush-pokebots";
  * The style of the drawn pictures. Change it when the drawing changes, so that saved pictures are
  * drawn again: the file names and the Live Activity pictures carry it.
  */
-export const PLUSH_STYLE = "plush-2-pokebots-1";
+export const PLUSH_STYLE = "plush-2-pokebots-landing-2";
 /**
  * Still plush pictures, kept between launches, so a list shows its avatars without drawing them
  * again. `Paths.cache` is `Library/Caches` on iOS, and the system can delete it.
@@ -47,11 +50,13 @@ export function nameHash(value: string): string {
  * flat style draws the flat face, as on the desktop.
  */
 export function plushPictureName(spec: PlushPictureSpec): string {
-  const key =
-    avatarStyleForSeed(spec.seed) === "flat"
+  const color = avatarHeadColor(spec.seed, spec.hue, spec.color);
+  const portrait = pokebotsDefaultPortrait(spec.seed, color);
+  const key = portrait
+    ? `landing:${portrait}`
+    : avatarStyleForSeed(spec.seed) === "flat"
       ? flatGeometryKey(spec.seed, spec.mood)
       : `${plushGeometry(spec.seed, spec.mood).key}:${plushAccessoryKey(spec.seed)}`;
-  const color = avatarHeadColor(spec.seed, spec.hue, spec.color);
   return `${nameHash(`${PLUSH_STYLE}|${key}|${color}|${spec.pixels}|${spec.saturation}`)}.png`;
 }
 
@@ -60,7 +65,25 @@ export async function renderPlushPicture(spec: PlushPictureSpec): Promise<string
   const color = avatarHeadColor(spec.seed, spec.hue, spec.color);
   const surface = Skia.Surface.Make(spec.pixels, spec.pixels);
   if (!surface) throw new Error("The plush surface is unavailable.");
-  if (avatarStyleForSeed(spec.seed) === "flat") {
+  const portrait = pokebotsDefaultPortrait(spec.seed, color);
+  if (portrait) {
+    const asset = Image.resolveAssetSource(LANDING_PORTRAITS[portrait]);
+    if (!asset) throw new Error("The landing portrait is not in the bundle.");
+    const image = Skia.Image.MakeImageFromEncoded(await Skia.Data.fromURI(asset.uri));
+    if (!image) throw new Error("The landing portrait could not be decoded.");
+    const paint = Skia.Paint();
+    if (spec.saturation < 1) paint.setColorFilter(Skia.ColorFilter.MakeMatrix(saturationMatrix(spec.saturation)));
+    surface
+      .getCanvas()
+      .drawImageRectOptions(
+        image,
+        Skia.XYWHRect(0, 0, image.width(), image.height()),
+        Skia.XYWHRect(0, 0, spec.pixels, spec.pixels),
+        FilterMode.Linear,
+        MipmapMode.Linear,
+        paint,
+      );
+  } else if (avatarStyleForSeed(spec.seed) === "flat") {
     drawFlat(surface.getCanvas(), flatRestFrame(spec.seed, spec.mood), color, spec.pixels, spec.saturation);
   } else {
     const geometry = plushGeometry(spec.seed, spec.mood);

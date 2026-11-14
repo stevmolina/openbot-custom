@@ -123,6 +123,11 @@ interface LiteralRule {
  * during the build when an upstream change moved one, and `scripts/pokebots-brand-e2e.ts` fails.
  */
 export const LITERAL_RULES: readonly LiteralRule[] = [
+  {
+    file: "packages/brand/src/pokebots-avatar.ts",
+    find: "export const POKEBOTS_LANDING_ARTWORK = false;",
+    replace: (name) => `export const POKEBOTS_LANDING_ARTWORK = ${name === "Pokebots"};`,
+  },
   // Desktop: notification titles, the browser picture-in-picture window, and the macOS app menu.
   {
     file: "src/main/index.ts",

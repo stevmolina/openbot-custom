@@ -1,4 +1,4 @@
-import { AVATAR_COLOR_CHOICES, type AvatarColorChoice, isAvatarColorChoice } from "@openbot/brand/bloub-avatar";
+import { avatarColorChoices, isAvatarArtworkColorChoice } from "@openbot/brand/bloub-avatar";
 import type { AvatarColor, AvatarHue } from "@openbot/contracts/ipc";
 import { Typography } from "heroui-native";
 import { useThemeColor } from "heroui-native/hooks";
@@ -37,11 +37,6 @@ const SETTLE = { duration: 400, dampingRatio: 0.8, reduceMotion: ReduceMotion.Ne
 const ENTER_FROM = 0.6;
 // Nine colours fit one row on a 375 pt wide phone.
 const SWATCH_SIZE = 28;
-// The colours show in two rows of nine; the automatic colour ends the second row.
-const COLOR_ROWS: readonly (readonly AvatarColorChoice[])[] = [
-  AVATAR_COLOR_CHOICES.slice(0, 9),
-  AVATAR_COLOR_CHOICES.slice(9),
-];
 const ARROW_SIZE = 44;
 
 /**
@@ -72,6 +67,8 @@ export function LookStep({
   onPulse: () => void;
 }) {
   const { t } = useText();
+  const colors = avatarColorChoices(seed, true);
+  const colorRows = [colors.slice(0, 9), colors.slice(9)].filter((row) => row.length > 0);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const foreground = useThemeColor("foreground");
@@ -181,13 +178,13 @@ export function LookStep({
             accessibilityRole="radiogroup"
             accessibilityLabel={t("mobile.agent.appearance.color")}
           >
-            {COLOR_ROWS.map((row, index) => (
+            {colorRows.map((row, index) => (
               <View key={row[0]?.swatch ?? index} className="w-full flex-row items-center justify-between">
                 {row.map((choice) => (
                   <Swatch
                     key={choice.swatch}
                     label={t(avatarColorChoiceLabel(choice))}
-                    checked={isAvatarColorChoice(choice, hue, color)}
+                    checked={isAvatarArtworkColorChoice(seed, choice, hue, color, true)}
                     ring={String(foreground)}
                     motion={motion}
                     onPress={() => {
@@ -198,7 +195,7 @@ export function LookStep({
                     <View className="size-full rounded-full" style={{ backgroundColor: choice.swatch }} />
                   </Swatch>
                 ))}
-                {index === COLOR_ROWS.length - 1 ? (
+                {index === colorRows.length - 1 ? (
                   <Swatch
                     label={t("mobile.agent.appearance.automatic")}
                     checked={hue === null && color === null}
