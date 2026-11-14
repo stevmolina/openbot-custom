@@ -4,6 +4,7 @@ import {
   CircleDot,
   DropdownMenu,
   File,
+  Image,
   MessageCircleQuestionMark,
   Plus,
   Puzzle,
@@ -21,6 +22,8 @@ export interface ComposerAddMenuProps {
   attachDisabled?: boolean | undefined;
   /** Opens the file picker. Without it, the menu has no attach item. */
   onAttach?: (() => void) | undefined;
+  /** Opens the photo library picker of the system. Without it, the menu has no Photos item. */
+  onChoosePhotos?: (() => void) | undefined;
   /** Opens the skill picker of the editor, after the menu gave the focus back. Without it, no skill item. */
   onPickSkill?: (() => void) | undefined;
   /** Starts the recording of a task that the user shows in the browser. Without it, no teach item. */
@@ -74,6 +77,14 @@ export function ComposerAddMenu(props: ComposerAddMenuProps) {
               <File aria-hidden="true" />
               <span>{t("composer.add.files")}</span>
             </DropdownMenu.Item>
+          </Show>
+          <Show when={props.onChoosePhotos}>
+            {(choose) => (
+              <DropdownMenu.Item disabled={props.attachDisabled ?? false} onSelectAfterClose={() => choose()()}>
+                <Image aria-hidden="true" />
+                <span>{t("composer.add.photos")}</span>
+              </DropdownMenu.Item>
+            )}
           </Show>
           <Show when={props.onCreateArtifact}>
             {(create) => (

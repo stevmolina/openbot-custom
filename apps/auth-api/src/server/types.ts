@@ -1,4 +1,4 @@
-import type { AvatarColor } from "@openbot/contracts/ipc";
+import type { AvatarColor } from "@openbot/contracts/ipc-agent-identity";
 import type { AccountSession } from "@openbot/contracts/mobile-connect";
 import { isDynamicRecord, isFunction } from "@openbot/contracts/runtime-values";
 import type { Effect } from "effect";

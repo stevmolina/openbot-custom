@@ -1,6 +1,13 @@
 /* The web client's full stylesheet: the app stylesheet, then the web layout. It loads with the
-   workspace code (`WebApp.tsx`). Until then, `web-sign-in.css` styles the sign-in screens. */
+   workspace code (`WebApp.tsx`). Until then, `web-sign-in.css` styles the sign-in screens.
+   The account service build puts the imports of `styles.css` here without the desktop-only files
+   and without the screen styles that `web-deferred-styles.ts` loads later
+   (`DESKTOP_ONLY_STYLES` and `DEFERRED_WEB_STYLES` in `scripts/web-stylesheet.ts`). */
 @import "../../styles.css";
 @import "./web-phone.css";
 @import "./web-app.css";
 @source "../../";
+
+/* These files only run in desktop windows. Shared renderer and UI sources remain enabled. */
+@source not "../agent-dock";
+@source not "../../preview";

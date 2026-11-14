@@ -33,7 +33,7 @@ import {
   parseLicenseOrder,
 } from "@openbot/contracts/license";
 import { isDynamicRecord, isOneOf, isString } from "@openbot/contracts/runtime-values";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { Context, Effect, Layer } from "effect";
 import { SOLD_OUT_PLANS } from "../lib/pricing-page";
 import {

@@ -5,7 +5,7 @@ import {
   HOSTED_SITE_UPLOAD_LIMITS,
   type HostedSitePathProblem,
 } from "@openbot/contracts/hosted-sites";
-import type { HostedSiteFramework } from "@openbot/contracts/ipc";
+import type { HostedSiteFramework } from "@openbot/contracts/ipc-hosted-sites";
 import { isBoolean, isDynamicRecord, isNumber, isString } from "@openbot/contracts/runtime-values";
 import { Schema } from "effect";
 

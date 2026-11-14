@@ -180,6 +180,17 @@ const valid: [string, (value: unknown) => unknown, unknown][] = [
       hourCycle: "h23",
     } satisfies AppInfo,
   ],
+  [
+    "app info on a Mac with the photo picker",
+    decodeAppInfo,
+    {
+      name: "OpenBot",
+      version: "1.0.0",
+      platform: "darwin",
+      variant: "production",
+      photoPicker: true,
+    } satisfies AppInfo,
+  ],
   ["sent message stats", decodeSentMessageStats, { firstSentAt: "2026-11-01T09:30:00.000Z", sentCount: 12 }],
   ["sent message stats before the first message", decodeSentMessageStats, { firstSentAt: null, sentCount: 0 }],
   [
@@ -410,6 +421,11 @@ const malformed: [string, (value: unknown) => unknown, unknown][] = [
     "app info with a software rendering flag that is not a boolean",
     decodeAppInfo,
     { name: "OpenBot", version: "1.0.0", platform: "linux", variant: "production", softwareRendering: "yes" },
+  ],
+  [
+    "app info with a photo picker flag that is not a boolean",
+    decodeAppInfo,
+    { name: "OpenBot", version: "1.0.0", platform: "darwin", variant: "production", photoPicker: "yes" },
   ],
   [
     "app info with an unknown hour cycle",

@@ -77,6 +77,7 @@ export const messages = defineMessages("composer", {
   "composer.placeholder.answer": "Type your answer",
   "composer.add.label": "Add to prompt",
   "composer.add.files": "Attach files",
+  "composer.add.photos": "Photos",
   "composer.add.teach": "Teach a task",
   "composer.add.skill": "Use a skill",
   "composer.upload.cancel": "Cancel upload",

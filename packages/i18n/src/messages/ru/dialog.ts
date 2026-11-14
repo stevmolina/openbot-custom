@@ -8,6 +8,7 @@ export const messages = {
   "dialog.chooseSkill": "Выберите папку навыка или ZIP",
   "dialog.filter.skillPackages": "Пакеты навыков",
   "dialog.filter.images": "Изображения",
+  "dialog.photoPicker.title": "Выбор фото",
   "dialog.filter.supportedFiles": "Поддерживаемые файлы",
   "dialog.filter.attachment": "Вложение",
   "dialog.filter.zipArchive": "Архив ZIP",

@@ -75,6 +75,7 @@ if ! bun run prepare:remote-desktop-runtime; then
 fi
 bun run verify:remote-desktop-runtime
 bun run prepare:cua-driver
+bun run prepare:macos-photo-picker
 bun run build
 rm -rf dist-custom
 bunx electron-builder --dir --mac --arm64 --config electron-builder.custom.yml

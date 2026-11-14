@@ -62,33 +62,6 @@ import {
   Text,
 } from "@openbot/ui";
 import { normalizeAvatarFile } from "@openbot/ui/avatar-image";
-import mascotBlue from "../agents/assets/pokebots/blue.webp";
-import mascotDesign from "../agents/assets/pokebots/design.webp";
-import mascotDev from "../agents/assets/pokebots/dev.webp";
-import mascotMarketing from "../agents/assets/pokebots/marketing.webp";
-import mascotMint from "../agents/assets/pokebots/mint.webp";
-import mascotOps from "../agents/assets/pokebots/ops.webp";
-import mascotOrange from "../agents/assets/pokebots/orange.webp";
-import mascotPurple from "../agents/assets/pokebots/purple.webp";
-import mascotResearch from "../agents/assets/pokebots/research.webp";
-import mascotSales from "../agents/assets/pokebots/sales.webp";
-import mascotSupport from "../agents/assets/pokebots/support.webp";
-
-/** The first Pokebots app's plush mascots, offered as ready-made agent pictures. */
-const POKEBOTS_MASCOTS = [
-  mascotBlue,
-  mascotDev,
-  mascotDesign,
-  mascotResearch,
-  mascotSales,
-  mascotMarketing,
-  mascotOps,
-  mascotSupport,
-  mascotOrange,
-  mascotMint,
-  mascotPurple,
-] as const;
-
 import {
   AVATAR_COLOR_CHOICES,
   AVATAR_EXPRESSIONS,
@@ -138,6 +111,7 @@ import {
 } from "solid-js";
 import { useText } from "../../text";
 import { avatarColorChoiceLabel } from "../agents/avatar-hue-label";
+import { POKEBOTS_MASCOTS } from "../agents/pokebots-mascots";
 import { SERVER_NOTIFICATION_LEVEL_LABELS } from "../servers/ServerActionItems";
 import { AgentChatColorRow } from "../settings/ChatColorSetting";
 import { AgentDeleteHistoryDialog } from "./AgentDeleteHistoryDialog";

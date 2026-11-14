@@ -81,6 +81,7 @@ export const messages = {
   "composer.placeholder.answer": "Digite sua resposta",
   "composer.add.label": "Adicionar à instrução",
   "composer.add.files": "Anexar arquivos",
+  "composer.add.photos": "Fotos",
   "composer.add.teach": "Ensinar uma tarefa",
   "composer.add.skill": "Usar uma habilidade",
   "composer.upload.cancel": "Cancelar envio",

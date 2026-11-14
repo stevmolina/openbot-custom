@@ -18,6 +18,8 @@ interface WebBench {
   /** The names of the agent with the long conversation and of another agent, set when `ready` resolves. */
   agentNames: { open: string; other: string };
   resetCalls: () => void;
+  holdOlder: () => void;
+  releaseOlder: () => void;
   /** Resolves when no host request is running for one macrotask. */
   idle: () => Promise<void>;
   /**
@@ -68,6 +70,8 @@ export const createBenchWebRuntime: WebRuntimeFactory = (_accountId, events) => 
   const base = mockWebRuntimeFor(mock, events);
   const calls: Record<string, number> = {};
   let running = 0;
+  let olderGate: Promise<void> | undefined;
+  let releaseOlder: (() => void) | undefined;
   let resolveReady: (agentId: string) => void = () => {};
   const ready = new Promise<string>((resolve) => {
     resolveReady = resolve;
@@ -128,8 +132,11 @@ export const createBenchWebRuntime: WebRuntimeFactory = (_accountId, events) => 
     }),
     listHosts: counted("listHosts", base.listHosts),
     listAgents: counted("listAgents", base.listAgents),
-    conversation: counted("conversation", (id, before) => {
-      if (before !== undefined) calls.conversationOlder = (calls.conversationOlder ?? 0) + 1;
+    conversation: counted("conversation", async (id, before) => {
+      if (before !== undefined) {
+        calls.conversationOlder = (calls.conversationOlder ?? 0) + 1;
+        await olderGate;
+      }
       return base.conversation(id, before);
     }),
     conversationReads: counted("conversationReads", base.conversationReads),
@@ -199,6 +206,16 @@ export const createBenchWebRuntime: WebRuntimeFactory = (_accountId, events) => 
     agentNames,
     resetCalls: () => {
       for (const name of Object.keys(calls)) delete calls[name];
+    },
+    holdOlder: () => {
+      olderGate = new Promise<void>((resolve) => {
+        releaseOlder = resolve;
+      });
+    },
+    releaseOlder: () => {
+      releaseOlder?.();
+      olderGate = undefined;
+      releaseOlder = undefined;
     },
     idle,
     stream,

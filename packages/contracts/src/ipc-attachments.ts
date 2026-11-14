@@ -47,7 +47,13 @@ export function canPreviewAttachment(attachment: AttachmentSummary): boolean {
 export type DraftAttachment = AttachmentSummary;
 
 export interface ChooseAttachmentsInput {
-  filter: "all" | "images";
+  /**
+   * `photos` opens the Photos grid of macOS in place of the file dialog. Only a desktop app whose
+   * `AppInfo.photoPicker` is true offers it.
+   */
+  filter: "all" | "images" | "photos";
+  /** For `photos`: how many items the grid lets the user select, from 1 to the attachment limit. */
+  limit?: number;
 }
 
 export interface AttachmentDataInput {

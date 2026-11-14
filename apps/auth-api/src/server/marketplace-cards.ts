@@ -1,4 +1,4 @@
-import { AGENT_TEMPLATE_CARD, isAgentTemplateCardPng } from "@openbot/contracts/ipc";
+import { AGENT_TEMPLATE_CARD, isAgentTemplateCardPng } from "@openbot/contracts/ipc-agent-templates";
 import { Effect } from "effect";
 import { readRequestBytes } from "./json-body";
 

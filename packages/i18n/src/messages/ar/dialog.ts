@@ -8,6 +8,7 @@ export const messages = {
   "dialog.chooseSkill": "اختر مجلد مهارة أو ملف ZIP",
   "dialog.filter.skillPackages": "حزم المهارات",
   "dialog.filter.images": "الصور",
+  "dialog.photoPicker.title": "اختيار الصور",
   "dialog.filter.supportedFiles": "الملفات المدعومة",
   "dialog.filter.attachment": "مرفق",
   "dialog.filter.zipArchive": "أرشيف ZIP",

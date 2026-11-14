@@ -26,6 +26,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 const API_DIR = resolve(ROOT, "apps/auth-api");
 const OUT = resolve(ROOT, ".openbot-build/web-pwa");
 const SW_PATH = "/app-sw.js";
+const SIGNED_OUT = JSON.stringify({ error: { code: "sign_in_required", message: "Sign in is required." } });
 /** `preview` serves the built files, `dev` the dev server. The dev server has no `/assets/` files to cache. */
 let mode: "preview" | "dev" = "preview";
 
@@ -112,6 +113,11 @@ async function startProxy(
   let suffix = "";
   const server = createServer((request, response) => {
     void (async () => {
+      // Without secrets the preview cannot check a session. Production answers a visitor with no cookie so.
+      if (request.url === "/api/browser/session") {
+        response.writeHead(401, { "content-type": "application/json", "cache-control": "no-store" }).end(SIGNED_OUT);
+        return;
+      }
       const target = await fetch(`${upstream}${request.url ?? "/"}`, {
         method: request.method,
         redirect: "manual",
@@ -245,7 +251,9 @@ async function runChecks(browser: Browser, base: string, setSuffix: (value: stri
     assert.match(response.headers.get("cache-control") ?? "", /no-cache/);
     const source = await response.text();
     assert.ok(
-      !source.includes("__OPENBOT_BUILD_ID__") && !source.includes("__OPENBOT_APP_NAME__"),
+      !["__OPENBOT_BUILD_ID__", "__OPENBOT_APP_NAME__", "__OPENBOT_ASSET_PATHS__"].some((name) =>
+        source.includes(name),
+      ),
       "placeholders left",
     );
     assert.match(source, /const BUILD_ID = "(dev|[0-9a-f]{16})"/);
@@ -330,7 +338,8 @@ async function runChecks(browser: Browser, base: string, setSuffix: (value: stri
           const response = await fetch(path).catch(() => null);
           answers.push({ path, status: response?.status ?? 0 });
         }
-        const keys = await caches.keys();
+        // The page keeps its own caches too, such as the agent pictures. Only the worker's caches count here.
+        const keys = (await caches.keys()).filter((key) => key.startsWith("openbot-web-"));
         const urls: string[] = [];
         for (const key of keys) for (const request of await (await caches.open(key)).keys()) urls.push(request.url);
         return { answers, keys, urls };
@@ -459,10 +468,15 @@ async function runChecks(browser: Browser, base: string, setSuffix: (value: stri
       return state;
     });
 
-    await check("the old worker's caches are deleted on activate", async () => {
-      const keys = await page.evaluate(() => caches.keys());
-      const ids = new Set(keys.map((key) => key.replace(/^openbot-web-(shell|assets)-/, "")));
-      assert.equal(ids.size, 1, `caches of more than one build: ${keys.join(", ")}`);
+    await check("the old worker's caches are deleted on activate, the shared asset cache stays", async () => {
+      const keys = (await page.evaluate(() => caches.keys())).filter((key) => key.startsWith("openbot-web-"));
+      const shells = keys.filter((key) => key.startsWith("openbot-web-shell-"));
+      assert.equal(shells.length, 1, `shells of more than one build: ${keys.join(", ")}`);
+      const others = keys.filter((key) => !key.startsWith("openbot-web-shell-"));
+      assert.ok(
+        others.every((key) => key === "openbot-web-assets"),
+        `unexpected caches: ${keys.join(", ")}`,
+      );
       return { keys };
     });
 

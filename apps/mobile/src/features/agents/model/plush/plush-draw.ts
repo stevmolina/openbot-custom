@@ -21,6 +21,7 @@ import {
   VIEW_BOX,
 } from "./plush-felt";
 import type { PlushFrame } from "./plush-frames";
+import { drawPokebotsAccessory, type PlushAccessoryLayer, POKEBOTS_EYE_DARKEN } from "./plush-pokebots";
 
 /** The pictures of one plush: its tinted body and felt balls, and the shared eye pads. */
 export interface PlushArt {
@@ -84,7 +85,11 @@ function drawEye(canvas: SkCanvas, eye: PlushEye, art: PlushArt) {
     canvas.save();
     concat(canvas, eye.matrix);
     if (eye.inner) concat(canvas, eye.inner);
-    canvas.saveLayer(opacityPaint(opacity));
+    const layer = opacityPaint(opacity);
+    // Pokebots: the felt pads are darkened in their layer (`plush-pokebots.ts`).
+    const k = POKEBOTS_EYE_DARKEN;
+    layer.setColorFilter(Skia.ColorFilter.MakeMatrix([k, 0, 0, 0, 0, 0, k, 0, 0, 0, 0, 0, k, 0, 0, 0, 0, 0, 1, 0]));
+    canvas.saveLayer(layer);
     const piecePaint = Skia.Paint();
     if (eye.pieces.length > 1) piecePaint.setBlendMode(BlendMode.Plus);
     for (const piece of eye.pieces) {
@@ -179,7 +184,14 @@ export function saturationMatrix(s: number): number[] {
  * moving avatar and on the JS thread for a still picture, so both show the same pixels. `saturation`
  * below 1 greys the plush, as a disconnected agent shows.
  */
-export function drawPlush(canvas: SkCanvas, frame: PlushFrame, art: PlushArt, size: number, saturation = 1) {
+export function drawPlush(
+  canvas: SkCanvas,
+  frame: PlushFrame,
+  art: PlushArt,
+  size: number,
+  saturation: number,
+  accessory: readonly PlushAccessoryLayer[],
+) {
   "worklet";
   const scale = size / VIEW_BOX;
   canvas.save();
@@ -195,6 +207,7 @@ export function drawPlush(canvas: SkCanvas, frame: PlushFrame, art: PlushArt, si
   if (faded) canvas.saveLayer(opacityPaint(frame.bodyAlpha));
   drawPicture(canvas, art.body, -HALF_VIEW_BOX, -HALF_VIEW_BOX, VIEW_BOX, VIEW_BOX, Skia.Paint(), null);
   for (const eye of frame.eyes) drawEye(canvas, eye, art);
+  drawPokebotsAccessory(canvas, accessory);
   if (faded) canvas.restore();
   for (const dot of frame.dots)
     drawPicture(canvas, art.dot, dot.x, dot.y, dot.size, dot.size, opacityPaint(dot.opacity), null);

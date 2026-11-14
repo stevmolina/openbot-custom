@@ -157,9 +157,8 @@ import type { AgentMessage } from "@openbot/ui/data";
 import { accountUsageProviderRows } from "@openbot/ui/features/account/account-usage-view";
 import { computeAgentAvatarMoods } from "@openbot/ui/features/agents/agent-avatar-mood";
 import { createFirstAgentDraft, type FirstAgentDraft } from "@openbot/ui/features/agents/FirstAgentSetup";
-import { BillingDialog } from "@openbot/ui/features/billing/BillingDialog";
+import type { BillingDialogProps } from "@openbot/ui/features/billing/BillingDialog";
 import { createBillingStore } from "@openbot/ui/features/billing/billing-store";
-import { LicenseSection } from "@openbot/ui/features/billing/LicenseSection";
 import { createLicenseStore } from "@openbot/ui/features/billing/license-store";
 import { isConnectorId } from "@openbot/ui/features/connectors/connectors";
 import { unloadedHistory } from "@openbot/ui/features/conversation/ChatScrollRail";
@@ -188,6 +187,7 @@ import {
 import type { SidebarPage, SidebarPages } from "@openbot/ui/features/sidebar/sidebar-pages";
 import type { SidebarView } from "@openbot/ui/features/sidebar/sidebar-types";
 import { useText } from "@openbot/ui/text";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import { Effect } from "effect";
 import {
   createEffect,
@@ -221,7 +221,6 @@ import {
   ScheduleView,
   ServerLibrary,
   ServerOnboarding,
-  ServerSettingsModal,
   TasksView,
   WorkflowsCanvas,
 } from "../../lazy-views";
@@ -275,7 +274,7 @@ import type { FilesPort } from "../files/files-port";
 import { hostSetupProviderProps } from "../onboarding/host-setup-provider-props";
 import { createRoutineTimezonePrompt } from "../schedule/routine-timezone-prompt";
 import type { ScheduleRoutine } from "../schedule/SchedulePanel";
-import { AddServerOverlay, type AddServerResume } from "../servers/AddServerOverlay";
+import type { AddServerOverlay as AddServerOverlayView, AddServerResume } from "../servers/AddServerOverlay";
 import { createHostedUpsellOffline, HostedServerUpsell } from "../servers/hosted-server-upsell-controller";
 import { saveRemoteFrameChannels } from "../servers/remote-workspace-frame";
 import type { HostAgentDefaultsCalls } from "../servers/ServerAgentsSection";
@@ -330,7 +329,6 @@ import {
   SettingsSearchField,
 } from "../window/SettingsPageFrame";
 import type { SettingsKind, WindowPage } from "../window/window-page-context";
-import { WebAgentSettings } from "./WebAgentSettings";
 import { WebConnectComputer } from "./WebConnectComputer";
 import { WebMobileNavigation, type WebMobilePane, WebPhoneBack, type WebPhoneTab } from "./WebMobileNavigation";
 import { WebServerOtherTab } from "./WebServerOtherTab";
@@ -498,6 +496,54 @@ type WebWorkspaceProps = {
 };
 
 const WebAccountSettings = lazy(() => import("./WebAccountSettings"));
+// These views load when they first open.
+const loadBilling = () =>
+  Promise.all([
+    import("@openbot/ui/features/billing/BillingDialog"),
+    import("@openbot/ui/features/billing/LicenseSection"),
+  ]);
+const loadAddServerOverlay = () => import("../servers/AddServerOverlay");
+const loadWebAgentSettings = () => import("./WebAgentSettings");
+const BillingDialog = lazyWhenOpen(
+  lazy(() => loadBilling().then(([module]) => ({ default: module.BillingDialog }))),
+  (props: BillingDialogProps) => props.open,
+);
+// It shows only in the Billing dialog, which waits for both modules.
+const LicenseSection = lazy(() => loadBilling().then(([, module]) => ({ default: module.LicenseSection })));
+const AddServerOverlay = lazyWhenOpen(
+  lazy(() => loadAddServerOverlay().then((module) => ({ default: module.AddServerOverlay }))),
+  (props: ComponentProps<typeof AddServerOverlayView>) => props.open,
+);
+const WebAgentSettings = lazyWhenOpen(
+  lazy(() => loadWebAgentSettings().then((module) => ({ default: module.WebAgentSettings }))),
+  () => true,
+);
+
+/**
+ * A lazy view whose code loads the first time `open` is true. It stays mounted after that, so it closes
+ * with its animation and keeps its state, as a view of the first chunk does.
+ */
+function lazyWhenOpen<Props extends object>(
+  View: (props: Props) => JSX.Element,
+  open: (props: Props) => boolean,
+): (props: Props) => JSX.Element {
+  return (props) => {
+    const [opened, setOpened] = createSignal(false);
+    createEffect(
+      () => open(props),
+      (value) => {
+        if (value) setOpened(true);
+      },
+    );
+    return (
+      <Show when={opened()}>
+        <Loading>
+          <View {...props} />
+        </Loading>
+      </Show>
+    );
+  };
+}
 
 export function WebWorkspace(props: WebWorkspaceProps) {
   return (
@@ -1331,16 +1377,6 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
     setAccountSettingsLoaded(true);
     setAccountSettingsOpen(true);
   }
-  // The code of both settings pages loads after the server shows, so their first open does not show
-  // an empty page for a moment.
-  createEffect(
-    () => workspace.state.status === "online",
-    (online) => {
-      if (!online) return;
-      void WebAccountSettings.preload();
-      void ServerSettingsModal.preload();
-    },
-  );
   /** The elements of the settings page that the settings panel shows in. The page sets them. */
   const [settingsMounts, setSettingsMounts] = createSignal<SettingsPagePlacement | undefined>();
   /** The search of the server settings page, which filters its section list. It clears when the page closes. */
@@ -2102,6 +2138,23 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
   const firstAgent = () => workspace.state.agentsLoaded && workspace.profiles().length === 0 && createSupported();
   /** An open channel still takes the pane, as a channel closes the desktop form. */
   const agentFormOpen = () => creating() || (firstAgent() && !channelOpen());
+  // Tasks, billing, settings pages and server setup styles are not in the first stylesheet.
+  // The marketplace stays on the first stylesheet: its navigation reuses a settings class.
+  const [screenStylesReady, setScreenStylesReady] = createSignal(false);
+  const screenStylesNeeded = () =>
+    accountSettingsOpen() ||
+    billingOpen() ||
+    tasksOpen() ||
+    agentFormOpen() ||
+    serverSettings.state.open ||
+    hostedServers.addServer() !== null;
+  createEffect(
+    () => screenStylesNeeded(),
+    (needed) => {
+      if (!needed || screenStylesReady()) return;
+      void import("./web-deferred-styles").then(() => setScreenStylesReady(true));
+    },
+  );
   const agentChatOpen = () =>
     !tasksOpen() && !agentFormOpen() && !channelOpen() && !noHost() && !hostOffline() && !routinesView();
   /**
@@ -3503,7 +3556,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     }
                   />
                   <AddServerOverlay
-                    open={hostedServers.addServer() !== null}
+                    open={hostedServers.addServer() !== null && screenStylesReady()}
                     entryPoint={hostedServers.addServer()?.entryPoint}
                     order={hostedServers.addServer()?.order}
                     calls={hostedServers.calls}
@@ -3540,7 +3593,9 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   <Show when={accountSettingsLoaded()}>
                     <Loading>
                       <WebAccountSettings
-                        open={accountSettingsOpen() && settingsPlacement("personal") !== undefined}
+                        open={
+                          accountSettingsOpen() && settingsPlacement("personal") !== undefined && screenStylesReady()
+                        }
                         page={settingsPlacement("personal")}
                         onOpenChange={setAccountSettingsOpen}
                         account={account()}
@@ -3568,7 +3623,9 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   <Show when={serverSettingsLoaded() && server()}>
                     {(target) => (
                       <ServerSettingsOverlay
-                        open={serverSettings.state.open && settingsPlacement("server") !== undefined}
+                        open={
+                          serverSettings.state.open && settingsPlacement("server") !== undefined && screenStylesReady()
+                        }
                         page={settingsPlacement("server")}
                         sectionQuery={serverSettingsQuery()}
                         openFirstSectionRequest={openFirstServerSectionRequest()}
@@ -3744,7 +3801,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                     restoreFocusTarget={restartRequest()?.trigger}
                   />
                   <BillingDialog
-                    open={billingOpen()}
+                    open={billingOpen() && screenStylesReady()}
                     onOpenChange={(open) => {
                       setBillingOpen(open);
                       if (!open) setLicenseStart(null);
@@ -3783,7 +3840,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                 </>
               }
             >
-              <Show when={tasksOpen() ? server() : undefined}>
+              <Show when={tasksOpen() && screenStylesReady() ? server() : undefined}>
                 {(target) => (
                   <Loading>
                     <TasksView
@@ -3860,7 +3917,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   </Loading>
                 )}
               </Show>
-              <Show when={!tasksOpen() && agentFormOpen() && !serverOnboarding()}>
+              <Show when={!tasksOpen() && agentFormOpen() && !serverOnboarding() && screenStylesReady()}>
                 <WebAgentSettings
                   runtime={workspace.runtime}
                   capabilities={workspace.state.capabilities}
@@ -4104,7 +4161,7 @@ function WebWorkspaceFrame(props: WebWorkspaceProps) {
                   loaded={Boolean(workspace.conversation()?.page)}
                   hasOlder={workspace.conversation()?.page?.pageInfo.hasOlder}
                   unloadedHistory={unloadedHistory(workspace.conversation()?.page?.pageInfo)}
-                  loadingOlder={workspace.conversation()?.loading}
+                  loadingOlder={workspace.conversation()?.olderLoading}
                   olderError={workspace.conversation()?.olderError ?? null}
                   activeTurnId={workspace.conversation()?.page?.activeTurnId}
                   activityDetail={

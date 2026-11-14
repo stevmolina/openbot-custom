@@ -8,6 +8,7 @@ export const messages = {
   "dialog.chooseSkill": "Bir beceri klasörü veya ZIP seçin",
   "dialog.filter.skillPackages": "Beceri paketleri",
   "dialog.filter.images": "Görseller",
+  "dialog.photoPicker.title": "Fotoğraf seç",
   "dialog.filter.supportedFiles": "Desteklenen dosyalar",
   "dialog.filter.attachment": "Ek",
   "dialog.filter.zipArchive": "ZIP arşivi",

@@ -32,6 +32,8 @@ export interface AppInfo {
   hourCycle?: HourCycle;
   /** Set when the agent dock and the Dynamic Island cannot show above other apps now: on Linux with Wayland windows. */
   aboveAppsSupport?: AboveAppsSupport;
+  /** True on macOS 13 and later when the app has its photo picker, so attach can open the Photos grid. */
+  photoPicker?: boolean;
 }
 
 /** The phase list is the source of truth: `UpdatePhase` is derived from it. */

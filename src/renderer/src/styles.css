@@ -21,6 +21,7 @@
 @import "@openbot/ui/features/account/language-wheel.css";
 @import "./features/onboarding/onboarding.css";
 @import "@openbot/ui/features/agents/first-agent-setup.css";
+@import "@openbot/ui/features/agents/pokebots-avatar.css";
 @import "./styles/app-shell.css";
 @import "@openbot/ui/features/shortcuts/shortcuts.css";
 @import "@openbot/ui/features/sidebar/sidebar-views.css";

@@ -92,6 +92,7 @@ export function DirectConversation(props: DirectConversationProps) {
       const messages = props.snapshot?.messages;
       return `${messages?.[0]?.id ?? ""}:${messages?.at(-1)?.id ?? ""}`;
     },
+    loadingOlder: () => props.loadingOlder === true,
     scrollMargin: virtualScrollMargin,
     onChange: (instance) => {
       const first = instance.getVirtualItems()[0];

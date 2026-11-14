@@ -82,6 +82,7 @@ export const messages = {
   "composer.placeholder.answer": "Saisissez votre réponse",
   "composer.add.label": "Ajouter à la demande",
   "composer.add.files": "Joindre des fichiers",
+  "composer.add.photos": "Photos",
   "composer.add.teach": "Enseigner une tâche",
   "composer.add.skill": "Utiliser une compétence",
   "composer.upload.cancel": "Annuler l’envoi",

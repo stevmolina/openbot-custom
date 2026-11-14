@@ -49,6 +49,7 @@ import { causeHelpers, runCauseEffect } from "../../backend/effect-boundary";
 import type { MailboxStore } from "../../backend/mailbox-store";
 import { filePreviewFromBytes, localFilePreview, mimeTypeForName } from "../file-preview";
 import { filePreviewPages } from "../file-preview-pages";
+import { photoPickerExecutable, pickPhotos } from "../macos-photo-picker";
 import { AttachmentDownloadStopped } from "../remote-attachment-cache";
 import { decodeVoid } from "../remote-host-decoding";
 import type { RemoteServerManager } from "../remote-server-manager";
@@ -170,6 +171,35 @@ export function attachmentIpcHandlers({
         const supportsAnyFile =
           serverId === LOCAL_SERVER_ID ||
           remoteServers.supportsCapability(serverId, TEAM_ANY_FILE_ATTACHMENTS_CAPABILITY);
+        if (filter === "photos") {
+          // The Photos grid of macOS needs this computer; a joined server gets the copies, as from the dialog.
+          const executable = photoPickerExecutable({ packaged: app.isPackaged, resourcesPath: process.resourcesPath });
+          if (!executable) throw new Error(sourceText("error.attachment.photoPickerFailed"));
+          // As on the phone: videos only for a host that takes them. A joined server checks MOV against
+          // its media capability and MP4 against its MP4 capability, also when it takes any file.
+          const videoTypes = [...(supportsMedia ? ["mov"] : []), ...(supportsMp4 ? ["mp4"] : [])];
+          const picked = await runCauseEffect(
+            pickPhotos({
+              executable,
+              videoTypes,
+              limit: parsed.payload.limit ?? INPUT_LIMITS.attachments,
+              title: translate("dialog.photoPicker.title"),
+            }),
+          );
+          if (!picked) return [];
+          try {
+            // A long video can pass the 100 MB limit. It is left out, so the other picks still land.
+            const sizes = await Promise.all(picked.paths.map(async (path) => (await stat(path)).size));
+            const paths = picked.paths.filter((_, index) => (sizes[index] ?? 0) <= ATTACHMENT_LIMITS.fileBytes);
+            if (paths.length === 0) throw new Error(sourceText("error.attachment.fileTooLarge"));
+            return await routeToServer(serverId, {
+              local: () => runCauseEffect(service.prepareAttachments(paths)),
+              remote: (target) => runCauseEffect(uploadRemotePaths(remoteServers, target, paths)),
+            });
+          } finally {
+            await rm(picked.directory, { recursive: true, force: true });
+          }
+        }
         const options: OpenDialogOptions = { properties: ["openFile", "multiSelections"] };
         // A host that takes any file gets no file filter, so the dialog shows every file.
         if (filter === "images") {
