@@ -15,7 +15,8 @@ const BRANDED_MANIFEST_KEYS = new Set(["name", "short_name", "description"]);
  * Emits `app-sw.js`, the service worker of the web client, into the client build. Its build id is a
  * hash of the names of the files in the build. Vite puts a content hash in each name, so the bytes of
  * the worker change when, and only when, the web client changes, and a browser that checks the file
- * sees a new version.
+ * sees a new version. The worker also gets the list of the build's `/assets/` files, so that it keeps
+ * those files in its cache across deploys and removes the others.
  *
  * `vite dev` serves the same file at the same address with the build id `dev`. The worker keeps no
  * `/assets/` file there, because the dev server has none, and it answers `/app` from the network, so it
@@ -26,8 +27,12 @@ const BRANDED_MANIFEST_KEYS = new Set(["name", "short_name", "description"]);
 export function webServiceWorker(env: Readonly<Record<string, string | undefined>> = process.env): Plugin {
   const brand = readBrandSettings(env);
   const appName = brand?.name ?? "OpenBot";
-  const workerSource = (template: string, buildId: string) =>
-    template.replace("__OPENBOT_BUILD_ID__", buildId).replace("__OPENBOT_APP_NAME__", appName);
+  const workerSource = (template: string, buildId: string, assetPaths: readonly string[]) =>
+    // Function replacers, so that a `$` in a value is not read as a replacement pattern.
+    template
+      .replace("__OPENBOT_BUILD_ID__", () => buildId)
+      .replace("__OPENBOT_APP_NAME__", () => appName)
+      .replace('["__OPENBOT_ASSET_PATHS__"]', () => JSON.stringify(assetPaths));
   return {
     name: "openbot-web-service-worker",
     configureServer(server) {
@@ -38,16 +43,19 @@ export function webServiceWorker(env: Readonly<Record<string, string | undefined
         }
         response.setHeader("Content-Type", "text/javascript; charset=utf-8");
         response.setHeader("Cache-Control", "no-cache");
-        response.end(workerSource(readFileSync(TEMPLATE, "utf8"), "dev"));
+        response.end(workerSource(readFileSync(TEMPLATE, "utf8"), "dev", []));
       });
     },
     generateBundle(_options, bundle) {
       // The Worker build gets no copy: only the client build is served as files.
       if (this.environment.name !== "client") return;
       const template = readFileSync(TEMPLATE, "utf8");
+      const names = Object.keys(bundle).sort();
       const hash = createHash("sha256").update(template).update(appName);
-      for (const name of Object.keys(bundle).sort()) hash.update(name).update("\n");
-      const source = workerSource(template, hash.digest("hex").slice(0, 16));
+      for (const name of names) hash.update(name).update("\n");
+      // The worker compares them with `URL.pathname`, which is percent-encoded.
+      const assetPaths = names.filter((name) => name.startsWith("assets/")).map((name) => encodeURI(`/${name}`));
+      const source = workerSource(template, hash.digest("hex").slice(0, 16), assetPaths);
       this.emitFile({ type: "asset", fileName: WEB_SERVICE_WORKER_FILE, source });
     },
     // The public folder, with the manifest, is copied before the bundle is written.
