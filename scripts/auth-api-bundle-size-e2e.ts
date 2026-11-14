@@ -61,6 +61,7 @@ function main(): void {
     }
   }
 
+  if (modules.size === 0) fail("No source path comments found: the bundler output format changed.");
   const violations: string[] = [];
   for (const path of modules) {
     for (const rule of FORBIDDEN) if (rule.pattern.test(path)) violations.push(`${rule.reason}: ${path}`);
