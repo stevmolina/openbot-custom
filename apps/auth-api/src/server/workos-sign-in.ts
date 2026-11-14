@@ -1,7 +1,7 @@
 import { MOBILE_COMPANY_SIGN_IN_RETURN } from "@openbot/contracts/company-sign-in";
-import { isAvatarColor } from "@openbot/contracts/ipc";
+import { isAvatarColor } from "@openbot/contracts/ipc-agent-identity";
 import { normalizeEmailAddress } from "@openbot/contracts/validation";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { Effect, Schema } from "effect";
 import { randomToken, sha256 } from "./crypto";
 import { mobileSessionStatements } from "./d1-auth-repository";

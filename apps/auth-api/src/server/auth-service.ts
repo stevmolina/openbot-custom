@@ -1,5 +1,5 @@
 import type { FirstTouch } from "@openbot/contracts/first-touch";
-import { type AvatarColor, isAvatarColor } from "@openbot/contracts/ipc";
+import { type AvatarColor, isAvatarColor } from "@openbot/contracts/ipc-agent-identity";
 import type { MobileConnectHostBinding } from "@openbot/contracts/mobile-connect";
 import { type DynamicRecord, isBoolean, isNumber, isString } from "@openbot/contracts/runtime-values";
 import {
@@ -10,7 +10,7 @@ import {
   ONE_TIME_CODE_LENGTH,
   validateProfileName,
 } from "@openbot/contracts/validation";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { Context, Effect, Layer, Result, Schema } from "effect";
 import { type AccountAnalytics, type AccountSurface, NO_ACCOUNT_ANALYTICS } from "./account-analytics";
 import type { AccountAttribution } from "./account-attribution";

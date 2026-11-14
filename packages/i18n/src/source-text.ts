@@ -2,9 +2,11 @@ import type { TranslatedLocale } from "./locale";
 import { createTranslate, type Translate } from "./message";
 import { source as en } from "./messages/en/source";
 import { sourceTranslation } from "./source-catalogs";
+import { type SourceMessages, sourceText } from "./source-english";
 import { createSourceLocalizer } from "./source-matcher";
 
 export type { TranslatedLocale } from "./locale";
+export { type SourceMessages, sourceText };
 
 /**
  * Text the main process, a host or the team client sends as English, and a screen translates.
@@ -17,15 +19,6 @@ export type { TranslatedLocale } from "./locale";
  * `bun run i18n:check` fails when two templates can match the same text, so the first match is the
  * only match.
  */
-export type SourceMessages = typeof en;
-
-/** The English text for a source key. Write it where the code threw a literal before. */
-export const sourceText: Translate<SourceMessages> = createTranslate({
-  source: en,
-  locale: "en",
-  sourceLocale: "en",
-});
-
 const localizer = createSourceLocalizer({ source: en, translation: sourceTranslation });
 
 /**

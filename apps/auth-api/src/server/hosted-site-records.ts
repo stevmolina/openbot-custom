@@ -3,7 +3,7 @@ import type {
   HostedSiteSummary as HostedSiteClientSummary,
   HostedSiteFramework,
   HostedSiteStatus,
-} from "@openbot/contracts/ipc";
+} from "@openbot/contracts/ipc-hosted-sites";
 import { isDynamicRecord, isNumber, isString } from "@openbot/contracts/runtime-values";
 import { Effect } from "effect";
 import { hmacSha256, sha256 } from "./crypto";

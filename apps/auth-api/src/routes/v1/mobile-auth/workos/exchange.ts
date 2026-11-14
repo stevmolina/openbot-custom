@@ -1,5 +1,5 @@
 import { isString } from "@openbot/contracts/runtime-values";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { createFileRoute } from "@tanstack/solid-router";
 import { Effect } from "effect";
 import { normalizeMobileDevice } from "../../../../server/auth-service";

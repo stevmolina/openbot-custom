@@ -13,10 +13,10 @@
 // with a wrong value never takes the email codes away. SCIM from the provider turns a person off.
 
 import { MOBILE_COMPANY_SIGN_IN_RETURN } from "@openbot/contracts/company-sign-in";
-import { isAvatarColor } from "@openbot/contracts/ipc";
+import { isAvatarColor } from "@openbot/contracts/ipc-agent-identity";
 import { isDynamicRecord, isString } from "@openbot/contracts/runtime-values";
 import { isValidHostname, normalizeEmailAddress } from "@openbot/contracts/validation";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { Effect, Schema } from "effect";
 import { createRemoteJWKSet, customFetch, jwtVerify } from "jose";
 import { decodeBase64Url, deriveSecret, encodeBase64Url, hmacSha256, randomToken, sha256 } from "./crypto";

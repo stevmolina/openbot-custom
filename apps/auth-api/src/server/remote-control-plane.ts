@@ -5,7 +5,7 @@ import {
   hostKeyHandoverStatement,
 } from "@openbot/contracts/host-key-handover";
 import { DEFAULT_TEAM_MEMBER_LIMIT } from "@openbot/contracts/input-limits";
-import { isAvatarColor } from "@openbot/contracts/ipc";
+import { isAvatarColor } from "@openbot/contracts/ipc-agent-identity";
 import type { MobileConnectHostBinding } from "@openbot/contracts/mobile-connect";
 import { type DynamicRecord, isDynamicRecord, isOneOf, isString } from "@openbot/contracts/runtime-values";
 import type { RemoteAuthEvent } from "@openbot/contracts/signal-protocol/auth-events";
@@ -52,7 +52,7 @@ import {
   WEBHOOK_ROUTES_LIMIT,
   type WebhookRoute,
 } from "@openbot/contracts/signal-protocol/webhook-route";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { Context, Effect, Layer, Option, Result, Schema } from "effect";
 import { importJWK, type JWK, type JWTPayload, SignJWT } from "jose";
 import {

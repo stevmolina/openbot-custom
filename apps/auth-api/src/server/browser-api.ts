@@ -10,7 +10,7 @@ import {
   parseLicenseUsersRequest,
 } from "@openbot/contracts/license";
 import { type DynamicRecord, isBoolean, isNumber, isString } from "@openbot/contracts/runtime-values";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { Cause, Effect } from "effect";
 import { type AccountAttribution, requestFirstTouch } from "./account-attribution";
 import { type AuthService, AuthServiceError, readAnalyticsAnswer, readChatColor } from "./auth-service";

@@ -29,7 +29,7 @@ import {
   ORDER_METADATA,
 } from "@openbot/contracts/license";
 import { isOneOf } from "@openbot/contracts/runtime-values";
-import { sourceText } from "@openbot/i18n/source";
+import { sourceText } from "@openbot/i18n/source-english";
 import { Context, Effect, Layer } from "effect";
 import {
   type AccountAnalytics,

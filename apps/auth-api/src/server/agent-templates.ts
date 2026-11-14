@@ -6,7 +6,7 @@ import {
   isAgentTemplateCardPng,
   isAgentTemplateSnapshot,
   toAgentTemplateSnapshot,
-} from "@openbot/contracts/ipc";
+} from "@openbot/contracts/ipc-agent-templates";
 import { isDynamicRecord } from "@openbot/contracts/runtime-values";
 import { Effect, Result, Schema } from "effect";
 import { AgentMarketplaceError } from "./agent-marketplace";
