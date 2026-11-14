@@ -23,7 +23,8 @@
 //   as `<out>/video/keyboard.webm`.
 //
 // `bun scripts/web-css-weight-e2e.ts --before=<dist/client of the base build> --storybook=<url>
-//  [--after=apps/auth-api/dist/client] [--runs=21] [--out=web-css-weight] [--phases=size,style,look,video]`
+//  [--after=apps/auth-api/dist/client] [--runs=21] [--out=web-css-weight] [--phases=size,style,look,video]
+//  [--screen=chat-markdown-code]`
 import assert from "node:assert/strict";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -623,7 +624,7 @@ async function measureLook(browser: Browser): Promise<LookResult[]> {
   try {
     for (const layout of LAYOUTS) {
       for (const scheme of ["dark", "light"] as const) {
-        for (const screen of SCREENS) {
+        for (const screen of SCREENS.filter((item) => !option("screen") || item.name === option("screen"))) {
           const { context, page } = await openStory(browser, layout, screen.story, scheme, { clock: true });
           try {
             await page.waitForLoadState("networkidle");

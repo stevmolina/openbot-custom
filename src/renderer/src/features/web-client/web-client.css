@@ -6,3 +6,6 @@
 @import "./web-phone.css";
 @import "./web-app.css";
 @source "../../";
+
+/* These files only run in desktop windows. Shared renderer and UI sources remain enabled. */
+@source not "../agent-dock";
