@@ -15,6 +15,7 @@ import {
 import type { AgentProfile } from "../../data";
 import { documentFocused } from "../../document-focus";
 import { documentSoftwareRendering } from "../../document-rendering";
+import { PokebotsAccessory } from "./PokebotsAccessory";
 
 // Cap avatar animation at 30fps: uncapped bloub clocks measured 30% renderer / 24% GPU
 // for two visible avatars. The shape is 24-40px, so the eye cannot see the difference.
@@ -495,6 +496,10 @@ function GeneratedAvatar(props: {
         >
           {flatAvatar()}
         </Show>
+      </Show>
+      {/* Pokebots: the plush wears its felt accessory (`PokebotsAccessory`). */}
+      <Show when={!flat()}>
+        <PokebotsAccessory seed={props.seed} shape={appearance().shape} color={appearance().color} />
       </Show>
     </span>
   );
