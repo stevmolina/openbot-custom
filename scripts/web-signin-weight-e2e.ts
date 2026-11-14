@@ -494,6 +494,22 @@ async function measureSignedOut(browser: Browser, url: string, device: DeviceNam
   }
 }
 
+/** Records the phone opening to its chat list without exposing provider status in a chat. */
+async function recordOpening(browser: Browser, url: string, folder: string): Promise<void> {
+  const context = await newContext(browser, "iphone", true, folder);
+  const page = await context.newPage();
+  try {
+    linkFreeAt = 0;
+    await page.goto(`${url}/app`, { waitUntil: "commit" });
+    await page.waitForFunction("performance.getEntriesByName('openbot:remote-first-screen').length > 0", undefined, {
+      timeout: UI_WAIT_MS,
+    });
+    await firstChatRow(page).waitFor({ state: "visible", timeout: UI_WAIT_MS });
+  } finally {
+    await context.close();
+  }
+}
+
 // ---------------------------------------------------------------- report
 
 interface DeviceSummary {
@@ -688,7 +704,7 @@ async function main(): Promise<void> {
     if (flag("video")) {
       const folder = resolve(OUT, "video");
       rmSync(folder, { recursive: true, force: true });
-      await measureOnce(browser, proxy.url, "iphone", folder);
+      await recordOpening(browser, proxy.url, folder);
       const [webm] = readdirSync(folder).filter((file) => file.endsWith(".webm"));
       if (webm) renameSync(join(folder, webm), join(folder, "iphone-first-chat.webm"));
     }
